@@ -12,9 +12,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.activity.compose.BackHandler
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -54,11 +56,32 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel) {
         .filter { it.status == BookStatus.READING.name }
         .maxByOrNull { it.lastUpdated }
     var showAddDialog by remember { mutableStateOf(false) }
+    var showScanner by remember { mutableStateOf(false) }
+
+    if (showScanner) {
+        BackHandler { showScanner = false }
+        ScannerScreen(
+            onClose = { showScanner = false },
+            onBookConfirmed = { scanned ->
+                viewModel.addScannedBook(scanned)
+                showScanner = false
+            }
+        )
+        return
+    }
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Text("+", style = MaterialTheme.typography.headlineMedium)
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ExtendedFloatingActionButton(onClick = { showScanner = true }) {
+                    Text("Scan ISBN")
+                }
+                FloatingActionButton(onClick = { showAddDialog = true }) {
+                    Text("+", style = MaterialTheme.typography.headlineMedium)
+                }
             }
         }
     ) { innerPadding ->

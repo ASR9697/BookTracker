@@ -20,6 +20,8 @@ There is **no backend and no Firebase** — nothing to configure, nothing that c
 
 - Add books (title, authors, pages) and move them through the TBR pipeline:
   Backlog → Shortlist → Up Next → Reading.
+- Scan a book's ISBN barcode ("Scan ISBN" button): CameraX + on-device ML Kit, then a free,
+  keyless Google Books lookup auto-fills title, authors, page count, and cover URL.
 - Reading hero card with +1/+10 progress and Finish.
 - Watch shows the active book; +1/+10 with haptics sync back into the phone's database,
   including while the phone app is closed (`WearSyncService`).
@@ -27,8 +29,8 @@ There is **no backend and no Firebase** — nothing to configure, nothing that c
 
 ### Not built yet
 
-Camera ISBN scanning UI (analyzer exists), Google Books lookup, session recording, streaks,
-the 7×52 analytics grid, swipe actions, and everything in blueprint Phase 2 (those files are stubs).
+Session recording, streaks, the 7×52 analytics grid, cover image display, swipe actions,
+and everything in blueprint Phase 2 (those files are stubs).
 
 ## Build
 

@@ -16,7 +16,12 @@ import kotlinx.coroutines.flow.map
  */
 interface BookRepository {
     fun observeBooks(): Flow<List<Book>>
-    suspend fun addBook(title: String, authors: List<String>, totalUnits: Int): Book
+    suspend fun addBook(
+        title: String,
+        authors: List<String>,
+        totalUnits: Int,
+        coverUrl: String = ""
+    ): Book
     suspend fun updateStatus(id: String, status: BookStatus)
     suspend fun addProgress(id: String, delta: Int)
     suspend fun applyRemoteProgress(id: String, currentUnit: Int, updatedAt: Long)
@@ -28,11 +33,17 @@ class RoomBookRepository(private val bookDao: BookDao) : BookRepository {
     override fun observeBooks(): Flow<List<Book>> =
         bookDao.observeAll().map { entities -> entities.map { it.toModel() } }
 
-    override suspend fun addBook(title: String, authors: List<String>, totalUnits: Int): Book {
+    override suspend fun addBook(
+        title: String,
+        authors: List<String>,
+        totalUnits: Int,
+        coverUrl: String
+    ): Book {
         val book = Book(
             id = UUID.randomUUID().toString(),
             title = title,
             authors = authors,
+            coverUrl = coverUrl,
             totalUnits = totalUnits,
             status = BookStatus.BACKLOG.name,
             lastUpdated = System.currentTimeMillis()

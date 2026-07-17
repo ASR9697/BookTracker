@@ -60,3 +60,10 @@ Milestones 6–10 remain stubs. See README.md for the honest state and roadmap.
   - Watch ↔ phone sync over the Wearable Data Layer: phone publishes `/active_book`; watch publishes `/progress/{bookId}`; `WearSyncService` applies watch updates to Room with Last-Write-Wins, even with the phone UI closed.
   - Both modules verified building green. Firebase returns in Phase B behind the same repository interface (free Spark tier; watch keeps relaying through the phone — no Cloud Functions needed).
   - Next Step: camera ISBN scanning screen + free Google Books lookup; then session recording and streaks.
+
+- **[2026-07-17] ISBN Scanner (Claude Code)**: Camera scanning end-to-end.
+  - `ScannerScreen`: CameraX preview bound to the ML Kit `BarcodeAnalyzer` (EAN-13 → TYPE_ISBN), runtime camera-permission flow, and a state machine for lookup (scanning → looking up → found / not found / network error, with rescan/retry).
+  - `GoogleBooksClient`: keyless Google Books ISBN lookup (HttpURLConnection + org.json, no new dependencies); auto-fills title, authors, page count, and https-normalized cover URL. Confirmed books land in Backlog.
+  - Repository `addBook` now accepts `coverUrl`; main screen gained a "Scan ISBN" FAB with back-press handling.
+  - Both modules verified building green.
+  - Next Step: session recording (start/stop around reading, `sessions` table is ready) and the streak engine.

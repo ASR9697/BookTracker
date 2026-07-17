@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.booktracker.app.data.BookRepository
 import com.example.booktracker.app.data.ServiceLocator
+import com.example.booktracker.app.data.remote.ScannedBook
 import com.example.booktracker.app.sync.WearBridge
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
@@ -49,6 +50,12 @@ class BookTrackerViewModel(
     fun addBook(title: String, authorsInput: String, totalUnits: Int) {
         val authors = authorsInput.split(",").map { it.trim() }.filter { it.isNotEmpty() }
         viewModelScope.launch { repository.addBook(title.trim(), authors, totalUnits) }
+    }
+
+    fun addScannedBook(scanned: ScannedBook) {
+        viewModelScope.launch {
+            repository.addBook(scanned.title, scanned.authors, scanned.pageCount, scanned.coverUrl)
+        }
     }
 
     fun promote(book: Book) {
