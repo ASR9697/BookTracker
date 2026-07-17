@@ -1,0 +1,27 @@
+package com.example.booktracker.app.data
+
+import android.content.Context
+import androidx.room.Room
+import com.example.booktracker.app.data.local.AppDatabase
+
+/**
+ * Minimal manual DI. Both the UI (via ViewModel) and WearSyncService — which
+ * runs without the Activity — resolve the repository through here, so they
+ * share one database instance.
+ */
+object ServiceLocator {
+    @Volatile
+    private var database: AppDatabase? = null
+
+    fun repository(context: Context): BookRepository =
+        RoomBookRepository(db(context).bookDao())
+
+    private fun db(context: Context): AppDatabase =
+        database ?: synchronized(this) {
+            database ?: Room.databaseBuilder(
+                context.applicationContext,
+                AppDatabase::class.java,
+                "booktracker.db"
+            ).build().also { database = it }
+        }
+}

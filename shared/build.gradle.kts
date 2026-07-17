@@ -22,10 +22,5 @@ kotlin {
     }
 }
 
-dependencies {
-    // api, not implementation: the shared models expose com.google.firebase.Timestamp
-    // in their public signatures, so consumers need Firestore on their compile classpath.
-    api(platform("com.google.firebase:firebase-bom:34.3.0"))
-    api("com.google.firebase:firebase-firestore")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
-}
+// Intentionally dependency-free: pure Kotlin models and Data Layer contract
+// shared by :app and :wear. Keep Firebase/Android APIs out of this module.

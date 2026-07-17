@@ -1,9 +1,11 @@
 # Project Execution Log
 
 ## Current Status
-**Build repaired and verified green (2026-07-17).** Both `:app` and `:wear` assemble.
-Note: the milestone tracker below overstates completion — Milestones 2–5 are partial
-scaffolds and Milestones 6–10 are stubs. See README.md for the honest state and roadmap.
+**Phase A local-first architecture implemented and building green (2026-07-17).**
+No Firebase, no backend, zero running cost. Phone: Room + repository + working Kanban/reading UI.
+Watch: active-book display with +1/+10 synced over the Bluetooth Data Layer (LWW).
+Note: the milestone tracker below reflects the original Firebase plan and overstates completion —
+Milestones 6–10 remain stubs. See README.md for the honest state and roadmap.
 
 ## Milestone Tracker
 **Phase 1**
@@ -50,3 +52,11 @@ scaffolds and Milestones 6–10 are stubs. See README.md for the honest state an
   - Repo initialized with git; baseline scaffold committed before repairs.
   - Known open issue: watch auth requires a server-minted custom token (see README) — no backend exists yet.
   - Next Step: user must create the Firebase project and replace both placeholder `google-services.json` files; then build phone sign-in flow and the Firestore repository layer.
+
+- **[2026-07-17] Phase A: Local-First Pivot (Claude Code)**: Removed Firebase entirely per user decision (zero-cost requirement); watch kept from day one via Bluetooth.
+  - Deleted: google-services plugin/config stubs, `WearableAuthSender`, `WearableAuthListenerService`, `MockDataInjector`, all Firebase dependencies. `:shared` is now dependency-free pure Kotlin (timestamps are epoch millis, doubling as the LWW sync key).
+  - Added Room persistence in `:app` (`BookEntity`/`SessionEntity`, DAOs, `AppDatabase`, `RoomBookRepository` behind a `BookRepository` interface, `ServiceLocator`).
+  - Phone UI rebuilt on live data: reading hero with progress controls, Backlog/Shortlist/Up Next pipeline with promote/remove, add-book dialog (ViewModel + StateFlow).
+  - Watch ↔ phone sync over the Wearable Data Layer: phone publishes `/active_book`; watch publishes `/progress/{bookId}`; `WearSyncService` applies watch updates to Room with Last-Write-Wins, even with the phone UI closed.
+  - Both modules verified building green. Firebase returns in Phase B behind the same repository interface (free Spark tier; watch keeps relaying through the phone — no Cloud Functions needed).
+  - Next Step: camera ISBN scanning screen + free Google Books lookup; then session recording and streaks.

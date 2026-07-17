@@ -4,27 +4,33 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
+import com.example.booktracker.app.ui.BookTrackerApp
+import com.example.booktracker.app.ui.BookTrackerViewModel
 
 class MainActivity : ComponentActivity() {
+
+    private val viewModel: BookTrackerViewModel by viewModels {
+        BookTrackerViewModel.factory(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             BookTrackerTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    BookTrackerApp()
+                    BookTrackerApp(viewModel)
                 }
             }
         }
@@ -48,31 +54,4 @@ fun BookTrackerTheme(
         colorScheme = colorScheme,
         content = content
     )
-}
-
-@Composable
-fun BookTrackerApp() {
-    val tabs = listOf("Backlog", "Shortlist", "Up Next")
-    val pagerState = rememberPagerState(pageCount = { tabs.size })
-    val scope = rememberCoroutineScope()
-
-    Column {
-        Text(
-            "Dashboard Hero Section",
-            style = MaterialTheme.typography.headlineLarge,
-            modifier = Modifier.padding(16.dp)
-        )
-        TabRow(selectedTabIndex = pagerState.currentPage) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = pagerState.currentPage == index,
-                    onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                    text = { Text(title) }
-                )
-            }
-        }
-        HorizontalPager(state = pagerState, modifier = Modifier.weight(1f)) { page ->
-            Text("${tabs[page]} Pipeline", Modifier.padding(16.dp))
-        }
-    }
 }
