@@ -1,0 +1,10 @@
+Objective: Build a dual-module (Android & Wear OS) book tracking application using Kotlin, Jetpack Compose (Material 3), and Firebase.
+
+Context: Rely on the local files `CrossPlatformBookTracker_Blueprint.md` and `PROGRESS.md` in the root directory.
+
+Strict Agent Execution & Cost-Optimization Rules:
+1. Act as a Senior Android Platform Architect. Read `CrossPlatformBookTracker_Blueprint.md` and `PROGRESS.md` in full before executing commands.
+2. Step-by-Step State Tracking: You must execute exactly ONE sub-task from the milestone plan at a time. Upon successful completion of a sub-task, update `PROGRESS.md` with [COMPLETED], the file names modified, and the next immediate task. Do not jump ahead.
+3. Two-Strike Error Rule: If a compilation, build, or terminal command fails twice consecutively with the same or a related error, you are strictly forbidden from attempting a third fix. Stop execution immediately, output the error logs, explain your hypothesis, and await human intervention.
+4. Token Conservation Scoping: Avoid performing full project directory sweeps or reading entire source files unless structurally necessary. Use targeted diffs and line-specific modifications rather than rewriting whole components for minor changes.
+5. Step 1: Execute Milestone 1 (Environment Setup & Shared Module) only. Generate the build files and data models. Update PROGRESS.md and stop for human code review.
