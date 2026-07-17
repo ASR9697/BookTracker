@@ -4,7 +4,6 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,9 +12,11 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,23 +50,29 @@ fun BookTrackerTheme(
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BookTrackerApp() {
-    val pagerState = rememberPagerState(pageCount = { 3 })
+    val tabs = listOf("Backlog", "Shortlist", "Up Next")
+    val pagerState = rememberPagerState(pageCount = { tabs.size })
+    val scope = rememberCoroutineScope()
+
     Column {
-        Text("Dashboard Hero Section", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(16.dp))
+        Text(
+            "Dashboard Hero Section",
+            style = MaterialTheme.typography.headlineLarge,
+            modifier = Modifier.padding(16.dp)
+        )
         TabRow(selectedTabIndex = pagerState.currentPage) {
-            Tab(selected = pagerState.currentPage == 0, onClick = {}, text = { Text("Backlog") })
-            Tab(selected = pagerState.currentPage == 1, onClick = {}, text = { Text("Shortlist") })
-            Tab(selected = pagerState.currentPage == 2, onClick = {}, text = { Text("Up Next") })
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    selected = pagerState.currentPage == index,
+                    onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                    text = { Text(title) }
+                )
+            }
         }
         HorizontalPager(state = pagerState, modifier = Modifier.weight(1f)) { page ->
-            when (page) {
-                0 -> Text("Backlog Pipeline", Modifier.padding(16.dp))
-                1 -> Text("Shortlist Pipeline", Modifier.padding(16.dp))
-                2 -> Text("Up Next Pipeline", Modifier.padding(16.dp))
-            }
+            Text("${tabs[page]} Pipeline", Modifier.padding(16.dp))
         }
     }
 }

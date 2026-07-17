@@ -1,0 +1,30 @@
+{
+  "_comment": "PLACEHOLDER — replace with the real file from the Firebase console (Project settings > Your apps > Android app 'com.example.booktracker'). Firebase network calls will fail until this is replaced.",
+  "project_info": {
+    "project_number": "123456789000",
+    "project_id": "booktracker-placeholder",
+    "storage_bucket": "booktracker-placeholder.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:123456789000:android:0123456789abcdef",
+        "android_client_info": {
+          "package_name": "com.example.booktracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA0000000000000000000000000000000"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

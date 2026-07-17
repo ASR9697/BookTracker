@@ -12,10 +12,12 @@ import com.google.mlkit.vision.common.InputImage
 
 class BarcodeAnalyzer(private val onIsbnScanned: (String) -> Unit) : ImageAnalysis.Analyzer {
 
+    // ISBNs are physically EAN-13 barcodes; ML Kit has no ISBN *format*.
+    // We scan EAN-13 and filter by value type below.
     private val options = BarcodeScannerOptions.Builder()
-        .setBarcodeFormats(Barcode.FORMAT_ISBN)
+        .setBarcodeFormats(Barcode.FORMAT_EAN_13)
         .build()
-        
+
     private val scanner = BarcodeScanning.getClient(options)
 
     @OptIn(ExperimentalGetImage::class)
@@ -25,12 +27,12 @@ class BarcodeAnalyzer(private val onIsbnScanned: (String) -> Unit) : ImageAnalys
             val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
             scanner.process(image)
                 .addOnSuccessListener { barcodes ->
-                    for (barcode in barcodes) {
-                        barcode.rawValue?.let { isbn ->
+                    barcodes.firstOrNull { it.valueType == Barcode.TYPE_ISBN }
+                        ?.rawValue
+                        ?.let { isbn ->
                             Log.d("BarcodeAnalyzer", "Scanned ISBN: $isbn")
                             onIsbnScanned(isbn)
                         }
-                    }
                 }
                 .addOnFailureListener {
                     Log.e("BarcodeAnalyzer", "Barcode scanning failed", it)

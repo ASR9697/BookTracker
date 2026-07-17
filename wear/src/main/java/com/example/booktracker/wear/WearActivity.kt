@@ -9,6 +9,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.wear.ambient.AmbientLifecycleObserver
 import androidx.wear.compose.material.Button
@@ -16,7 +18,7 @@ import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 
 class WearActivity : ComponentActivity() {
-    
+
     private val ambientObserver = AmbientLifecycleObserver(
         this,
         object : AmbientLifecycleObserver.AmbientLifecycleCallback {
@@ -35,7 +37,7 @@ class WearActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         lifecycle.addObserver(ambientObserver)
-        
+
         setContent {
             WearApp(isAmbient.value)
         }
@@ -44,7 +46,8 @@ class WearActivity : ComponentActivity() {
 
 @Composable
 fun WearApp(isAmbient: Boolean) {
-    var currentUnit by remember { mutableStateOf(0) }
+    var currentUnit by remember { mutableIntStateOf(0) }
+    val haptics = LocalHapticFeedback.current
 
     MaterialTheme {
         Box(
@@ -57,15 +60,27 @@ fun WearApp(isAmbient: Boolean) {
                 Text("Ambient Mode: Reading", color = Color.White)
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Button(onClick = { currentUnit += 1 }, modifier = Modifier.padding(8.dp)) {
+                    Button(
+                        onClick = {
+                            currentUnit += 1
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        },
+                        modifier = Modifier.padding(8.dp)
+                    ) {
                         Text("+1")
                     }
                     Text(
-                        text = "$currentUnit", 
+                        text = "$currentUnit",
                         style = MaterialTheme.typography.display1,
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
-                    Button(onClick = { currentUnit += 10 }, modifier = Modifier.padding(8.dp)) {
+                    Button(
+                        onClick = {
+                            currentUnit += 10
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        },
+                        modifier = Modifier.padding(8.dp)
+                    ) {
                         Text("+10")
                     }
                 }

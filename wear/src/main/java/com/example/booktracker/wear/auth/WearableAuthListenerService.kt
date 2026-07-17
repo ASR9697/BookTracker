@@ -7,31 +7,32 @@ import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.WearableListenerService
 import com.google.firebase.auth.FirebaseAuth
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 
 class WearableAuthListenerService : WearableListenerService() {
-    private val scope = CoroutineScope(Dispatchers.IO)
 
     override fun onDataChanged(dataEvents: DataEventBuffer) {
         for (event in dataEvents) {
             if (event.type == DataEvent.TYPE_CHANGED && event.dataItem.uri.path == Constants.AUTH_TOKEN_PATH) {
-                val dataMapItem = DataMapItem.fromDataItem(event.dataItem)
-                val token = dataMapItem.dataMap.getString(Constants.TOKEN_KEY)
-                
-                token?.let {
-                    scope.launch {
-                        try {
-                            FirebaseAuth.getInstance().signInWithCustomToken(it).await()
-                            Log.d("WearAuth", "Successfully signed in with token")
-                        } catch (e: Exception) {
-                            Log.e("WearAuth", "Failed to sign in", e)
-                        }
+                val token = DataMapItem.fromDataItem(event.dataItem)
+                    .dataMap.getString(Constants.TOKEN_KEY) ?: continue
+
+                // onDataChanged is delivered on a background thread; completing the
+                // sign-in before returning keeps the service alive for the duration.
+                runBlocking {
+                    try {
+                        FirebaseAuth.getInstance().signInWithCustomToken(token).await()
+                        Log.d(TAG, "Successfully signed in with token")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to sign in", e)
                     }
                 }
             }
         }
+    }
+
+    private companion object {
+        const val TAG = "WearAuth"
     }
 }

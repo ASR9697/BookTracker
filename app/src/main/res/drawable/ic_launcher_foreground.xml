@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placeholder open-book glyph; replace via Image Asset Studio before release. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,40 C49.5,35.8 42.6,33.5 36,33.5 L33,33.5 L33,71.5 L36,71.5 C42.6,71.5 49.5,73.8 54,78 C58.5,73.8 65.4,71.5 72,71.5 L75,71.5 L75,33.5 L72,33.5 C65.4,33.5 58.5,35.8 54,40 Z M51,69.2 C46.6,66.8 41.3,65.5 36,65.5 L36,39.5 C41.3,39.5 46.6,40.8 51,43.2 L51,69.2 Z M72,65.5 C66.7,65.5 61.4,66.8 57,69.2 L57,43.2 C61.4,40.8 66.7,39.5 72,39.5 L72,65.5 Z" />
+</vector>
