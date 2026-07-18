@@ -89,3 +89,11 @@ Milestones 6–10 remain stubs. See README.md for the honest state and roadmap.
   - Followed the dataviz skill: sequential single-hue ramp derived from the Material color scheme (`surfaceVariant` empty → `primaryContainer`..`primary`), so it's CVD-safe by construction and tracks dynamic color + light/dark. Numeric summary serves as the accessible table-view analog.
   - App builds green; ReadingCalendar + AnalyticsScreen classes confirmed in the APK. Visual check on a device still pending (no emulator in this environment).
   - Next Step: cover images (Coil) or a settings screen for the configurable daily goal.
+
+- **[2026-07-18] Cover images + Settings screen (Claude Code)**:
+  - Cover images via Coil `AsyncImage` in the reading hero and pipeline cards (from the stored Google Books cover URL), with a `MenuBook` placeholder for blank URLs. Coil's OkHttp fetcher registered explicitly in a new `BookTrackerApplication` (`SingletonImageLoader.Factory`).
+  - Settings screen (`ui/SettingsScreen.kt`): daily reading goal via a snapped slider (5–100 by 5), persisted with `SettingsRepository` over DataStore Preferences. ViewModel `combine`s the goal with sessions so the streak/heatmap update live; `dailyGoal` exposed as a StateFlow.
+  - Top app bar reworked: Scan stays a direct icon; Reading activity + Settings moved into an overflow (⋮) menu.
+  - **Toolchain**: Coil 3.4.0 transitively requires Kotlin metadata newer than 2.0.0 could read, so Kotlin/KSP/Compose-plugin were raised 2.0.0 → 2.2.20 (back to the pre-pin config that builds this project). Flagged to the user. Added deps: coil-compose, coil-network-okhttp, datastore-preferences 1.1.7.
+  - Both modules verified: assembleDebug green; new classes confirmed in the APK.
+  - Next Step: sync the configurable goal to the watch, or reading-velocity charts.

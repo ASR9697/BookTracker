@@ -29,14 +29,18 @@ There is **no backend and no Firebase** — nothing to configure, nothing that c
 - Reading sessions: Start/End on the hero card for timed sessions; progress made outside a
   session (either device) is auto-recorded so it still counts.
 - Daily streak with a 20-page daily goal, shown on the hero card with a tinted flame icon.
-- Reading activity screen (Insights icon in the top bar): a 52-week calendar heatmap of pages
+- Reading activity screen (overflow menu → Reading activity): a 52-week calendar heatmap of pages
   per day, with stat tiles and tap-to-inspect, colored from the Material theme.
+- Book covers shown in the hero and pipeline cards (from Google Books), with a placeholder for
+  manually added books.
+- Settings (overflow menu → Settings): configurable daily reading goal, persisted with DataStore
+  and applied live to streaks and the heatmap.
 - Material 3 throughout: top app bar, single Add FAB, swipe-to-remove cards with Undo, dynamic
   color on Android 12+, and a Material 3 watch UI with the clock (`TimeText`) and watch-face color.
 
 ### Not built yet
 
-Velocity charts, cover image display, a configurable daily goal, and everything in blueprint
+Velocity charts, syncing the configurable goal to the watch, and everything in blueprint
 Phase 2 (those files are stubs).
 
 ## Build
@@ -45,8 +49,9 @@ Phase 2 (those files are stubs).
 ./gradlew :app:assembleDebug :wear:assembleDebug
 ```
 
-Toolchain: Gradle 9.3, AGP 8.13.2, Kotlin 2.0 + Compose plugin, Compose BOM 2025.09,
-Room 2.8 (KSP), Wear Compose Material 3 1.6.2. JDK 17+. No API keys or accounts needed.
+Toolchain: Gradle 9.3, AGP 8.13.2, Kotlin 2.2.20 + Compose plugin, Compose BOM 2025.09,
+Room 2.8 (KSP), Wear Compose Material 3 1.6.2, Coil 3.4, DataStore 1.1. JDK 17+.
+No API keys or accounts needed.
 
 ## Phase B — cloud sync later, still free
 

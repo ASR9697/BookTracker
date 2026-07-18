@@ -9,11 +9,13 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.booktracker.app.analytics.StreakEngine
 import com.example.booktracker.app.data.BookRepository
 import com.example.booktracker.app.data.ServiceLocator
+import com.example.booktracker.app.data.SettingsRepository
 import com.example.booktracker.app.data.remote.ScannedBook
 import com.example.booktracker.app.sync.WearBridge
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.Session
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -24,6 +26,7 @@ import kotlinx.coroutines.launch
 
 class BookTrackerViewModel(
     private val repository: BookRepository,
+    private val settings: SettingsRepository,
     private val wearBridge: WearBridge
 ) : ViewModel() {
 
@@ -36,9 +39,17 @@ class BookTrackerViewModel(
     val completedSessions: StateFlow<List<Session>> = repository.observeCompletedSessions()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val streak: StateFlow<StreakEngine.StreakInfo> = completedSessions
-        .map { StreakEngine.compute(it) }
+    val dailyGoal: StateFlow<Int> = settings.dailyGoal
         .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            StreakEngine.DEFAULT_DAILY_GOAL_PAGES
+        )
+
+    val streak: StateFlow<StreakEngine.StreakInfo> =
+        combine(completedSessions, settings.dailyGoal) { sessions, goal ->
+            StreakEngine.compute(sessions, goal)
+        }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
             StreakEngine.compute(emptyList())
@@ -108,6 +119,10 @@ class BookTrackerViewModel(
         viewModelScope.launch { repository.restore(book) }
     }
 
+    fun setDailyGoal(pages: Int) {
+        viewModelScope.launch { settings.setDailyGoal(pages) }
+    }
+
     companion object {
         fun factory(context: Context): ViewModelProvider.Factory {
             val appContext = context.applicationContext
@@ -115,6 +130,7 @@ class BookTrackerViewModel(
                 initializer {
                     BookTrackerViewModel(
                         ServiceLocator.repository(appContext),
+                        ServiceLocator.settings(appContext),
                         WearBridge(appContext)
                     )
                 }

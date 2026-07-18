@@ -83,7 +83,15 @@ Working end-to-end and verified by building + running:
 - Streaks: `analytics/StreakEngine.kt` computes consecutive days meeting a daily page goal
   (constant `DEFAULT_DAILY_GOAL_PAGES = 20` until a settings screen exists) from completed
   sessions; shown on the hero card with today's page count.
-- Analytics (`ui/AnalyticsScreen.kt`, reached from the top-app-bar Insights icon): the blueprint's
+- Settings (`ui/SettingsScreen.kt`, reached from the top-app-bar overflow menu): daily reading goal
+  via a slider, persisted with `SettingsRepository` over DataStore Preferences. The goal flows into
+  streaks and analytics — the ViewModel `combine`s it with sessions, so changing it re-derives the
+  streak live. `StreakEngine.DEFAULT_DAILY_GOAL_PAGES` is now only the fallback before DataStore loads.
+- Cover images: Coil `AsyncImage` shows book covers (from the Google Books cover URL) in the reading
+  hero and pipeline cards, with a `MenuBook` placeholder when the URL is blank (manual adds). Coil's
+  OkHttp network fetcher is registered explicitly in `BookTrackerApplication` (a
+  `SingletonImageLoader.Factory`), not via service-loader auto-registration.
+- Analytics (`ui/AnalyticsScreen.kt`, reached from the top-app-bar overflow menu): the blueprint's
   7×52 calendar heatmap of pages-per-day. Pure aggregation in `analytics/ReadingCalendar.kt`; the
   color ramp is a **sequential single hue derived from the Material scheme** (`surfaceVariant` for
   empty, `primaryContainer`→`primary` for levels 1–4), so it tracks dynamic color + light/dark. Has
@@ -94,10 +102,8 @@ scaffold, kept for the Phase 2 roadmap but not wired to anything):
 - `analytics/AnalyticsEngine.kt`, `format/FormatAdaptabilityLayer.kt`,
   `hardware/HardwareIntegrations.kt`, `journal/SmartPlanningEngine.kt`,
   `wear/journal/WristDictaphone.kt` — all Phase 2 blueprint features (§7 of the blueprint).
-- Reading-velocity charts, cover image display (URLs are stored but not shown — needs an image
-  loader like Coil), a full-screen add-book dialog (still an AlertDialog), wear rotating-bezel
-  input, ambient burn-in pixel-shifting, and a configurable daily goal (settings screen — the
-  goal is still the `DEFAULT_DAILY_GOAL_PAGES` constant everywhere).
+- Reading-velocity charts, a full-screen add-book dialog (still an AlertDialog), wear rotating-bezel
+  input, ambient burn-in pixel-shifting, and syncing the configurable goal to the watch.
 
 **Before citing PROGRESS.md's milestone tracker as evidence a feature exists, verify against
 actual code.** The original agent run marked all 10 blueprint milestones "COMPLETED" while the
@@ -109,14 +115,15 @@ project didn't even compile — see History. Trust `git log` and the code, not o
 ./gradlew :app:assembleDebug :wear:assembleDebug
 ```
 
-Gradle 9.3, AGP 8.13.2, Kotlin 2.0.0 (Compose compiler via `org.jetbrains.kotlin.plugin.compose`,
+Gradle 9.3, AGP 8.13.2, Kotlin 2.2.20 (Compose compiler via `org.jetbrains.kotlin.plugin.compose`,
 *not* the old `composeOptions.kotlinCompilerExtensionVersion`), Compose BOM 2025.09.00,
-Room 2.8.4 via KSP 2.0.0-1.0.22, **Wear Compose Material 3 1.6.2** (old `compose-material` removed),
-material-icons-extended (BOM-managed), CameraX 1.4.2, ML Kit barcode-scanning 17.3.0.
-Note: the user pinned Kotlin to 2.0.0 (down from 2.2.20) — respect that pin, but know that future
-Compose BOM / library bumps may require Kotlin 2.2+ to read newer Kotlin metadata; if a library
-upgrade fails with an incompatible-metadata error, raising Kotlin (and KSP to match) is the fix
-to propose.
+Room 2.8.4 via KSP 2.2.20-2.0.4, **Wear Compose Material 3 1.6.2** (old `compose-material` removed),
+material-icons-extended (BOM-managed), Coil 3.4.0 (coil-compose + coil-network-okhttp),
+DataStore Preferences 1.1.7, CameraX 1.4.2, ML Kit barcode-scanning 17.3.0.
+History note: Kotlin was briefly pinned to 2.0.0 by the user, then raised back to 2.2.20 because
+Coil 3.4.0 transitively pulls Kotlin stdlib 2.3.x / okio with metadata a 2.0.0 compiler can't read
+(the exact "future library bump" this file predicted). If you re-pin Kotlin down, Coil will break
+the build again — keep Kotlin, KSP, and the Compose plugin on the same 2.2.x line.
 compileSdk/targetSdk 36, minSdk 26 (`:app`) / 30 (`:wear`). JDK 17. No API keys, no accounts,
 no `google-services.json` — none of that exists in this project anymore.
 

@@ -3,6 +3,7 @@ package com.example.booktracker.app.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,10 +23,15 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -57,8 +63,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.example.booktracker.app.analytics.StreakEngine
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
@@ -81,6 +89,7 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel) {
     var showAddDialog by remember { mutableStateOf(false) }
     var showScanner by remember { mutableStateOf(false) }
     var showAnalytics by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
 
     if (showScanner) {
         BackHandler { showScanner = false }
@@ -97,11 +106,22 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel) {
     if (showAnalytics) {
         BackHandler { showAnalytics = false }
         val sessions by viewModel.completedSessions.collectAsState()
-        val streakInfo by viewModel.streak.collectAsState()
+        val goal by viewModel.dailyGoal.collectAsState()
         AnalyticsScreen(
             sessions = sessions,
-            dailyGoal = streakInfo.dailyGoal,
+            dailyGoal = goal,
             onBack = { showAnalytics = false }
+        )
+        return
+    }
+
+    if (showSettings) {
+        BackHandler { showSettings = false }
+        val goal by viewModel.dailyGoal.collectAsState()
+        SettingsScreen(
+            dailyGoal = goal,
+            onDailyGoalChange = viewModel::setDailyGoal,
+            onBack = { showSettings = false }
         )
         return
     }
@@ -125,11 +145,33 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel) {
             CenterAlignedTopAppBar(
                 title = { Text("Book Tracker") },
                 actions = {
-                    IconButton(onClick = { showAnalytics = true }) {
-                        Icon(Icons.Filled.Insights, contentDescription = "Reading activity")
-                    }
                     IconButton(onClick = { showScanner = true }) {
                         Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan ISBN")
+                    }
+                    var menuOpen by remember { mutableStateOf(false) }
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "More options")
+                    }
+                    DropdownMenu(
+                        expanded = menuOpen,
+                        onDismissRequest = { menuOpen = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Reading activity") },
+                            leadingIcon = { Icon(Icons.Filled.Insights, contentDescription = null) },
+                            onClick = {
+                                menuOpen = false
+                                showAnalytics = true
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Settings") },
+                            leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                            onClick = {
+                                menuOpen = false
+                                showSettings = true
+                            }
+                        )
                     }
                 }
             )
@@ -201,12 +243,18 @@ private fun ReadingHero(
                     style = MaterialTheme.typography.bodyMedium
                 )
             } else {
-                Text(book.title, style = MaterialTheme.typography.titleLarge)
-                if (book.authors.isNotEmpty()) {
-                    Text(
-                        book.authors.joinToString(", "),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    BookCover(book.coverUrl, Modifier.size(width = 64.dp, height = 96.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(book.title, style = MaterialTheme.typography.titleLarge)
+                        if (book.authors.isNotEmpty()) {
+                            Text(
+                                book.authors.joinToString(", "),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
                 }
                 Spacer(Modifier.height(12.dp))
                 val progress =
@@ -380,22 +428,56 @@ private fun BookCard(
         else -> null
     }
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(book.title, style = MaterialTheme.typography.titleMedium)
-            if (book.authors.isNotEmpty()) {
-                Text(
-                    book.authors.joinToString(", "),
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            if (book.totalUnits > 0) {
-                Text("${book.totalUnits} pages", style = MaterialTheme.typography.bodySmall)
-            }
-            if (promoteLabel != null) {
-                Spacer(Modifier.height(4.dp))
-                TextButton(onClick = { onPromote(book) }) { Text(promoteLabel) }
+        Row(modifier = Modifier.padding(12.dp)) {
+            BookCover(book.coverUrl, Modifier.size(width = 40.dp, height = 56.dp))
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text(book.title, style = MaterialTheme.typography.titleMedium)
+                if (book.authors.isNotEmpty()) {
+                    Text(
+                        book.authors.joinToString(", "),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                if (book.totalUnits > 0) {
+                    Text("${book.totalUnits} pages", style = MaterialTheme.typography.bodySmall)
+                }
+                if (promoteLabel != null) {
+                    Spacer(Modifier.height(4.dp))
+                    TextButton(onClick = { onPromote(book) }) { Text(promoteLabel) }
+                }
             }
         }
+    }
+}
+
+/**
+ * Book cover from a URL, with a neutral book-glyph placeholder for missing or
+ * still-loading covers (manually added books have no cover URL).
+ */
+@Composable
+private fun BookCover(url: String, modifier: Modifier = Modifier) {
+    val shape = MaterialTheme.shapes.small
+    if (url.isBlank()) {
+        Box(
+            modifier = modifier
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Filled.MenuBook,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    } else {
+        AsyncImage(
+            model = url,
+            contentDescription = null,
+            modifier = modifier.clip(shape),
+            contentScale = ContentScale.Crop
+        )
     }
 }
 

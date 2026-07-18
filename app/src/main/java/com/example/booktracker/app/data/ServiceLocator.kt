@@ -16,6 +16,9 @@ object ServiceLocator {
     fun repository(context: Context): BookRepository =
         db(context).let { RoomBookRepository(it.bookDao(), it.sessionDao()) }
 
+    fun settings(context: Context): SettingsRepository =
+        SettingsRepository(context.applicationContext)
+
     private fun db(context: Context): AppDatabase =
         database ?: synchronized(this) {
             database ?: Room.databaseBuilder(
