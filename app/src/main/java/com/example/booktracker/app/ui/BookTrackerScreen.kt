@@ -20,6 +20,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.AlertDialog
@@ -79,6 +80,7 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel) {
         .maxByOrNull { it.lastUpdated }
     var showAddDialog by remember { mutableStateOf(false) }
     var showScanner by remember { mutableStateOf(false) }
+    var showAnalytics by remember { mutableStateOf(false) }
 
     if (showScanner) {
         BackHandler { showScanner = false }
@@ -88,6 +90,18 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel) {
                 viewModel.addScannedBook(scanned)
                 showScanner = false
             }
+        )
+        return
+    }
+
+    if (showAnalytics) {
+        BackHandler { showAnalytics = false }
+        val sessions by viewModel.completedSessions.collectAsState()
+        val streakInfo by viewModel.streak.collectAsState()
+        AnalyticsScreen(
+            sessions = sessions,
+            dailyGoal = streakInfo.dailyGoal,
+            onBack = { showAnalytics = false }
         )
         return
     }
@@ -111,6 +125,9 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel) {
             CenterAlignedTopAppBar(
                 title = { Text("Book Tracker") },
                 actions = {
+                    IconButton(onClick = { showAnalytics = true }) {
+                        Icon(Icons.Filled.Insights, contentDescription = "Reading activity")
+                    }
                     IconButton(onClick = { showScanner = true }) {
                         Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan ISBN")
                     }

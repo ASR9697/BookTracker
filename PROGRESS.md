@@ -82,3 +82,10 @@ Milestones 6–10 remain stubs. See README.md for the honest state and roadmap.
   - Wear migrated from the legacy `compose-material` to **Wear Compose Material 3 1.6.2**: `AppScaffold`/`ScreenScaffold` (adds `TimeText` clock), M3 typography/components, and `dynamicColorScheme(context)` for watch-face-derived Material You (null-fallback to `ColorScheme()`). Ambient path unchanged (mostly black, no scaffold). Wear APK shrank 36.5→26.3 MB from dropping the duplicate lib.
   - Both modules verified: assembleDebug green; fresh APKs confirmed.
   - Deferred (noted in CLAUDE.md): cover images (needs Coil), full-screen add dialog, wear bezel input, ambient burn-in shifting, configurable daily goal.
+
+- **[2026-07-18] 7×52 Analytics Heatmap (Claude Code)**: implemented the blueprint §3A calendar grid.
+  - `analytics/ReadingCalendar.kt` (pure): pages-per-day aggregation over completed sessions, Sunday-aligned 52-week grid start, per-day intensity level bucketed against the daily goal, and a summary (total pages / active days / best day).
+  - `ui/AnalyticsScreen.kt`: horizontally-scrollable 7×52 heatmap (auto-scrolled to the most recent week), stat tiles, a Less→More legend, and tap-a-day-to-see-pages. Reached via a new Insights icon in the main top app bar; ViewModel exposes `completedSessions`.
+  - Followed the dataviz skill: sequential single-hue ramp derived from the Material color scheme (`surfaceVariant` empty → `primaryContainer`..`primary`), so it's CVD-safe by construction and tracks dynamic color + light/dark. Numeric summary serves as the accessible table-view analog.
+  - App builds green; ReadingCalendar + AnalyticsScreen classes confirmed in the APK. Visual check on a device still pending (no emulator in this environment).
+  - Next Step: cover images (Coil) or a settings screen for the configurable daily goal.

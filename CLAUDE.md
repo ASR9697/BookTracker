@@ -83,16 +83,21 @@ Working end-to-end and verified by building + running:
 - Streaks: `analytics/StreakEngine.kt` computes consecutive days meeting a daily page goal
   (constant `DEFAULT_DAILY_GOAL_PAGES = 20` until a settings screen exists) from completed
   sessions; shown on the hero card with today's page count.
+- Analytics (`ui/AnalyticsScreen.kt`, reached from the top-app-bar Insights icon): the blueprint's
+  7×52 calendar heatmap of pages-per-day. Pure aggregation in `analytics/ReadingCalendar.kt`; the
+  color ramp is a **sequential single hue derived from the Material scheme** (`surfaceVariant` for
+  empty, `primaryContainer`→`primary` for levels 1–4), so it tracks dynamic color + light/dark. Has
+  stat tiles (pages / active days / best day), a Less→More legend, and tap-a-day-to-see-pages.
 
 Stubbed / not built (do not assume these work — they are placeholder classes from the original
 scaffold, kept for the Phase 2 roadmap but not wired to anything):
 - `analytics/AnalyticsEngine.kt`, `format/FormatAdaptabilityLayer.kt`,
   `hardware/HardwareIntegrations.kt`, `journal/SmartPlanningEngine.kt`,
   `wear/journal/WristDictaphone.kt` — all Phase 2 blueprint features (§7 of the blueprint).
-- The 7×52 analytics grid, reading-velocity charts, cover image display (URLs are stored but not
-  shown — needs an image loader like Coil), a full-screen add-book dialog (still an AlertDialog),
-  wear rotating-bezel input, ambient burn-in pixel-shifting, and a configurable daily goal
-  (settings screen).
+- Reading-velocity charts, cover image display (URLs are stored but not shown — needs an image
+  loader like Coil), a full-screen add-book dialog (still an AlertDialog), wear rotating-bezel
+  input, ambient burn-in pixel-shifting, and a configurable daily goal (settings screen — the
+  goal is still the `DEFAULT_DAILY_GOAL_PAGES` constant everywhere).
 
 **Before citing PROGRESS.md's milestone tracker as evidence a feature exists, verify against
 actual code.** The original agent run marked all 10 blueprint milestones "COMPLETED" while the

@@ -33,7 +33,10 @@ class BookTrackerViewModel(
     val openSession: StateFlow<Session?> = repository.observeOpenSession()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    val streak: StateFlow<StreakEngine.StreakInfo> = repository.observeCompletedSessions()
+    val completedSessions: StateFlow<List<Session>> = repository.observeCompletedSessions()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val streak: StateFlow<StreakEngine.StreakInfo> = completedSessions
         .map { StreakEngine.compute(it) }
         .stateIn(
             viewModelScope,

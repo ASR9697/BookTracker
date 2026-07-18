@@ -29,13 +29,15 @@ There is **no backend and no Firebase** — nothing to configure, nothing that c
 - Reading sessions: Start/End on the hero card for timed sessions; progress made outside a
   session (either device) is auto-recorded so it still counts.
 - Daily streak with a 20-page daily goal, shown on the hero card with a tinted flame icon.
+- Reading activity screen (Insights icon in the top bar): a 52-week calendar heatmap of pages
+  per day, with stat tiles and tap-to-inspect, colored from the Material theme.
 - Material 3 throughout: top app bar, single Add FAB, swipe-to-remove cards with Undo, dynamic
   color on Android 12+, and a Material 3 watch UI with the clock (`TimeText`) and watch-face color.
 
 ### Not built yet
 
-The 7×52 analytics grid, velocity charts, cover image display, swipe actions, configurable
-daily goal, and everything in blueprint Phase 2 (those files are stubs).
+Velocity charts, cover image display, a configurable daily goal, and everything in blueprint
+Phase 2 (those files are stubs).
 
 ## Build
 
