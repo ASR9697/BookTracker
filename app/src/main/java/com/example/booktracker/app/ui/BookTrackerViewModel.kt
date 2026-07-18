@@ -101,6 +101,10 @@ class BookTrackerViewModel(
         viewModelScope.launch { repository.deleteBook(book.id) }
     }
 
+    fun restore(book: Book) {
+        viewModelScope.launch { repository.restore(book) }
+    }
+
     companion object {
         fun factory(context: Context): ViewModelProvider.Factory {
             val appContext = context.applicationContext

@@ -63,10 +63,18 @@ Working end-to-end and verified by building + running:
 - Add books manually, or scan an ISBN barcode (CameraX + ML Kit `BarcodeAnalyzer`, filtered to
   `TYPE_ISBN`) with auto-fill from the free Google Books volumes endpoint
   (`data/remote/GoogleBooksClient.kt` — no API key, keyless `q=isbn:` query).
-- TBR pipeline: Backlog → Shortlist → Up Next → Reading, promote/remove.
+- TBR pipeline: Backlog → Shortlist → Up Next → Reading. Cards promote via a button and
+  **swipe-to-dismiss to remove, with an Undo Snackbar** (`repository.restore` re-inserts the
+  exact entity, preserving id/status/progress/lastUpdated — see below).
 - Reading hero card: +1/+10 page progress, Finish.
+- Phone chrome is Material 3: `CenterAlignedTopAppBar` (title + Scan-ISBN action icon), a single
+  `Add` FAB (Material icons, not text glyphs), `PrimaryTabRow`, and a tinted `LocalFireDepartment`
+  streak icon. Dynamic color (Material You) via `dynamicDark/LightColorScheme` on Android 12+.
 - Watch: shows active book, +1/+10 with haptics, syncs back to the phone's Room DB via
-  `WearSyncService` even when the phone app is closed. Ambient mode stays mostly black.
+  `WearSyncService` even when the phone app is closed. UI is **Wear Compose Material 3**
+  (`AppScaffold`/`ScreenScaffold` giving `TimeText`, M3 components) with dynamic color from the
+  watch face (`dynamicColorScheme(context)`, null-fallback to `ColorScheme()`). Ambient mode
+  bypasses the scaffold entirely and stays mostly black (burn-in + power).
 - Session recording: explicit Start/End session on the reading hero (open session = `endTime = 0`
   row in Room, survives process death; auto-closed when the book leaves READING or another book's
   session starts). Any +1/+10 delta made with **no** session open — on phone or watch — is
@@ -81,8 +89,10 @@ scaffold, kept for the Phase 2 roadmap but not wired to anything):
 - `analytics/AnalyticsEngine.kt`, `format/FormatAdaptabilityLayer.kt`,
   `hardware/HardwareIntegrations.kt`, `journal/SmartPlanningEngine.kt`,
   `wear/journal/WristDictaphone.kt` — all Phase 2 blueprint features (§7 of the blueprint).
-- The 7×52 analytics grid, reading-velocity charts, cover image display, swipe actions on
-  Kanban cards, configurable daily goal (settings screen).
+- The 7×52 analytics grid, reading-velocity charts, cover image display (URLs are stored but not
+  shown — needs an image loader like Coil), a full-screen add-book dialog (still an AlertDialog),
+  wear rotating-bezel input, ambient burn-in pixel-shifting, and a configurable daily goal
+  (settings screen).
 
 **Before citing PROGRESS.md's milestone tracker as evidence a feature exists, verify against
 actual code.** The original agent run marked all 10 blueprint milestones "COMPLETED" while the
@@ -96,7 +106,8 @@ project didn't even compile — see History. Trust `git log` and the code, not o
 
 Gradle 9.3, AGP 8.13.2, Kotlin 2.0.0 (Compose compiler via `org.jetbrains.kotlin.plugin.compose`,
 *not* the old `composeOptions.kotlinCompilerExtensionVersion`), Compose BOM 2025.09.00,
-Room 2.8.4 via KSP 2.0.0-1.0.22, Wear Compose 1.5.0, CameraX 1.4.2, ML Kit barcode-scanning 17.3.0.
+Room 2.8.4 via KSP 2.0.0-1.0.22, **Wear Compose Material 3 1.6.2** (old `compose-material` removed),
+material-icons-extended (BOM-managed), CameraX 1.4.2, ML Kit barcode-scanning 17.3.0.
 Note: the user pinned Kotlin to 2.0.0 (down from 2.2.20) — respect that pin, but know that future
 Compose BOM / library bumps may require Kotlin 2.2+ to read newer Kotlin metadata; if a library
 upgrade fails with an incompatible-metadata error, raising Kotlin (and KSP to match) is the fix
@@ -117,6 +128,14 @@ tool with `.\gradlew.bat`, not the Bash tool with `./gradlew`.
   `AmbientLifecycleObserver` lives in `androidx.wear:wear:1.3.0`.
 - Compose's `KeyboardOptions` for text fields is `androidx.compose.foundation.text.KeyboardOptions`,
   not `androidx.compose.ui.text.input.KeyboardOptions` (that package only has `KeyboardType`).
+- Wear Material 3 lives in `androidx.wear.compose.compose-material3` — a **different** artifact and
+  package (`androidx.wear.compose.material3.*`) from the phone's `androidx.compose.material3.*`.
+  Don't mix them. `AppScaffold`/`ScreenScaffold` provide `TimeText`; `dynamicColorScheme(context)`
+  returns a nullable `ColorScheme` (fall back to `ColorScheme()`), and its version track (1.6.x)
+  is ahead of the other wear-compose artifacts (foundation) — keep foundation on 1.6.2 to match.
+- material-icons-extended adds ~2 MB to the debug APK but R8 strips unused vectors in release;
+  `Icons.Filled.Add`/`Close`/`Check` are in the core set, but `LocalFireDepartment`/`QrCodeScanner`
+  need the extended artifact.
 - A Kotlin-multiplatform-flavored module (`:shared`) that exposes a type from a dependency
   declared with `implementation(...)` will fail to compile for consumers — that dependency needs
   `api(...)` instead if the type appears in a public signature. (Was the case for Firebase's

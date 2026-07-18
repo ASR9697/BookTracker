@@ -10,14 +10,22 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -92,14 +100,29 @@ fun ScannerScreen(
                     },
                     modifier = Modifier.fillMaxSize()
                 )
+                // Framing reticle sized for a wide EAN-13 barcode.
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(width = 280.dp, height = 160.dp)
+                        .border(
+                            width = 2.dp,
+                            color = Color.White.copy(alpha = 0.9f),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                )
                 Text(
                     "Point the camera at the barcode on the back cover",
                     color = Color.White,
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .padding(horizontal = 32.dp, vertical = 48.dp)
-                        .background(Color.Black.copy(alpha = 0.5f))
+                        .statusBarsPadding()
+                        .padding(horizontal = 32.dp, vertical = 24.dp)
+                        .background(
+                            Color.Black.copy(alpha = 0.5f),
+                            RoundedCornerShape(8.dp)
+                        )
                         .padding(8.dp)
                 )
             } else {
@@ -125,13 +148,18 @@ fun ScannerScreen(
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
 
-            TextButton(
+            IconButton(
                 onClick = onClose,
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 32.dp)
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(4.dp)
             ) {
-                Text("Close", color = Color.White)
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = "Close scanner",
+                    tint = Color.White
+                )
             }
         }
     }

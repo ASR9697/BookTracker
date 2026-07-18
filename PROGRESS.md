@@ -74,3 +74,11 @@ Milestones 6–10 remain stubs. See README.md for the honest state and roadmap.
   - `StreakEngine` (pure logic, `app/analytics/`): consecutive days meeting the daily page goal (default 20, constant until a settings screen exists), computed from completed sessions in the local timezone; today counts once the goal is met. Hero card shows streak + today's pages.
   - Repository now owns session lifecycle (`startSession`/`endSession`/`observeOpenSession`/`observeCompletedSessions`); `RoomBookRepository` takes both DAOs.
   - Next Step: 7×52 analytics grid and/or configurable daily goal via DataStore settings.
+
+- **[2026-07-18] Material You / Material 3 UI pass (Claude Code)**: acted on the UI review's four gaps.
+  - Phone chrome: added `CenterAlignedTopAppBar` (title + Scan-ISBN action), collapsed the two stacked FABs to a single `Add` FAB, replaced text glyphs/emoji with Material icons (Add, QrCodeScanner, tinted LocalFireDepartment for the streak), switched to `PrimaryTabRow`. Added `material-icons-extended`.
+  - Pipeline cards: `SwipeToDismissBox` to remove, with an Undo Snackbar; new `repository.restore(book)` re-inserts the exact entity (id/status/progress/lastUpdated preserved) so Undo restores position.
+  - Scanner polish: inset-aware (`statusBarsPadding`) close **icon** top-start, a framing reticle sized for EAN-13, rounded instruction chip.
+  - Wear migrated from the legacy `compose-material` to **Wear Compose Material 3 1.6.2**: `AppScaffold`/`ScreenScaffold` (adds `TimeText` clock), M3 typography/components, and `dynamicColorScheme(context)` for watch-face-derived Material You (null-fallback to `ColorScheme()`). Ambient path unchanged (mostly black, no scaffold). Wear APK shrank 36.5→26.3 MB from dropping the duplicate lib.
+  - Both modules verified: assembleDebug green; fresh APKs confirmed.
+  - Deferred (noted in CLAUDE.md): cover images (needs Coil), full-screen add dialog, wear bezel input, ambient burn-in shifting, configurable daily goal.

@@ -29,6 +29,7 @@ interface BookRepository {
     suspend fun addProgress(id: String, delta: Int)
     suspend fun applyRemoteProgress(id: String, currentUnit: Int, updatedAt: Long)
     suspend fun deleteBook(id: String)
+    suspend fun restore(book: Book)
 
     fun observeOpenSession(): Flow<Session?>
     fun observeCompletedSessions(): Flow<List<Session>>
@@ -95,6 +96,12 @@ class RoomBookRepository(
 
     override suspend fun deleteBook(id: String) {
         bookDao.deleteById(id)
+    }
+
+    // Re-inserts a removed book verbatim (id, status, progress, lastUpdated) so
+    // an Undo restores it to its exact prior state and pipeline position.
+    override suspend fun restore(book: Book) {
+        bookDao.upsert(book.toEntity())
     }
 
     override fun observeOpenSession(): Flow<Session?> =

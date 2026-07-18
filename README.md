@@ -28,7 +28,9 @@ There is **no backend and no Firebase** — nothing to configure, nothing that c
 - Ambient mode on the watch stays mostly black and shows only the title.
 - Reading sessions: Start/End on the hero card for timed sessions; progress made outside a
   session (either device) is auto-recorded so it still counts.
-- Daily streak (🔥) with a 20-page daily goal, shown on the hero card.
+- Daily streak with a 20-page daily goal, shown on the hero card with a tinted flame icon.
+- Material 3 throughout: top app bar, single Add FAB, swipe-to-remove cards with Undo, dynamic
+  color on Android 12+, and a Material 3 watch UI with the clock (`TimeText`) and watch-face color.
 
 ### Not built yet
 
@@ -42,7 +44,7 @@ daily goal, and everything in blueprint Phase 2 (those files are stubs).
 ```
 
 Toolchain: Gradle 9.3, AGP 8.13.2, Kotlin 2.0 + Compose plugin, Compose BOM 2025.09,
-Room 2.8 (KSP), Wear Compose 1.5. JDK 17+. No API keys or accounts needed.
+Room 2.8 (KSP), Wear Compose Material 3 1.6.2. JDK 17+. No API keys or accounts needed.
 
 ## Phase B — cloud sync later, still free
 

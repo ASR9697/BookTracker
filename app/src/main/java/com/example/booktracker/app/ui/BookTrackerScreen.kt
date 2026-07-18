@@ -1,6 +1,9 @@
 package com.example.booktracker.app.ui
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,25 +11,40 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -36,7 +54,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.booktracker.app.analytics.StreakEngine
@@ -51,6 +70,7 @@ private val PIPELINE_TABS = listOf(
     BookStatus.UP_NEXT to "Up Next"
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookTrackerApp(viewModel: BookTrackerViewModel) {
     val books by viewModel.books.collectAsState()
@@ -72,18 +92,35 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel) {
         return
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val onDeleteWithUndo: (Book) -> Unit = { book ->
+        viewModel.delete(book)
+        scope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = "Removed “${book.title}”",
+                actionLabel = "Undo",
+                withDismissAction = true
+            )
+            if (result == SnackbarResult.ActionPerformed) viewModel.restore(book)
+        }
+    }
+
     Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("Book Tracker") },
+                actions = {
+                    IconButton(onClick = { showScanner = true }) {
+                        Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan ISBN")
+                    }
+                }
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                ExtendedFloatingActionButton(onClick = { showScanner = true }) {
-                    Text("Scan ISBN")
-                }
-                FloatingActionButton(onClick = { showAddDialog = true }) {
-                    Text("+", style = MaterialTheme.typography.headlineMedium)
-                }
+            FloatingActionButton(onClick = { showAddDialog = true }) {
+                Icon(Icons.Filled.Add, contentDescription = "Add book")
             }
         }
     ) { innerPadding ->
@@ -106,7 +143,7 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel) {
             PipelineTabs(
                 books = books,
                 onPromote = viewModel::promote,
-                onDelete = viewModel::delete
+                onDelete = onDeleteWithUndo
             )
         }
     }
@@ -137,18 +174,7 @@ private fun ReadingHero(
         .padding(16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                buildString {
-                    append("🔥 ")
-                    append(streak.currentStreak)
-                    append("-day streak · ")
-                    append(streak.pagesToday)
-                    append("/")
-                    append(streak.dailyGoal)
-                    append(" pages today")
-                },
-                style = MaterialTheme.typography.bodySmall
-            )
+            StreakRow(streak)
             Spacer(Modifier.height(8.dp))
             if (book == null) {
                 Text("Nothing in progress", style = MaterialTheme.typography.titleLarge)
@@ -204,6 +230,26 @@ private fun ReadingHero(
 }
 
 @Composable
+private fun StreakRow(streak: StreakEngine.StreakInfo) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            Icons.Filled.LocalFireDepartment,
+            contentDescription = null,
+            tint = if (streak.goalMetToday) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.height(18.dp)
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            "${streak.currentStreak}-day streak · " +
+                "${streak.pagesToday}/${streak.dailyGoal} pages today",
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun PipelineTabs(
     books: List<Book>,
     onPromote: (Book) -> Unit,
@@ -212,7 +258,7 @@ private fun PipelineTabs(
     val pagerState = rememberPagerState(pageCount = { PIPELINE_TABS.size })
     val scope = rememberCoroutineScope()
 
-    TabRow(selectedTabIndex = pagerState.currentPage) {
+    PrimaryTabRow(selectedTabIndex = pagerState.currentPage) {
         PIPELINE_TABS.forEachIndexed { index, (_, label) ->
             Tab(
                 selected = pagerState.currentPage == index,
@@ -225,14 +271,16 @@ private fun PipelineTabs(
         val (status, label) = PIPELINE_TABS[page]
         val pageBooks = books.filter { it.status == status.name }
         if (pageBooks.isEmpty()) {
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(24.dp)
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
             ) {
                 Text(
                     "No books in $label yet.",
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         } else {
@@ -244,18 +292,69 @@ private fun PipelineTabs(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(pageBooks, key = { it.id }) { book ->
-                    BookCard(book = book, onPromote = onPromote, onDelete = onDelete)
+                    SwipeableBookCard(book = book, onPromote = onPromote, onDelete = onDelete)
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun BookCard(
+private fun SwipeableBookCard(
     book: Book,
     onPromote: (Book) -> Unit,
     onDelete: (Book) -> Unit
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { target ->
+            if (target != SwipeToDismissBoxValue.Settled) {
+                onDelete(book)
+                true
+            } else {
+                false
+            }
+        }
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            val active = dismissState.targetValue != SwipeToDismissBoxValue.Settled
+            val alignment =
+                if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) {
+                    Alignment.CenterEnd
+                } else {
+                    Alignment.CenterStart
+                }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(
+                        if (active) MaterialTheme.colorScheme.errorContainer
+                        else Color.Transparent
+                    )
+                    .padding(horizontal = 20.dp),
+                contentAlignment = alignment
+            ) {
+                if (active) {
+                    Icon(
+                        Icons.Filled.Delete,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+        },
+        content = { BookCard(book = book, onPromote = onPromote) }
+    )
+}
+
+@Composable
+private fun BookCard(
+    book: Book,
+    onPromote: (Book) -> Unit
 ) {
     val promoteLabel = when (book.status) {
         BookStatus.BACKLOG.name -> "Shortlist"
@@ -275,11 +374,9 @@ private fun BookCard(
             if (book.totalUnits > 0) {
                 Text("${book.totalUnits} pages", style = MaterialTheme.typography.bodySmall)
             }
-            Row {
-                if (promoteLabel != null) {
-                    TextButton(onClick = { onPromote(book) }) { Text(promoteLabel) }
-                }
-                TextButton(onClick = { onDelete(book) }) { Text("Remove") }
+            if (promoteLabel != null) {
+                Spacer(Modifier.height(4.dp))
+                TextButton(onClick = { onPromote(book) }) { Text(promoteLabel) }
             }
         }
     }
