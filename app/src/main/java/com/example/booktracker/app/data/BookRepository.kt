@@ -1,6 +1,8 @@
 package com.example.booktracker.app.data
 
 import com.example.booktracker.app.data.local.BookDao
+import com.example.booktracker.app.data.local.MarginNoteDao
+import com.example.booktracker.app.data.local.MarginNoteEntity
 import com.example.booktracker.app.data.local.SessionDao
 import com.example.booktracker.app.data.local.SessionEntity
 import com.example.booktracker.app.data.local.toEntity
@@ -8,6 +10,7 @@ import com.example.booktracker.app.data.local.toModel
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.DnfData
+import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.Session
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
@@ -24,7 +27,10 @@ interface BookRepository {
         title: String,
         authors: List<String>,
         totalUnits: Int,
-        coverUrl: String = ""
+        coverUrl: String = "",
+        description: String = "",
+        genres: List<String> = emptyList(),
+        publishedDate: String = ""
     ): Book
     suspend fun updateStatus(id: String, status: BookStatus)
     suspend fun finishBook(id: String, rating: Map<String, Float>)
@@ -36,14 +42,25 @@ interface BookRepository {
 
     fun observeOpenSession(): Flow<Session?>
     fun observeCompletedSessions(): Flow<List<Session>>
+    fun observeSessionsForBook(bookId: String): Flow<List<Session>>
     suspend fun startSession(bookId: String)
-    suspend fun endSession(bookId: String)
+    suspend fun endSession(bookId: String, environmentTag: String = "")
+    suspend fun importCsv(context: android.content.Context, uri: android.net.Uri): Int
+
+    fun observeNotes(bookId: String): Flow<List<MarginNote>>
+    suspend fun addNote(bookId: String, pageOrUnit: Int, text: String)
+    suspend fun deleteNote(id: String)
 }
 
 class RoomBookRepository(
     private val bookDao: BookDao,
-    private val sessionDao: SessionDao
+    private val sessionDao: SessionDao,
+    private val marginNoteDao: MarginNoteDao
 ) : BookRepository {
+
+    override suspend fun importCsv(context: android.content.Context, uri: android.net.Uri): Int {
+        return CsvImportEngine.importFromUri(context, uri, bookDao)
+    }
 
     override fun observeBooks(): Flow<List<Book>> =
         bookDao.observeAll().map { entities -> entities.map { it.toModel() } }
@@ -52,7 +69,10 @@ class RoomBookRepository(
         title: String,
         authors: List<String>,
         totalUnits: Int,
-        coverUrl: String
+        coverUrl: String,
+        description: String,
+        genres: List<String>,
+        publishedDate: String
     ): Book {
         val book = Book(
             id = UUID.randomUUID().toString(),
@@ -61,7 +81,10 @@ class RoomBookRepository(
             coverUrl = coverUrl,
             totalUnits = totalUnits,
             status = BookStatus.BACKLOG.name,
-            lastUpdated = System.currentTimeMillis()
+            lastUpdated = System.currentTimeMillis(),
+            description = description,
+            genres = genres,
+            publishedDate = publishedDate
         )
         bookDao.upsert(book.toEntity())
         return book
@@ -137,6 +160,29 @@ class RoomBookRepository(
     override fun observeCompletedSessions(): Flow<List<Session>> =
         sessionDao.observeCompleted().map { entities -> entities.map { it.toModel() } }
 
+    override fun observeSessionsForBook(bookId: String): Flow<List<Session>> =
+        sessionDao.observeForBook(bookId).map { entities -> entities.map { it.toModel() } }
+
+    override fun observeNotes(bookId: String): Flow<List<MarginNote>> =
+        marginNoteDao.observeForBook(bookId).map { entities -> entities.map { it.toModel() } }
+
+    override suspend fun addNote(bookId: String, pageOrUnit: Int, text: String) {
+        marginNoteDao.upsert(
+            MarginNoteEntity(
+                id = UUID.randomUUID().toString(),
+                bookId = bookId,
+                timestamp = System.currentTimeMillis(),
+                pageOrUnit = pageOrUnit,
+                markdownContent = text,
+                isVoiceDictated = false
+            )
+        )
+    }
+
+    override suspend fun deleteNote(id: String) {
+        marginNoteDao.deleteById(id)
+    }
+
     override suspend fun startSession(bookId: String) {
         val book = bookDao.getById(bookId) ?: return
         sessionDao.getOpenSession()?.let { open ->
@@ -159,17 +205,18 @@ class RoomBookRepository(
         )
     }
 
-    override suspend fun endSession(bookId: String) {
-        sessionDao.getOpenSessionForBook(bookId)?.let { finalizeSession(it) }
+    override suspend fun endSession(bookId: String, environmentTag: String) {
+        sessionDao.getOpenSessionForBook(bookId)?.let { finalizeSession(it, environmentTag) }
     }
 
-    private suspend fun finalizeSession(open: SessionEntity) {
+    private suspend fun finalizeSession(open: SessionEntity, tag: String = "") {
         val endUnit = bookDao.getById(open.bookId)?.currentUnit ?: open.startUnit
         sessionDao.upsert(
             open.copy(
                 endTime = System.currentTimeMillis(),
                 endUnit = endUnit,
-                unitsRead = (endUnit - open.startUnit).coerceAtLeast(0)
+                unitsRead = (endUnit - open.startUnit).coerceAtLeast(0),
+                environmentTag = tag.ifBlank { open.environmentTag }
             )
         )
     }

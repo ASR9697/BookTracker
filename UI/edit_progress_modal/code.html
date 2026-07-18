@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Edit Progress - Nocturnal Reader</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#ffb4ab",
+                        "on-tertiary": "#51221d",
+                        "on-primary-fixed-variant": "#4d3d76",
+                        "tertiary": "#ffdad6",
+                        "on-tertiary-container": "#7a433d",
+                        "primary": "#e9ddff",
+                        "on-tertiary-fixed-variant": "#6c3832",
+                        "surface-container-low": "#1c1b1f",
+                        "surface": "#141317",
+                        "primary-fixed-dim": "#d0bcff",
+                        "on-background": "#e5e1e7",
+                        "on-secondary": "#00363d",
+                        "surface-bright": "#3a383d",
+                        "primary-fixed": "#e9ddff",
+                        "on-error": "#690005",
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "surface-container-high": "#2b292d",
+                        "on-secondary-fixed-variant": "#004f57",
+                        "on-secondary-container": "#003e45",
+                        "on-primary-fixed": "#210f48",
+                        "on-surface": "#e5e1e7",
+                        "surface-dim": "#141317",
+                        "secondary-fixed": "#96f0ff",
+                        "secondary-container": "#00b1c3",
+                        "surface-container": "#201f23",
+                        "secondary": "#4fd8eb",
+                        "surface-tint": "#d0bcff",
+                        "outline-variant": "#49454f",
+                        "error": "#ffb4ab",
+                        "on-tertiary-fixed": "#360e0a",
+                        "surface-container-highest": "#353438",
+                        "secondary-fixed-dim": "#4fd8eb",
+                        "on-primary-container": "#594983",
+                        "on-error-container": "#ffdad6",
+                        "on-primary": "#37265e",
+                        "inverse-on-surface": "#313034",
+                        "error-container": "#93000a",
+                        "on-surface-variant": "#cac4d0",
+                        "tertiary-fixed": "#ffdad5",
+                        "surface-container-lowest": "#0e0e11",
+                        "surface-variant": "#353438",
+                        "inverse-surface": "#e5e1e7",
+                        "primary-container": "#d0bcff",
+                        "inverse-primary": "#665590",
+                        "outline": "#948f9a",
+                        "on-secondary-fixed": "#001f24",
+                        "background": "#141317"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-lg": "1.5rem",
+                        "stack-md": "1rem",
+                        "margin-tablet": "1.5rem",
+                        "stack-sm": "0.5rem",
+                        "margin-mobile": "1rem",
+                        "gutter": "1rem"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Inter"],
+                        "title-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "title-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["11px", {"lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500"}],
+                        "title-lg": ["22px", {"lineHeight": "28px", "fontWeight": "500"}],
+                        "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "500"}],
+                        "title-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0.15px", "fontWeight": "500"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "400"}],
+                        "display-lg": ["57px", {"lineHeight": "64px", "letterSpacing": "-0.25px", "fontWeight": "400"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.25px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "letterSpacing": "0.5px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: rgba(233, 221, 255, 0.1);
+            height: 8px;
+            border-radius: 4px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #d0bcff;
+            margin-top: -8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            cursor: pointer;
+        }
+        .backdrop-blur-custom {
+            backdrop-filter: blur(8px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md overflow-hidden">
+<!-- Background Content (Dimmed Page Content) -->
+<main class="fixed inset-0 p-margin-mobile flex flex-col gap-stack-lg opacity-40 pointer-events-none">
+<header class="flex justify-between items-center h-16">
+<span class="material-symbols-outlined text-on-surface">arrow_back</span>
+<span class="font-title-lg text-title-lg text-on-surface">Details</span>
+<span class="material-symbols-outlined text-on-surface">more_vert</span>
+</header>
+<div class="flex flex-col items-center text-center gap-stack-md">
+<div class="w-48 h-72 bg-surface-container rounded-lg shadow-lg"></div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-background">The Name of the Wind</h1>
+<p class="text-on-surface-variant font-body-lg">Patrick Rothfuss</p>
+</div>
+<div class="grid grid-cols-2 gap-gutter">
+<div class="bg-surface-container p-stack-md rounded-lg h-24"></div>
+<div class="bg-surface-container p-stack-md rounded-lg h-24"></div>
+</div>
+</main>
+<!-- Modal Overlay -->
+<div class="fixed inset-0 bg-black/60 backdrop-blur-custom z-40 flex items-end sm:items-center justify-center">
+<!-- Modal Container -->
+<div class="bg-surface-container-high w-full max-w-md rounded-t-lg sm:rounded-lg overflow-hidden animate-in fade-in slide-in-from-bottom-10 duration-300">
+<!-- Handle for mobile visual cue -->
+<div class="w-full flex justify-center py-2 sm:hidden">
+<div class="w-10 h-1 bg-outline-variant rounded-full"></div>
+</div>
+<!-- Content -->
+<div class="px-margin-mobile pt-stack-md pb-margin-mobile flex flex-col gap-stack-lg">
+<!-- Book Info Header -->
+<div class="flex items-start gap-gutter">
+<div class="w-16 h-24 flex-shrink-0 bg-surface-container-highest rounded shadow-md overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="The book cover of 'The Name of the Wind' by Patrick Rothfuss, featuring a mysterious figure in a dark, billowing cloak standing in a wind-swept landscape under a twilight sky. Deep indigo and violet hues dominate the scene, with sharp, expressive brushstrokes creating a moody and atmospheric fantasy setting. High-quality digital painting style with cinematic lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_G3EJ6Hc22GvyytJnaDow8_qjuzO2z-zd339s7KOT_HSMLWh6EyXVcDIpDH1TDftb8Gc10BRqj5acG9SOU46EI0JAr0X-pa4eNQgd5L4Rgw9fhn-oNqQfwxVFbneKaNus6LAWUhi__VBm2SFmsDtfKiI0YpazxLe0lUfDs3heBV5jCxVGJMpzrn2dWU-cDhJ6Gt1nyP1pwAdLyem41GOW6H9N4-JLEe1N_ulqJ1dR0GWEe8mlsfXs1Hwtszk8d0lGW0y-DjTepBg"/>
+</div>
+<div class="flex flex-col gap-1 py-1">
+<h2 class="font-title-lg text-title-lg text-primary">Update Progress</h2>
+<h3 class="font-title-md text-title-md text-on-background leading-tight">The Name of the Wind</h3>
+<p class="font-label-lg text-label-lg text-on-surface-variant">Patrick Rothfuss</p>
+</div>
+</div>
+<div class="h-px bg-outline-variant opacity-30"></div>
+<!-- Input Section -->
+<div class="flex flex-col gap-stack-lg">
+<!-- Page Number Input -->
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-lg text-label-lg text-on-surface-variant ml-2" for="current-page">Current Page</label>
+<div class="relative group">
+<input class="w-full bg-surface-variant h-14 px-4 pt-1 rounded-t-lg border-b border-outline text-primary font-title-lg focus:outline-none focus:border-primary transition-all" id="current-page" max="662" type="number" value="342"/>
+<div class="absolute right-4 top-1/2 -translate-y-1/2 flex items-baseline gap-1 pointer-events-none">
+<span class="text-on-surface-variant font-label-lg">of</span>
+<span class="text-on-surface font-title-md">662</span>
+</div>
+</div>
+</div>
+<!-- Slider Input -->
+<div class="flex flex-col gap-stack-sm">
+<div class="flex justify-between items-center ml-2 mr-2">
+<label class="font-label-lg text-label-lg text-on-surface-variant">Reading Journey</label>
+<span class="font-label-lg text-label-lg text-secondary" id="percent-display">52%</span>
+</div>
+<div class="relative px-2 py-4">
+<input class="w-full h-2" id="progress-slider" max="100" min="0" type="range" value="52"/>
+</div>
+<div class="flex justify-between px-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant">0%</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant text-center">Chapter 24: Shadows</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">100%</span>
+</div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col gap-stack-sm mt-stack-md">
+<button class="bg-primary text-on-primary h-14 rounded-full font-label-lg text-label-lg active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">done_all</span>
+                        Update Progress
+                    </button>
+<button class="bg-transparent border border-outline-variant text-primary h-14 rounded-full font-label-lg text-label-lg active:scale-[0.98] transition-transform">
+                        Cancel
+                    </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Micro-interactions Script -->
+<script>
+        const slider = document.getElementById('progress-slider');
+        const percentDisplay = document.getElementById('percent-display');
+        const pageInput = document.getElementById('current-page');
+        const totalPages = 662;
+
+        slider.addEventListener('input', (e) => {
+            const value = e.target.value;
+            percentDisplay.textContent = `${value}%`;
+            
+            // Sync page number roughly
+            const calculatedPage = Math.round((value / 100) * totalPages);
+            pageInput.value = calculatedPage;
+        });
+
+        pageInput.addEventListener('input', (e) => {
+            let value = parseInt(e.target.value) || 0;
+            if (value > totalPages) value = totalPages;
+            
+            // Sync slider
+            const calculatedPercent = Math.round((value / totalPages) * 100);
+            slider.value = calculatedPercent;
+            percentDisplay.textContent = `${calculatedPercent}%`;
+        });
+
+        // Simple button active states handled by Tailwind active:scale, but we can add haptic-like feel
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (window.navigator.vibrate) {
+                    window.navigator.vibrate(10);
+                }
+            });
+        });
+    </script>
+</body></html>

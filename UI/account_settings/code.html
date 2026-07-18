@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Account Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-highest": "#353438",
+                      "surface-container-low": "#1c1b1f",
+                      "tertiary": "#ffdad6",
+                      "secondary-fixed": "#96f0ff",
+                      "on-error-container": "#ffdad6",
+                      "on-secondary": "#00363d",
+                      "secondary-fixed-dim": "#4fd8eb",
+                      "on-surface": "#e5e1e7",
+                      "on-primary-fixed-variant": "#4d3d76",
+                      "on-tertiary": "#51221d",
+                      "on-primary": "#37265e",
+                      "tertiary-container": "#ffb4ab",
+                      "on-tertiary-fixed-variant": "#6c3832",
+                      "on-secondary-container": "#003e45",
+                      "surface-tint": "#d0bcff",
+                      "on-tertiary-container": "#7a433d",
+                      "on-secondary-fixed": "#001f24",
+                      "primary-fixed-dim": "#d0bcff",
+                      "inverse-on-surface": "#313034",
+                      "primary": "#e9ddff",
+                      "inverse-surface": "#e5e1e7",
+                      "surface-bright": "#3a383d",
+                      "on-surface-variant": "#cac4d0",
+                      "surface-container-high": "#2b292d",
+                      "on-primary-fixed": "#210f48",
+                      "error": "#ffb4ab",
+                      "on-error": "#690005",
+                      "surface": "#141317",
+                      "surface-container": "#201f23",
+                      "surface-variant": "#353438",
+                      "tertiary-fixed-dim": "#ffb4ab",
+                      "surface-dim": "#141317",
+                      "on-background": "#e5e1e7",
+                      "primary-fixed": "#e9ddff",
+                      "secondary-container": "#00b1c3",
+                      "background": "#141317",
+                      "surface-container-lowest": "#0e0e11",
+                      "on-secondary-fixed-variant": "#004f57",
+                      "error-container": "#93000a",
+                      "outline": "#948f9a",
+                      "on-primary-container": "#594983",
+                      "secondary": "#4fd8eb",
+                      "primary-container": "#d0bcff",
+                      "inverse-primary": "#665590",
+                      "outline-variant": "#49454f",
+                      "tertiary-fixed": "#ffdad5",
+                      "on-tertiary-fixed": "#360e0a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-tablet": "1.5rem",
+                      "margin-mobile": "1rem",
+                      "stack-md": "1rem",
+                      "gutter": "1rem",
+                      "stack-sm": "0.5rem",
+                      "stack-lg": "1.5rem"
+              },
+              "fontFamily": {
+                      "label-sm": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "title-lg": ["Inter"],
+                      "title-md": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "label-lg": ["Inter"],
+                      "headline-lg-mobile": ["Inter"],
+                      "body-md": ["Inter"]
+              },
+              "fontSize": {
+                      "label-sm": ["11px", {"lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "letterSpacing": "0.5px", "fontWeight": "400"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "400"}],
+                      "title-lg": ["22px", {"lineHeight": "28px", "fontWeight": "500"}],
+                      "title-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0.15px", "fontWeight": "500"}],
+                      "display-lg": ["57px", {"lineHeight": "64px", "letterSpacing": "-0.25px", "fontWeight": "400"}],
+                      "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "500"}],
+                      "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "400"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.25px", "fontWeight": "400"}]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background antialiased min-h-screen flex flex-col font-body-md overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky z-50 bg-background flex justify-between items-center px-margin-mobile h-16 flat no shadows">
+<button class="flex items-center justify-center p-2 rounded-full text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 duration-100">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<h1 class="font-title-lg text-title-lg text-primary dark:text-primary-fixed-dim">Account Settings</h1>
+<div class="w-10"></div> <!-- Spacer to center title -->
+</header>
+<!-- Main Content -->
+<main class="flex-1 px-margin-mobile pb-24 overflow-y-auto">
+<!-- Profile Section (Bento style) -->
+<section class="mt-stack-md bg-surface-container rounded-lg p-stack-lg flex flex-col items-center shadow-sm relative overflow-hidden group">
+<div class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+<img alt="User Avatar" class="w-24 h-24 rounded-full object-cover border-4 border-surface shadow-md relative z-10" data-alt="A cinematic, low-light portrait of a serene person deeply engaged in reading an e-reader in a cozy, dark library setting. Subtle warm ambient light highlights their face against a deep charcoal and slate background, embodying a scholarly, contemplative mood suitable for a modern night-mode reading app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAaaSKRtTinW-1tWxRNNFSOGlgWCJYdS9BIyrvfaSmExw9MLee_n0ler8L_HoJt_vHymPA7AmgqZi7nBL2dAIMV_gP9XrpEEbqUXHDovacYqt9KhdGno3cHAXkMtPlZSBC2IlIq5YLrMtZjYMYJgOTm49bgmU9LASSFrbzMMexnZlrmkTE67nqC3I14Lt_HUJeO8yuuicQvX4R9ap8mYO4W-dSZXHgbvDcMR9aGqSQrhsDFHVgqutM2VX3VzdXIfrnDbSOpoXVRSMo"/>
+<h2 class="mt-stack-sm font-title-lg text-title-lg text-on-surface relative z-10">Reading Enthusiast</h2>
+<p class="font-body-md text-body-md text-on-surface-variant relative z-10">Level 12 Bibliophile</p>
+<button class="mt-stack-md bg-primary-container text-on-primary-container font-label-lg text-label-lg px-6 py-2 rounded-full hover:bg-primary-fixed transition-colors active:scale-95 relative z-10">
+                Edit Profile
+            </button>
+</section>
+<!-- Settings Group 1: Notifications -->
+<h3 class="mt-stack-lg mb-stack-sm font-title-md text-title-md text-primary ml-2">Notifications</h3>
+<section class="bg-surface-container rounded-lg flex flex-col overflow-hidden">
+<div class="flex justify-between items-center p-4 border-b border-outline-variant/30 hover:bg-surface-container-highest transition-colors">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant">notifications_active</span>
+<span class="font-body-lg text-body-lg text-on-surface">Reading Reminders</span>
+</div>
+<!-- Toggle Switch -->
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="flex justify-between items-center p-4 hover:bg-surface-container-highest transition-colors">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant">auto_stories</span>
+<span class="font-body-lg text-body-lg text-on-surface">New Book Releases</span>
+</div>
+<!-- Toggle Switch -->
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</section>
+<!-- Settings Group 2: Account -->
+<h3 class="mt-stack-lg mb-stack-sm font-title-md text-title-md text-primary ml-2">Account</h3>
+<section class="bg-surface-container rounded-lg flex flex-col overflow-hidden">
+<div class="flex justify-between items-center p-4 border-b border-outline-variant/30 hover:bg-surface-container-highest transition-colors cursor-pointer">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant">mail</span>
+<div>
+<div class="font-body-lg text-body-lg text-on-surface">Email</div>
+<div class="font-body-md text-body-md text-on-surface-variant">reader@nocturnal.app</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</div>
+<div class="flex justify-between items-center p-4 border-b border-outline-variant/30 hover:bg-surface-container-highest transition-colors cursor-pointer">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant">key</span>
+<span class="font-body-lg text-body-lg text-on-surface">Change Password</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</div>
+<div class="flex justify-between items-center p-4 hover:bg-surface-container-highest transition-colors cursor-pointer">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant">link</span>
+<span class="font-body-lg text-body-lg text-on-surface">Social Links</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</div>
+</section>
+<!-- Settings Group 3: Data & Privacy -->
+<h3 class="mt-stack-lg mb-stack-sm font-title-md text-title-md text-primary ml-2">Data &amp; Privacy</h3>
+<section class="bg-surface-container rounded-lg flex flex-col overflow-hidden">
+<div class="flex items-center gap-4 p-4 border-b border-outline-variant/30 hover:bg-surface-container-highest transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-on-surface-variant">download</span>
+<span class="font-body-lg text-body-lg text-on-surface">Export Reading Data</span>
+</div>
+<div class="flex items-center gap-4 p-4 hover:bg-surface-container-highest transition-colors cursor-pointer text-error">
+<span class="material-symbols-outlined">delete</span>
+<span class="font-body-lg text-body-lg">Clear History</span>
+</div>
+</section>
+<!-- Sign Out Button -->
+<div class="mt-stack-lg mb-8 flex justify-center">
+<button class="flex items-center gap-2 bg-error-container text-on-error-container font-label-lg text-label-lg px-8 py-3 rounded-full hover:bg-error transition-colors active:scale-95 shadow-sm">
+<span class="material-symbols-outlined">logout</span>
+                Sign Out
+            </button>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 h-20 bg-surface-container-low dark:bg-surface-container-low flex justify-around items-center px-2 pb-safe flat no shadows md:hidden">
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-5 py-1 hover:bg-surface-variant dark:hover:bg-surface-variant active:scale-90 transition-transform rounded-2xl group">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform" style="font-variation-settings: 'FILL' 0;">home_storage</span>
+<span class="font-label-sm text-label-sm mt-1">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-5 py-1 hover:bg-surface-variant dark:hover:bg-surface-variant active:scale-90 transition-transform rounded-2xl group">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform" style="font-variation-settings: 'FILL' 0;">auto_stories</span>
+<span class="font-label-sm text-label-sm mt-1">Library</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-5 py-1 hover:bg-surface-variant dark:hover:bg-surface-variant active:scale-90 transition-transform rounded-2xl group">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform" style="font-variation-settings: 'FILL' 0;">bar_chart</span>
+<span class="font-label-sm text-label-sm mt-1">Stats</span>
+</button>
+<!-- Active Tab: Profile (maps to Settings intent) -->
+<button class="flex flex-col items-center justify-center bg-primary-container dark:bg-primary-container text-on-primary-container dark:text-on-primary-container rounded-2xl px-5 py-1 hover:bg-surface-variant dark:hover:bg-surface-variant active:scale-90 transition-transform shadow-[inset_0_1px_3px_rgba(0,0,0,0.2)]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-sm text-label-sm mt-1 font-bold">Profile</span>
+</button>
+</nav>
+<!-- SideNav for Desktop (Hidden on mobile) -->
+<nav class="hidden md:flex flex-col h-full w-80 rounded-r-lg bg-surface-container dark:bg-surface-container shadow-lg fixed left-0 top-0 py-4 gap-2 z-50">
+<div class="px-6 py-4 flex items-center gap-4 border-b border-outline-variant/30 mb-2">
+<img alt="User Avatar SideNav" class="w-12 h-12 rounded-full object-cover" data-alt="A cinematic, low-light portrait of a serene person deeply engaged in reading an e-reader in a cozy, dark library setting. Subtle warm ambient light highlights their face against a deep charcoal and slate background, embodying a scholarly, contemplative mood suitable for a modern night-mode reading app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDoerJbXiGFrQI_NARej2t7LWNMQ-quDUhQDYXxGLIZCsVAYmWC8NfdmUeltD464YAmZx6op1vOS-ZmxCYBHydsJIL95PZPeuDbeuHu_ZYmDp5LZZrlQ_paOVhqTu9SQYBV296VzpVkUvcGjueVnrh3VJRfPV1ip93gpVScqdY6KNfLJdBl3jovplkQUF6mIbbTCdDDNwZNHYVPt3DvSfcf3xA9KyzYEMeGNXxWdm821qT2_WCRDDOP9kjTG0SuW52TpXfVRH-vH3k"/>
+<div>
+<div class="font-label-lg text-label-lg text-on-surface">Reading Enthusiast</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">Level 12 Bibliophile</div>
+</div>
+</div>
+<a class="flex items-center gap-3 text-on-surface-variant mx-3 px-4 py-3 hover:bg-surface-container-high transition-all duration-200 rounded-full" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">inventory_2</span>
+<span class="font-label-lg text-label-lg">Backlog</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant mx-3 px-4 py-3 hover:bg-surface-container-high transition-all duration-200 rounded-full" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">star</span>
+<span class="font-label-lg text-label-lg">Shortlist</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant mx-3 px-4 py-3 hover:bg-surface-container-high transition-all duration-200 rounded-full" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">label_important</span>
+<span class="font-label-lg text-label-lg">Up Next</span>
+</a>
+<!-- Settings / Profile mapped to active -->
+<a class="flex items-center gap-3 bg-secondary-container text-on-secondary-container rounded-full mx-3 px-4 py-3 transition-all duration-200 mt-auto" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-lg text-label-lg">Profile</span>
+</a>
+</nav>
+<!-- Adjust main content margin for desktop sidenav -->
+<style>
+        @media (min-width: 768px) {
+            main, header {
+                margin-left: 20rem; /* 80 (w-80) * 0.25rem = 20rem */
+            }
+        }
+    </style>
+</body></html>

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Add New Book - Nocturnal Reader</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary": "#37265e",
+                      "error": "#ffb4ab",
+                      "secondary-container": "#00b1c3",
+                      "inverse-primary": "#665590",
+                      "inverse-on-surface": "#313034",
+                      "surface-container-lowest": "#0e0e11",
+                      "surface-tint": "#d0bcff",
+                      "primary-fixed-dim": "#d0bcff",
+                      "tertiary-fixed-dim": "#ffb4ab",
+                      "surface-container": "#201f23",
+                      "on-primary-fixed-variant": "#4d3d76",
+                      "on-error": "#690005",
+                      "on-surface-variant": "#cac4d0",
+                      "on-primary-container": "#594983",
+                      "secondary": "#4fd8eb",
+                      "surface-container-highest": "#353438",
+                      "on-secondary-fixed": "#001f24",
+                      "surface-bright": "#3a383d",
+                      "error-container": "#93000a",
+                      "surface-container-high": "#2b292d",
+                      "background": "#141317",
+                      "on-surface": "#e5e1e7",
+                      "surface-dim": "#141317",
+                      "outline": "#948f9a",
+                      "tertiary-fixed": "#ffdad5",
+                      "on-tertiary": "#51221d",
+                      "tertiary-container": "#ffb4ab",
+                      "secondary-fixed-dim": "#4fd8eb",
+                      "primary-fixed": "#e9ddff",
+                      "tertiary": "#ffdad6",
+                      "surface-container-low": "#1c1b1f",
+                      "on-tertiary-fixed-variant": "#6c3832",
+                      "inverse-surface": "#e5e1e7",
+                      "surface-variant": "#353438",
+                      "on-background": "#e5e1e7",
+                      "on-error-container": "#ffdad6",
+                      "on-secondary-container": "#003e45",
+                      "surface": "#141317",
+                      "primary": "#e9ddff",
+                      "on-tertiary-container": "#7a433d",
+                      "secondary-fixed": "#96f0ff",
+                      "primary-container": "#d0bcff",
+                      "on-secondary": "#00363d",
+                      "outline-variant": "#49454f",
+                      "on-secondary-fixed-variant": "#004f57",
+                      "on-primary-fixed": "#210f48",
+                      "on-tertiary-fixed": "#360e0a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-mobile": "1rem",
+                      "stack-sm": "0.5rem",
+                      "gutter": "1rem",
+                      "stack-lg": "1.5rem",
+                      "margin-tablet": "1.5rem",
+                      "stack-md": "1rem"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": ["Inter"],
+                      "title-lg": ["Inter"],
+                      "label-lg": ["Inter"],
+                      "title-md": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "label-sm": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "body-md": ["Inter"]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "400"}],
+                      "title-lg": ["22px", {"lineHeight": "28px", "fontWeight": "500"}],
+                      "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "500"}],
+                      "title-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0.15px", "fontWeight": "500"}],
+                      "display-lg": ["57px", {"lineHeight": "64px", "letterSpacing": "-0.25px", "fontWeight": "400"}],
+                      "label-sm": ["11px", {"lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "letterSpacing": "0.5px", "fontWeight": "400"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "400"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.25px", "fontWeight": "400"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-md antialiased md:px-margin-tablet pb-safe">
+<!-- TopAppBar Component (Adapted for Sub-page context) -->
+<header class="w-full top-0 sticky bg-background z-40 flex justify-between items-center px-margin-mobile h-16 shadow-none">
+<button class="text-primary active:scale-95 duration-100 p-2 rounded-full hover:bg-surface-container-highest transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-title-lg text-title-lg text-on-surface">Add New Book</h1>
+<div class="w-10"></div> <!-- Spacer for center alignment -->
+</header>
+<main class="flex-1 flex flex-col gap-stack-lg px-margin-mobile py-stack-md max-w-2xl mx-auto w-full">
+<!-- Search Section -->
+<section class="flex flex-col gap-stack-sm">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">search</span>
+<input class="w-full bg-surface-container-high text-on-surface border-none rounded-t-[28px] rounded-b-none pl-12 pr-4 py-4 focus:ring-0 focus:outline-none border-b border-outline-variant focus:border-primary transition-colors font-body-lg text-body-lg placeholder:text-on-surface-variant" placeholder="Search by title, author, or ISBN" type="text"/>
+</div>
+<button class="w-full bg-primary-container text-on-primary-container hover:bg-primary-fixed-dim transition-colors rounded-lg py-4 px-4 flex items-center justify-center gap-3 active:scale-[0.98] duration-150">
+<span class="material-symbols-outlined" data-icon="barcode_scanner">barcode_scanner</span>
+<span class="font-label-lg text-label-lg">Scan ISBN Barcode</span>
+</button>
+</section>
+<!-- Suggestions Section -->
+<section class="flex flex-col gap-stack-md mt-4">
+<h2 class="font-title-md text-title-md text-on-surface-variant px-1">Popular right now</h2>
+<div class="flex flex-col gap-stack-sm">
+<!-- Suggestion Card 1 -->
+<div class="bg-surface-container rounded-DEFAULT p-3 flex gap-4 items-center hover:bg-surface-container-high transition-colors cursor-pointer active:scale-[0.99]">
+<div class="w-12 h-16 rounded overflow-hidden shrink-0 bg-surface-container-highest relative">
+<img class="object-cover w-full h-full absolute inset-0" data-alt="A stylized, minimalist book cover in deep violet and charcoal tones, depicting a glowing futuristic cityscape at night. High quality, digital art style, suitable for a sci-fi novel." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA48B4Ro2OrX4A8ML1MkiJ7ebKL8VXlHtxxD0FDEsAy0TyPG1b7V3TCwCR4glxA-U0RSg2MNrDRspiDtj7ZtRvNo9tT62Q6YSAGUR1w-2hXD5l0FPmZLgOsGCZguwUKLrzWT0ZeGhcQsW838kEQXeU6Z4zZwuOmAziFJrrG5sc4wBp3ogV1xOMNQEFDbBRoctWGCAOz1mJllXmzDc3PHSDixsnumq2S0clD3JSmICd-dmFN4vw1l4_1Xmah1ieg--bvKQNVC6wmJwg"/>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-title-md text-title-md text-on-surface truncate">Neuromancer</h3>
+<p class="font-body-md text-body-md text-on-surface-variant truncate">William Gibson</p>
+</div>
+<button class="p-2 text-primary rounded-full hover:bg-surface-variant transition-colors flex shrink-0">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+</div>
+<!-- Suggestion Card 2 -->
+<div class="bg-surface-container rounded-DEFAULT p-3 flex gap-4 items-center hover:bg-surface-container-high transition-colors cursor-pointer active:scale-[0.99]">
+<div class="w-12 h-16 rounded overflow-hidden shrink-0 bg-surface-container-highest relative">
+<img class="object-cover w-full h-full absolute inset-0" data-alt="A dark and moody book cover featuring a solitary silhouette standing against a stark, foggy landscape illuminated by a single harsh, pale light. Noir aesthetic, high contrast." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMKC9J0l5a3qU9IwQ2BFJzlzhxWzeu0bencvLP3kJnl7_sG0Yu4WP6_INXVMS64XEod5X-4g5VdoCTvsxfuvJQjFxAqEvnqJY4ZHE0iaup7I97l4DMeoc8PYEuKxJGrkU-noQSBCKY2vKKT2jZ8ThQiu2lb2fXooN-XSIIpm57FIppxgqINXaB1b6Jy0CWIXVL7iWalBaLtdmTmVkaNGIciSncZGUUjTur-LW3jXmeX27uG0fU4-2eXBbVZb1C6pbNraQYZ1VRT1I"/>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-title-md text-title-md text-on-surface truncate">The Left Hand of Darkness</h3>
+<p class="font-body-md text-body-md text-on-surface-variant truncate">Ursula K. Le Guin</p>
+</div>
+<button class="p-2 text-primary rounded-full hover:bg-surface-variant transition-colors flex shrink-0">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+</div>
+<!-- Suggestion Card 3 -->
+<div class="bg-surface-container rounded-DEFAULT p-3 flex gap-4 items-center hover:bg-surface-container-high transition-colors cursor-pointer active:scale-[0.99]">
+<div class="w-12 h-16 rounded overflow-hidden shrink-0 bg-surface-container-highest relative">
+<img class="object-cover w-full h-full absolute inset-0" data-alt="A textured book cover with abstract geometric shapes in muted teal and deep indigo, resembling ancient machinery parts. Scholarly and mysterious aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6_QeyXxDMjU9Nost09z0UoQwjoiJ5eN0z9SLBXdS2p1lL5-F-Lwiz5Whc99ecNgrHebbWEE8QpECmEia3qFgOI4r2hO-zuMS-pfBZiPvD8x9_AGQgArY45-_6E4rg6D5E1LdJcuU416zwuXfiWSWWM2PVx5JkMYbtBszdUazKNqX-NpaCVhIivwE2uukW7PNQWhya30LGAazR7JKM5-ya2mpoat3-D_6WwOlDJuq4ffa4k2MYhcXrBmRwBsN8-FLfr-CGZoOqMTE"/>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-title-md text-title-md text-on-surface truncate">Dune</h3>
+<p class="font-body-md text-body-md text-on-surface-variant truncate">Frank Herbert</p>
+</div>
+<button class="p-2 text-primary rounded-full hover:bg-surface-variant transition-colors flex shrink-0">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Manual Entry Section -->
+<section class="mt-auto pt-8 pb-4 flex flex-col items-center justify-center gap-2">
+<p class="font-body-md text-body-md text-on-surface-variant">Can't find what you're looking for?</p>
+<button class="border border-outline text-primary hover:bg-surface-variant transition-colors rounded-full py-2 px-6 font-label-lg text-label-lg flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="edit_document">edit_document</span>
+                Add Manually
+            </button>
+</section>
+</main>
+<!-- Navigation suppressed as this is a transactional sub-page with a 'Back' action -->
+</body></html>

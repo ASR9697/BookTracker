@@ -16,4 +16,6 @@ object Constants {
     const val KEY_CURRENT_UNIT = "current_unit"
     const val KEY_TOTAL_UNITS = "total_units"
     const val KEY_UPDATED_AT = "updated_at"
+    const val KEY_DAILY_GOAL = "daily_goal"
+    const val KEY_PAGES_TODAY = "pages_today"
 }

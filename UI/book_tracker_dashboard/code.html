@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Book Tracker - Mobile Dashboard</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#d0bcff",
+                        "surface-container-lowest": "#0e0e11",
+                        "outline": "#948f9a",
+                        "surface-variant": "#353438",
+                        "on-error-container": "#ffdad6",
+                        "on-surface-variant": "#cac4d0",
+                        "background": "#141317",
+                        "tertiary": "#ffdad6",
+                        "on-secondary-fixed-variant": "#004f57",
+                        "primary-fixed-dim": "#d0bcff",
+                        "error-container": "#93000a",
+                        "on-primary-fixed-variant": "#4d3d76",
+                        "surface-dim": "#141317",
+                        "primary": "#e9ddff",
+                        "primary-container": "#d0bcff",
+                        "on-surface": "#e5e1e7",
+                        "on-primary-fixed": "#210f48",
+                        "surface-container-high": "#2b292d",
+                        "on-tertiary-fixed": "#360e0a",
+                        "surface": "#141317",
+                        "on-tertiary-fixed-variant": "#6c3832",
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "on-secondary-container": "#003e45",
+                        "on-error": "#690005",
+                        "inverse-surface": "#e5e1e7",
+                        "inverse-primary": "#665590",
+                        "surface-bright": "#3a383d",
+                        "outline-variant": "#49454f",
+                        "on-secondary": "#00363d",
+                        "inverse-on-surface": "#313034",
+                        "on-tertiary-container": "#7a433d",
+                        "on-primary": "#37265e",
+                        "on-background": "#e5e1e7",
+                        "surface-container-highest": "#353438",
+                        "secondary-fixed": "#96f0ff",
+                        "secondary-fixed-dim": "#4fd8eb",
+                        "on-primary-container": "#594983",
+                        "on-secondary-fixed": "#001f24",
+                        "on-tertiary": "#51221d",
+                        "secondary-container": "#00b1c3",
+                        "secondary": "#4fd8eb",
+                        "tertiary-fixed": "#ffdad5",
+                        "tertiary-container": "#ffb4ab",
+                        "primary-fixed": "#e9ddff",
+                        "surface-container": "#201f23",
+                        "surface-container-low": "#1c1b1f",
+                        "error": "#ffb4ab"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-sm": "0.5rem",
+                        "stack-lg": "1.5rem",
+                        "gutter": "1rem",
+                        "stack-md": "1rem",
+                        "margin-tablet": "1.5rem",
+                        "margin-mobile": "1rem"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Inter"],
+                        "title-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "title-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500" }],
+                        "title-lg": ["22px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0.5px", "fontWeight": "400" }],
+                        "title-md": ["16px", { "lineHeight": "24px", "letterSpacing": "0.15px", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "500" }],
+                        "display-lg": ["57px", { "lineHeight": "64px", "letterSpacing": "-0.25px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.25px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap');
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen font-body-md antialiased pb-24 md:pb-0">
+<!-- Top App Bar -->
+<header class="w-full top-0 sticky bg-background dark:bg-background flex justify-between items-center px-margin-mobile h-16 z-40">
+<button class="text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 duration-100 p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="text-title-lg font-title-lg text-on-surface dark:text-on-surface font-bold tracking-tight">My Library</h1>
+<button class="text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 duration-100 p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined">search</span>
+</button>
+</header>
+<main class="px-margin-mobile flex flex-col gap-stack-lg max-w-md mx-auto mt-stack-md">
+<!-- Currently Reading Hero Card -->
+<section>
+<h2 class="font-title-md text-title-md text-on-surface-variant mb-stack-sm ml-1">Currently Reading</h2>
+<div class="bg-surface-container rounded-xl p-4 flex gap-4 relative overflow-hidden shadow-sm hover:bg-surface-container-high transition-colors active:scale-[0.99] duration-200 cursor-pointer group">
+<!-- Book Cover -->
+<div class="w-24 h-36 shrink-0 rounded-lg overflow-hidden shadow-md">
+<img alt="Project Hail Mary Book Cover" class="w-full h-full object-cover" data-alt="A detailed digital painting of an astronaut floating in deep space next to an intricate, futuristic alien spaceship. The scene is illuminated by the harsh, high-contrast light of a distant star, casting deep shadows. The color palette features rich, velvety blacks of the void contrasted with bright, stark whites and subtle technical blues. The mood is awe-inspiring and lonely, fitting a hard sci-fi novel cover." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqcyKc5x3veEpNshQnE8qBaO1wXsUn7zBr3S9fmoEcvpkUxQm_QeCFw27HJWqV7YsU9WQnEE-PbftcdwJ81Sr9jpCKritDJp4IESfQdPKvfKsi12x1QDPqBvda3ngJ_UHiSDjqJADHVnXG5Op0TA54rlbTmhkCZyWrovDcCpDDybm0Bdw2ZTRi2wQJGhTzsKU210t-OLVPVl7ZAnFsQzBRH5iWNiUpre9OPuvVZ6gugicCDgfhUI0YnYkWbg2cugG-J6eyROVcmTo"/>
+</div>
+<!-- Book Info & Progress -->
+<div class="flex flex-col justify-between py-1 flex-grow">
+<div>
+<h3 class="font-title-lg text-title-lg text-on-surface line-clamp-2 leading-tight">Project Hail Mary</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Andy Weir</p>
+</div>
+<div class="mt-auto pt-4 flex flex-col gap-3">
+<!-- Progress Bar -->
+<div class="w-full">
+<div class="flex justify-between items-end mb-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Progress</span>
+<span class="font-label-sm text-label-sm text-primary font-bold">65%</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-2 overflow-hidden">
+<div class="bg-secondary h-full rounded-full w-[65%] transition-all duration-1000 ease-out"></div>
+</div>
+</div>
+<!-- Resume Action -->
+<button class="bg-primary text-on-primary font-label-lg text-label-lg rounded-full py-2 px-4 self-end hover:bg-primary-fixed-dim transition-colors flex items-center gap-2 active:scale-95">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+                            Resume
+                        </button>
+</div>
+</div>
+</div>
+</section>
+<!-- List Section -->
+<section class="mt-stack-sm flex flex-col gap-stack-md">
+<!-- Tabs (Navigation Drawer converted to horizontal tabs for this layout context) -->
+<div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+<button class="bg-secondary-container text-on-secondary-container rounded-full px-4 py-2 flex items-center gap-2 font-label-lg text-label-lg whitespace-nowrap active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[18px]">inventory_2</span>
+                    Backlog
+                </button>
+<button class="text-on-surface-variant px-4 py-2 flex items-center gap-2 font-label-lg text-label-lg whitespace-nowrap hover:bg-surface-container-high rounded-full transition-colors active:scale-95">
+<span class="material-symbols-outlined text-[18px]">star</span>
+                    Shortlist
+                </button>
+<button class="text-on-surface-variant px-4 py-2 flex items-center gap-2 font-label-lg text-label-lg whitespace-nowrap hover:bg-surface-container-high rounded-full transition-colors active:scale-95">
+<span class="material-symbols-outlined text-[18px]">label_important</span>
+                    Up Next
+                </button>
+</div>
+<!-- List Items -->
+<div class="flex flex-col gap-3">
+<!-- Book Item 1 -->
+<div class="bg-surface-container-lowest p-3 rounded-lg flex gap-4 items-center hover:bg-surface-container-low transition-colors active:scale-[0.99] duration-150 cursor-pointer">
+<div class="w-12 h-16 rounded overflow-hidden shadow-sm shrink-0">
+<img alt="Dune Book Cover" class="w-full h-full object-cover" data-alt="A stylized, sweeping digital illustration of a vast desert landscape with colossal sand dunes under a harsh, pale sky. In the foreground, a tiny, silhouetted figure stands in flowing robes, looking out at the expanse. The color palette is dominated by warm, arid oranges, ochres, and deep burnt siennas, accented by stark black shadows. The mood is epic, ancient, and mysterious, evocative of classic space opera cover art." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDmAZSLb6oB2bXc6MuicDr9Id3F0qvVTDYTz8r99ZaVH_8PWfWODRkenRod4RJTi08nxURFLBLT70-ot2_HpsqPuJ8H1EyuL7s3J4SUdoS20Ac0RvDjVO7wgCw8WjEmEB8vOoCjvAgZakPv5yHbpPpxnQKW-Nuwcd77st38cWDp7A96VL19av6jyOxhqhcQyvUrgaL_NvCwgBZ3ZwDKf6Wfgw-cbYUBJVnJZi3qp3DL0aGOQoSOxQRZ0u3ZW4lWKetwfSj83kNef9Q"/>
+</div>
+<div class="flex-grow">
+<h4 class="font-title-md text-title-md text-on-surface">Dune</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">Frank Herbert</p>
+</div>
+<button class="text-on-surface-variant p-2 rounded-full hover:bg-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<!-- Book Item 2 -->
+<div class="bg-surface-container-lowest p-3 rounded-lg flex gap-4 items-center hover:bg-surface-container-low transition-colors active:scale-[0.99] duration-150 cursor-pointer">
+<div class="w-12 h-16 rounded overflow-hidden shadow-sm shrink-0">
+<img alt="Neuromancer Book Cover" class="w-full h-full object-cover" data-alt="A gritty, cyberpunk digital art piece depicting a sprawling, rain-slicked futuristic city street at night. Neon signs in vivid cyan and magenta reflect in puddles on the dark, textured asphalt. A lone figure in a high-tech trench coat walks away into the misty distance. The overall palette relies on deep, atmospheric blacks contrasted with sharp, artificial neon highlights. The mood is tense, technological, and dystopian." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDx-b22t8GYgP2M4unFGjSGgZjXQllR0MTSm9o8zGFvawwaf08zi9cnyCOAeQ81YLa0fR6lxRDIUz-L26HVEbT0f3fy56PTcZG90uAdJcJJBEwV_PnpohS0DGllumrJIRVOmu3ri20WxT8H7XzmaD_s4huBiZ-x4RnhfKeSffZgH3yBONgRu2CDJnNTMKThfO-Fuj9ez9Xs_J8mbP6MM-t7ae4jIJgMN7bP_f3Bg6VO3pXHoPBY_3FcJ3fFW-JrmQfwMfxnkgg_mp4"/>
+</div>
+<div class="flex-grow">
+<h4 class="font-title-md text-title-md text-on-surface">Neuromancer</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">William Gibson</p>
+</div>
+<button class="text-on-surface-variant p-2 rounded-full hover:bg-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+<!-- Floating Action Button (FAB) -->
+<button class="fixed bottom-[100px] md:bottom-8 right-6 w-14 h-14 bg-primary text-on-primary rounded-xl flex items-center justify-center shadow-lg hover:shadow-xl hover:bg-primary-fixed-dim transition-all active:scale-90 z-50">
+<span class="material-symbols-outlined text-[24px]">add</span>
+</button>
+<!-- Bottom Navigation Bar (Mobile only) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 h-20 bg-surface-container-low dark:bg-surface-container-low flex justify-around items-center px-2 pb-safe border-t-0 shadow-[0_-4px_20px_rgba(0,0,0,0.2)]">
+<button class="flex flex-col items-center justify-center bg-primary-container dark:bg-primary-container text-on-primary-container dark:text-on-primary-container rounded-2xl px-5 py-1 active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">home_storage</span>
+<span class="font-label-sm text-label-sm mt-1">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-5 py-1 hover:bg-surface-variant dark:hover:bg-surface-variant rounded-2xl active:scale-90 transition-all">
+<span class="material-symbols-outlined text-[24px]">auto_stories</span>
+<span class="font-label-sm text-label-sm mt-1">Library</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-5 py-1 hover:bg-surface-variant dark:hover:bg-surface-variant rounded-2xl active:scale-90 transition-all">
+<span class="material-symbols-outlined text-[24px]">bar_chart</span>
+<span class="font-label-sm text-label-sm mt-1">Stats</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-5 py-1 hover:bg-surface-variant dark:hover:bg-surface-variant rounded-2xl active:scale-90 transition-all">
+<span class="material-symbols-outlined text-[24px]">person</span>
+<span class="font-label-sm text-label-sm mt-1">Profile</span>
+</button>
+</nav>
+<style>
+        /* Utility to hide scrollbar for horizontal scrolling tabs */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        /* Safe area padding for bottom nav on iOS */
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+    </style>
+</body></html>

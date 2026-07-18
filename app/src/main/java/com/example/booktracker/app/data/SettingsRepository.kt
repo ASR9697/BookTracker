@@ -14,11 +14,12 @@ import kotlinx.coroutines.flow.map
 private val Context.settingsDataStore: DataStore<Preferences> by
     preferencesDataStore(name = "settings")
 
-/** User preferences. Currently just the daily page goal used by streaks + analytics. */
+/** User preferences: daily page goal (streaks + analytics) and yearly books goal. */
 class SettingsRepository(context: Context) {
 
     private val appContext = context.applicationContext
     private val dailyGoalKey = intPreferencesKey("daily_goal_pages")
+    private val yearlyGoalKey = intPreferencesKey("yearly_goal_books")
 
     val dailyGoal: Flow<Int> = appContext.settingsDataStore.data.map { prefs ->
         prefs[dailyGoalKey] ?: StreakEngine.DEFAULT_DAILY_GOAL_PAGES
@@ -26,5 +27,17 @@ class SettingsRepository(context: Context) {
 
     suspend fun setDailyGoal(pages: Int) {
         appContext.settingsDataStore.edit { it[dailyGoalKey] = pages }
+    }
+
+    val yearlyGoal: Flow<Int> = appContext.settingsDataStore.data.map { prefs ->
+        prefs[yearlyGoalKey] ?: DEFAULT_YEARLY_GOAL_BOOKS
+    }
+
+    suspend fun setYearlyGoal(books: Int) {
+        appContext.settingsDataStore.edit { it[yearlyGoalKey] = books }
+    }
+
+    companion object {
+        const val DEFAULT_YEARLY_GOAL_BOOKS = 12
     }
 }

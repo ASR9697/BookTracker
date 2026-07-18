@@ -17,7 +17,10 @@ data class BookEntity(
     val dnfPercentage: Float?,
     val dnfReason: String?,
     val lastUpdated: Long,
-    val rating: String // JSON object of String -> Float
+    val rating: String, // JSON object of String -> Float
+    val description: String,
+    val genres: String, // JSON array of strings
+    val publishedDate: String
 )
 
 @Entity(tableName = "sessions", indices = [Index("bookId")])
@@ -32,4 +35,14 @@ data class SessionEntity(
     val deviceSource: String,
     val environmentTag: String,
     val isInterrupted: Boolean
+)
+
+@Entity(tableName = "margin_notes", indices = [Index("bookId")])
+data class MarginNoteEntity(
+    @PrimaryKey val id: String,
+    val bookId: String,
+    val timestamp: Long,
+    val pageOrUnit: Int,
+    val markdownContent: String,
+    val isVoiceDictated: Boolean
 )

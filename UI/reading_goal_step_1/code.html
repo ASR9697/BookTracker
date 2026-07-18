@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Set Your Annual Goal - Book Tracker</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-tint": "#d0bcff",
+                      "secondary-fixed": "#96f0ff",
+                      "error-container": "#93000a",
+                      "secondary": "#4fd8eb",
+                      "on-secondary": "#00363d",
+                      "tertiary-fixed": "#ffdad5",
+                      "on-tertiary-fixed": "#360e0a",
+                      "on-primary-fixed": "#210f48",
+                      "on-error": "#690005",
+                      "inverse-surface": "#e5e1e7",
+                      "tertiary-fixed-dim": "#ffb4ab",
+                      "secondary-container": "#00b1c3",
+                      "surface-container": "#201f23",
+                      "on-error-container": "#ffdad6",
+                      "on-primary-container": "#594983",
+                      "background": "#141317",
+                      "surface-variant": "#353438",
+                      "surface": "#141317",
+                      "on-tertiary": "#51221d",
+                      "surface-dim": "#141317",
+                      "surface-container-low": "#1c1b1f",
+                      "primary": "#e9ddff",
+                      "outline": "#948f9a",
+                      "surface-container-high": "#2b292d",
+                      "on-tertiary-fixed-variant": "#6c3832",
+                      "on-surface-variant": "#cac4d0",
+                      "secondary-fixed-dim": "#4fd8eb",
+                      "surface-bright": "#3a383d",
+                      "on-tertiary-container": "#7a433d",
+                      "tertiary": "#ffdad6",
+                      "surface-container-lowest": "#0e0e11",
+                      "primary-fixed-dim": "#d0bcff",
+                      "outline-variant": "#49454f",
+                      "error": "#ffb4ab",
+                      "on-surface": "#e5e1e7",
+                      "primary-fixed": "#e9ddff",
+                      "tertiary-container": "#ffb4ab",
+                      "primary-container": "#d0bcff",
+                      "inverse-on-surface": "#313034",
+                      "inverse-primary": "#665590",
+                      "surface-container-highest": "#353438",
+                      "on-secondary-fixed": "#001f24",
+                      "on-secondary-container": "#003e45",
+                      "on-primary": "#37265e",
+                      "on-primary-fixed-variant": "#4d3d76",
+                      "on-background": "#e5e1e7",
+                      "on-secondary-fixed-variant": "#004f57"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-md": "1rem",
+                      "gutter": "1rem",
+                      "stack-sm": "0.5rem",
+                      "margin-mobile": "1rem",
+                      "stack-lg": "1.5rem",
+                      "margin-tablet": "1.5rem"
+              },
+              "fontFamily": {
+                      "title-md": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "title-lg": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "label-lg": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "title-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "letterSpacing": "0.15px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "label-sm": [
+                              "11px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.5px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "title-lg": [
+                              "22px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "display-lg": [
+                              "57px",
+                              {
+                                      "lineHeight": "64px",
+                                      "letterSpacing": "-0.25px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.25px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "letterSpacing": "0.5px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.1px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        /* Custom styles for slider thumb */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 32px;
+            width: 32px;
+            border-radius: 50%;
+            background: #e9ddff; /* primary */
+            cursor: pointer;
+            margin-top: -14px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:active {
+            transform: scale(1.1);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #353438; /* surface-variant */
+            border-radius: 2px;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-md overflow-hidden antialiased">
+<!-- Top App Bar (Modified for transactional flow) -->
+<header class="w-full top-0 sticky bg-background flex justify-between items-center px-margin-mobile h-16 z-10 flat no shadows">
+<button class="text-on-surface-variant hover:bg-surface-container-highest transition-colors rounded-full p-2 active:scale-95 duration-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]">close</span>
+</button>
+<div class="font-title-lg text-title-lg text-primary">Goal Setting</div>
+<div class="w-10"></div> <!-- Spacer for balance -->
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col px-margin-mobile md:px-margin-tablet py-8 relative">
+<!-- Progress Indicator (Step 1 of 3) -->
+<div class="w-full max-w-md mx-auto mb-stack-lg">
+<div class="flex justify-between items-center mb-stack-sm">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Step 1 of 3</span>
+<span class="font-label-sm text-label-sm text-primary">Target</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-1.5 flex overflow-hidden">
+<div class="bg-primary w-1/3 rounded-full h-full transition-all duration-500 ease-out"></div>
+<div class="bg-surface-variant w-1/3 h-full"></div>
+<div class="bg-surface-variant w-1/3 h-full"></div>
+</div>
+</div>
+<!-- Headline Content -->
+<div class="text-center w-full max-w-lg mx-auto flex flex-col items-center justify-center mt-8 mb-12">
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-stack-sm font-semibold tracking-tight">
+                How many books do you want to read in 2024?
+            </h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-sm">
+                Set an achievable target to stay motivated throughout the year. You can always adjust this later.
+            </p>
+</div>
+<!-- Interactive Slider Area -->
+<div class="flex-1 flex flex-col items-center justify-center w-full max-w-md mx-auto relative z-10">
+<!-- Dynamic Number Display -->
+<div class="relative flex items-center justify-center mb-8">
+<!-- Background decorative glow -->
+<div class="absolute inset-0 bg-primary/10 rounded-full blur-3xl scale-150"></div>
+<div class="relative bg-surface-container rounded-[2rem] p-8 shadow-lg flex flex-col items-center justify-center min-w-[200px] border border-surface-variant/50">
+<span class="font-display-lg text-display-lg text-primary tabular-nums tracking-tighter" id="goal-value">24</span>
+<span class="font-label-lg text-label-lg text-on-surface-variant mt-2">books</span>
+</div>
+</div>
+<!-- Slider Control -->
+<div class="w-full px-4 mb-stack-lg">
+<div class="flex justify-between items-center mb-4 px-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant">1</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">100+</span>
+</div>
+<div class="relative w-full">
+<!-- Custom progress fill for slider -->
+<div class="absolute top-0 left-0 h-1 bg-primary rounded-l-full pointer-events-none mt-[14px]" id="slider-progress" style="width: 23%;"></div>
+<input class="w-full h-1 appearance-none bg-surface-variant rounded-full outline-none" id="goal-slider" max="100" min="1" type="range" value="24"/>
+</div>
+<!-- Quick Selection Chips -->
+<div class="flex flex-wrap justify-center gap-3 mt-8">
+<button class="quick-select bg-surface-container-high hover:bg-surface-variant text-on-surface px-4 py-2 rounded-full font-label-lg text-label-lg border border-outline-variant transition-colors" data-value="12">12 (1/mo)</button>
+<button class="quick-select bg-surface-container-high hover:bg-surface-variant text-on-surface px-4 py-2 rounded-full font-label-lg text-label-lg border border-outline-variant transition-colors" data-value="24">24 (2/mo)</button>
+<button class="quick-select bg-surface-container-high hover:bg-surface-variant text-on-surface px-4 py-2 rounded-full font-label-lg text-label-lg border border-outline-variant transition-colors" data-value="52">52 (1/wk)</button>
+</div>
+</div>
+</div>
+<!-- Bottom Action Area -->
+<div class="w-full max-w-md mx-auto mt-auto pb-safe pt-stack-md">
+<button class="w-full bg-primary text-on-primary font-label-lg text-label-lg rounded-full py-4 px-6 flex items-center justify-center gap-2 hover:bg-primary/90 active:scale-[0.98] transition-all duration-200 shadow-md">
+                Continue
+                <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">arrow_forward</span>
+</button>
+<button class="w-full mt-stack-sm text-on-surface-variant font-label-lg text-label-lg py-3 px-6 rounded-full hover:bg-surface-container transition-colors">
+                I'll decide later
+            </button>
+</div>
+</main>
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const slider = document.getElementById('goal-slider');
+            const display = document.getElementById('goal-value');
+            const progress = document.getElementById('slider-progress');
+            const quickSelectBtns = document.querySelectorAll('.quick-select');
+
+            function updateSlider(val) {
+                display.textContent = val;
+                const percentage = ((val - slider.min) / (slider.max - slider.min)) * 100;
+                progress.style.width = `${percentage}%`;
+            }
+
+            slider.addEventListener('input', (e) => {
+                updateSlider(e.target.value);
+            });
+
+            quickSelectBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const val = btn.getAttribute('data-value');
+                    slider.value = val;
+                    updateSlider(val);
+                    
+                    // Small pop animation on the display
+                    display.parentElement.classList.remove('scale-105');
+                    void display.parentElement.offsetWidth; // trigger reflow
+                    display.parentElement.classList.add('scale-105');
+                    setTimeout(() => {
+                        display.parentElement.classList.remove('scale-105');
+                        display.parentElement.style.transition = 'transform 0.2s ease-out';
+                    }, 150);
+                });
+            });
+            
+            // Initial render
+            updateSlider(slider.value);
+        });
+    </script>
+</body></html>

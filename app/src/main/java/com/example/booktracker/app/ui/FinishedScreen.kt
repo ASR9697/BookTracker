@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ElevatedCard
@@ -24,6 +25,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
@@ -101,16 +103,27 @@ private fun SectionHeader(text: String) {
 
 @Composable
 private fun CompletedBookCard(book: Book) {
-    ElevatedCard {
-        Row(modifier = Modifier.padding(12.dp)) {
-            BookCover(book.coverUrl, Modifier.size(width = 40.dp, height = 56.dp))
-            Spacer(Modifier.width(12.dp))
+    ElevatedCard(shape = RoundedCornerShape(20.dp)) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            BookCover(book.coverUrl, Modifier.size(width = 48.dp, height = 72.dp))
+            Spacer(Modifier.width(14.dp))
             Column {
-                Text(book.title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    book.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
                 if (book.authors.isNotEmpty()) {
                     Text(
                         book.authors.joinToString(", "),
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
                 val detail = completionDetail(book)

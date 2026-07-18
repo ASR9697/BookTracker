@@ -17,13 +17,15 @@ class WearBridge(context: Context) {
 
     private val appContext = context.applicationContext
 
-    suspend fun publishActiveBook(book: Book) {
+    suspend fun publishActiveBook(book: Book, dailyGoal: Int = 0, pagesToday: Int = 0) {
         val request = PutDataMapRequest.create(Constants.ACTIVE_BOOK_PATH).apply {
             dataMap.putString(Constants.KEY_BOOK_ID, book.id)
             dataMap.putString(Constants.KEY_TITLE, book.title)
             dataMap.putInt(Constants.KEY_CURRENT_UNIT, book.currentUnit)
             dataMap.putInt(Constants.KEY_TOTAL_UNITS, book.totalUnits)
             dataMap.putLong(Constants.KEY_UPDATED_AT, book.lastUpdated)
+            dataMap.putInt(Constants.KEY_DAILY_GOAL, dailyGoal)
+            dataMap.putInt(Constants.KEY_PAGES_TODAY, pagesToday)
         }.asPutDataRequest().setUrgent()
 
         try {

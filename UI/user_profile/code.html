@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>User Profile - Book Tracker</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "secondary-container": "#00b1c3",
+                        "on-tertiary-container": "#7a433d",
+                        "surface-container-high": "#2b292d",
+                        "on-secondary-fixed-variant": "#004f57",
+                        "inverse-primary": "#665590",
+                        "secondary-fixed-dim": "#4fd8eb",
+                        "on-secondary-container": "#003e45",
+                        "on-primary": "#37265e",
+                        "surface-variant": "#353438",
+                        "primary-fixed": "#e9ddff",
+                        "outline-variant": "#49454f",
+                        "on-tertiary-fixed": "#360e0a",
+                        "tertiary-container": "#ffb4ab",
+                        "primary-fixed-dim": "#d0bcff",
+                        "surface-container-lowest": "#0e0e11",
+                        "on-secondary": "#00363d",
+                        "primary-container": "#d0bcff",
+                        "background": "#141317",
+                        "error": "#ffb4ab",
+                        "surface-container": "#201f23",
+                        "surface": "#141317",
+                        "on-primary-fixed-variant": "#4d3d76",
+                        "on-background": "#e5e1e7",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-highest": "#353438",
+                        "secondary-fixed": "#96f0ff",
+                        "on-error": "#690005",
+                        "on-surface": "#e5e1e7",
+                        "on-tertiary-fixed-variant": "#6c3832",
+                        "on-primary-fixed": "#210f48",
+                        "error-container": "#93000a",
+                        "on-tertiary": "#51221d",
+                        "on-surface-variant": "#cac4d0",
+                        "surface-dim": "#141317",
+                        "inverse-on-surface": "#313034",
+                        "outline": "#948f9a",
+                        "surface-container-low": "#1c1b1f",
+                        "on-primary-container": "#594983",
+                        "inverse-surface": "#e5e1e7",
+                        "secondary": "#4fd8eb",
+                        "tertiary": "#ffdad6",
+                        "surface-tint": "#d0bcff",
+                        "surface-bright": "#3a383d",
+                        "on-secondary-fixed": "#001f24",
+                        "tertiary-fixed": "#ffdad5",
+                        "primary": "#e9ddff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-sm": "0.5rem",
+                        "margin-mobile": "1rem",
+                        "stack-lg": "1.5rem",
+                        "margin-tablet": "1.5rem",
+                        "gutter": "1rem",
+                        "stack-md": "1rem"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "title-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "title-lg": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "400" }],
+                        "title-md": ["16px", { "lineHeight": "24px", "letterSpacing": "0.15px", "fontWeight": "500" }],
+                        "display-lg": ["57px", { "lineHeight": "64px", "letterSpacing": "-0.25px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.25px", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0.5px", "fontWeight": "400" }],
+                        "title-lg": ["22px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "400" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface min-h-screen pb-safe pb-24 md:pb-0 font-body-md">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky bg-background dark:bg-background z-40 transition-colors duration-200 shadow-sm" id="topAppBar">
+<div class="flex justify-between items-center px-margin-mobile md:px-margin-tablet h-16 max-w-7xl mx-auto">
+<button class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-highest transition-colors active:scale-95 duration-100 text-on-surface-variant group focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
+<span class="material-symbols-outlined text-[24px]" data-icon="menu">menu</span>
+</button>
+<h1 class="text-title-lg font-title-lg text-on-surface dark:text-on-surface font-bold tracking-tight">My Profile</h1>
+<button class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-highest transition-colors active:scale-95 duration-100 text-on-surface-variant group focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background">
+<span class="material-symbols-outlined text-[24px]" data-icon="search">search</span>
+</button>
+</div>
+</header>
+<main class="max-w-7xl mx-auto px-margin-mobile md:px-margin-tablet py-stack-md flex flex-col gap-stack-lg md:gap-8">
+<!-- Profile Header Bento Grid -->
+<section class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Main Profile Card -->
+<div class="col-span-1 md:col-span-8 bg-surface-container dark:bg-surface-container rounded-DEFAULT md:rounded-lg p-6 flex flex-col sm:flex-row items-center sm:items-start gap-6 relative overflow-hidden group">
+<div class="absolute -right-12 -top-12 w-48 h-48 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all duration-500"></div>
+<div class="relative w-32 h-32 flex-shrink-0">
+<img class="w-full h-full object-cover rounded-full border-4 border-surface-container-high shadow-lg" data-alt="A highly detailed close-up portrait of a thoughtful person in a cozy, dimly lit home library setting. The lighting is moody and cinematic, with soft, warm golden hour light casting a gentle glow on their face against a deep, dark charcoal background. The aesthetic is modern, scholarly, and introspective, perfectly suited for a dark mode UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAzChh6lLja4pbT3NhNC3PF7zh6YI4fSEa0uCggLqdwfL4kWfGUz4i6-gGuyStq_bChrVwwbA6SEKahJCNd9TpB7NvnfnJIVxHgcA-eEu-aE9huZoiH-6uKh1hI53G_yBxhXU9h7y2igQZALsfqU8Y-VlSftj6alpSJm34WSizZFZSmiuQDIBgnEisk36j705UWTTeLbrSq0t6tr_kyWmUYbHy7xc22TfCSG1ZyWD4yW3G8hBQC50oXMr_BYXFSKd-t7PiOC4bPHL4"/>
+<div class="absolute bottom-0 right-0 w-8 h-8 bg-secondary-container text-on-secondary-container rounded-full flex items-center justify-center shadow-md border-2 border-surface-container">
+<span class="material-symbols-outlined text-[16px]" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+</div>
+<div class="flex-1 text-center sm:text-left flex flex-col gap-2 z-10">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Reading Enthusiast</h2>
+<div class="inline-flex items-center justify-center sm:justify-start gap-2 text-primary dark:text-primary-fixed-dim">
+<span class="font-label-lg text-label-lg px-3 py-1 bg-primary/10 rounded-full border border-primary/20">Level 12 Bibliophile</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-2 max-w-md mx-auto sm:mx-0">
+                        "A reader lives a thousand lives before he dies. The man who never reads lives only one."
+                    </p>
+</div>
+</div>
+<!-- Side Stats/Badges -->
+<div class="col-span-1 md:col-span-4 flex flex-col gap-gutter">
+<div class="bg-surface-container-high dark:bg-surface-container-high rounded-DEFAULT p-5 flex items-center justify-between hover:bg-surface-container-highest transition-colors cursor-pointer group">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Member Since</span>
+<span class="font-title-md text-title-md text-on-surface">Oct 2021</span>
+</div>
+<span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform" data-icon="calendar_month">calendar_month</span>
+</div>
+<div class="bg-surface-container-high dark:bg-surface-container-high rounded-DEFAULT p-5 flex items-center justify-between hover:bg-surface-container-highest transition-colors cursor-pointer group flex-1">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Current Book</span>
+<span class="font-title-md text-title-md text-on-surface truncate max-w-[150px]">The Name of the Wind</span>
+<div class="w-full bg-surface-variant rounded-full h-1.5 mt-2 overflow-hidden">
+<div class="bg-secondary-fixed-dim h-1.5 rounded-full w-[65%]"></div>
+</div>
+</div>
+<img class="w-12 h-16 object-cover rounded-md shadow-sm border border-outline-variant/30" data-alt="A close-up shot of an ancient, leather-bound book cover featuring subtle, intricate gold foil embossing on a dark, almost black textured background. The image is atmospheric, evoking a sense of fantasy and timeless wisdom, perfectly lit for a dark, immersive aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfSj4qfKA1pK1y_ZBEkQTSxhfOEvCJWVOZWV5BO4-KZjKTg_EkzpA_pz6mn5a719QlacFKIliNdd7Xjnc1gAdEVgcAx1mkpwFTygKNjWe8HmDUspq0TwaxE40yTJxOieraL4jVehF9EqVs-zVvN-W2n6P7GtyYV9_QKZtzkTcAHF4mjfwvJ4hJl9e78BnTI401sf0qTuWdc37XeUm2CD-BxIf9lpRanvwVSAOxwOmMjAGTfuACVQmL7ErfcjWEggYxcMu12VTYLoc"/>
+</div>
+</div>
+</section>
+<!-- Achievements Section -->
+<section class="flex flex-col gap-stack-sm mt-4">
+<h3 class="font-title-lg text-title-lg text-on-surface px-1">Achievements</h3>
+<div class="grid grid-cols-2 md:grid-cols-3 gap-gutter">
+<!-- Streak Card -->
+<div class="bg-surface-container dark:bg-surface-container rounded-DEFAULT p-5 flex flex-col items-center text-center gap-3 relative overflow-hidden group hover:bg-surface-container-high transition-colors">
+<div class="w-16 h-16 rounded-full bg-tertiary-container/10 flex items-center justify-center group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[32px] text-tertiary-fixed-dim" data-icon="local_fire_department" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+</div>
+<div>
+<div class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">45 <span class="text-title-md text-on-surface-variant font-normal">days</span></div>
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mt-1">Reading Streak</div>
+</div>
+</div>
+<!-- Books Completed Card -->
+<div class="bg-surface-container dark:bg-surface-container rounded-DEFAULT p-5 flex flex-col items-center text-center gap-3 relative overflow-hidden group hover:bg-surface-container-high transition-colors">
+<div class="w-16 h-16 rounded-full bg-secondary-container/10 flex items-center justify-center group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[32px] text-secondary-fixed-dim" data-icon="menu_book" style="font-variation-settings: 'FILL' 1;">menu_book</span>
+</div>
+<div>
+<div class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">24</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mt-1">Books Completed</div>
+</div>
+</div>
+<!-- Pages Read Card -->
+<div class="bg-surface-container dark:bg-surface-container rounded-DEFAULT p-5 flex flex-col items-center text-center gap-3 relative overflow-hidden group hover:bg-surface-container-high transition-colors col-span-2 md:col-span-1">
+<div class="w-16 h-16 rounded-full bg-primary-container/10 flex items-center justify-center group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[32px] text-primary-fixed-dim" data-icon="layers" style="font-variation-settings: 'FILL' 1;">layers</span>
+</div>
+<div>
+<div class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">8,420</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mt-1">Pages Read</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Library Stats Glassmorphism Style -->
+<section class="flex flex-col gap-stack-sm mt-4">
+<h3 class="font-title-lg text-title-lg text-on-surface px-1">Library Insights</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Genre Distribution -->
+<div class="bg-surface-container/80 backdrop-blur-md border border-outline-variant/20 rounded-DEFAULT p-6 flex flex-col gap-4">
+<h4 class="font-title-md text-title-md text-on-surface">Top Genres</h4>
+<div class="flex flex-col gap-3">
+<div class="flex flex-col gap-1">
+<div class="flex justify-between font-label-sm text-label-sm">
+<span class="text-on-surface">Fantasy</span>
+<span class="text-on-surface-variant">45%</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-2">
+<div class="bg-primary-fixed-dim h-2 rounded-full" style="width: 45%"></div>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex justify-between font-label-sm text-label-sm">
+<span class="text-on-surface">Sci-Fi</span>
+<span class="text-on-surface-variant">30%</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-2">
+<div class="bg-secondary-fixed-dim h-2 rounded-full" style="width: 30%"></div>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex justify-between font-label-sm text-label-sm">
+<span class="text-on-surface">Non-Fiction</span>
+<span class="text-on-surface-variant">15%</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-2">
+<div class="bg-tertiary-fixed-dim h-2 rounded-full" style="width: 15%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Year in Books Overview -->
+<div class="bg-surface-container/80 backdrop-blur-md border border-outline-variant/20 rounded-DEFAULT p-6 flex flex-col justify-between relative overflow-hidden group">
+<div class="absolute -right-8 -bottom-8 w-32 h-32 bg-secondary/10 rounded-full blur-xl group-hover:bg-secondary/20 transition-all duration-500"></div>
+<h4 class="font-title-md text-title-md text-on-surface z-10">Year in Books</h4>
+<div class="flex items-end gap-2 h-24 mt-4 z-10">
+<!-- Mock Chart Bars -->
+<div class="flex-1 bg-primary/20 rounded-t-sm h-[30%] hover:bg-primary/40 transition-colors relative group/bar"></div>
+<div class="flex-1 bg-primary/20 rounded-t-sm h-[50%] hover:bg-primary/40 transition-colors"></div>
+<div class="flex-1 bg-primary/20 rounded-t-sm h-[20%] hover:bg-primary/40 transition-colors"></div>
+<div class="flex-1 bg-primary/40 rounded-t-sm h-[70%] hover:bg-primary/60 transition-colors"></div>
+<div class="flex-1 bg-primary/20 rounded-t-sm h-[40%] hover:bg-primary/40 transition-colors"></div>
+<div class="flex-1 bg-primary/60 rounded-t-sm h-[90%] hover:bg-primary/80 transition-colors relative">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface font-label-sm text-label-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Jun: 5</div>
+</div>
+<div class="flex-1 bg-primary/20 rounded-t-sm h-[10%] hover:bg-primary/40 transition-colors"></div>
+</div>
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant mt-2 z-10">
+<span>Jan</span>
+<span>Dec</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Actions / Settings List -->
+<section class="flex flex-col gap-stack-sm mt-4 mb-8">
+<h3 class="font-title-lg text-title-lg text-on-surface px-1">Settings &amp; Activity</h3>
+<div class="bg-surface-container rounded-DEFAULT overflow-hidden flex flex-col divide-y divide-outline-variant/10 border border-outline-variant/10">
+<button class="flex items-center gap-4 p-4 hover:bg-surface-container-high transition-colors active:bg-surface-container-highest text-left w-full focus:outline-none focus:bg-surface-container-high">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="history">history</span>
+<span class="font-title-md text-title-md text-on-surface flex-1">Reading History</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="flex items-center gap-4 p-4 hover:bg-surface-container-high transition-colors active:bg-surface-container-highest text-left w-full focus:outline-none focus:bg-surface-container-high">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="flag">flag</span>
+<span class="font-title-md text-title-md text-on-surface flex-1">Personal Goals</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="flex items-center gap-4 p-4 hover:bg-surface-container-high transition-colors active:bg-surface-container-highest text-left w-full focus:outline-none focus:bg-surface-container-high">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="manage_accounts">manage_accounts</span>
+<span class="font-title-md text-title-md text-on-surface flex-1">Account Settings</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="flex items-center gap-4 p-4 hover:bg-surface-container-high transition-colors active:bg-surface-container-highest text-left w-full focus:outline-none focus:bg-surface-container-high">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="lock">lock</span>
+<span class="font-title-md text-title-md text-on-surface flex-1">Privacy</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 h-20 bg-surface-container-low dark:bg-surface-container-low md:hidden" id="bottomNavBar">
+<div class="flex justify-around items-center px-2 pb-safe h-full">
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-5 py-1 hover:bg-surface-variant dark:hover:bg-surface-variant active:scale-90 transition-transform rounded-xl w-16 focus:outline-none">
+<span class="material-symbols-outlined mb-1" data-icon="home_storage">home_storage</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-5 py-1 hover:bg-surface-variant dark:hover:bg-surface-variant active:scale-90 transition-transform rounded-xl w-16 focus:outline-none">
+<span class="material-symbols-outlined mb-1" data-icon="auto_stories">auto_stories</span>
+<span class="font-label-sm text-label-sm">Library</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-5 py-1 hover:bg-surface-variant dark:hover:bg-surface-variant active:scale-90 transition-transform rounded-xl w-16 focus:outline-none">
+<span class="material-symbols-outlined mb-1" data-icon="bar_chart">bar_chart</span>
+<span class="font-label-sm text-label-sm">Stats</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-primary-container dark:bg-primary-container text-on-primary-container dark:text-on-primary-container rounded-2xl px-5 py-1 active:scale-90 transition-transform w-16 focus:outline-none">
+<span class="material-symbols-outlined mb-1" data-icon="person" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-sm text-label-sm font-bold">Profile</span>
+</button>
+</div>
+</nav>
+<!-- SideNav for Desktop (Hidden on mobile) -->
+<nav class="hidden md:flex flex-col fixed left-0 top-16 bottom-0 w-64 bg-surface-container-low dark:bg-surface-container-low border-r border-outline-variant/10 py-6 px-4 gap-2 z-30">
+<a class="flex items-center gap-4 px-4 py-3 rounded-full text-on-surface-variant hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="home_storage">home_storage</span>
+<span class="font-title-md text-title-md">Home</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-full text-on-surface-variant hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="auto_stories">auto_stories</span>
+<span class="font-title-md text-title-md">Library</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-full text-on-surface-variant hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="bar_chart">bar_chart</span>
+<span class="font-title-md text-title-md">Stats</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-full bg-primary-container text-on-primary-container font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="person" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-title-md text-title-md">Profile</span>
+</a>
+</nav>
+<!-- Desktop content adjustment script -->
+<script>
+        // Simple script to handle scrolling effects on the top app bar if needed
+        window.addEventListener('scroll', () => {
+            const topBar = document.getElementById('topAppBar');
+            if (window.scrollY > 10) {
+                topBar.classList.add('shadow-md', 'bg-surface-container');
+                topBar.classList.remove('bg-background');
+            } else {
+                topBar.classList.remove('shadow-md', 'bg-surface-container');
+                topBar.classList.add('bg-background');
+            }
+        });
+
+        // Add padding to main on desktop to account for side nav
+        const main = document.querySelector('main');
+        if (window.innerWidth >= 768) {
+             main.style.marginLeft = '256px'; // width of side nav
+             main.style.maxWidth = 'calc(100% - 256px)';
+        }
+        
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 768) {
+                 main.style.marginLeft = '256px';
+                 main.style.maxWidth = 'calc(100% - 256px)';
+            } else {
+                 main.style.marginLeft = '0';
+                 main.style.maxWidth = '100%';
+            }
+        });
+    </script>
+</body></html>

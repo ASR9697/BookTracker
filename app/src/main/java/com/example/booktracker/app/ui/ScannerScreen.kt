@@ -47,14 +47,14 @@ import androidx.core.content.ContextCompat
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.booktracker.app.camera.BarcodeAnalyzer
-import com.example.booktracker.app.data.remote.GoogleBooksClient
-import com.example.booktracker.app.data.remote.ScannedBook
+import com.example.booktracker.app.data.remote.BookSearch
+import com.example.booktracker.app.data.remote.BookMetadata
 import java.util.concurrent.Executors
 
 private sealed interface ScanState {
     data object Scanning : ScanState
     data class LookingUp(val isbn: String) : ScanState
-    data class Found(val book: ScannedBook) : ScanState
+    data class Found(val book: BookMetadata) : ScanState
     data class NotFound(val isbn: String) : ScanState
     data class LookupError(val isbn: String) : ScanState
 }
@@ -62,7 +62,7 @@ private sealed interface ScanState {
 @Composable
 fun ScannerScreen(
     onClose: () -> Unit,
-    onBookConfirmed: (ScannedBook) -> Unit
+    onBookConfirmed: (BookMetadata) -> Unit
 ) {
     val context = LocalContext.current
     var hasPermission by remember {
@@ -84,7 +84,7 @@ fun ScannerScreen(
     LaunchedEffect(state) {
         val lookingUp = state as? ScanState.LookingUp ?: return@LaunchedEffect
         state = try {
-            val book = GoogleBooksClient.lookup(lookingUp.isbn)
+            val book = BookSearch.lookup(lookingUp.isbn)
             if (book != null) ScanState.Found(book) else ScanState.NotFound(lookingUp.isbn)
         } catch (e: Exception) {
             ScanState.LookupError(lookingUp.isbn)

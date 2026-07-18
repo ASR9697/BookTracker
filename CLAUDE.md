@@ -63,28 +63,37 @@ Working end-to-end and verified by building + running:
 - Add books manually, or scan an ISBN barcode (CameraX + ML Kit `BarcodeAnalyzer`, filtered to
   `TYPE_ISBN`) with auto-fill from the free Google Books volumes endpoint
   (`data/remote/GoogleBooksClient.kt` — no API key, keyless `q=isbn:` query).
+- CSV Import: Bulk import books from Goodreads or StoryGraph CSV exports (`data/CsvImportEngine.kt`,
+  invoked from `BookRepository.importCsv`), reached from Settings.
 - TBR pipeline: Backlog → Shortlist → Up Next → Reading. Cards promote via a button and
   **swipe-to-dismiss to remove, with an Undo Snackbar** (`repository.restore` re-inserts the
-  exact entity, preserving id/status/progress/lastUpdated — see below).
+  exact entity, preserving id/status/progress/lastUpdated — see below). Each pipeline tab shows a
+  live count pill next to its label.
 - Reading hero card: +1/+10 page progress, Finish (opens a Pacing/Focus/Vibe rating dialog), and
   Give up (opens a DNF dialog: abandon-% slider auto-filled from progress + reason chips).
 - Completion outcomes (Phase 2 §7A): `repository.finishBook(rating)` / `markDnf(pct, reason)` write
   to the existing `Book.rating` map and `Book.dnfData` (no schema change; rating is JSON in Room).
   Finished + DNF books live in `ui/FinishedScreen.kt` (overflow → "Finished books"), which is the
   only place they're visible — the pipeline tabs are TBR-only (Backlog/Shortlist/Up Next).
-- Phone chrome is Material 3: `CenterAlignedTopAppBar` (title + Scan-ISBN action icon), a single
-  `Add` FAB (Material icons, not text glyphs), `PrimaryTabRow`, and a tinted `LocalFireDepartment`
-  streak icon. Dynamic color (Material You) via `dynamicDark/LightColorScheme` on Android 12+.
+- Phone chrome & styling: `CenterAlignedTopAppBar` (title + Scan action icon), an `ExtendedFloatingActionButton`
+  ("Add book"), `PrimaryTabRow`. Theming (`ui/theme/Theme.kt`, `Color.kt`, `Type.kt`) is
+  **dynamic-color-first** (Material You on Android 12+) with a hand-tuned Indigo/Teal/Rose slate
+  palette as the pre-Android-12 fallback — every M3 container/tonal-surface slot is filled in
+  explicitly on that fallback scheme so it doesn't silently mix in default M3 purple. The reading
+  hero is an `ElevatedCard` whose gradient is derived from the active scheme
+  (`primaryContainer` → `tertiaryContainer`, `LocalContentColor` set to `onPrimaryContainer`), not a
+  hardcoded color pair, so it tracks dynamic color and light/dark automatically; it also shows a
+  streak badge pill and a live progress percentage. Empty pipeline states and Settings/Analytics
+  sections use `surfaceContainer`-toned cards instead of bare text on the page background.
 - Watch: shows active book, +1/+10 with haptics, syncs back to the phone's Room DB via
   `WearSyncService` even when the phone app is closed. UI is **Wear Compose Material 3**
   (`AppScaffold`/`ScreenScaffold` giving `TimeText`, M3 components) with dynamic color from the
   watch face (`dynamicColorScheme(context)`, null-fallback to `ColorScheme()`). Ambient mode
   bypasses the scaffold entirely and stays mostly black (burn-in + power).
-- Session recording: explicit Start/End session on the reading hero (open session = `endTime = 0`
-  row in Room, survives process death; auto-closed when the book leaves READING or another book's
-  session starts). Any +1/+10 delta made with **no** session open — on phone or watch — is
-  recorded as a self-contained mini-session so it still counts toward streaks; deltas made while
-  a session is open are NOT double-recorded (finalize captures them via endUnit - startUnit).
+- Session recording & Environment Tagging: explicit Start/End session on the reading hero. Ending
+  a session prompts the user to tag their environment/beverage (e.g., "☕ Coffee Shop", "🌧️ Rainy Day").
+  Any +1/+10 delta made with **no** session open — on phone or watch — is recorded as a
+  self-contained mini-session so it still counts toward streaks.
 - Streaks: `analytics/StreakEngine.kt` computes consecutive days meeting a daily page goal
   (constant `DEFAULT_DAILY_GOAL_PAGES = 20` until a settings screen exists) from completed
   sessions; shown on the hero card with today's page count.
@@ -101,19 +110,20 @@ Working end-to-end and verified by building + running:
   color ramp is a **sequential single hue derived from the Material scheme** (`surfaceVariant` for
   empty, `primaryContainer`→`primary` for levels 1–4), so it tracks dynamic color + light/dark. Has
   stat tiles (pages / active days / best day), a Less→More legend, and tap-a-day-to-see-pages.
+  It also includes an **Environments & Beverages** section that correlates reading volume with the
+  tags saved at the end of each session.
 
 Stubbed / not built (do not assume these work — they are placeholder classes from the original
 scaffold, kept for the Phase 2 roadmap but not wired to anything):
 - `analytics/AnalyticsEngine.kt` (its `QualitativeRatingSliders` stub is now superseded by the real
-  `ui/CompletionDialogs.kt`; the `calculateReadingVelocity`/`correlateEnvironment` functions there
-  are still unused), `format/FormatAdaptabilityLayer.kt`, `hardware/HardwareIntegrations.kt`,
+  `ui/CompletionDialogs.kt`; the `calculateReadingVelocity` function is still unused),
+  `format/FormatAdaptabilityLayer.kt`, `hardware/HardwareIntegrations.kt`,
   `journal/SmartPlanningEngine.kt`, `wear/journal/WristDictaphone.kt` — remaining Phase 2 (§7).
 - Phase 2 §7A "Ratings & DNF" is DONE (see completion outcomes above). Deliberately deprioritized
   from §7B/C for a zero-cost/offline personal app: anime-canon bridge, Android Auto, Google Cast,
   desktop PWA, TTS handoff, geofencing — don't build these without a clear ask.
 - Reading-velocity charts, multi-format tracking (§7B), margin notes/journaling (§7C — `MarginNote`
-  model exists, no storage/UI), a full-screen add-book dialog (still an AlertDialog), wear
-  rotating-bezel input, ambient burn-in pixel-shifting, and syncing the configurable goal to the watch.
+  model exists, no storage/UI), wear rotating-bezel input, ambient burn-in pixel-shifting, and syncing the configurable goal to the watch.
 
 **Before citing PROGRESS.md's milestone tracker as evidence a feature exists, verify against
 actual code.** The original agent run marked all 10 blueprint milestones "COMPLETED" while the
@@ -200,3 +210,6 @@ tool with `.\gradlew.bat`, not the Bash tool with `./gradlew`.
 
 Git history preserves each stage as its own commit — `git log --oneline` — including a baseline
 commit of the original broken scaffold, if you need to see what changed and why.
+
+5. **UI Overhaul & Animations**: Migrated to a 4-tab `NavigationCompose` structure (`Home`, `Library`, `Stats`, `Profile`) matching premium dark-mode mockups. Implemented a dynamic `LazyVerticalGrid` for the Library with filter chips, a polished `AnalyticsScreen` with dynamic charts, and an overhauled `ProfileScreen` showing live streaks and achievements. Added micro-animations (`animateContentSize`, `animateFloatAsState`, `animateItem`) throughout the app.
+6. **API Auto-Fetch**: Built a full-screen `AddBookScreen` with a debounced search bar querying the free Google Books API. Results auto-populate the database with metadata and cover art upon selection. Fixed a concurrency bug where `CancellationException` during debouncing caused false-positive error states.

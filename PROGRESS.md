@@ -105,3 +105,9 @@ Milestones 6–10 remain stubs. See README.md for the honest state and roadmap.
   - Both modules verified: assembleDebug green (one transient Windows file-lock from a stale daemon after the Kotlin bump — cleared with `gradlew --stop`). New classes confirmed in the APK.
   - Deliberately deprioritized from Phase 2 as off-constraint for a free/offline personal app: anime-canon bridge, Android Auto, Google Cast, desktop PWA, TTS, geofencing.
   - Next Step: multi-format tracking (§7B), margin notes (§7C), or velocity charts.
+
+- **[2026-07-18] Feature Expansion & Premium UI Overhaul (Antigravity)**:
+  - **Text Search & CSV Import**: Implemented `GoogleBooksClient` manual text search for books without barcodes. Added `CsvImportEngine.kt` to parse Goodreads and StoryGraph CSV exports, automatically mapping status and injecting imported books into the local Room database.
+  - **Environment Correlator**: Added `EndSessionDialog` that prompts the user to tag their reading session with environment and beverage tags. Upgraded `AnalyticsScreen` to aggregate these tags and show top environments ranked by pages read.
+  - **Premium UI Overhaul**: Created a custom design system with rich Indigo/Slate palettes (`Color.kt`), bold typography (`Type.kt`), and `Theme.kt`. Removed dynamic color reliance. Refined the "Currently Reading" hero with a gradient background, `ElevatedCard` with rounded corners (24.dp), and `animateContentSize()`. Embellished empty states with illustration icons.
+  - Next Step: reading velocity charts or Wear OS complications/haptics.

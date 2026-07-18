@@ -14,7 +14,7 @@ object ServiceLocator {
     private var database: AppDatabase? = null
 
     fun repository(context: Context): BookRepository =
-        db(context).let { RoomBookRepository(it.bookDao(), it.sessionDao()) }
+        db(context).let { RoomBookRepository(it.bookDao(), it.sessionDao(), it.marginNoteDao()) }
 
     fun settings(context: Context): SettingsRepository =
         SettingsRepository(context.applicationContext)
@@ -25,6 +25,8 @@ object ServiceLocator {
                 context.applicationContext,
                 AppDatabase::class.java,
                 "booktracker.db"
-            ).build().also { database = it }
+            )
+                .addMigrations(AppDatabase.MIGRATION_1_2)
+                .build().also { database = it }
         }
 }

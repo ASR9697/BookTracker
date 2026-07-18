@@ -48,7 +48,9 @@ data class ActiveBook(
     val id: String,
     val title: String,
     val currentUnit: Int,
-    val totalUnits: Int
+    val totalUnits: Int,
+    val dailyGoal: Int = 0,
+    val pagesToday: Int = 0
 )
 
 class WearActivity : ComponentActivity(), DataClient.OnDataChangedListener {
@@ -130,7 +132,9 @@ class WearActivity : ComponentActivity(), DataClient.OnDataChangedListener {
             id = id,
             title = dataMap.getString(Constants.KEY_TITLE) ?: "",
             currentUnit = dataMap.getInt(Constants.KEY_CURRENT_UNIT),
-            totalUnits = dataMap.getInt(Constants.KEY_TOTAL_UNITS)
+            totalUnits = dataMap.getInt(Constants.KEY_TOTAL_UNITS),
+            dailyGoal = dataMap.getInt(Constants.KEY_DAILY_GOAL),
+            pagesToday = dataMap.getInt(Constants.KEY_PAGES_TODAY)
         )
     }
 
@@ -140,7 +144,11 @@ class WearActivity : ComponentActivity(), DataClient.OnDataChangedListener {
         val newUnit = (book.currentUnit + delta).coerceAtMost(ceiling)
         val now = System.currentTimeMillis()
         lastLocalActionAt = now
-        activeBook.value = book.copy(currentUnit = newUnit)
+        // Optimistically bump the goal dial too; the phone's echo corrects it.
+        activeBook.value = book.copy(
+            currentUnit = newUnit,
+            pagesToday = book.pagesToday + (newUnit - book.currentUnit)
+        )
 
         lifecycleScope.launch {
             try {
@@ -263,6 +271,17 @@ private fun ActiveBookContent(
             Text(
                 "of ${book.totalUnits}",
                 style = MaterialTheme.typography.labelSmall
+            )
+        }
+        if (book.dailyGoal > 0) {
+            Spacer4()
+            val goalMet = book.pagesToday >= book.dailyGoal
+            Text(
+                if (goalMet) "Goal met · ${book.pagesToday} today"
+                else "Today ${book.pagesToday}/${book.dailyGoal}",
+                style = MaterialTheme.typography.labelSmall,
+                color = if (goalMet) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

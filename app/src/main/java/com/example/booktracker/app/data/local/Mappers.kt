@@ -2,6 +2,7 @@ package com.example.booktracker.app.data.local
 
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.DnfData
+import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.Session
 import org.json.JSONArray
 import org.json.JSONObject
@@ -30,7 +31,10 @@ fun BookEntity.toModel(): Book = Book(
     status = status,
     dnfData = dnfPercentage?.let { DnfData(it, dnfReason.orEmpty()) },
     lastUpdated = lastUpdated,
-    rating = rating.toFloatMap()
+    rating = rating.toFloatMap(),
+    description = description,
+    genres = genres.toStringList(),
+    publishedDate = publishedDate
 )
 
 fun Book.toEntity(): BookEntity = BookEntity(
@@ -45,7 +49,28 @@ fun Book.toEntity(): BookEntity = BookEntity(
     dnfPercentage = dnfData?.abandonedPercentage,
     dnfReason = dnfData?.reason,
     lastUpdated = lastUpdated,
-    rating = JSONObject(rating.mapValues { it.value.toDouble() }).toString()
+    rating = JSONObject(rating.mapValues { it.value.toDouble() }).toString(),
+    description = description,
+    genres = JSONArray(genres).toString(),
+    publishedDate = publishedDate
+)
+
+fun MarginNoteEntity.toModel(): MarginNote = MarginNote(
+    id = id,
+    bookId = bookId,
+    timestamp = timestamp,
+    pageOrUnit = pageOrUnit,
+    markdownContent = markdownContent,
+    isVoiceDictated = isVoiceDictated
+)
+
+fun MarginNote.toEntity(): MarginNoteEntity = MarginNoteEntity(
+    id = id,
+    bookId = bookId,
+    timestamp = timestamp,
+    pageOrUnit = pageOrUnit,
+    markdownContent = markdownContent,
+    isVoiceDictated = isVoiceDictated
 )
 
 private fun String.toStringList(): List<String> {

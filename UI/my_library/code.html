@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>My Library - Nocturnal Reader</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-container-low": "#1c1b1f",
+                "on-primary": "#37265e",
+                "secondary-container": "#00b1c3",
+                "on-tertiary-fixed-variant": "#6c3832",
+                "surface-bright": "#3a383d",
+                "outline-variant": "#49454f",
+                "on-surface-variant": "#cac4d0",
+                "on-secondary": "#00363d",
+                "secondary-fixed": "#96f0ff",
+                "on-error": "#690005",
+                "surface-dim": "#141317",
+                "on-tertiary": "#51221d",
+                "error": "#ffb4ab",
+                "surface-container-highest": "#353438",
+                "on-tertiary-fixed": "#360e0a",
+                "error-container": "#93000a",
+                "on-primary-container": "#594983",
+                "tertiary-fixed-dim": "#ffb4ab",
+                "tertiary-fixed": "#ffdad5",
+                "tertiary": "#ffdad6",
+                "on-background": "#e5e1e7",
+                "on-secondary-container": "#003e45",
+                "tertiary-container": "#ffb4ab",
+                "surface": "#141317",
+                "primary-fixed-dim": "#d0bcff",
+                "on-tertiary-container": "#7a433d",
+                "on-secondary-fixed": "#001f24",
+                "surface-variant": "#353438",
+                "surface-container": "#201f23",
+                "outline": "#948f9a",
+                "primary-container": "#d0bcff",
+                "on-primary-fixed-variant": "#4d3d76",
+                "on-surface": "#e5e1e7",
+                "on-primary-fixed": "#210f48",
+                "inverse-on-surface": "#313034",
+                "secondary-fixed-dim": "#4fd8eb",
+                "on-error-container": "#ffdad6",
+                "surface-tint": "#d0bcff",
+                "inverse-primary": "#665590",
+                "secondary": "#4fd8eb",
+                "surface-container-lowest": "#0e0e11",
+                "on-secondary-fixed-variant": "#004f57",
+                "primary-fixed": "#e9ddff",
+                "primary": "#e9ddff",
+                "inverse-surface": "#e5e1e7",
+                "background": "#141317",
+                "surface-container-high": "#2b292d"
+        },
+        "borderRadius": {
+                "DEFAULT": "1rem",
+                "lg": "2rem",
+                "xl": "3rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "stack-lg": "1.5rem",
+                "margin-tablet": "1.5rem",
+                "gutter": "1rem",
+                "stack-sm": "0.5rem",
+                "stack-md": "1rem",
+                "margin-mobile": "1rem"
+        },
+        "fontFamily": {
+                "title-md": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "headline-lg-mobile": [
+                        "Inter"
+                ],
+                "title-lg": [
+                        "Inter"
+                ],
+                "label-lg": [
+                        "Inter"
+                ],
+                "headline-lg": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "display-lg": [
+                        "Inter"
+                ],
+                "label-sm": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "title-md": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "letterSpacing": "0.15px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "body-md": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "letterSpacing": "0.25px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "headline-lg-mobile": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "title-lg": [
+                        "22px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "label-lg": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "letterSpacing": "0.1px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "40px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "letterSpacing": "0.5px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "display-lg": [
+                        "57px",
+                        {
+                                "lineHeight": "64px",
+                                "letterSpacing": "-0.25px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-sm": [
+                        "11px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.5px",
+                                "fontWeight": "500"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+  body {
+    background-color: theme('colors.background');
+    color: theme('colors.on-background');
+    font-family: 'Inter', sans-serif;
+  }
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  .material-symbols-outlined[data-weight="fill"] {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+</style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="antialiased min-h-screen flex flex-col relative md:flex-row">
+<!-- Desktop SideNav (Visible md and up) -->
+<div class="hidden md:flex flex-col w-64 h-screen sticky top-0 bg-surface-container border-r border-outline-variant/20 z-50 p-4">
+<div class="font-headline-lg text-headline-lg text-primary mb-8 px-4 mt-4 font-bold tracking-tight">Nocturnal</div>
+<div class="flex flex-col gap-2 flex-grow">
+<!-- Navigation Items -->
+<a class="flex items-center gap-4 px-4 py-3 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="home_storage">home_storage</span>
+<span class="font-label-lg text-label-lg">Home</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-full bg-secondary-container text-on-secondary-container transition-colors font-semibold shadow-sm" href="#">
+<span class="material-symbols-outlined" data-icon="auto_stories" data-weight="fill">auto_stories</span>
+<span class="font-label-lg text-label-lg">My Library</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="bar_chart">bar_chart</span>
+<span class="font-label-lg text-label-lg">Stats</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-lg text-label-lg">Profile</span>
+</a>
+</div>
+<!-- User Profile Snippet in Sidebar -->
+<div class="mt-auto p-4 flex items-center gap-3 border-t border-outline-variant/20">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="A detailed, moody cinematic portrait of a person reading in a dimly lit library. Deep charcoal tones with subtle violet rim lighting. High quality." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGFYQEFp_bAdNh8_x04rBaqrM_jSuqIq7eNKZQ6ZHJ7fVTSRAoxsiVP1HCp8F-u4h3Zm5EYpw6g-Da5Qyr000gZr_UjAYIFtvpQsj3bFMgEA_KPTJECTLTF10NcuYSEnRye72UH-79_BcLknkDHe8QXD_-kWk7RkuaektVjMMUP7YUoqeFy6hcB2gsSVLdNmlCJMQ_j6hvMJAQd7grqzaItbmjb97nwbxPGjLCSU0vkgwR86AV81Ga3YcsLAedXHFK3Oda5TNdlnw"/>
+<div>
+<div class="font-label-lg text-label-lg text-on-surface">Reading Enthusiast</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">Level 12 Bibliophile</div>
+</div>
+</div>
+</div>
+<main class="flex-grow flex flex-col pb-24 md:pb-0 w-full">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky bg-background/90 backdrop-blur-md z-40">
+<div class="flex justify-between items-center px-margin-mobile h-16 md:px-margin-tablet">
+<button class="md:hidden p-2 -ml-2 text-primary active:scale-95 duration-100 rounded-full hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<h1 class="font-title-lg text-title-lg text-on-surface font-extrabold tracking-tight">My Library</h1>
+<button class="p-2 -mr-2 text-primary active:scale-95 duration-100 rounded-full hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<div class="px-margin-mobile md:px-margin-tablet pt-stack-md flex-grow">
+<!-- Filter Chips -->
+<div class="flex overflow-x-auto gap-2 pb-4 scrollbar-hide -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0 snap-x">
+<button class="snap-start shrink-0 px-4 py-1.5 rounded-full bg-primary-container text-on-primary-container font-label-lg text-label-lg whitespace-nowrap active:scale-95 transition-transform shadow-sm border border-transparent">All</button>
+<button class="snap-start shrink-0 px-4 py-1.5 rounded-full bg-surface-container text-on-surface font-label-lg text-label-lg whitespace-nowrap hover:bg-surface-container-high border border-outline-variant/30 transition-colors">Reading</button>
+<button class="snap-start shrink-0 px-4 py-1.5 rounded-full bg-surface-container text-on-surface font-label-lg text-label-lg whitespace-nowrap hover:bg-surface-container-high border border-outline-variant/30 transition-colors">To-Read</button>
+<button class="snap-start shrink-0 px-4 py-1.5 rounded-full bg-surface-container text-on-surface font-label-lg text-label-lg whitespace-nowrap hover:bg-surface-container-high border border-outline-variant/30 transition-colors">Finished</button>
+</div>
+<!-- Book Grid (Bento style approach for varied sizes) -->
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mt-stack-md">
+<!-- Currently Reading (Highlighted Card) -->
+<div class="col-span-2 row-span-2 md:col-span-2 md:row-span-2 bg-surface-container rounded-DEFAULT overflow-hidden group cursor-pointer relative shadow-sm hover:shadow-md transition-shadow">
+<div class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none rounded-DEFAULT"></div>
+<div class="flex flex-col h-full relative">
+<div class="h-48 md:h-64 relative w-full overflow-hidden rounded-t-DEFAULT">
+<img class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A highly detailed, cinematic book cover design featuring a glowing cybernetic cityscape at night. Deep neon purples and blacks. Modern typography. High resolution." src="https://lh3.googleusercontent.com/aida-public/AB6AXuChp-SYoGzXL1PS8mT5gIfGC4chzAScM8Xwe7nskYVrUo9s-neg-_VNy3I8JVIFDEMde5TBB-QDuNvIZrg8ybFOWN13VNNDBhsAT6qjQwGcSXnCeeFZ8oeBdlaUzZvnOKbMsFzRcQ2pNrPLsx2mJQcR_heyzdRakQG6oDQPyd_57TMBshMZfh9YMrC305SCaDpbL-tUQpA_zleS0qj83ipgo4m-3keeRh5xMZKoOz2G3vsgeroipVBZG-8owjOaOZDeAgJapsXguco"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent"></div>
+<div class="absolute top-2 right-2 bg-surface/80 backdrop-blur text-secondary px-2 py-1 rounded-full font-label-sm text-label-sm flex items-center gap-1 border border-secondary/20">
+<span class="material-symbols-outlined text-[14px]" data-icon="book" data-weight="fill">book</span> Reading
+               </div>
+</div>
+<div class="p-4 flex flex-col flex-grow bg-surface-container">
+<h3 class="font-title-md text-title-md text-on-surface line-clamp-2 mb-1">Neuromancer's Dream</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">William Gibson</p>
+<div class="mt-auto">
+<div class="flex justify-between items-end mb-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant">68%</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Page 214 of 312</span>
+</div>
+<div class="w-full bg-surface-container-highest rounded-full h-1.5 overflow-hidden">
+<div class="bg-secondary h-1.5 rounded-full" style="width: 68%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Finished Book -->
+<div class="col-span-1 bg-surface-container rounded-DEFAULT overflow-hidden group cursor-pointer relative shadow-sm hover:shadow-md transition-shadow flex flex-col">
+<div class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none rounded-DEFAULT"></div>
+<div class="aspect-[2/3] relative w-full overflow-hidden rounded-t-DEFAULT">
+<img class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A minimalist book cover design featuring a solitary illuminated window in a dark brutalist building. Charcoal and subtle warm tones. High quality." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHcgvMFUfj3ZzMIKyGIB92mvyIxOspPIckCWuGsFLGSSAcGGDAy1b2Z3Tq0wphV2epNuJix-YVc3XShv0yTn2KaMOTxLqfyKfiHtrNESG5m_Y48lEWXC4KnG4KrA89_ro-qyYoTSQFz219NfnKc6PqUuh04qNc_zzvuoWNPsJ-HKTqfZObjHg9tQEpFn0bZgl9xhROSe4IWp_s7MhFKOpzT8qK8Pe0iUhDjVBUa68t7zHA8P1cK_9nYuhBa-05hhsYsIiLn84oGEM"/>
+<div class="absolute top-2 right-2 bg-surface/80 backdrop-blur text-primary px-1.5 py-1.5 rounded-full flex items-center justify-center border border-primary/20 shadow-sm">
+<span class="material-symbols-outlined text-[16px]" data-icon="check_circle" data-weight="fill">check_circle</span>
+</div>
+</div>
+<div class="p-3 flex flex-col flex-grow bg-surface-container">
+<h3 class="font-title-md text-title-md text-on-surface line-clamp-1 text-sm md:text-base">The Concrete Void</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-xs md:text-sm mt-0.5">E. L. Vance</p>
+</div>
+</div>
+<!-- To-Read Book -->
+<div class="col-span-1 bg-surface-container rounded-DEFAULT overflow-hidden group cursor-pointer relative shadow-sm hover:shadow-md transition-shadow flex flex-col">
+<div class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none rounded-DEFAULT"></div>
+<div class="aspect-[2/3] relative w-full overflow-hidden rounded-t-DEFAULT">
+<img class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A vintage style book cover depicting an intricate pocket watch floating in space. Deep blacks, starlight, and brass accents. Moody aesthetic. High resolution." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCNLkoFo8H5qI6SJI4oh50-m934CjtDL1b5oL7zU-ayWJZHZhR_BpYUbCOvgcyh6SNFpJEeAd8Ogrfo5zBA8RXlJw0ke5krAH-6syyoNJR2mo-3P3M6gRvUyL9MK5JtA6Q9W8AdZKp5c0vDDiZq53c86NGuPHmhsU8fsY2fXnRAvfqJgOdBDm4BL1evq31kOQScQXqs9DePEm3Nn4iyFWFX5dOi5wgdoHiQ7nBYyfbPdBH5i67FDzxvecoRy3XDOCRyJoMt-dbm85o"/>
+</div>
+<div class="p-3 flex flex-col flex-grow bg-surface-container">
+<h3 class="font-title-md text-title-md text-on-surface line-clamp-1 text-sm md:text-base">Time's Arrow</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-xs md:text-sm mt-0.5">Martin Amis</p>
+</div>
+</div>
+<!-- Reading Book (Small) -->
+<div class="col-span-1 bg-surface-container rounded-DEFAULT overflow-hidden group cursor-pointer relative shadow-sm hover:shadow-md transition-shadow flex flex-col">
+<div class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none rounded-DEFAULT"></div>
+<div class="aspect-[2/3] relative w-full overflow-hidden rounded-t-DEFAULT">
+<img class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A serene, ethereal book cover design showing glowing mist rising from a dark forest floor at midnight. Subtle teal and charcoal palette. High detail." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUSZToRPVUL7Uv3hVo7EhMHh3ddOxfL9zNEyIY_ZI4__w0Eahkljr-eH_z4f2_EjeP4mQNGOrnXdvAYL1_jIvIXkUgRaPExOD2hNSZ7zicW-XkDoO6SJSoyKoGDgD23T_OUDf5npPiQEhblI6Rkcl_UVlGs-KNHxqblU6_vn1UdZecriD1lWxEFVYTeb8GSG68kmdNp88HhfQVKp_pY2X0HLkc7utxBhlOJUc0-6Dj9KDHsnCu4U-sYDnUVX7R_IV__HHQcc0uieQ"/>
+</div>
+<div class="p-3 flex flex-col flex-grow bg-surface-container">
+<h3 class="font-title-md text-title-md text-on-surface line-clamp-1 text-sm md:text-base">Midnight Whispers</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-xs md:text-sm mt-0.5">S. R. Woods</p>
+<div class="mt-2">
+<div class="w-full bg-surface-container-highest rounded-full h-1 overflow-hidden">
+<div class="bg-secondary h-1 rounded-full" style="width: 22%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Finished Book -->
+<div class="col-span-1 bg-surface-container rounded-DEFAULT overflow-hidden group cursor-pointer relative shadow-sm hover:shadow-md transition-shadow flex flex-col">
+<div class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none rounded-DEFAULT"></div>
+<div class="aspect-[2/3] relative w-full overflow-hidden rounded-t-DEFAULT">
+<img class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 grayscale group-hover:grayscale-0 transition-all duration-300" data-alt="An abstract, geometric book cover design with sharp, intersecting lines in deep violet and pitch black. Modern corporate aesthetic. High resolution." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkOA4eauR_6I4-o1G9iwK63LSaFU9c-lIlGOuAzwOxG3NyqjXh5jaYRJYIfcwCzveUqvSjaQJox9OgW7n-q5Spm3-hkUvsJ4iI2f-V65DAvD0jxb6igx909sekXW6xmouV-_Z4xbGCFJckHnmSU_KT8nNyZ_uGf3-dzcCchgvGBNjGbt8C32O9BCkQUwjd07eWoirlkNgUsI65TbCfvvKpKrkobbOwNU0FCXrCz-X_ONPpU6VtNWsyuHHclMlk1eh30KV3Vao9L5I"/>
+<div class="absolute top-2 right-2 bg-surface/80 backdrop-blur text-primary px-1.5 py-1.5 rounded-full flex items-center justify-center border border-primary/20 shadow-sm">
+<span class="material-symbols-outlined text-[16px]" data-icon="check_circle" data-weight="fill">check_circle</span>
+</div>
+</div>
+<div class="p-3 flex flex-col flex-grow bg-surface-container">
+<h3 class="font-title-md text-title-md text-on-surface line-clamp-1 text-sm md:text-base">Calculated Risks</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-xs md:text-sm mt-0.5">H. J. Banks</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action Button -->
+<button class="fixed bottom-24 right-4 md:bottom-8 md:right-8 w-14 h-14 bg-primary text-on-primary rounded-[28px] shadow-lg flex items-center justify-center hover:bg-primary-fixed transition-colors active:scale-95 duration-200 z-50">
+<span class="material-symbols-outlined text-[24px]" data-icon="add">add</span>
+</button>
+<!-- BottomNavBar (Visible only on mobile) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 h-20 bg-surface-container-low flex justify-around items-center px-2 pb-safe border-t border-outline-variant/10 shadow-[0_-4px_16px_rgba(0,0,0,0.3)]">
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-5 py-1 hover:bg-surface-variant rounded-2xl transition-colors" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="home_storage">home_storage</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-2xl px-5 py-1 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="auto_stories" data-weight="fill">auto_stories</span>
+<span class="font-label-sm text-label-sm font-semibold">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-5 py-1 hover:bg-surface-variant rounded-2xl transition-colors" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="bar_chart">bar_chart</span>
+<span class="font-label-sm text-label-sm">Stats</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-5 py-1 hover:bg-surface-variant rounded-2xl transition-colors" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+</body></html>

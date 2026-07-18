@@ -45,3 +45,15 @@ interface SessionDao {
     @Query("SELECT * FROM sessions WHERE endTime = 0 AND bookId = :bookId LIMIT 1")
     suspend fun getOpenSessionForBook(bookId: String): SessionEntity?
 }
+
+@Dao
+interface MarginNoteDao {
+    @Query("SELECT * FROM margin_notes WHERE bookId = :bookId ORDER BY timestamp DESC")
+    fun observeForBook(bookId: String): Flow<List<MarginNoteEntity>>
+
+    @Upsert
+    suspend fun upsert(note: MarginNoteEntity)
+
+    @Query("DELETE FROM margin_notes WHERE id = :id")
+    suspend fun deleteById(id: String)
+}

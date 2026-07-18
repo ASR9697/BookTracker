@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Reading Timer - Nocturnal Reader</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-fixed-variant": "#004f57",
+                      "on-surface": "#e5e1e7",
+                      "tertiary-container": "#ffb4ab",
+                      "surface-bright": "#3a383d",
+                      "on-error-container": "#ffdad6",
+                      "surface-container": "#201f23",
+                      "error-container": "#93000a",
+                      "primary-container": "#d0bcff",
+                      "error": "#ffb4ab",
+                      "on-tertiary-fixed": "#360e0a",
+                      "on-primary-fixed": "#210f48",
+                      "tertiary-fixed": "#ffdad5",
+                      "primary": "#e9ddff",
+                      "surface": "#141317",
+                      "secondary-fixed-dim": "#4fd8eb",
+                      "on-primary-container": "#594983",
+                      "tertiary": "#ffdad6",
+                      "on-primary": "#37265e",
+                      "primary-fixed": "#e9ddff",
+                      "on-secondary-fixed": "#001f24",
+                      "background": "#141317",
+                      "on-secondary": "#00363d",
+                      "surface-container-highest": "#353438",
+                      "secondary": "#4fd8eb",
+                      "outline-variant": "#49454f",
+                      "on-secondary-container": "#003e45",
+                      "tertiary-fixed-dim": "#ffb4ab",
+                      "on-tertiary-container": "#7a433d",
+                      "on-error": "#690005",
+                      "surface-container-lowest": "#0e0e11",
+                      "on-background": "#e5e1e7",
+                      "outline": "#948f9a",
+                      "surface-container-low": "#1c1b1f",
+                      "on-tertiary-fixed-variant": "#6c3832",
+                      "on-surface-variant": "#cac4d0",
+                      "inverse-on-surface": "#313034",
+                      "secondary-fixed": "#96f0ff",
+                      "surface-container-high": "#2b292d",
+                      "secondary-container": "#00b1c3",
+                      "surface-dim": "#141317",
+                      "primary-fixed-dim": "#d0bcff",
+                      "on-primary-fixed-variant": "#4d3d76",
+                      "inverse-primary": "#665590",
+                      "surface-variant": "#353438",
+                      "on-tertiary": "#51221d",
+                      "surface-tint": "#d0bcff",
+                      "inverse-surface": "#e5e1e7"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-lg": "1.5rem",
+                      "margin-tablet": "1.5rem",
+                      "gutter": "1rem",
+                      "stack-md": "1rem",
+                      "stack-sm": "0.5rem",
+                      "margin-mobile": "1rem"
+              },
+              "fontFamily": {
+                      "label-lg": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "title-lg": [
+                              "Inter"
+                      ],
+                      "title-md": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.1px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "display-lg": [
+                              "57px",
+                              {
+                                      "lineHeight": "64px",
+                                      "letterSpacing": "-0.25px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "title-lg": [
+                              "22px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "title-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "letterSpacing": "0.15px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.25px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "11px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.5px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "letterSpacing": "0.5px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .timer-circle {
+            stroke-dasharray: 880; /* Circumference of circle approx */
+            stroke-dashoffset: 220; /* ~75% complete (25% remaining) */
+            transition: stroke-dashoffset 1s linear;
+        }
+        
+        .pulse-ring {
+            animation: pulse 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0; transform: scale(0.9); }
+            50% { opacity: 0.15; transform: scale(1.1); }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-md overflow-x-hidden selection:bg-primary-container selection:text-on-primary-container">
+<!-- Top App Bar (Custom Contextual) -->
+<header class="w-full top-0 sticky bg-background z-50 flex justify-between items-center px-margin-mobile h-16">
+<div class="flex items-center justify-center w-10 h-10 rounded-full text-on-surface hover:bg-surface-container-highest transition-colors active:scale-95 duration-100 cursor-pointer">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">close</span>
+</div>
+<div class="flex flex-col items-center justify-center flex-1 mx-4">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Reading Now</span>
+<h1 class="font-title-md text-title-md text-on-surface truncate w-full text-center">The Name of the Wind</h1>
+</div>
+<!-- Empty div to balance the flex-between layout -->
+<div class="w-10 h-10"></div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col items-center justify-start px-margin-mobile pt-stack-lg pb-stack-lg gap-stack-lg">
+<!-- Timer Display Section -->
+<section class="relative flex flex-col items-center justify-center w-full max-w-sm aspect-square mt-4">
+<!-- Decorative Pulse Rings -->
+<div class="absolute inset-0 rounded-full border-2 border-primary-container pulse-ring pointer-events-none"></div>
+<div class="absolute inset-4 rounded-full border-2 border-primary pulse-ring pointer-events-none" style="animation-delay: 0.5s;"></div>
+<!-- SVG Circular Progress -->
+<svg class="absolute w-full h-full transform -rotate-90" viewbox="0 0 300 300">
+<!-- Background Track -->
+<circle class="text-surface-container-highest" cx="150" cy="150" fill="none" r="140" stroke="currentColor" stroke-width="8"></circle>
+<!-- Progress Indicator -->
+<circle class="text-primary timer-circle" cx="150" cy="150" fill="none" r="140" stroke="currentColor" stroke-linecap="round" stroke-width="8"></circle>
+</svg>
+<!-- Time Display -->
+<div class="relative z-10 flex flex-col items-center">
+<span class="font-display-lg text-display-lg text-primary-fixed font-light tracking-tight tabular-nums">24:15</span>
+<span class="font-label-lg text-label-lg text-primary-fixed-dim mt-2">Remaining</span>
+</div>
+</section>
+<!-- Primary Actions (Pause / Stop) -->
+<section class="flex flex-row items-center justify-center gap-6 mt-4 w-full">
+<!-- Stop Button -->
+<button class="flex flex-col items-center justify-center w-16 h-16 rounded-full border border-outline-variant text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface hover:border-outline transition-all active:scale-95">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">stop</span>
+</button>
+<!-- Pause Button (Primary Action) -->
+<button class="flex items-center justify-center w-20 h-20 rounded-2xl bg-primary text-on-primary hover:bg-primary-fixed transition-all active:scale-90 shadow-lg shadow-primary/20 relative overflow-hidden group">
+<span class="material-symbols-outlined text-4xl relative z-10" style="font-variation-settings: 'FILL' 1;">pause</span>
+<!-- Inner glow effect on press simulated by group-active -->
+<div class="absolute inset-0 bg-white/20 opacity-0 group-active:opacity-100 transition-opacity"></div>
+</button>
+</section>
+<!-- Add Time Chips -->
+<section class="flex flex-col items-center w-full mt-stack-md gap-stack-sm">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Add Time</span>
+<div class="flex flex-row justify-center gap-3">
+<button class="px-4 py-2 rounded-full border border-secondary text-secondary font-label-lg text-label-lg hover:bg-secondary/10 transition-colors active:scale-95">
+                    +5m
+                </button>
+<button class="px-4 py-2 rounded-full border border-secondary text-secondary font-label-lg text-label-lg hover:bg-secondary/10 transition-colors active:scale-95">
+                    +10m
+                </button>
+<button class="px-4 py-2 rounded-full border border-secondary text-secondary font-label-lg text-label-lg hover:bg-secondary/10 transition-colors active:scale-95">
+                    +15m
+                </button>
+</div>
+</section>
+<div class="flex-1"></div> <!-- Spacer to push book card to bottom -->
+<!-- Current Book Context Card -->
+<section class="w-full bg-surface-container rounded-lg p-3 flex flex-row items-center gap-4 active:scale-[0.98] transition-transform cursor-pointer relative overflow-hidden group">
+<!-- Book Cover -->
+<div class="w-16 h-24 rounded shrink-0 overflow-hidden bg-surface-container-highest relative">
+<div class="bg-cover bg-center w-full h-full" data-alt="A moody, cinematic rendering of a thick fantasy book leaning against a dark oak desk. The cover is obscured but hints at deep crimson and gold foil textures. Soft, dramatic chiaroscuro lighting emphasizes the textured edges of the pages in a pitch-black library setting, establishing a sophisticated dark-mode aesthetic." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDUNs10aD5J8XSFgQ3BusyP2UTngI5PmplKhCb-L06JJUWOCiJ7mCCaqKOoG6z6x3yvbqbTVM2UCCTjZWKmQ1UnTK61KdAIvOI06wB9E67KuDTvV6j8iW9CHSG0R0dcJajei0H9TYwTQtOqDPhXBmkaffeALm1s-gyOZWYc_8ugNKD3iFEgQiG7lzko4zm-a9xCu1GEIiGG6PB0N562EQ8ME0HCdAn_WNYit9LiyWjbsD45CIvSohNOvGYBxCvuPU5mXuYFrMPEcsc')"></div>
+</div>
+<!-- Metadata & Mini Progress -->
+<div class="flex flex-col flex-1 gap-1">
+<h3 class="font-title-md text-title-md text-on-surface line-clamp-1">The Name of the Wind</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Patrick Rothfuss</p>
+<div class="mt-2 flex flex-col gap-1 w-full">
+<div class="flex justify-between items-center w-full">
+<span class="font-label-sm text-label-sm text-primary">Progress</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant tabular-nums">42%</span>
+</div>
+<!-- Linear Progress Bar -->
+<div class="h-1.5 w-full bg-secondary/20 rounded-full overflow-hidden">
+<div class="h-full bg-secondary rounded-full" style="width: 42%;"></div>
+</div>
+</div>
+</div>
+<!-- Interactive inner stroke on hover/press -->
+<div class="absolute inset-0 border border-primary/0 group-hover:border-primary/30 group-active:border-primary/50 rounded-lg pointer-events-none transition-colors"></div>
+</section>
+</main>
+<script>
+        // Simple script to handle interaction feedback (optional, visual only for this demo)
+        document.querySelectorAll('button, .cursor-pointer').forEach(el => {
+            el.addEventListener('mousedown', () => {
+                // Haptic feedback simulation could go here
+            });
+        });
+    </script>
+</body></html>

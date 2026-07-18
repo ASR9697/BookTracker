@@ -36,7 +36,10 @@ data class Book(
     val status: String = BookStatus.BACKLOG.name,
     val dnfData: DnfData? = null,
     val lastUpdated: Long = 0L,
-    val rating: Map<String, Float> = emptyMap() // Pacing, Focus, Vibe
+    val rating: Map<String, Float> = emptyMap(), // Pacing, Focus, Vibe
+    val description: String = "",
+    val genres: List<String> = emptyList(),
+    val publishedDate: String = ""
 )
 
 data class Session(

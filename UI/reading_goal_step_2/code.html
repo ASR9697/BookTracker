@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Select Your Interests - My Library</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#d0bcff",
+                        "secondary-fixed": "#96f0ff",
+                        "error-container": "#93000a",
+                        "secondary": "#4fd8eb",
+                        "on-secondary": "#00363d",
+                        "tertiary-fixed": "#ffdad5",
+                        "on-tertiary-fixed": "#360e0a",
+                        "on-primary-fixed": "#210f48",
+                        "on-error": "#690005",
+                        "inverse-surface": "#e5e1e7",
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "secondary-container": "#00b1c3",
+                        "surface-container": "#201f23",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-container": "#594983",
+                        "background": "#141317",
+                        "surface-variant": "#353438",
+                        "surface": "#141317",
+                        "on-tertiary": "#51221d",
+                        "surface-dim": "#141317",
+                        "surface-container-low": "#1c1b1f",
+                        "primary": "#e9ddff",
+                        "outline": "#948f9a",
+                        "surface-container-high": "#2b292d",
+                        "on-tertiary-fixed-variant": "#6c3832",
+                        "on-surface-variant": "#cac4d0",
+                        "secondary-fixed-dim": "#4fd8eb",
+                        "surface-bright": "#3a383d",
+                        "on-tertiary-container": "#7a433d",
+                        "tertiary": "#ffdad6",
+                        "surface-container-lowest": "#0e0e11",
+                        "primary-fixed-dim": "#d0bcff",
+                        "outline-variant": "#49454f",
+                        "error": "#ffb4ab",
+                        "on-surface": "#e5e1e7",
+                        "primary-fixed": "#e9ddff",
+                        "tertiary-container": "#ffb4ab",
+                        "primary-container": "#d0bcff",
+                        "inverse-on-surface": "#313034",
+                        "inverse-primary": "#665590",
+                        "surface-container-highest": "#353438",
+                        "on-secondary-fixed": "#001f24",
+                        "on-secondary-container": "#003e45",
+                        "on-primary": "#37265e",
+                        "on-primary-fixed-variant": "#4d3d76",
+                        "on-background": "#e5e1e7",
+                        "on-secondary-fixed-variant": "#004f57"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "1rem",
+                        "gutter": "1rem",
+                        "stack-sm": "0.5rem",
+                        "margin-mobile": "1rem",
+                        "stack-lg": "1.5rem",
+                        "margin-tablet": "1.5rem"
+                    },
+                    "fontFamily": {
+                        "title-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "title-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "title-md": ["16px", { "lineHeight": "24px", "letterSpacing": "0.15px", "fontWeight": "500" }],
+                        "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500" }],
+                        "title-lg": ["22px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "display-lg": ["57px", { "lineHeight": "64px", "letterSpacing": "-0.25px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.25px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0.5px", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+        }
+        
+        .chip-checkbox:checked + label {
+            background-color: theme('colors.secondary-container');
+            color: theme('colors.on-secondary-container');
+            border-color: transparent;
+        }
+        
+        .chip-checkbox:checked + label .check-icon {
+            opacity: 1;
+            width: auto;
+            margin-right: 4px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="antialiased min-h-screen flex flex-col items-center justify-center py-10 px-4 md:px-0">
+<div class="w-full max-w-md bg-surface-container-low rounded-[2rem] p-6 shadow-xl flex flex-col gap-6 md:p-8">
+<!-- Header / Progress -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center w-full mb-2">
+<span class="font-label-lg text-label-lg text-on-surface-variant">Step 2 of 3</span>
+<span class="font-label-lg text-label-lg text-primary">Interests</span>
+</div>
+<div class="w-full h-1 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-primary w-2/3 transition-all duration-500 ease-out"></div>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mt-4">What do you love to read?</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Select at least 3 genres to help us curate your library.</p>
+</div>
+<!-- Bento Grid / Chips Selection -->
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-3 my-4">
+<!-- Item 1 -->
+<div class="relative group">
+<input class="chip-checkbox peer sr-only" id="genre-scifi" type="checkbox"/>
+<label class="flex items-center justify-center px-4 py-3 rounded-xl border border-outline-variant text-on-surface font-title-md text-title-md cursor-pointer transition-all hover:bg-surface-container-high hover:border-outline peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background" for="genre-scifi">
+<span class="material-symbols-outlined check-icon text-[18px] opacity-0 w-0 transition-all overflow-hidden" style="font-variation-settings: 'FILL' 1;">check</span>
+                    Sci-Fi
+                </label>
+</div>
+<!-- Item 2 -->
+<div class="relative group">
+<input class="chip-checkbox peer sr-only" id="genre-fantasy" type="checkbox"/>
+<label class="flex items-center justify-center px-4 py-3 rounded-xl border border-outline-variant text-on-surface font-title-md text-title-md cursor-pointer transition-all hover:bg-surface-container-high hover:border-outline peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background" for="genre-fantasy">
+<span class="material-symbols-outlined check-icon text-[18px] opacity-0 w-0 transition-all overflow-hidden" style="font-variation-settings: 'FILL' 1;">check</span>
+                    Fantasy
+                </label>
+</div>
+<!-- Item 3 -->
+<div class="relative group">
+<input class="chip-checkbox peer sr-only" id="genre-mystery" type="checkbox"/>
+<label class="flex items-center justify-center px-4 py-3 rounded-xl border border-outline-variant text-on-surface font-title-md text-title-md cursor-pointer transition-all hover:bg-surface-container-high hover:border-outline peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background" for="genre-mystery">
+<span class="material-symbols-outlined check-icon text-[18px] opacity-0 w-0 transition-all overflow-hidden" style="font-variation-settings: 'FILL' 1;">check</span>
+                    Mystery
+                </label>
+</div>
+<!-- Item 4 -->
+<div class="relative group col-span-2 sm:col-span-1">
+<input class="chip-checkbox peer sr-only" id="genre-nonfiction" type="checkbox"/>
+<label class="flex items-center justify-center px-4 py-3 rounded-xl border border-outline-variant text-on-surface font-title-md text-title-md cursor-pointer transition-all hover:bg-surface-container-high hover:border-outline peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background" for="genre-nonfiction">
+<span class="material-symbols-outlined check-icon text-[18px] opacity-0 w-0 transition-all overflow-hidden" style="font-variation-settings: 'FILL' 1;">check</span>
+                    Non-Fiction
+                </label>
+</div>
+<!-- Item 5 -->
+<div class="relative group">
+<input class="chip-checkbox peer sr-only" id="genre-history" type="checkbox"/>
+<label class="flex items-center justify-center px-4 py-3 rounded-xl border border-outline-variant text-on-surface font-title-md text-title-md cursor-pointer transition-all hover:bg-surface-container-high hover:border-outline peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background" for="genre-history">
+<span class="material-symbols-outlined check-icon text-[18px] opacity-0 w-0 transition-all overflow-hidden" style="font-variation-settings: 'FILL' 1;">check</span>
+                    History
+                </label>
+</div>
+<!-- Item 6 -->
+<div class="relative group">
+<input class="chip-checkbox peer sr-only" id="genre-biography" type="checkbox"/>
+<label class="flex items-center justify-center px-4 py-3 rounded-xl border border-outline-variant text-on-surface font-title-md text-title-md cursor-pointer transition-all hover:bg-surface-container-high hover:border-outline peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background" for="genre-biography">
+<span class="material-symbols-outlined check-icon text-[18px] opacity-0 w-0 transition-all overflow-hidden" style="font-variation-settings: 'FILL' 1;">check</span>
+                    Biography
+                </label>
+</div>
+<!-- Item 7 -->
+<div class="relative group">
+<input class="chip-checkbox peer sr-only" id="genre-thriller" type="checkbox"/>
+<label class="flex items-center justify-center px-4 py-3 rounded-xl border border-outline-variant text-on-surface font-title-md text-title-md cursor-pointer transition-all hover:bg-surface-container-high hover:border-outline peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background" for="genre-thriller">
+<span class="material-symbols-outlined check-icon text-[18px] opacity-0 w-0 transition-all overflow-hidden" style="font-variation-settings: 'FILL' 1;">check</span>
+                    Thriller
+                </label>
+</div>
+<!-- Item 8 -->
+<div class="relative group">
+<input class="chip-checkbox peer sr-only" id="genre-romance" type="checkbox"/>
+<label class="flex items-center justify-center px-4 py-3 rounded-xl border border-outline-variant text-on-surface font-title-md text-title-md cursor-pointer transition-all hover:bg-surface-container-high hover:border-outline peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background" for="genre-romance">
+<span class="material-symbols-outlined check-icon text-[18px] opacity-0 w-0 transition-all overflow-hidden" style="font-variation-settings: 'FILL' 1;">check</span>
+                    Romance
+                </label>
+</div>
+<!-- Item 9 -->
+<div class="relative group">
+<input class="chip-checkbox peer sr-only" id="genre-science" type="checkbox"/>
+<label class="flex items-center justify-center px-4 py-3 rounded-xl border border-outline-variant text-on-surface font-title-md text-title-md cursor-pointer transition-all hover:bg-surface-container-high hover:border-outline peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background" for="genre-science">
+<span class="material-symbols-outlined check-icon text-[18px] opacity-0 w-0 transition-all overflow-hidden" style="font-variation-settings: 'FILL' 1;">check</span>
+                    Science
+                </label>
+</div>
+</div>
+<!-- Action Area -->
+<div class="mt-4 pt-4 border-t border-surface-variant flex justify-end">
+<button class="bg-primary text-on-primary font-label-lg text-label-lg rounded-full px-6 py-3 hover:opacity-90 active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface-container-low flex items-center gap-2">
+                Continue
+                <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</body></html>

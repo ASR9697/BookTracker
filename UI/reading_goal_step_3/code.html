@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Reading Reminders</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#d0bcff",
+                        "secondary-fixed": "#96f0ff",
+                        "error-container": "#93000a",
+                        "secondary": "#4fd8eb",
+                        "on-secondary": "#00363d",
+                        "tertiary-fixed": "#ffdad5",
+                        "on-tertiary-fixed": "#360e0a",
+                        "on-primary-fixed": "#210f48",
+                        "on-error": "#690005",
+                        "inverse-surface": "#e5e1e7",
+                        "tertiary-fixed-dim": "#ffb4ab",
+                        "secondary-container": "#00b1c3",
+                        "surface-container": "#201f23",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-container": "#594983",
+                        "background": "#141317",
+                        "surface-variant": "#353438",
+                        "surface": "#141317",
+                        "on-tertiary": "#51221d",
+                        "surface-dim": "#141317",
+                        "surface-container-low": "#1c1b1f",
+                        "primary": "#e9ddff",
+                        "outline": "#948f9a",
+                        "surface-container-high": "#2b292d",
+                        "on-tertiary-fixed-variant": "#6c3832",
+                        "on-surface-variant": "#cac4d0",
+                        "secondary-fixed-dim": "#4fd8eb",
+                        "surface-bright": "#3a383d",
+                        "on-tertiary-container": "#7a433d",
+                        "tertiary": "#ffdad6",
+                        "surface-container-lowest": "#0e0e11",
+                        "primary-fixed-dim": "#d0bcff",
+                        "outline-variant": "#49454f",
+                        "error": "#ffb4ab",
+                        "on-surface": "#e5e1e7",
+                        "primary-fixed": "#e9ddff",
+                        "tertiary-container": "#ffb4ab",
+                        "primary-container": "#d0bcff",
+                        "inverse-on-surface": "#313034",
+                        "inverse-primary": "#665590",
+                        "surface-container-highest": "#353438",
+                        "on-secondary-fixed": "#001f24",
+                        "on-secondary-container": "#003e45",
+                        "on-primary": "#37265e",
+                        "on-primary-fixed-variant": "#4d3d76",
+                        "on-background": "#e5e1e7",
+                        "on-secondary-fixed-variant": "#004f57"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "1rem",
+                        "gutter": "1rem",
+                        "stack-sm": "0.5rem",
+                        "margin-mobile": "1rem",
+                        "stack-lg": "1.5rem",
+                        "margin-tablet": "1.5rem"
+                    },
+                    "fontFamily": {
+                        "title-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "title-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "title-md": ["16px", { "lineHeight": "24px", "letterSpacing": "0.15px", "fontWeight": "500" }],
+                        "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500" }],
+                        "title-lg": ["22px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "display-lg": ["57px", { "lineHeight": "64px", "letterSpacing": "-0.25px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.25px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0.5px", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .time-picker-column::-webkit-scrollbar {
+            display: none;
+        }
+
+        .time-picker-column {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+            scroll-snap-type: y mandatory;
+        }
+
+        .time-item {
+            scroll-snap-align: center;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background flex flex-col h-screen overflow-hidden antialiased">
+<!-- Top App Bar (Suppressed because it's a linear onboarding step) -->
+<!-- Main Content Area -->
+<main class="flex-grow flex flex-col items-center justify-between px-margin-mobile py-8 md:px-margin-tablet md:max-w-2xl md:mx-auto w-full relative z-10">
+<!-- Header Section -->
+<div class="flex flex-col items-center text-center space-y-stack-md w-full mt-8 md:mt-12">
+<div class="flex justify-center w-full mb-4">
+<!-- Progress Indicators -->
+<div class="flex gap-2">
+<div class="w-8 h-2 rounded-full bg-surface-variant"></div>
+<div class="w-8 h-2 rounded-full bg-surface-variant"></div>
+<div class="w-8 h-2 rounded-full bg-primary"></div>
+</div>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-primary font-bold">
+                Reading Reminders
+            </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-md mx-auto">
+                Set a daily reminder to keep your streak alive. We'll gently nudge you when it's time to read.
+            </p>
+</div>
+<!-- Time Picker Section (Custom M3 Style) -->
+<div class="w-full flex justify-center items-center my-auto px-4 py-8">
+<div class="bg-surface-container-high rounded-xl shadow-lg p-6 flex flex-col items-center gap-6 relative overflow-hidden border border-surface-variant">
+<!-- Time Selection Area -->
+<div class="flex items-center gap-4 relative">
+<!-- Selector Highlight (Background) -->
+<div class="absolute top-1/2 left-0 w-full h-16 bg-surface-container-highest rounded-lg -translate-y-1/2 pointer-events-none border border-outline-variant/30 shadow-inner"></div>
+<!-- Hour Column -->
+<div class="h-48 overflow-y-scroll time-picker-column relative w-20 flex flex-col text-center" id="hour-picker">
+<div class="h-[64px] shrink-0"></div> <!-- Padding top -->
+<!-- Placeholder items, JS will populate -->
+<div class="h-[64px] shrink-0 flex items-center justify-center font-display-lg text-display-lg text-on-surface-variant time-item transition-all duration-200">07</div>
+<div class="h-[64px] shrink-0 flex items-center justify-center font-display-lg text-display-lg text-primary font-bold time-item scale-110 transition-all duration-200">08</div>
+<div class="h-[64px] shrink-0 flex items-center justify-center font-display-lg text-display-lg text-on-surface-variant time-item transition-all duration-200">09</div>
+<div class="h-[64px] shrink-0"></div> <!-- Padding bottom -->
+</div>
+<div class="font-display-lg text-display-lg text-on-surface pb-2 z-10">:</div>
+<!-- Minute Column -->
+<div class="h-48 overflow-y-scroll time-picker-column relative w-20 flex flex-col text-center" id="minute-picker">
+<div class="h-[64px] shrink-0"></div>
+<!-- Placeholder items -->
+<div class="h-[64px] shrink-0 flex items-center justify-center font-display-lg text-display-lg text-on-surface-variant time-item transition-all duration-200">15</div>
+<div class="h-[64px] shrink-0 flex items-center justify-center font-display-lg text-display-lg text-primary font-bold time-item scale-110 transition-all duration-200">30</div>
+<div class="h-[64px] shrink-0 flex items-center justify-center font-display-lg text-display-lg text-on-surface-variant time-item transition-all duration-200">45</div>
+<div class="h-[64px] shrink-0"></div>
+</div>
+<!-- AM/PM Toggle -->
+<div class="flex flex-col gap-2 ml-4 z-10">
+<button class="px-4 py-3 rounded-lg font-title-md text-title-md transition-colors bg-surface-variant text-on-surface-variant hover:bg-surface-container-highest border border-transparent">AM</button>
+<button class="px-4 py-3 rounded-lg font-title-md text-title-md transition-colors bg-primary-container text-on-primary-container border border-primary/30 shadow-sm">PM</button>
+</div>
+</div>
+<!-- Quick Suggestion Chips -->
+<div class="flex flex-wrap justify-center gap-3 mt-2">
+<button class="px-4 py-2 rounded-full border border-outline bg-transparent text-on-surface font-label-lg text-label-lg hover:bg-surface-container-highest transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-size: 18px;">bedtime</span> Before Bed
+                    </button>
+<button class="px-4 py-2 rounded-full border border-secondary text-secondary font-label-lg text-label-lg bg-secondary/10 hover:bg-secondary/20 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-size: 18px;">local_cafe</span> Morning Coffee
+                    </button>
+</div>
+</div>
+</div>
+<!-- Bottom Action Area -->
+<div class="w-full flex flex-col gap-4 pb-safe mt-auto">
+<button class="w-full py-4 rounded-full bg-primary text-on-primary font-title-lg text-title-lg font-medium shadow-lg hover:bg-primary-fixed-dim transition-all active:scale-[0.98] flex justify-center items-center gap-2">
+                Finish Setup
+                <span class="material-symbols-outlined">check_circle</span>
+</button>
+<button class="w-full py-3 rounded-full bg-transparent text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-low transition-colors">
+                Skip for now
+            </button>
+</div>
+</main>
+<!-- Suppressed Bottom Nav & Fab because this is a transactional/onboarding flow -->
+<script>
+        // Simple JS for visual interaction of the time picker columns
+        // In a real app, this would dynamically generate 0-23/0-59 and handle exact scroll snapping logic
+        
+        function setupScrollInteractions(containerId) {
+            const container = document.getElementById(containerId);
+            if(!container) return;
+            
+            container.addEventListener('scroll', () => {
+                const items = container.querySelectorAll('.time-item');
+                const containerCenter = container.scrollTop + (container.clientHeight / 2);
+                
+                let closestItem = null;
+                let minDistance = Infinity;
+
+                items.forEach(item => {
+                    // Reset styles
+                    item.classList.remove('text-primary', 'font-bold', 'scale-110');
+                    item.classList.add('text-on-surface-variant');
+                    
+                    const itemCenter = item.offsetTop + (item.clientHeight / 2);
+                    const distance = Math.abs(containerCenter - itemCenter);
+                    
+                    if(distance < minDistance) {
+                        minDistance = distance;
+                        closestItem = item;
+                    }
+                });
+
+                if(closestItem) {
+                    closestItem.classList.remove('text-on-surface-variant');
+                    closestItem.classList.add('text-primary', 'font-bold', 'scale-110');
+                }
+            });
+            
+            // Trigger once on load to set initial state
+            container.dispatchEvent(new Event('scroll'));
+        }
+
+        // Delay setup slightly to ensure DOM is fully rendered for offset calculations
+        setTimeout(() => {
+            setupScrollInteractions('hour-picker');
+            setupScrollInteractions('minute-picker');
+            
+            // Set initial scroll position to center items
+            document.getElementById('hour-picker').scrollTop = 64;
+            document.getElementById('minute-picker').scrollTop = 64;
+        }, 100);
+    </script>
+</body></html>
