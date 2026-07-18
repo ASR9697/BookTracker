@@ -1,10 +1,13 @@
 package com.example.booktracker.app.data
 
 import com.example.booktracker.app.data.local.BookDao
+import com.example.booktracker.app.data.local.SessionDao
+import com.example.booktracker.app.data.local.SessionEntity
 import com.example.booktracker.app.data.local.toEntity
 import com.example.booktracker.app.data.local.toModel
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
+import com.example.booktracker.shared.models.Session
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -26,9 +29,17 @@ interface BookRepository {
     suspend fun addProgress(id: String, delta: Int)
     suspend fun applyRemoteProgress(id: String, currentUnit: Int, updatedAt: Long)
     suspend fun deleteBook(id: String)
+
+    fun observeOpenSession(): Flow<Session?>
+    fun observeCompletedSessions(): Flow<List<Session>>
+    suspend fun startSession(bookId: String)
+    suspend fun endSession(bookId: String)
 }
 
-class RoomBookRepository(private val bookDao: BookDao) : BookRepository {
+class RoomBookRepository(
+    private val bookDao: BookDao,
+    private val sessionDao: SessionDao
+) : BookRepository {
 
     override fun observeBooks(): Flow<List<Book>> =
         bookDao.observeAll().map { entities -> entities.map { it.toModel() } }
@@ -57,15 +68,19 @@ class RoomBookRepository(private val bookDao: BookDao) : BookRepository {
         bookDao.upsert(
             entity.copy(status = status.name, lastUpdated = System.currentTimeMillis())
         )
+        // A book leaving READING (finished, DNF, demoted) closes its running session.
+        if (status != BookStatus.READING) {
+            sessionDao.getOpenSessionForBook(id)?.let { finalizeSession(it) }
+        }
     }
 
     override suspend fun addProgress(id: String, delta: Int) {
         val entity = bookDao.getById(id) ?: return
         val ceiling = if (entity.totalUnits > 0) entity.totalUnits else Int.MAX_VALUE
         val newUnit = (entity.currentUnit + delta).coerceIn(0, ceiling)
-        bookDao.upsert(
-            entity.copy(currentUnit = newUnit, lastUpdated = System.currentTimeMillis())
-        )
+        val now = System.currentTimeMillis()
+        bookDao.upsert(entity.copy(currentUnit = newUnit, lastUpdated = now))
+        recordDeltaOutsideSession(id, entity.currentUnit, newUnit, now, source = "phone")
     }
 
     override suspend fun applyRemoteProgress(id: String, currentUnit: Int, updatedAt: Long) {
@@ -73,12 +88,88 @@ class RoomBookRepository(private val bookDao: BookDao) : BookRepository {
         // Last-Write-Wins: ignore stale updates from the watch.
         if (updatedAt <= entity.lastUpdated) return
         val ceiling = if (entity.totalUnits > 0) entity.totalUnits else Int.MAX_VALUE
-        bookDao.upsert(
-            entity.copy(currentUnit = currentUnit.coerceIn(0, ceiling), lastUpdated = updatedAt)
-        )
+        val newUnit = currentUnit.coerceIn(0, ceiling)
+        bookDao.upsert(entity.copy(currentUnit = newUnit, lastUpdated = updatedAt))
+        recordDeltaOutsideSession(id, entity.currentUnit, newUnit, updatedAt, source = "watch")
     }
 
     override suspend fun deleteBook(id: String) {
         bookDao.deleteById(id)
+    }
+
+    override fun observeOpenSession(): Flow<Session?> =
+        sessionDao.observeOpenSession().map { it?.toModel() }
+
+    override fun observeCompletedSessions(): Flow<List<Session>> =
+        sessionDao.observeCompleted().map { entities -> entities.map { it.toModel() } }
+
+    override suspend fun startSession(bookId: String) {
+        val book = bookDao.getById(bookId) ?: return
+        sessionDao.getOpenSession()?.let { open ->
+            if (open.bookId == bookId) return // already running for this book
+            finalizeSession(open) // switching books auto-closes the other session
+        }
+        sessionDao.insert(
+            SessionEntity(
+                id = UUID.randomUUID().toString(),
+                bookId = bookId,
+                startTime = System.currentTimeMillis(),
+                endTime = 0L,
+                startUnit = book.currentUnit,
+                endUnit = book.currentUnit,
+                unitsRead = 0,
+                deviceSource = "phone",
+                environmentTag = "",
+                isInterrupted = false
+            )
+        )
+    }
+
+    override suspend fun endSession(bookId: String) {
+        sessionDao.getOpenSessionForBook(bookId)?.let { finalizeSession(it) }
+    }
+
+    private suspend fun finalizeSession(open: SessionEntity) {
+        val endUnit = bookDao.getById(open.bookId)?.currentUnit ?: open.startUnit
+        sessionDao.upsert(
+            open.copy(
+                endTime = System.currentTimeMillis(),
+                endUnit = endUnit,
+                unitsRead = (endUnit - open.startUnit).coerceAtLeast(0)
+            )
+        )
+    }
+
+    /**
+     * Progress made while no session is running still needs to count toward
+     * streaks and analytics, so each delta becomes a self-contained session.
+     * While a session IS open, the delta is skipped here — finalizeSession
+     * captures it via endUnit - startUnit, which also covers watch taps made
+     * during a phone session.
+     */
+    private suspend fun recordDeltaOutsideSession(
+        bookId: String,
+        oldUnit: Int,
+        newUnit: Int,
+        at: Long,
+        source: String
+    ) {
+        val gained = newUnit - oldUnit
+        if (gained <= 0) return
+        if (sessionDao.getOpenSessionForBook(bookId) != null) return
+        sessionDao.insert(
+            SessionEntity(
+                id = UUID.randomUUID().toString(),
+                bookId = bookId,
+                startTime = at,
+                endTime = at,
+                startUnit = oldUnit,
+                endUnit = newUnit,
+                unitsRead = gained,
+                deviceSource = source,
+                environmentTag = "",
+                isInterrupted = false
+            )
+        )
     }
 }

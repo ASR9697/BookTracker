@@ -26,11 +26,14 @@ There is **no backend and no Firebase** — nothing to configure, nothing that c
 - Watch shows the active book; +1/+10 with haptics sync back into the phone's database,
   including while the phone app is closed (`WearSyncService`).
 - Ambient mode on the watch stays mostly black and shows only the title.
+- Reading sessions: Start/End on the hero card for timed sessions; progress made outside a
+  session (either device) is auto-recorded so it still counts.
+- Daily streak (🔥) with a 20-page daily goal, shown on the hero card.
 
 ### Not built yet
 
-Session recording, streaks, the 7×52 analytics grid, cover image display, swipe actions,
-and everything in blueprint Phase 2 (those files are stubs).
+The 7×52 analytics grid, velocity charts, cover image display, swipe actions, configurable
+daily goal, and everything in blueprint Phase 2 (those files are stubs).
 
 ## Build
 
@@ -38,7 +41,7 @@ and everything in blueprint Phase 2 (those files are stubs).
 ./gradlew :app:assembleDebug :wear:assembleDebug
 ```
 
-Toolchain: Gradle 9.3, AGP 8.13, Kotlin 2.2 + Compose plugin, Compose BOM 2025.09,
+Toolchain: Gradle 9.3, AGP 8.13.2, Kotlin 2.0 + Compose plugin, Compose BOM 2025.09,
 Room 2.8 (KSP), Wear Compose 1.5. JDK 17+. No API keys or accounts needed.
 
 ## Phase B — cloud sync later, still free

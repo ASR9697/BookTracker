@@ -39,8 +39,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.example.booktracker.app.analytics.StreakEngine
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
+import com.example.booktracker.shared.models.Session
 import kotlinx.coroutines.launch
 
 private val PIPELINE_TABS = listOf(
@@ -90,10 +92,16 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel) {
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            val openSession by viewModel.openSession.collectAsState()
+            val streak by viewModel.streak.collectAsState()
             ReadingHero(
                 book = readingBook,
+                openSession = openSession,
+                streak = streak,
                 onProgress = viewModel::addProgress,
-                onFinish = viewModel::markFinished
+                onFinish = viewModel::markFinished,
+                onStartSession = viewModel::startSession,
+                onEndSession = viewModel::endSession
             )
             PipelineTabs(
                 books = books,
@@ -117,14 +125,31 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel) {
 @Composable
 private fun ReadingHero(
     book: Book?,
+    openSession: Session?,
+    streak: StreakEngine.StreakInfo,
     onProgress: (Book, Int) -> Unit,
-    onFinish: (Book) -> Unit
+    onFinish: (Book) -> Unit,
+    onStartSession: (Book) -> Unit,
+    onEndSession: (Book) -> Unit
 ) {
     Card(modifier = Modifier
         .fillMaxWidth()
         .padding(16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                buildString {
+                    append("🔥 ")
+                    append(streak.currentStreak)
+                    append("-day streak · ")
+                    append(streak.pagesToday)
+                    append("/")
+                    append(streak.dailyGoal)
+                    append(" pages today")
+                },
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(Modifier.height(8.dp))
             if (book == null) {
                 Text("Nothing in progress", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(4.dp))
@@ -161,6 +186,17 @@ private fun ReadingHero(
                     OutlinedButton(onClick = { onProgress(book, 10) }) { Text("+10") }
                     Spacer(Modifier.weight(1f))
                     TextButton(onClick = { onFinish(book) }) { Text("Finish") }
+                }
+                if (openSession != null && openSession.bookId == book.id) {
+                    val pagesThisSession =
+                        (book.currentUnit - openSession.startUnit).coerceAtLeast(0)
+                    TextButton(onClick = { onEndSession(book) }) {
+                        Text("End session ($pagesThisSession pages this session)")
+                    }
+                } else {
+                    TextButton(onClick = { onStartSession(book) }) {
+                        Text("Start session")
+                    }
                 }
             }
         }

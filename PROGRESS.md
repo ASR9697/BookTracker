@@ -67,3 +67,10 @@ Milestones 6–10 remain stubs. See README.md for the honest state and roadmap.
   - Repository `addBook` now accepts `coverUrl`; main screen gained a "Scan ISBN" FAB with back-press handling.
   - Both modules verified building green.
   - Next Step: session recording (start/stop around reading, `sessions` table is ready) and the streak engine.
+
+- **[2026-07-17] Session Recording & Streak Engine (Claude Code)**:
+  - Explicit Start/End reading sessions on the hero card. An open session is a Room row with `endTime = 0` (survives process death); it auto-closes when the book leaves READING or a session starts on another book. Finalize computes `unitsRead = endUnit - startUnit` from the book's current position, so watch taps during a phone session are captured too.
+  - Progress deltas made with no open session (phone +1/+10 or watch relay) are recorded as self-contained mini-sessions (`startTime == endTime`, deviceSource phone/watch) so all reading counts toward analytics; deltas during an open session are intentionally not double-recorded.
+  - `StreakEngine` (pure logic, `app/analytics/`): consecutive days meeting the daily page goal (default 20, constant until a settings screen exists), computed from completed sessions in the local timezone; today counts once the goal is met. Hero card shows streak + today's pages.
+  - Repository now owns session lifecycle (`startSession`/`endSession`/`observeOpenSession`/`observeCompletedSessions`); `RoomBookRepository` takes both DAOs.
+  - Next Step: 7×52 analytics grid and/or configurable daily goal via DataStore settings.

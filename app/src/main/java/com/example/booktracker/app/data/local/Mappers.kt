@@ -2,8 +2,22 @@ package com.example.booktracker.app.data.local
 
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.DnfData
+import com.example.booktracker.shared.models.Session
 import org.json.JSONArray
 import org.json.JSONObject
+
+fun SessionEntity.toModel(): Session = Session(
+    id = id,
+    bookId = bookId,
+    startTime = startTime,
+    endTime = endTime,
+    startUnit = startUnit,
+    endUnit = endUnit,
+    unitsRead = unitsRead,
+    deviceSource = deviceSource,
+    environmentTag = environmentTag,
+    isInterrupted = isInterrupted
+)
 
 fun BookEntity.toModel(): Book = Book(
     id = id,

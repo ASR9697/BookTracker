@@ -6,12 +6,14 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.booktracker.app.analytics.StreakEngine
 import com.example.booktracker.app.data.BookRepository
 import com.example.booktracker.app.data.ServiceLocator
 import com.example.booktracker.app.data.remote.ScannedBook
 import com.example.booktracker.app.sync.WearBridge
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
+import com.example.booktracker.shared.models.Session
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -27,6 +29,17 @@ class BookTrackerViewModel(
 
     val books: StateFlow<List<Book>> = repository.observeBooks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val openSession: StateFlow<Session?> = repository.observeOpenSession()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val streak: StateFlow<StreakEngine.StreakInfo> = repository.observeCompletedSessions()
+        .map { StreakEngine.compute(it) }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            StreakEngine.compute(emptyList())
+        )
 
     init {
         // Keep the watch in step with whichever book is currently being read.
@@ -74,6 +87,14 @@ class BookTrackerViewModel(
 
     fun markFinished(book: Book) {
         viewModelScope.launch { repository.updateStatus(book.id, BookStatus.FINISHED) }
+    }
+
+    fun startSession(book: Book) {
+        viewModelScope.launch { repository.startSession(book.id) }
+    }
+
+    fun endSession(book: Book) {
+        viewModelScope.launch { repository.endSession(book.id) }
     }
 
     fun delete(book: Book) {
