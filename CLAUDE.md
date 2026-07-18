@@ -163,10 +163,10 @@ tool with `.\gradlew.bat`, not the Bash tool with `./gradlew`.
   `api(...)` instead if the type appears in a public signature. (Was the case for Firebase's
   `Timestamp`; less relevant now that `:shared` has no dependencies, but the principle applies if
   `:shared` ever gains one.)
-- PowerShell (this environment's Bash tool runs Git Bash, but the PowerShell tool is primary) will
-  mis-parse a `git commit -m` heredoc if the message body contains double-quote characters —
-  avoid `"` inside commit messages, or the pathspec error surfaces as a confusing "did not match
-  any file(s)" failure.
+- PowerShell mis-parses a `git commit -m @'...'@` here-string whenever the message body contains a
+  double-quote character (surfaces as a confusing `pathspec ... did not match any file(s)` error).
+  The reliable fix: write the message to a file and `git commit -F <file>` — do this for any
+  multi-line commit message rather than fighting quoting.
 - Windows/PowerShell here-strings for multi-line commit messages: `@'...'@` with the closing `'@`
   at column 0, no leading whitespace.
 
