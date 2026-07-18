@@ -66,7 +66,12 @@ Working end-to-end and verified by building + running:
 - TBR pipeline: Backlog → Shortlist → Up Next → Reading. Cards promote via a button and
   **swipe-to-dismiss to remove, with an Undo Snackbar** (`repository.restore` re-inserts the
   exact entity, preserving id/status/progress/lastUpdated — see below).
-- Reading hero card: +1/+10 page progress, Finish.
+- Reading hero card: +1/+10 page progress, Finish (opens a Pacing/Focus/Vibe rating dialog), and
+  Give up (opens a DNF dialog: abandon-% slider auto-filled from progress + reason chips).
+- Completion outcomes (Phase 2 §7A): `repository.finishBook(rating)` / `markDnf(pct, reason)` write
+  to the existing `Book.rating` map and `Book.dnfData` (no schema change; rating is JSON in Room).
+  Finished + DNF books live in `ui/FinishedScreen.kt` (overflow → "Finished books"), which is the
+  only place they're visible — the pipeline tabs are TBR-only (Backlog/Shortlist/Up Next).
 - Phone chrome is Material 3: `CenterAlignedTopAppBar` (title + Scan-ISBN action icon), a single
   `Add` FAB (Material icons, not text glyphs), `PrimaryTabRow`, and a tinted `LocalFireDepartment`
   streak icon. Dynamic color (Material You) via `dynamicDark/LightColorScheme` on Android 12+.
@@ -99,11 +104,16 @@ Working end-to-end and verified by building + running:
 
 Stubbed / not built (do not assume these work — they are placeholder classes from the original
 scaffold, kept for the Phase 2 roadmap but not wired to anything):
-- `analytics/AnalyticsEngine.kt`, `format/FormatAdaptabilityLayer.kt`,
-  `hardware/HardwareIntegrations.kt`, `journal/SmartPlanningEngine.kt`,
-  `wear/journal/WristDictaphone.kt` — all Phase 2 blueprint features (§7 of the blueprint).
-- Reading-velocity charts, a full-screen add-book dialog (still an AlertDialog), wear rotating-bezel
-  input, ambient burn-in pixel-shifting, and syncing the configurable goal to the watch.
+- `analytics/AnalyticsEngine.kt` (its `QualitativeRatingSliders` stub is now superseded by the real
+  `ui/CompletionDialogs.kt`; the `calculateReadingVelocity`/`correlateEnvironment` functions there
+  are still unused), `format/FormatAdaptabilityLayer.kt`, `hardware/HardwareIntegrations.kt`,
+  `journal/SmartPlanningEngine.kt`, `wear/journal/WristDictaphone.kt` — remaining Phase 2 (§7).
+- Phase 2 §7A "Ratings & DNF" is DONE (see completion outcomes above). Deliberately deprioritized
+  from §7B/C for a zero-cost/offline personal app: anime-canon bridge, Android Auto, Google Cast,
+  desktop PWA, TTS handoff, geofencing — don't build these without a clear ask.
+- Reading-velocity charts, multi-format tracking (§7B), margin notes/journaling (§7C — `MarginNote`
+  model exists, no storage/UI), a full-screen add-book dialog (still an AlertDialog), wear
+  rotating-bezel input, ambient burn-in pixel-shifting, and syncing the configurable goal to the watch.
 
 **Before citing PROGRESS.md's milestone tracker as evidence a feature exists, verify against
 actual code.** The original agent run marked all 10 blueprint milestones "COMPLETED" while the

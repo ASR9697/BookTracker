@@ -20,6 +20,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.LocalFireDepartment
@@ -90,6 +91,7 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel) {
     var showScanner by remember { mutableStateOf(false) }
     var showAnalytics by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
+    var showFinished by remember { mutableStateOf(false) }
 
     if (showScanner) {
         BackHandler { showScanner = false }
@@ -126,6 +128,15 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel) {
         return
     }
 
+    if (showFinished) {
+        BackHandler { showFinished = false }
+        FinishedScreen(
+            books = books,
+            onBack = { showFinished = false }
+        )
+        return
+    }
+
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val onDeleteWithUndo: (Book) -> Unit = { book ->
@@ -156,6 +167,16 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel) {
                         expanded = menuOpen,
                         onDismissRequest = { menuOpen = false }
                     ) {
+                        DropdownMenuItem(
+                            text = { Text("Finished books") },
+                            leadingIcon = {
+                                Icon(Icons.Filled.CheckCircle, contentDescription = null)
+                            },
+                            onClick = {
+                                menuOpen = false
+                                showFinished = true
+                            }
+                        )
                         DropdownMenuItem(
                             text = { Text("Reading activity") },
                             leadingIcon = { Icon(Icons.Filled.Insights, contentDescription = null) },
@@ -195,7 +216,8 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel) {
                 openSession = openSession,
                 streak = streak,
                 onProgress = viewModel::addProgress,
-                onFinish = viewModel::markFinished,
+                onFinish = viewModel::finishBook,
+                onDnf = viewModel::markDnf,
                 onStartSession = viewModel::startSession,
                 onEndSession = viewModel::endSession
             )
@@ -224,10 +246,14 @@ private fun ReadingHero(
     openSession: Session?,
     streak: StreakEngine.StreakInfo,
     onProgress: (Book, Int) -> Unit,
-    onFinish: (Book) -> Unit,
+    onFinish: (Book, Map<String, Float>) -> Unit,
+    onDnf: (Book, Float, String) -> Unit,
     onStartSession: (Book) -> Unit,
     onEndSession: (Book) -> Unit
 ) {
+    var showFinishDialog by remember { mutableStateOf(false) }
+    var showDnfDialog by remember { mutableStateOf(false) }
+
     Card(modifier = Modifier
         .fillMaxWidth()
         .padding(16.dp)
@@ -276,21 +302,46 @@ private fun ReadingHero(
                     OutlinedButton(onClick = { onProgress(book, 1) }) { Text("+1") }
                     OutlinedButton(onClick = { onProgress(book, 10) }) { Text("+10") }
                     Spacer(Modifier.weight(1f))
-                    TextButton(onClick = { onFinish(book) }) { Text("Finish") }
+                    TextButton(onClick = { showFinishDialog = true }) { Text("Finish") }
                 }
-                if (openSession != null && openSession.bookId == book.id) {
-                    val pagesThisSession =
-                        (book.currentUnit - openSession.startUnit).coerceAtLeast(0)
-                    TextButton(onClick = { onEndSession(book) }) {
-                        Text("End session ($pagesThisSession pages this session)")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (openSession != null && openSession.bookId == book.id) {
+                        val pagesThisSession =
+                            (book.currentUnit - openSession.startUnit).coerceAtLeast(0)
+                        TextButton(onClick = { onEndSession(book) }) {
+                            Text("End session ($pagesThisSession pages this session)")
+                        }
+                    } else {
+                        TextButton(onClick = { onStartSession(book) }) {
+                            Text("Start session")
+                        }
                     }
-                } else {
-                    TextButton(onClick = { onStartSession(book) }) {
-                        Text("Start session")
-                    }
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = { showDnfDialog = true }) { Text("Give up") }
                 }
             }
         }
+    }
+
+    if (book != null && showFinishDialog) {
+        FinishDialog(
+            book = book,
+            onDismiss = { showFinishDialog = false },
+            onConfirm = { rating ->
+                onFinish(book, rating)
+                showFinishDialog = false
+            }
+        )
+    }
+    if (book != null && showDnfDialog) {
+        DnfDialog(
+            book = book,
+            onDismiss = { showDnfDialog = false },
+            onConfirm = { percent, reason ->
+                onDnf(book, percent, reason)
+                showDnfDialog = false
+            }
+        )
     }
 }
 
@@ -456,7 +507,7 @@ private fun BookCard(
  * still-loading covers (manually added books have no cover URL).
  */
 @Composable
-private fun BookCover(url: String, modifier: Modifier = Modifier) {
+fun BookCover(url: String, modifier: Modifier = Modifier) {
     val shape = MaterialTheme.shapes.small
     if (url.isBlank()) {
         Box(

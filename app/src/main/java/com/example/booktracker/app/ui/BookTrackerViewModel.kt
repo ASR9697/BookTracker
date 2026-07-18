@@ -99,8 +99,12 @@ class BookTrackerViewModel(
         viewModelScope.launch { repository.addProgress(book.id, delta) }
     }
 
-    fun markFinished(book: Book) {
-        viewModelScope.launch { repository.updateStatus(book.id, BookStatus.FINISHED) }
+    fun finishBook(book: Book, rating: Map<String, Float>) {
+        viewModelScope.launch { repository.finishBook(book.id, rating) }
+    }
+
+    fun markDnf(book: Book, percentage: Float, reason: String) {
+        viewModelScope.launch { repository.markDnf(book.id, percentage, reason) }
     }
 
     fun startSession(book: Book) {

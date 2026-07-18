@@ -35,13 +35,15 @@ There is **no backend and no Firebase** — nothing to configure, nothing that c
   manually added books.
 - Settings (overflow menu → Settings): configurable daily reading goal, persisted with DataStore
   and applied live to streaks and the heatmap.
+- Finish a book with a Pacing/Focus/Vibe rating, or give up with an abandonment % and reason;
+  see them in the Finished books screen (overflow menu).
 - Material 3 throughout: top app bar, single Add FAB, swipe-to-remove cards with Undo, dynamic
   color on Android 12+, and a Material 3 watch UI with the clock (`TimeText`) and watch-face color.
 
 ### Not built yet
 
-Velocity charts, syncing the configurable goal to the watch, and everything in blueprint
-Phase 2 (those files are stubs).
+Velocity charts, multi-format tracking, margin notes, syncing the configurable goal to the watch,
+and the rest of blueprint Phase 2 (those files are stubs).
 
 ## Build
 

@@ -7,6 +7,7 @@ import com.example.booktracker.app.data.local.toEntity
 import com.example.booktracker.app.data.local.toModel
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
+import com.example.booktracker.shared.models.DnfData
 import com.example.booktracker.shared.models.Session
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
@@ -26,6 +27,8 @@ interface BookRepository {
         coverUrl: String = ""
     ): Book
     suspend fun updateStatus(id: String, status: BookStatus)
+    suspend fun finishBook(id: String, rating: Map<String, Float>)
+    suspend fun markDnf(id: String, abandonedPercentage: Float, reason: String)
     suspend fun addProgress(id: String, delta: Int)
     suspend fun applyRemoteProgress(id: String, currentUnit: Int, updatedAt: Long)
     suspend fun deleteBook(id: String)
@@ -73,6 +76,30 @@ class RoomBookRepository(
         if (status != BookStatus.READING) {
             sessionDao.getOpenSessionForBook(id)?.let { finalizeSession(it) }
         }
+    }
+
+    override suspend fun finishBook(id: String, rating: Map<String, Float>) {
+        val book = bookDao.getById(id)?.toModel() ?: return
+        bookDao.upsert(
+            book.copy(
+                status = BookStatus.FINISHED.name,
+                rating = rating,
+                lastUpdated = System.currentTimeMillis()
+            ).toEntity()
+        )
+        sessionDao.getOpenSessionForBook(id)?.let { finalizeSession(it) }
+    }
+
+    override suspend fun markDnf(id: String, abandonedPercentage: Float, reason: String) {
+        val book = bookDao.getById(id)?.toModel() ?: return
+        bookDao.upsert(
+            book.copy(
+                status = BookStatus.DNF.name,
+                dnfData = DnfData(abandonedPercentage, reason),
+                lastUpdated = System.currentTimeMillis()
+            ).toEntity()
+        )
+        sessionDao.getOpenSessionForBook(id)?.let { finalizeSession(it) }
     }
 
     override suspend fun addProgress(id: String, delta: Int) {

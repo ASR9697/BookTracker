@@ -97,3 +97,11 @@ Milestones 6–10 remain stubs. See README.md for the honest state and roadmap.
   - **Toolchain**: Coil 3.4.0 transitively requires Kotlin metadata newer than 2.0.0 could read, so Kotlin/KSP/Compose-plugin were raised 2.0.0 → 2.2.20 (back to the pre-pin config that builds this project). Flagged to the user. Added deps: coil-compose, coil-network-okhttp, datastore-preferences 1.1.7.
   - Both modules verified: assembleDebug green; new classes confirmed in the APK.
   - Next Step: sync the configurable goal to the watch, or reading-velocity charts.
+
+- **[2026-07-18] Phase 2 §7A — Ratings & DNF (Claude Code)**: first Phase 2 slice, chosen by the user.
+  - Finish now opens a rating dialog (Pacing/Focus/Vibe sliders, 0–5, skippable); Give up opens a DNF dialog (abandon-% slider auto-filled from progress + reason FilterChips). `ui/CompletionDialogs.kt`.
+  - `repository.finishBook(rating)` / `markDnf(pct, reason)` persist to the existing `Book.rating` map and `Book.dnfData` — no Room migration (rating already stored as JSON). Both also close any open session.
+  - New `ui/FinishedScreen.kt` (overflow → "Finished books") lists finished + DNF books with their ratings / abandonment reason — previously these statuses had nowhere to appear (pipeline tabs are TBR-only). `BookCover` made reusable (dropped `private`). Shared `RatingAxis` + `DnfReasons` vocab added.
+  - Both modules verified: assembleDebug green (one transient Windows file-lock from a stale daemon after the Kotlin bump — cleared with `gradlew --stop`). New classes confirmed in the APK.
+  - Deliberately deprioritized from Phase 2 as off-constraint for a free/offline personal app: anime-canon bridge, Android Auto, Google Cast, desktop PWA, TTS, geofencing.
+  - Next Step: multi-format tracking (§7B), margin notes (§7C), or velocity charts.

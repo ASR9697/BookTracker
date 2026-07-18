@@ -9,6 +9,19 @@ data class DnfData(
     val reason: String = "" // e.g., prose, pacing, characters
 )
 
+/** The three qualitative axes a finished book can be rated on (0.0–5.0). */
+object RatingAxis {
+    const val PACING = "Pacing"
+    const val FOCUS = "Focus"
+    const val VIBE = "Vibe"
+    val ALL = listOf(PACING, FOCUS, VIBE)
+}
+
+/** Preset reasons offered when marking a book did-not-finish. */
+object DnfReasons {
+    val ALL = listOf("Prose", "Pacing", "Characters", "Plot", "Lost interest", "Other")
+}
+
 // All timestamps are epoch milliseconds. They double as the Last-Write-Wins
 // key for sync (Data Layer now, Firestore in Phase B), so every mutation
 // must stamp lastUpdated.
