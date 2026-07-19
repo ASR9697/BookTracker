@@ -6,8 +6,14 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [BookEntity::class, SessionEntity::class, MarginNoteEntity::class],
-    version = 2,
+    entities = [
+        BookEntity::class,
+        SessionEntity::class,
+        MarginNoteEntity::class,
+        BookFtsEntity::class,
+        NoteFtsEntity::class
+    ],
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -34,6 +40,35 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS index_margin_notes_bookId ON margin_notes(bookId)"
                 )
+            }
+        }
+
+        // v3: external-content FTS tables for universal search. The DDL must match
+        // Room's generated createAllTables exactly or schema validation aborts on
+        // open; 'rebuild' backfills the index from rows that predate the tables.
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE VIRTUAL TABLE IF NOT EXISTS `books_fts` USING FTS4(" +
+                        "`title` TEXT NOT NULL, `authors` TEXT NOT NULL, " +
+                        "`description` TEXT NOT NULL, `genres` TEXT NOT NULL, " +
+                        "content=`books`)"
+                )
+                db.execSQL(
+                    "CREATE VIRTUAL TABLE IF NOT EXISTS `notes_fts` USING FTS4(" +
+                        "`markdownContent` TEXT NOT NULL, content=`margin_notes`)"
+                )
+                db.execSQL("INSERT INTO books_fts(books_fts) VALUES('rebuild')")
+                db.execSQL("INSERT INTO `notes_fts` (`notes_fts`) VALUES ('rebuild')")
+            }
+        }
+
+        // v4: Added isFavorite boolean to books
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE books ADD COLUMN isFavorite INTEGER NOT NULL DEFAULT 0")
+                // Trigger a rebuild of books_fts just in case, though the schema of books_fts didn't change
+                db.execSQL("INSERT INTO `books_fts` (`books_fts`) VALUES ('rebuild')")
             }
         }
     }

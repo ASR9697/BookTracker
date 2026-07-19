@@ -1,7 +1,13 @@
 package com.example.booktracker.shared.models
 
-enum class BookStatus {
-    BACKLOG, SHORTLIST, UP_NEXT, READING, FINISHED, DNF
+enum class BookStatus(val label: String) {
+    BACKLOG("Backlog"),
+    SHORTLIST("Shortlist"),
+    UP_NEXT("Up Next"),
+    READING("Reading"),
+    PAUSED("Paused"),
+    FINISHED("Finished"),
+    DNF("DNF")
 }
 
 data class DnfData(
@@ -39,7 +45,8 @@ data class Book(
     val rating: Map<String, Float> = emptyMap(), // Pacing, Focus, Vibe
     val description: String = "",
     val genres: List<String> = emptyList(),
-    val publishedDate: String = ""
+    val publishedDate: String = "",
+    val isFavorite: Boolean = false
 )
 
 data class Session(

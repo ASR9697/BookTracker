@@ -4,6 +4,7 @@ Cross-platform book tracking app: phone/tablet app (`:app`, Jetpack Compose + Ma
 Wear OS quick logger (`:wear`, Compose for Wear OS), sharing pure-Kotlin models through `:shared`.
 Full product spec: [CrossPlatformBookTracker_Blueprint.md](CrossPlatformBookTracker_Blueprint.md).
 Session-by-session history: [PROGRESS.md](PROGRESS.md). User-facing state: [README.md](README.md).
+Feature Checklist (Completed & Pending): [FEATURES.md](FEATURES.md).
 
 ## Cost constraint — read this first
 
@@ -13,37 +14,10 @@ scaffolded in — see "History" below. Do not reintroduce a paid dependency with
 even if the blueprint calls for it. Google Books lookup and ML Kit barcode scanning are fine
 because they're free and keyless.
 
-## Architecture: local-first (Phase A), cloud sync deferred (Phase B)
+## Architecture Overview
+The app uses a strict **local-first** architecture with a Room Database, synchronized to the Wear OS app via the Bluetooth Data Layer using a Last-Write-Wins conflict resolution strategy. 
 
-There is currently **no backend**. The phone is the source of truth via a Room database sitting
-behind a `BookRepository` interface (`app/src/main/java/.../data/BookRepository.kt`). The watch
-is a thin client that syncs over the Bluetooth Wearable Data Layer — free, works offline, and
-Google Play services queues data items automatically while devices are apart.
-
-Sync contract (`shared/src/main/java/.../shared/Constants.kt`):
-- Phone publishes the currently-reading book at `/active_book`.
-- Watch publishes page position at `/progress/{bookId}`.
-- Conflicts resolve by **Last-Write-Wins** on an epoch-millis `lastUpdated`/`updated_at` field —
-  this is the one field every mutation must stamp, on both sides.
-
-Both `:app` and `:wear` share `applicationId com.example.booktracker` — this is **required** for
-the Data Layer to connect the two apps on-device; do not let them diverge.
-
-### Why this design survives Phase B (cloud sync) as a bolt-on, not a rewrite
-
-Three choices were made deliberately so Firebase can slot in later without touching the UI:
-1. The UI only ever talks to the `BookRepository` interface — a Firestore-backed implementation
-   swaps in behind it.
-2. Book IDs are client-generated UUIDs (`UUID.randomUUID().toString()`), so they become Firestore
-   document IDs unchanged — nothing to remap during migration.
-3. Every write already stamps `lastUpdated` in epoch millis — the same LWW key Firestore sync will
-   need, so no schema change is required to add sync.
-
-When Phase B happens: the watch should **still never talk to the cloud directly** — it keeps
-relaying through the phone over Bluetooth. This avoids needing a paid Cloud Function to mint
-Firebase custom tokens (the original blueprint's "zero-touch" auth design required exactly that,
-which is what made the original Firebase approach non-free). Firestore + free-tier Auth on the
-Spark plan is enough; do not add a Cloud Function without flagging the cost.
+For full details on the architecture (including how we are future-proofing for Firebase integration without rewriting the UI), please see: **[ARCHITECTURE.md](ARCHITECTURE.md)**
 
 ## Module layout
 
@@ -58,6 +32,8 @@ Spark plan is enough; do not add a Cloud Function without flagging the cost.
   in `onResume`/`onPause`).
 
 ## What's actually implemented vs. stubbed
+
+**CRITICAL RULE: Before implementing ANY new feature, you MUST check [FEATURES.md](FEATURES.md). If the feature is not listed there under "Pending", add it to the pending list FIRST before starting any work on it. Furthermore, when a feature is completed, you MUST write a 1-2 sentence detailed description of it in the Completed section of `FEATURES.md` outlining exactly what it does and how it works.**
 
 Working end-to-end and verified by building + running:
 - Add books manually, or scan an ISBN barcode (CameraX + ML Kit `BarcodeAnalyzer`, filtered to
@@ -112,24 +88,56 @@ Working end-to-end and verified by building + running:
   stat tiles (pages / active days / best day), a Less→More legend, and tap-a-day-to-see-pages.
   It also includes an **Environments & Beverages** section that correlates reading volume with the
   tags saved at the end of each session.
+- Immersive Reading Timer: Start a session via a bottom sheet to track reading live with **Soundscapes** (e.g., Lofi, Rain, Fireplace) and haptic pulsing across work/break phases.
+- Reading Genome (Local Recommendations): A heuristic scorer (in `analytics/ReadingGenome.kt`) that analyzes the user's highly-rated finished books and cross-references authors and genres against books in their backlog, generating a personalized "Recommended for you" carousel on the Home screen.
+- Android Home Screen Widget (Glance): `ReadingWidget` built with Jetpack Glance provides a launcher widget to track progress and log +1/+10 pages instantly via `ServiceLocator`.
+- Deep Focus Mode: Intercepts and blocks Android system notifications (via Do Not Disturb `INTERRUPTION_FILTER_PRIORITY`) during active reading sessions to keep the user immersed, controlled by a toggle in the Settings menu (requires `ACCESS_NOTIFICATION_POLICY` permission).
 
-Stubbed / not built (do not assume these work — they are placeholder classes from the original
-scaffold, kept for the Phase 2 roadmap but not wired to anything):
-- `analytics/AnalyticsEngine.kt` (its `QualitativeRatingSliders` stub is now superseded by the real
-  `ui/CompletionDialogs.kt`; the `calculateReadingVelocity` function is still unused),
-  `format/FormatAdaptabilityLayer.kt`, `hardware/HardwareIntegrations.kt`,
-  `journal/SmartPlanningEngine.kt`, `wear/journal/WristDictaphone.kt` — remaining Phase 2 (§7).
-- Phase 2 §7A "Ratings & DNF" is DONE (see completion outcomes above). Deliberately deprioritized
-  from §7B/C for a zero-cost/offline personal app: anime-canon bridge, Android Auto, Google Cast,
-  desktop PWA, TTS handoff, geofencing — don't build these without a clear ask.
-- Reading-velocity charts, multi-format tracking (§7B), margin notes/journaling (§7C — `MarginNote`
-  model exists, no storage/UI), wear rotating-bezel input, ambient burn-in pixel-shifting, and syncing the configurable goal to the watch.
+Previously-stubbed Phase 2 (§7) classes — now built and wired (verified by building):
+- `analytics/AnalyticsEngine.kt` is a full, wired time-analytics engine (`pagesPerHour`,
+  `estimatedMinutesLeft`, `minutesByDay`, `bestTimeOfDay`, `environmentStats`) used across the hero
+  card, Analytics/Profile/BookDetail/History screens. The old `calculateReadingVelocity` no longer
+  exists — don't cite the "unused" note.
+- `format/FormatAdaptabilityLayer.kt` — multi-format tracking (§7B). Maps `Book.format`
+  (PAGES/CHAPTERS/VOLUMES/HOURS) to display units, wired through BookDetail (header, stats, note
+  prefixes) with a segmented format picker (`repository.updateFormat`). Also owns the read-aloud:
+  `startTTSHandoff` + `ReadAloudController`/`rememberReadAloud` drive Android's **built-in**
+  `TextToSpeech` (local, free — replaces the blueprint's cloud "TTS handoff").
+- `journal/SmartPlanningEngine.kt` — `SmartPlanningEngine` is a velocity-based reading planner
+  ("~N units in a 15/30/45/60-min window"), surfaced as the BookDetail "Reading planner" card.
+  `JournalingEngine.render` is a dependency-free inline-Markdown renderer (**bold**, *italic*,
+  `code`) used by the margin-note cards (§7C — notes have full Room storage + UI).
+- `hardware/HardwareIntegrations.kt` — `recognizeHandwriting` (ML Kit Digital Ink, on-device,
+  keyless) backing the `hardware/StylusScratchpad.kt` "Handwrite" sheet in BookDetail. (An
+  external-display "cast dashboard" was built here via the Presentation API, then removed at the
+  user's request. Real Chromecast needs a registered Cast app id + a hosted receiver page —
+  off-constraint for a zero-account app — so don't reintroduce it as "Cast" without that.)
+- `wear/journal/WristDictaphone.kt` — wrist voice margin notes. The watch's 🎤 button captures
+  speech via the platform recognizer (no RECORD_AUDIO, no paid service) and publishes it to the
+  phone over a new Data Layer path `/note/{noteId}` (see Constants); `WearSyncService` writes it
+  through `repository.addRemoteNote` (upsert-by-id → replay-idempotent) and deletes the transport
+  item afterward.
+
+Phase 3 and Code Review Fixes (Verified Complete):
+- **Backup & Restore Resilience**: Restore fully respects Last-Write-Wins based on `lastUpdated`/`timestamp`, preventing stale backups from overwriting recent progress. Backup schemas include all fields, like `isFavorite`.
+- **System Integrity**: Android 14+ specific fixes (e.g. `specialUse` foreground service types) and proper cleanup of resources like `SoundscapeEngine` to prevent native memory leaks.
+- **WearOS Timer Enhancements**: Local ticking mechanisms built into `WearActivity` for the Focus Timer, so it no longer relies on constant DataLayer pushes. Also synced Timer Pause/Resume actions back to the phone. Goal complication reads from the new `ACTIVE_BOOKS_PATH` data map properly.
+- **UI Safety & Accidental Data Loss Prevention**: Confirmation dialogs for deleting sessions, duplicate-key crash prevention for ISBN-less books in `AddBookScreen`, and removal of `BookTrackerViewModel`'s DND overrides in favor of a centralized Application-scoped `DndManager`.
+
+Still not built / deliberately deprioritized (don't build without a clear ask): Chromecast /
+external-display projection (removed), anime-canon bridge, Android Auto, desktop PWA, geofencing,
+wear rotating-bezel input, ambient burn-in pixel-shifting, and syncing the configurable goal to the
+watch as a dedicated path.
 
 **Before citing PROGRESS.md's milestone tracker as evidence a feature exists, verify against
 actual code.** The original agent run marked all 10 blueprint milestones "COMPLETED" while the
 project didn't even compile — see History. Trust `git log` and the code, not old status claims.
 
-## Build & toolchain
+### Build / Toolchain
+- Multi-module Gradle build (`app`, `wear`, `shared`).
+- `minSdk` 26 (app), 30 (wear); `targetSdk` 36.
+- Uses KSP for Room. Compose compiler plugin natively.
+- **Deployment / Publishing**: The `app` and `wear` modules intentionally share the same Application ID (`com.example.booktracker`). When publishing to the Google Play Store, upload *both* the phone App Bundle (AAB) and the Wear OS AAB to the same release track. Google Play will natively handle prompting users to install the companion Wear OS app on their watch. Do *not* attempt to use the deprecated `wearApp()` gradle configuration.
 
 ```
 ./gradlew :app:assembleDebug :wear:assembleDebug
@@ -139,7 +147,9 @@ Gradle 9.3, AGP 8.13.2, Kotlin 2.2.20 (Compose compiler via `org.jetbrains.kotli
 *not* the old `composeOptions.kotlinCompilerExtensionVersion`), Compose BOM 2025.09.00,
 Room 2.8.4 via KSP 2.2.20-2.0.4, **Wear Compose Material 3 1.6.2** (old `compose-material` removed),
 material-icons-extended (BOM-managed), Coil 3.4.0 (coil-compose + coil-network-okhttp),
-DataStore Preferences 1.1.7, CameraX 1.4.2, ML Kit barcode-scanning 17.3.0.
+DataStore Preferences 1.1.7, CameraX 1.4.2, ML Kit barcode-scanning 17.3.0, ML Kit
+digital-ink-recognition 18.1.0 (on-device handwriting for the stylus scratchpad; downloads a small
+per-language model at first use — packages `libdigitalink.so`, hence the benign strip warning).
 History note: Kotlin was briefly pinned to 2.0.0 by the user, then raised back to 2.2.20 because
 Coil 3.4.0 transitively pulls Kotlin stdlib 2.3.x / okio with metadata a 2.0.0 compiler can't read
 (the exact "future library bump" this file predicted). If you re-pin Kotlin down, Coil will break
@@ -190,26 +200,8 @@ tool with `.\gradlew.bat`, not the Bash tool with `./gradlew`.
   existing sparse comments in `WearSyncService.kt`, `BookRepository.kt` for the target style).
 - Git identity in this repo is set locally (not global) to the user's name/email — already
   configured, no need to touch `git config` again.
+- **UI/UX Guidelines:** Strict rules for Material You theming, fluid animations, and Haptic feedback usage can be found in **[UI_UX_GUIDELINES.md](UI_UX_GUIDELINES.md)**.
 
-## History (condensed — see PROGRESS.md for full detail)
+## History & Release Notes
+For a full history of all feature phases and architectural pivots (including the initial removal of Firebase to achieve a zero-cost app), please consult the changelog: **[CHANGELOG.md](CHANGELOG.md)**.
 
-1. **Original scaffold** (pre-session, by a different agent): built the full 10-milestone Firebase
-   architecture per the blueprint, marked everything "COMPLETED" in PROGRESS.md. In reality it had
-   never successfully compiled — verified by this session's initial review. Confirmed defects:
-   missing `google-services.json`/launcher resources (build blockers), `Barcode.FORMAT_ISBN`
-   compile error, `Timestamp` visibility bug in `:shared`, phantom `ambient:1.1.0` dependency, and
-   an auth design (`signInWithCustomToken` on the watch) that cannot work without a server-side
-   Cloud Function that was never built.
-2. **Repair pass**: modernized the toolchain, added missing resources/config, fixed the confirmed
-   compile errors, got both modules building green. Firebase was still present at this point.
-3. **Cost-driven pivot to local-first**: user asked for zero ongoing cost. Firebase removed
-   entirely (this also incidentally solved the broken auth design). Room + repository +
-   Bluetooth Data Layer sync built from scratch. This is the current architecture.
-4. **ISBN scanner**: CameraX + ML Kit scanning wired to a free Google Books lookup, added on top
-   of the local-first architecture.
-
-Git history preserves each stage as its own commit — `git log --oneline` — including a baseline
-commit of the original broken scaffold, if you need to see what changed and why.
-
-5. **UI Overhaul & Animations**: Migrated to a 4-tab `NavigationCompose` structure (`Home`, `Library`, `Stats`, `Profile`) matching premium dark-mode mockups. Implemented a dynamic `LazyVerticalGrid` for the Library with filter chips, a polished `AnalyticsScreen` with dynamic charts, and an overhauled `ProfileScreen` showing live streaks and achievements. Added micro-animations (`animateContentSize`, `animateFloatAsState`, `animateItem`) throughout the app.
-6. **API Auto-Fetch**: Built a full-screen `AddBookScreen` with a debounced search bar querying the free Google Books API. Results auto-populate the database with metadata and cover art upon selection. Fixed a concurrency bug where `CancellationException` during debouncing caused false-positive error states.

@@ -62,7 +62,8 @@ private sealed interface ScanState {
 @Composable
 fun ScannerScreen(
     onClose: () -> Unit,
-    onBookConfirmed: (BookMetadata) -> Unit
+    onBookConfirmed: (BookMetadata) -> Unit,
+    onAddManually: () -> Unit
 ) {
     val context = LocalContext.current
     var hasPermission by remember {
@@ -95,9 +96,9 @@ fun ScannerScreen(
         Box(modifier = Modifier.fillMaxSize()) {
             if (hasPermission) {
                 CameraPreview(
-                    onIsbnScanned = { isbn ->
+                    analyzer = remember { BarcodeAnalyzer { isbn ->
                         if (state is ScanState.Scanning) state = ScanState.LookingUp(isbn)
-                    },
+                    } },
                     modifier = Modifier.fillMaxSize()
                 )
                 // Framing reticle sized for a wide EAN-13 barcode.
@@ -200,7 +201,7 @@ fun ScannerScreen(
                     TextButton(onClick = { state = ScanState.Scanning }) { Text("Rescan") }
                 },
                 dismissButton = {
-                    TextButton(onClick = onClose) { Text("Close") }
+                    TextButton(onClick = onAddManually) { Text("Add Manually") }
                 }
             )
         }
@@ -221,50 +222,4 @@ fun ScannerScreen(
     }
 }
 
-@Composable
-private fun CameraPreview(
-    onIsbnScanned: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val analyzerExecutor = remember { Executors.newSingleThreadExecutor() }
-    val providerHolder = remember { mutableStateOf<ProcessCameraProvider?>(null) }
 
-    // The camera binds to the Activity lifecycle, which outlives this screen —
-    // unbind explicitly when the preview leaves composition.
-    DisposableEffect(Unit) {
-        onDispose {
-            providerHolder.value?.unbindAll()
-            analyzerExecutor.shutdown()
-        }
-    }
-
-    AndroidView(
-        modifier = modifier,
-        factory = { ctx ->
-            val previewView = PreviewView(ctx)
-            val providerFuture = ProcessCameraProvider.getInstance(ctx)
-            providerFuture.addListener({
-                val provider = providerFuture.get()
-                providerHolder.value = provider
-
-                val preview = Preview.Builder().build().also {
-                    it.setSurfaceProvider(previewView.surfaceProvider)
-                }
-                val analysis = ImageAnalysis.Builder()
-                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                    .build()
-                    .also { it.setAnalyzer(analyzerExecutor, BarcodeAnalyzer(onIsbnScanned)) }
-
-                provider.unbindAll()
-                provider.bindToLifecycle(
-                    lifecycleOwner,
-                    CameraSelector.DEFAULT_BACK_CAMERA,
-                    preview,
-                    analysis
-                )
-            }, ContextCompat.getMainExecutor(ctx))
-            previewView
-        }
-    )
-}

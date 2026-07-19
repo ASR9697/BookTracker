@@ -17,7 +17,8 @@ data class BookMetadata(
     val coverUrl: String,
     val description: String = "",
     val genres: List<String> = emptyList(),
-    val publishedDate: String = ""
+    val publishedDate: String = "",
+    val currentUnit: Int = 0
 )
 
 // Typed so the UI can tell "slow down" (rate limit) from "you're offline" from a
@@ -100,6 +101,10 @@ object GoogleBooksClient {
             ?.optJSONObject("volumeInfo")
             ?: return null
 
+        return parseBook(isbn, volumeInfo)
+    }
+
+    private fun parseBook(isbn: String, volumeInfo: JSONObject): BookMetadata? {
         val title = volumeInfo.optString("title")
         if (title.isBlank()) return null
 
@@ -148,20 +153,6 @@ object GoogleBooksClient {
         val results = mutableListOf<BookMetadata>()
         for (i in 0 until items.length()) {
             val volumeInfo = items.optJSONObject(i)?.optJSONObject("volumeInfo") ?: continue
-            val title = volumeInfo.optString("title")
-            if (title.isBlank()) continue
-
-            val authorsArray = volumeInfo.optJSONArray("authors")
-            val authors = if (authorsArray != null) {
-                (0 until authorsArray.length()).map { authorsArray.getString(it) }
-            } else {
-                emptyList()
-            }
-
-            val coverUrl = volumeInfo.optJSONObject("imageLinks")
-                ?.optString("thumbnail")
-                .orEmpty()
-                .replace("http://", "https://")
 
             val industryIdentifiers = volumeInfo.optJSONArray("industryIdentifiers")
             var isbn = ""
@@ -184,16 +175,10 @@ object GoogleBooksClient {
                 }
             }
 
-            results.add(BookMetadata(
-                isbn = isbn,
-                title = title,
-                authors = authors,
-                pageCount = volumeInfo.optInt("pageCount"),
-                coverUrl = coverUrl,
-                description = volumeInfo.optString("description"),
-                genres = volumeInfo.categories(),
-                publishedDate = volumeInfo.optString("publishedDate")
-            ))
+            val book = parseBook(isbn, volumeInfo)
+            if (book != null) {
+                results.add(book)
+            }
         }
         return results
     }

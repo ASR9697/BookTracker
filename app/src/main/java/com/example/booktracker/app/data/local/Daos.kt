@@ -11,11 +11,26 @@ interface BookDao {
     @Query("SELECT * FROM books ORDER BY lastUpdated DESC")
     fun observeAll(): Flow<List<BookEntity>>
 
+    @Query("SELECT * FROM books")
+    suspend fun getAll(): List<BookEntity>
+
     @Query("SELECT * FROM books WHERE id = :id")
     suspend fun getById(id: String): BookEntity?
 
+    @Query("SELECT * FROM books WHERE id IN (:ids)")
+    suspend fun getByIds(ids: List<String>): List<BookEntity>
+
+    @Query(
+        "SELECT books.* FROM books JOIN books_fts ON books.rowid = books_fts.rowid " +
+            "WHERE books_fts MATCH :query ORDER BY books.lastUpdated DESC"
+    )
+    suspend fun search(query: String): List<BookEntity>
+
     @Upsert
     suspend fun upsert(book: BookEntity)
+
+    @Upsert
+    suspend fun upsert(books: List<BookEntity>)
 
     @Query("DELETE FROM books WHERE id = :id")
     suspend fun deleteById(id: String)
@@ -29,6 +44,9 @@ interface SessionDao {
 
     @Upsert
     suspend fun upsert(session: SessionEntity)
+
+    @Upsert
+    suspend fun upsert(sessions: List<SessionEntity>)
 
     @Query("SELECT * FROM sessions WHERE bookId = :bookId ORDER BY startTime DESC")
     fun observeForBook(bookId: String): Flow<List<SessionEntity>>
@@ -44,6 +62,15 @@ interface SessionDao {
 
     @Query("SELECT * FROM sessions WHERE endTime = 0 AND bookId = :bookId LIMIT 1")
     suspend fun getOpenSessionForBook(bookId: String): SessionEntity?
+
+    @Query("SELECT * FROM sessions")
+    suspend fun getAll(): List<SessionEntity>
+
+    @Query("DELETE FROM sessions WHERE id = :id")
+    suspend fun deleteById(id: String)
+
+    @Query("DELETE FROM sessions WHERE bookId = :bookId")
+    suspend fun deleteByBookId(bookId: String)
 }
 
 @Dao
@@ -51,9 +78,29 @@ interface MarginNoteDao {
     @Query("SELECT * FROM margin_notes WHERE bookId = :bookId ORDER BY timestamp DESC")
     fun observeForBook(bookId: String): Flow<List<MarginNoteEntity>>
 
+    @Query("SELECT COUNT(*) FROM margin_notes")
+    fun observeTotalNotesCount(): Flow<Int>
+
+
+    @Query("SELECT * FROM margin_notes")
+    suspend fun getAll(): List<MarginNoteEntity>
+
+    @Query(
+        "SELECT margin_notes.* FROM margin_notes " +
+            "JOIN notes_fts ON margin_notes.rowid = notes_fts.rowid " +
+            "WHERE notes_fts MATCH :query ORDER BY margin_notes.timestamp DESC"
+    )
+    suspend fun search(query: String): List<MarginNoteEntity>
+
     @Upsert
     suspend fun upsert(note: MarginNoteEntity)
 
+    @Upsert
+    suspend fun upsert(notes: List<MarginNoteEntity>)
+
     @Query("DELETE FROM margin_notes WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    @Query("DELETE FROM margin_notes WHERE bookId = :bookId")
+    suspend fun deleteByBookId(bookId: String)
 }

@@ -36,6 +36,37 @@ val OutlineVariant = Color(0xFF49454F)
 val PremiumGradientStart = Color(0xFF4D3D76)
 val PremiumGradientEnd = Color(0xFF37265E)
 
+// Daylight Reader Color Palette (Strict Light Mode)
+val LightBackground = Color(0xFFFEF7FF)
+val LightSurface = Color(0xFFFEF7FF)
+val LightSurfaceVariant = Color(0xFFE7E0EC)
+val LightSurfaceContainerLowest = Color(0xFFFFFFFF)
+val LightSurfaceContainerLow = Color(0xFFF7F2FA)
+val LightSurfaceContainer = Color(0xFFF3EDF7)
+val LightSurfaceContainerHigh = Color(0xFFECE6F0)
+val LightSurfaceContainerHighest = Color(0xFFE6E0E9)
+
+val LightOnSurface = Color(0xFF1D1B20)
+val LightOnSurfaceVariant = Color(0xFF49454F)
+
+val LightPrimary = Color(0xFF6750A4)
+val LightOnPrimary = Color(0xFFFFFFFF)
+val LightPrimaryContainer = Color(0xFFEADDFF)
+val LightOnPrimaryContainer = Color(0xFF21005D)
+
+val LightSecondary = Color(0xFF006874)
+val LightOnSecondary = Color(0xFFFFFFFF)
+val LightSecondaryContainer = Color(0xFF97F0FF)
+val LightOnSecondaryContainer = Color(0xFF001F24)
+
+val LightError = Color(0xFFB3261E)
+val LightOnError = Color(0xFFFFFFFF)
+val LightErrorContainer = Color(0xFFF9DEDC)
+val LightOnErrorContainer = Color(0xFF410E0B)
+
+val LightOutline = Color(0xFF79747E)
+val LightOutlineVariant = Color(0xFFCAC4D0)
+
 // Streak flame accent — deliberately theme-independent so the "fire" always
 // reads warm, whatever hue dynamic color lands on.
 val StreakFlame = Color(0xFFFF8F00)

@@ -8,25 +8,35 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import com.example.booktracker.app.analytics.AnalyticsEngine
+
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 
 @Composable
 fun EndSessionDialog(
-    pagesRead: Int,
+    startPage: Int, // Represents the current reading unit/page
+    totalUnits: Int,
     durationMillis: Long,
     onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
+    onConfirm: (String, Int) -> Unit
 ) {
     var customTag by remember { mutableStateOf("") }
+    var endingPage by remember { mutableStateOf(startPage.toString()) }
     val presets = listOf("Bed", "Coffee Shop", "Commute", "Couch", "Desk", "Tea")
     var selectedPreset by remember { mutableStateOf<String?>(null) }
+    val haptic = LocalHapticFeedback.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("End Session") },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                SessionRecap(pagesRead, durationMillis)
+                val currentEndPage = endingPage.toIntOrNull() ?: startPage
+                val sessionPagesRead = (currentEndPage - startPage).coerceAtLeast(0)
+                SessionRecap(sessionPagesRead, durationMillis)
                 Text(
                     "Where or how were you reading?",
                     style = MaterialTheme.typography.bodyMedium,
@@ -44,6 +54,7 @@ fun EndSessionDialog(
                             FilterChip(
                                 selected = selectedPreset == preset,
                                 onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     if (selectedPreset == preset) {
                                         selectedPreset = null
                                     } else {
@@ -63,6 +74,25 @@ fun EndSessionDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
+                    value = endingPage,
+                    onValueChange = { endingPage = it },
+                    label = { Text("Ending page") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = endingPage.toIntOrNull()?.let { it > totalUnits && totalUnits > 0 } == true
+                )
+                if (endingPage.toIntOrNull()?.let { it > totalUnits && totalUnits > 0 } == true) {
+                    Text(
+                        "Cannot exceed total units ($totalUnits)",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
                     value = customTag,
                     onValueChange = { 
                         customTag = it
@@ -79,9 +109,12 @@ fun EndSessionDialog(
         confirmButton = {
             TextButton(
                 onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     val finalTag = customTag.takeIf { it.isNotBlank() } ?: selectedPreset ?: ""
-                    onConfirm(finalTag)
-                }
+                    val finalPage = endingPage.toIntOrNull() ?: startPage
+                    onConfirm(finalTag, finalPage)
+                },
+                enabled = endingPage.toIntOrNull()?.let { it <= totalUnits || totalUnits == 0 } != false
             ) {
                 Text("End Session")
             }
@@ -113,10 +146,19 @@ private fun SessionRecap(pagesRead: Int, durationMillis: Long) {
                 else "Session lasted $duration",
                 style = MaterialTheme.typography.titleMedium
             )
-            if (pagesRead > 0 && durationMillis >= AnalyticsEngine.MIN_TIMED_SESSION_MILLIS) {
+            if (pagesRead > 0 && durationMillis > 0) {
                 val perHour = pagesRead / (durationMillis / 3_600_000f)
+                val timePerPage = durationMillis.toFloat() / pagesRead.toFloat()
+                val minutesPerPage = timePerPage / 60000f
+                val secondsPerPage = (timePerPage / 1000f).toInt() % 60
+                val perPageText = if (minutesPerPage >= 1) {
+                    "${minutesPerPage.toInt()}m ${secondsPerPage}s / page"
+                } else {
+                    "${secondsPerPage}s / page"
+                }
+                
                 Text(
-                    "≈ ${perHour.toInt()} pages/hour",
+                    "≈ ${perHour.toInt()} pages/hour • $perPageText",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -24,6 +24,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import com.example.booktracker.app.analytics.AnalyticsEngine
 import com.example.booktracker.app.analytics.ReadingCalendar
 import com.example.booktracker.shared.models.Book
@@ -166,44 +173,11 @@ fun AnalyticsScreen(
                             }
                         }
                         Spacer(Modifier.height(24.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth().height(160.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Bottom
-                        ) {
-                            last7Days.forEachIndexed { index, (date, value) ->
-                                val heightFrac = (value.toFloat() / maxIn7Days).coerceIn(0.1f, 1f)
-                                val color =
-                                    if (index == last7Days.size - 1) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.secondary
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    if (value > 0) {
-                                        Text(
-                                            value.toString(),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Spacer(Modifier.height(4.dp))
-                                    }
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth(0.6f)
-                                            .fillMaxHeight(heightFrac)
-                                            .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
-                                            .background(color)
-                                    )
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(
-                                        date.dayOfWeek.name.take(1),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
+                        SmoothLineChart(
+                            data = last7Days,
+                            maxValue = maxIn7Days,
+                            modifier = Modifier.fillMaxWidth().height(160.dp).padding(top = 16.dp, bottom = 8.dp, start = 8.dp, end = 8.dp)
+                        )
                     }
                 }
             }
@@ -429,6 +403,134 @@ fun GenreChip(text: String, color: Color) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(text, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+@Composable
+fun SmoothLineChart(
+    data: List<Pair<java.time.LocalDate, Long>>,
+    maxValue: Long,
+    modifier: Modifier = Modifier,
+    lineColor: Color = MaterialTheme.colorScheme.primary,
+    gradientColors: List<Color> = listOf(
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.0f)
+    )
+) {
+    if (data.isEmpty()) return
+    
+    val textStyle = MaterialTheme.typography.labelSmall
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val textMeasurer = androidx.compose.ui.text.rememberTextMeasurer()
+    
+    Canvas(modifier = modifier) {
+        val width = size.width
+        val height = size.height - 30.dp.toPx() // Leave room for labels
+        
+        val pointSpacing = if (data.size > 1) width / (data.size - 1) else width
+        
+        val points = data.mapIndexed { index, (_, value) ->
+            val normalizedValue = if (maxValue > 0) value.toFloat() / maxValue else 0f
+            // Y is inverted in canvas (0 is top)
+            val x = index * pointSpacing
+            val y = height - (normalizedValue * height)
+            Offset(x, y)
+        }
+        
+        val path = Path()
+        if (points.isNotEmpty()) {
+            path.moveTo(points.first().x, points.first().y)
+            
+            for (i in 0 until points.size - 1) {
+                val p0 = points[i]
+                val p1 = points[i + 1]
+                
+                // Calculate control points for smooth bezier curve
+                val controlPoint1 = Offset((p0.x + p1.x) / 2, p0.y)
+                val controlPoint2 = Offset((p0.x + p1.x) / 2, p1.y)
+                
+                path.cubicTo(
+                    controlPoint1.x, controlPoint1.y,
+                    controlPoint2.x, controlPoint2.y,
+                    p1.x, p1.y
+                )
+            }
+        }
+        
+        // Draw the gradient fill
+        val fillPath = Path().apply {
+            addPath(path)
+            if (points.isNotEmpty()) {
+                lineTo(points.last().x, height)
+                lineTo(points.first().x, height)
+                close()
+            }
+        }
+        
+        drawPath(
+            path = fillPath,
+            brush = Brush.verticalGradient(
+                colors = gradientColors,
+                startY = 0f,
+                endY = height
+            )
+        )
+        
+        // Draw the line
+        drawPath(
+            path = path,
+            color = lineColor,
+            style = Stroke(width = 4.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+        )
+        
+        // Draw dots and labels
+        points.forEachIndexed { index, point ->
+            val (_, value) = data[index]
+            val date = data[index].first
+            val dayName = date.dayOfWeek.name.take(1)
+            
+            // Draw a circle for each data point
+            drawCircle(
+                color = lineColor,
+                radius = 4.dp.toPx(),
+                center = point
+            )
+            drawCircle(
+                color = Color.White,
+                radius = 2.dp.toPx(),
+                center = point
+            )
+            
+            // Draw value text above the point if > 0
+            if (value > 0) {
+                val textLayoutResult = textMeasurer.measure(
+                    text = value.toString(),
+                    style = textStyle
+                )
+                drawText(
+                    textLayoutResult = textLayoutResult,
+                    color = onSurfaceVariant,
+                    topLeft = Offset(
+                        x = point.x - (textLayoutResult.size.width / 2f),
+                        y = point.y - textLayoutResult.size.height - 8.dp.toPx()
+                    )
+                )
+            }
+            
+            // Draw day label below
+            val dayLayoutResult = textMeasurer.measure(
+                text = dayName,
+                style = textStyle
+            )
+            drawText(
+                textLayoutResult = dayLayoutResult,
+                color = onSurfaceVariant,
+                topLeft = Offset(
+                    x = point.x - (dayLayoutResult.size.width / 2f),
+                    y = height + 8.dp.toPx()
+                )
+            )
         }
     }
 }

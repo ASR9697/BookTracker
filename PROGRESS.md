@@ -110,4 +110,67 @@ Milestones 6–10 remain stubs. See README.md for the honest state and roadmap.
   - **Text Search & CSV Import**: Implemented `GoogleBooksClient` manual text search for books without barcodes. Added `CsvImportEngine.kt` to parse Goodreads and StoryGraph CSV exports, automatically mapping status and injecting imported books into the local Room database.
   - **Environment Correlator**: Added `EndSessionDialog` that prompts the user to tag their reading session with environment and beverage tags. Upgraded `AnalyticsScreen` to aggregate these tags and show top environments ranked by pages read.
   - **Premium UI Overhaul**: Created a custom design system with rich Indigo/Slate palettes (`Color.kt`), bold typography (`Type.kt`), and `Theme.kt`. Removed dynamic color reliance. Refined the "Currently Reading" hero with a gradient background, `ElevatedCard` with rounded corners (24.dp), and `animateContentSize()`. Embellished empty states with illustration icons.
+  - **Data layer & App models**: Migrated Room storage to support MarginNotes, yearly goal setting, `description`, `genres`, and `publishedDate` to Book and clients.
+  - **Wear & Sync**: Live session timer added to hero card; time-to-finish estimates; wear watchface syncing for daily goals and today's pages.
+  - **Screens Added/Rewired**: Added `BookDetailScreen`, `HistoryScreen`, and rebuilt `ProfileScreen` incorporating the yearly books goal and real genres.
+  - *All changes verified, built green (`assembleDebug`), and committed.*
   - Next Step: reading velocity charts or Wear OS complications/haptics.
+
+- **[2026-07-18] Completed the remaining Phase 2 (§7) stubs (Claude Code)**: user asked to finish the
+  four classes that were still "wired to nothing" (AnalyticsEngine turned out to be already-built &
+  wired — the `calculateReadingVelocity` note was stale). Scope confirmed with the user as "build
+  everything, free dependencies OK."
+  - **FormatAdaptabilityLayer (§7B multi-format)**: `getDisplayUnit`/`unitAbbrev`/`countLabel` now
+    drive format-aware labels through BookDetail (header, "… logged" stat, note prefixes). Added a
+    segmented format picker (PAGES/CHAPTERS/VOLUMES/HOURS) → `repository.updateFormat`. The old
+    `startTTSHandoff` stub is now real: `ReadAloudController`/`rememberReadAloud` over Android's
+    built-in `TextToSpeech` (local, free) behind a Listen/Stop button on the About card.
+  - **SmartPlanningEngine / JournalingEngine**: `SmartPlanningEngine` is a velocity-based reading
+    planner surfaced as the BookDetail "Reading planner" card (~units in 15/30/45/60 min).
+    `JournalingEngine.render` is a dependency-free inline-Markdown renderer used by the note cards.
+  - **WristDictaphone (wrist voice notes)**: watch 🎤 button captures speech via the platform
+    recognizer (no RECORD_AUDIO, no paid service) and publishes to a new Data Layer path
+    `/note/{noteId}`; `WearSyncService` writes it via `repository.addRemoteNote` (upsert-by-id →
+    replay-idempotent) even with the phone UI closed, then clears the transport item. Voice notes
+    show a mic badge in the UI.
+
+- **[2026-07-18] WearOS Voice Margin Notes (Claude Code)**: implemented wrist dictaphone integration.
+  - Added `wear/journal/WristDictaphone.kt` which leverages standard Android speech recognition intents on the watch (`ACTION_RECOGNIZE_SPEECH`) to capture voice notes (no `RECORD_AUDIO` or paid services needed).
+  - Watch publishes dictated notes via Data Layer to a new `/note/{noteId}` path.
+  - `WearSyncService` updated to handle notes, calling `repository.addRemoteNote()` which acts idempotently and writes to Room.
+  - The transport item is deleted upon successful processing. Note IDs are generated on the watch via UUIDs to guarantee replay safety.
+
+- **[2026-07-19] Phase 3 Polish and Code Review Fixes (Antigravity)**: implemented requested UI features and patched all bugs identified in the Phase 2 code review.
+  - **Feature Enhancements**: Built `SelectTimerBookDialog` so the Home screen "Start Session" card allows choosing between multiple active/paused books. "Read Again" option added to `FINISHED` books to start a re-read without losing history. `FocusTimerScreen` now auto-prompts for start page.
+  - **WearOS Timer Sync**: The Watch Focus Timer now calculates progress with a local tick, avoiding heavy battery drain from the Data Layer. Inner and outer CircularProgressIndicators track daily goal and book progress correctly. Timer Pause/Resume actions also sync back to the phone. Goal complication reads properly from the list.
+  - **Architecture & Reliability**:
+    - Backup/Restore Last-Write-Wins constraint enforced. Backup schema updated to include `isFavorite`.
+    - Android 14 foreground service crash fixed in `TimerService`.
+    - DND implementation completely migrated to application-scoped `DndManager`, stripping conflicting rules from `BookTrackerViewModel`.
+    - Removed memory leak in `SoundscapeEngine` (cleanup added) and eliminated battery-draining continuous 1Hz ticker when timer is not active.
+    - Accidental data loss prevented by adding confirmation dialogs for deleting reading sessions.
+  - Next Step: Ready for public beta and real-world testing.
+  - **HardwareIntegrations**: external-display dashboard projection via the Android **Presentation
+    API** (Analytics → "Present on external screen"; falls back to a Toast when no display). A
+    custom Chromecast receiver was intentionally *not* used — it needs a registered Cast app id +
+    hosted receiver page, which breaks the zero-account rule; Presentation covers HDMI/wireless
+    "cast screen" for free. Also `recognizeHandwriting` via **ML Kit Digital Ink** (on-device,
+    keyless) behind the new `StylusScratchpad` "Handwrite" sheet in BookDetail.
+  - **Dependency added**: `com.google.mlkit:digital-ink-recognition:18.1.0` (free/keyless; downloads
+    a small per-language model at first use; packages `libdigitalink.so` → benign strip warning).
+  - Both modules verified: `:app` + `:wear` `assembleDebug` green. Added crash guards (no speech
+    recognizer on watch; display disconnect before `Presentation.show()`).
+  - Next Step: on-device UX pass once an emulator/device is available (voice-note round-trip, ink
+    recognition accuracy, external-display layout); optionally sync the daily goal as its own path.
+
+- **[2026-07-18] Removed the external-display "cast dashboard" (Claude Code)**: at the user's
+  request. Deleted `castDashboardToBigScreen`/`secondaryDisplay`/`DashboardStats`/the
+  `DashboardPresentation` from `HardwareIntegrations` (now handwriting-recognition only) and the
+  "Present on external screen" button + `findActivity` helper from `AnalyticsScreen`. No dependency
+  change (Chromecast was never a dependency — the feature used the Android Presentation API). ML Kit
+  Digital Ink handwriting and the stylus scratchpad stay. Both modules verified green.
+- **[2026-07-18] Premium UI Overhaul (Phase 1, 2, 3) (Antigravity)**:
+  - **Phase 1**: Added smooth slideInVertically and adeIn crossfade transitions to the NavHost. Replaced text empty states with illustrative glassmorphic cards in TBR and Library. Implemented the Android SplashScreen API for a seamless launch.
+  - **Phase 2**: Redesigned LibraryGridCard into edge-to-edge Netflix-style covers with bottom gradient overlays and a progress bar. Softened SettingsCard corners and added vector icons to Settings categories. Upgraded HeroPillButton to use frosted glassmorphism over the parallax cover.
+  - **Phase 3 (Hyper-Interactive Animations)**: Created a custom Modifier.bounceClick() using Spring Physics for tactile, elastic button squish. Added dynamic opacity shifting to glass buttons on press. Built a high-performance Canvas particle system that fires confetti when daily goals are met. Replaced the API search loading spinner with an animated sweeping Shimmer skeleton.
+  - Both modules built and verified green (ssembleDebug).

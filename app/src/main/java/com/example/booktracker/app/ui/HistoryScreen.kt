@@ -25,6 +25,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -37,16 +42,29 @@ import com.example.booktracker.shared.models.Session
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.clickable
 import java.time.format.DateTimeFormatter
 
 private val headerFormatter = DateTimeFormatter.ofPattern("EEEE, MMM d")
 
 /** Every completed session, newest day first — the full reading log. */
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     books: List<Book>,
     sessions: List<Session>,
+    onDeleteSession: (Session) -> Unit,
+    onUpdateSession: (Session) -> Unit,
     onBack: () -> Unit
 ) {
     val titlesById = remember(books) { books.associate { it.id to it.title } }
@@ -71,6 +89,19 @@ fun HistoryScreen(
             )
         }
     ) { innerPadding ->
+        var sessionToEdit by remember { mutableStateOf<Session?>(null) }
+        
+        sessionToEdit?.let { session ->
+            EditSessionDialog(
+                session = session,
+                onDismiss = { sessionToEdit = null },
+                onUpdate = { updated ->
+                    onUpdateSession(updated)
+                    sessionToEdit = null
+                }
+            )
+        }
+
         if (byDay.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -118,10 +149,39 @@ fun HistoryScreen(
                     }
                 }
                 items(daySessions, key = { it.id }) { session ->
-                    HistorySessionRow(
-                        session = session,
-                        bookTitle = titlesById[session.bookId] ?: "Removed book"
+                    val dismissState = rememberSwipeToDismissBoxState(
+                        confirmValueChange = { value ->
+                            if (value == SwipeToDismissBoxValue.EndToStart) {
+                                onDeleteSession(session)
+                                true
+                            } else false
+                        }
                     )
+                    SwipeToDismissBox(
+                        state = dismissState,
+                        enableDismissFromStartToEnd = false,
+                        backgroundContent = {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(MaterialTheme.colorScheme.error, RoundedCornerShape(12.dp))
+                                    .padding(horizontal = 20.dp),
+                                contentAlignment = Alignment.CenterEnd
+                            ) {
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    contentDescription = "Delete",
+                                    tint = MaterialTheme.colorScheme.onError
+                                )
+                            }
+                        }
+                    ) {
+                        HistorySessionRow(
+                            session = session,
+                            bookTitle = titlesById[session.bookId] ?: "Removed book",
+                            onClick = { sessionToEdit = session }
+                        )
+                    }
                 }
             }
         }
@@ -129,11 +189,41 @@ fun HistoryScreen(
 }
 
 @Composable
-private fun HistorySessionRow(session: Session, bookTitle: String) {
+private fun EditSessionDialog(
+    session: Session,
+    onDismiss: () -> Unit,
+    onUpdate: (Session) -> Unit
+) {
+    var unitsReadText by remember { mutableStateOf(session.unitsRead.toString()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Session") },
+        text = {
+            OutlinedTextField(
+                value = unitsReadText,
+                onValueChange = { unitsReadText = it },
+                label = { Text("Pages read") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val newUnits = unitsReadText.toIntOrNull() ?: session.unitsRead
+                onUpdate(session.copy(unitsRead = newUnits))
+            }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+@Composable
+private fun HistorySessionRow(session: Session, bookTitle: String, onClick: () -> Unit) {
     val durationMinutes = (session.endTime - session.startTime) / 60_000L
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(12.dp))
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically

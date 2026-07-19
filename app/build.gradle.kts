@@ -45,6 +45,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     implementation("androidx.navigation:navigation-compose:2.8.8")
     implementation("androidx.datastore:datastore-preferences:1.1.7")
+    
+    implementation("androidx.compose.ui:ui-text-google-fonts")
+    implementation("androidx.core:core-splashscreen:1.0.1")
 
     implementation("io.coil-kt.coil3:coil-compose:3.4.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.4.0")
@@ -58,4 +61,12 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
     implementation("androidx.camera:camera-view:$cameraxVersion")
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
+    // On-device Latin-script OCR for the "scan a passage into a margin note"
+    // flow. Free + keyless, model bundled in the APK (no download at runtime).
+    implementation("com.google.mlkit:text-recognition:16.0.1")
+    // On-device handwriting recognition for the stylus scratchpad. Free + keyless;
+    // downloads a small per-language model at first use.
+    implementation("com.google.mlkit:digital-ink-recognition:18.1.0")
+
+    implementation("androidx.glance:glance-appwidget:1.1.1")
 }

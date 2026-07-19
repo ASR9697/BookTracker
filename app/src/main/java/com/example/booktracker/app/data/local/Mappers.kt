@@ -20,6 +20,19 @@ fun SessionEntity.toModel(): Session = Session(
     isInterrupted = isInterrupted
 )
 
+fun Session.toEntity(): SessionEntity = SessionEntity(
+    id = id,
+    bookId = bookId,
+    startTime = startTime,
+    endTime = endTime,
+    startUnit = startUnit,
+    endUnit = endUnit,
+    unitsRead = unitsRead,
+    deviceSource = deviceSource,
+    environmentTag = environmentTag,
+    isInterrupted = isInterrupted
+)
+
 fun BookEntity.toModel(): Book = Book(
     id = id,
     title = title,
@@ -34,7 +47,8 @@ fun BookEntity.toModel(): Book = Book(
     rating = rating.toFloatMap(),
     description = description,
     genres = genres.toStringList(),
-    publishedDate = publishedDate
+    publishedDate = publishedDate,
+    isFavorite = isFavorite
 )
 
 fun Book.toEntity(): BookEntity = BookEntity(
@@ -52,7 +66,8 @@ fun Book.toEntity(): BookEntity = BookEntity(
     rating = JSONObject(rating.mapValues { it.value.toDouble() }).toString(),
     description = description,
     genres = JSONArray(genres).toString(),
-    publishedDate = publishedDate
+    publishedDate = publishedDate,
+    isFavorite = isFavorite
 )
 
 fun MarginNoteEntity.toModel(): MarginNote = MarginNote(

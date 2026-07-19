@@ -73,7 +73,8 @@ object CsvImportEngine {
                     rating = "{}",
                     description = "",
                     genres = "[]",
-                    publishedDate = ""
+                    publishedDate = "",
+                    isFavorite = false
                 )
                 
                 bookDao.upsert(entity)
