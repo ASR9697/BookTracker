@@ -158,7 +158,6 @@ fun ProfileScreen(
             }
         }
 
-        // Your Wrapped
         item {
             Card(
                 shape = RoundedCornerShape(16.dp),

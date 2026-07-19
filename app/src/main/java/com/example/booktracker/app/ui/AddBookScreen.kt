@@ -152,7 +152,6 @@ fun AddBookScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Scan Barcode Button
                 Button(
                     onClick = onScanBarcode,
                     modifier = Modifier
@@ -377,14 +376,13 @@ fun BookPreviewDialog(
                 )
                 Spacer(Modifier.height(8.dp))
                 
-                // Pipeline Selection
                 val options = listOf(
-                    BookStatus.BACKLOG to "Backlog",
-                    BookStatus.SHORTLIST to "Shortlist",
-                    BookStatus.UP_NEXT to "Up Next",
-                    BookStatus.READING to "Reading"
-                )
-                
+                    BookStatus.BACKLOG,
+                    BookStatus.SHORTLIST,
+                    BookStatus.UP_NEXT,
+                    BookStatus.READING
+                ).map { it to it.label }
+
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     options.forEach { (status, label) ->
                         Row(
@@ -572,13 +570,12 @@ fun ManualAddBookDialog(
                 )
                 Spacer(Modifier.height(8.dp))
 
-                // Pipeline Selection
                 val options = listOf(
-                    BookStatus.BACKLOG to "Backlog",
-                    BookStatus.SHORTLIST to "Shortlist",
-                    BookStatus.UP_NEXT to "Up Next",
-                    BookStatus.READING to "Reading"
-                )
+                    BookStatus.BACKLOG,
+                    BookStatus.SHORTLIST,
+                    BookStatus.UP_NEXT,
+                    BookStatus.READING
+                ).map { it to it.label }
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     options.forEach { (status, label) ->

@@ -288,38 +288,40 @@ fun BookDetailScreen(
             }
 
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Margin notes", style = MaterialTheme.typography.titleLarge)
+                SectionItem {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = { showOcr = true }) {
-                            Icon(
-                                Icons.Filled.DocumentScanner,
-                                contentDescription = "Scan text from a page",
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        IconButton(onClick = { showScratchpad = true }) {
-                            Icon(
-                                Icons.Filled.Draw,
-                                contentDescription = "Handwrite a note",
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        FilledTonalButton(onClick = { showAddNote = true }) {
-                            Icon(
-                                Icons.Filled.Add,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text("Add note")
+                        Text("Margin notes", style = MaterialTheme.typography.titleLarge)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = { showOcr = true }) {
+                                Icon(
+                                    Icons.Filled.DocumentScanner,
+                                    contentDescription = "Scan text from a page",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            IconButton(onClick = { showScratchpad = true }) {
+                                Icon(
+                                    Icons.Filled.Draw,
+                                    contentDescription = "Handwrite a note",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            FilledTonalButton(onClick = { showAddNote = true }) {
+                                Icon(
+                                    Icons.Filled.Add,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text("Add note")
+                            }
                         }
                     }
                 }
@@ -342,7 +344,9 @@ fun BookDetailScreen(
             }
 
             item {
-                Text("Session history", style = MaterialTheme.typography.titleLarge, modifier = Modifier.background(MaterialTheme.colorScheme.background).padding(horizontal = 16.dp, vertical = 8.dp))
+                SectionItem {
+                    Text("Session history", style = MaterialTheme.typography.titleLarge)
+                }
             }
             if (completed.isEmpty()) {
                 item {
@@ -355,7 +359,7 @@ fun BookDetailScreen(
                 }
             } else {
                 items(completed.take(30), key = { it.id }) { session ->
-                    Box(Modifier.background(MaterialTheme.colorScheme.background).padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    SectionItem {
                         SessionRow(
                             session = session,
                             onEdit = { sessionToEdit = session },

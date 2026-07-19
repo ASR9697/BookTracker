@@ -422,7 +422,7 @@ fun SmoothLineChart(
     
     val textStyle = MaterialTheme.typography.labelSmall
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
-    val textMeasurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val textMeasurer = rememberTextMeasurer()
     
     Canvas(modifier = modifier) {
         val width = size.width
@@ -477,14 +477,12 @@ fun SmoothLineChart(
             )
         )
         
-        // Draw the line
         drawPath(
             path = path,
             color = lineColor,
             style = Stroke(width = 4.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
         )
-        
-        // Draw dots and labels
+
         points.forEachIndexed { index, point ->
             val (_, value) = data[index]
             val date = data[index].first

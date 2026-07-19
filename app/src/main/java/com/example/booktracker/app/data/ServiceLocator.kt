@@ -33,7 +33,7 @@ object ServiceLocator {
         dndManager ?: synchronized(this) {
             dndManager ?: DndManager(
                 context.applicationContext,
-                db(context).sessionDao(),
+                repository(context),
                 settings(context)
             ).also { dndManager = it }
         }

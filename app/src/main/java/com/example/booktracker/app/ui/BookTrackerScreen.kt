@@ -188,6 +188,13 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel) {
     val currentRoute = navBackStackEntry?.destination?.route ?: "home"
     
     val isTopLevelRoute = currentRoute in listOf("home", "library", "stats", "profile")
+    val navigateTopLevel: (String) -> Unit = { route ->
+        navController.navigate(route) {
+            popUpTo(navController.graph.startDestinationId) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -229,49 +236,25 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel) {
                 ) {
                     NavigationBarItem(
                         selected = currentRoute == "home",
-                        onClick = {
-                            navController.navigate("home") {
-                                popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
+                        onClick = { navigateTopLevel("home") },
                         icon = { Icon(Icons.Filled.LocalFireDepartment, contentDescription = "Home") },
                         label = { Text("Home") }
                     )
                     NavigationBarItem(
                         selected = currentRoute == "library",
-                        onClick = {
-                            navController.navigate("library") {
-                                popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
+                        onClick = { navigateTopLevel("library") },
                         icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Library") },
                         label = { Text("Library") }
                     )
                     NavigationBarItem(
                         selected = currentRoute == "stats",
-                        onClick = {
-                            navController.navigate("stats") {
-                                popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
+                        onClick = { navigateTopLevel("stats") },
                         icon = { Icon(Icons.Filled.Insights, contentDescription = "Stats") },
                         label = { Text("Stats") }
                     )
                     NavigationBarItem(
                         selected = currentRoute == "profile",
-                        onClick = {
-                            navController.navigate("profile") {
-                                popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
+                        onClick = { navigateTopLevel("profile") },
                         icon = { Icon(Icons.Filled.Settings, contentDescription = "Profile") },
                         label = { Text("Profile") }
                     )
@@ -985,7 +968,6 @@ fun LibraryScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Filter Chips
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1121,7 +1103,6 @@ fun LibraryGridCard(
         Box(modifier = Modifier.fillMaxSize()) {
             BookCover(book.coverUrl, Modifier.fillMaxSize())
             
-            // Status Pill and Options Menu
             var expanded by remember { androidx.compose.runtime.mutableStateOf(false) }
             val statusText = try {
                 BookStatus.valueOf(book.status).label

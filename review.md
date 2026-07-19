@@ -57,27 +57,33 @@
 
 ---
 
-## Confirmed cleanup backlog (below the top-10 cut)
+## Cleanup backlog — now closed
 
-**Efficiency**
-- Backup restore runs one implicit transaction per row (no `withTransaction`, single-item DAOs) — [BookRepository.kt:283](app/src/main/java/com/example/booktracker/app/data/BookRepository.kt#L283)
-- N+1 `getById` per note hit in `searchLibrary` — batch with `WHERE id IN` — [BookRepository.kt:252](app/src/main/java/com/example/booktracker/app/data/BookRepository.kt#L252)
-- `rememberReadAloud()` eagerly binds a TextToSpeech engine on every BookDetail open — create lazily on first Listen tap — [BookDetailScreen.kt:526](app/src/main/java/com/example/booktracker/app/ui/BookDetailScreen.kt#L526)
-- Top-bar fade `derivedStateOf` read in composition → full-screen recomposition per scroll pixel; use the `graphicsLayer` pattern the same file already uses for the parallax header — [BookDetailScreen.kt:342](app/src/main/java/com/example/booktracker/app/ui/BookDetailScreen.kt#L342)
+All top-10 findings were fixed and committed (`ed89797`). A follow-up pass then re-checked every item in this backlog against current code; most had *already* been fixed in the same working tree (list-upsert DAOs, lazy TTS init, `graphicsLayer`-based top-bar fade, `ThemeMode` enum, persisted pomodoro settings, shared `CameraPreview`, mostly-consolidated `.label` usage). The remaining handful were fixed directly in this pass:
 
-**Architecture**
-- Theme mode is a magic Int (0/1/2) re-encoded in SettingsRepository comment / MainActivity `when` / SettingsScreen list index — use an enum at the DataStore boundary — [MainActivity.kt:31](app/src/main/java/com/example/booktracker/app/MainActivity.kt#L31)
-- Pomodoro work/break/volume knobs live only in VM memory (reset on process death) — persist via SettingsRepository — [BookTrackerViewModel.kt:144](app/src/main/java/com/example/booktracker/app/ui/BookTrackerViewModel.kt#L144)
-- `DndManager` receives a `SessionDao` directly — CLAUDE.md says only `BookRepository` touches Room; expose an open-session flow on the repository instead — [ServiceLocator.kt:29](app/src/main/java/com/example/booktracker/app/data/ServiceLocator.kt#L29)
+**Already fixed (found during re-check, no action needed)**
+- Backup restore now does one list-upsert per entity type (no more per-row implicit transactions) — [BookRepository.kt:293](app/src/main/java/com/example/booktracker/app/data/BookRepository.kt#L293)
+- N+1 `getById` in `searchLibrary` replaced with a batched `getByIds` — [BookRepository.kt:258](app/src/main/java/com/example/booktracker/app/data/BookRepository.kt#L258)
+- `ReadAloudController` now lazily creates its `TextToSpeech` engine on first `toggle()`, not eagerly — [FormatAdaptabilityLayer.kt:106](app/src/main/java/com/example/booktracker/app/format/FormatAdaptabilityLayer.kt#L106)
+- Top-bar fade now reads `topBarAlpha()` inside `drawBehind`/`graphicsLayer` (draw-phase), not composition-phase — [BookDetailScreen.kt:371](app/src/main/java/com/example/booktracker/app/ui/BookDetailScreen.kt#L371)
+- Theme mode is now a `ThemeMode` enum, not a magic Int — [SettingsRepository.kt:18](app/src/main/java/com/example/booktracker/app/data/SettingsRepository.kt#L18)
+- Pomodoro work/break minutes now persist via `SettingsRepository`/DataStore — [SettingsRepository.kt:84](app/src/main/java/com/example/booktracker/app/data/SettingsRepository.kt#L84)
+- Camera preview is a single shared `CameraPreview` composable used by both Scanner and OCR screens — [CameraPreview.kt](app/src/main/java/com/example/booktracker/app/ui/CameraPreview.kt)
+- `BookStatus.label` (an enum property) is now used at nearly every call site instead of ad-hoc strings
 
-**Duplication**
-- Camera preview + permission flow copy-pasted between Scanner and OCR screens — [OcrCaptureScreen.kt:238](app/src/main/java/com/example/booktracker/app/ui/OcrCaptureScreen.kt#L238)
-- BookStatus→label mapping duplicated across 4 files (7+ sites), already divergent (LibrarySearchScreen omits PAUSED; one BookTrackerScreen copy omits READING/DNF) — hoist one shared source
-- BackupEngine re-implements Mappers.kt JSON conversions (already out of sync — see finding #2) — [BackupEngine.kt:97](app/src/main/java/com/example/booktracker/app/data/BackupEngine.kt#L97)
-- DND system-call block duplicated 3× — resolved automatically by finding #8's fix (delete the ViewModel blocks)
-- Section-wrapper Box copy-pasted 8× (+4 drifting variants) in BookDetailScreen; NavOptions block 4× in BookTrackerScreen; TTS alias property in FormatAdaptabilityLayer; dead code (unused imports, unconsumed `timerBookId` flow, qualified `rememberTextMeasurer`)
+**Fixed in this pass**
+- Removed unused `Intent`/`Settings`/`NotificationManager` imports from `BookTrackerViewModel.kt` (dead since DND moved to `DndManager`)
+- `AnalyticsScreen.kt`: `rememberTextMeasurer()` now uses its import instead of a redundant fully-qualified call
+- Removed the 6 CLAUDE.md "what"-comment violations (`// Draw the line`, `// Filter Chips`, `// Status Pill`, `// Timer State`, `// Scan Barcode Button`, `// Your Wrapped`)
+- `AddBookScreen.kt`'s two remaining hardcoded status-label lists now map through `BookStatus.label` instead of duplicating the string literals
+- `DndManager` no longer takes a `SessionDao` directly (was violating "only `BookRepository` touches Room") — it now takes a `BookRepository` and calls `repository.observeOpenSession()`, which already existed; `ServiceLocator` updated to match
+- `BookDetailScreen.kt`: the 3 remaining exact-duplicate `Box(background+padding)` wrappers (margin-notes header, session-history header, session row) now use the existing `SectionItem` helper instead of repeating the modifier chain
+- `BookTrackerScreen.kt`: extracted a `navigateTopLevel(route)` helper and pointed all 4 `NavigationBarItem`s at it instead of repeating the `popUpTo`/`launchSingleTop`/`restoreState` block
 
-**Conventions (CLAUDE.md: no *what* comments)**
-- Narrating comments across AnalyticsScreen (`// Draw the line`), BookTrackerScreen (`// Filter Chips`, `// Status Pill`), BookTrackerViewModel (`// Timer State`…), AddBookScreen, ProfileScreen
+**Left alone (real but out of scope for a safe pass)**
+- `BackupEngine.kt` still re-implements `Mappers.kt`'s JSON conversions independently — real duplication, but consolidating touches serialization logic in a currently-correct area (isFavorite bug already fixed); left alone to avoid risking new data bugs without a device to test restore against.
+- The two empty-state `Text` modifiers in `BookDetailScreen.kt` (`horizontal = 16.dp` only, no vertical) were deliberately **not** forced into `SectionItem` (which adds `vertical = 8.dp`) since that would be a visual change I can't verify without running the app.
 
 **Verified holding:** zero-cost constraint (ML Kit text recognition + GMS fonts are free/keyless), `:shared` stays dependency-free, `lastUpdated` stamped on all mutations, FEATURES.md updated, all three Room migrations (1→2→3→4) registered, `publishedDate` intact end-to-end, wear timer state path consistent phone→watch.
+
+**Build:** ✅ `:app:assembleDebug` + `:wear:assembleDebug` both pass after all cleanup fixes.

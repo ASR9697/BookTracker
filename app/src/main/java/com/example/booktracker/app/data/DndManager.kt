@@ -2,7 +2,6 @@ package com.example.booktracker.app.data
 
 import android.app.NotificationManager
 import android.content.Context
-import com.example.booktracker.app.data.local.SessionDao
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
@@ -10,16 +9,16 @@ import kotlinx.coroutines.launch
 
 class DndManager(
     private val context: Context,
-    private val sessionDao: SessionDao,
+    private val repository: BookRepository,
     private val settings: SettingsRepository
 ) {
     private val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     private var previousFilter: Int? = null
-    
+
     init {
         CoroutineScope(Dispatchers.Default).launch {
             combine(
-                sessionDao.observeOpenSession(),
+                repository.observeOpenSession(),
                 settings.dndDuringSession
             ) { openSession, dndEnabled ->
                 openSession != null && dndEnabled

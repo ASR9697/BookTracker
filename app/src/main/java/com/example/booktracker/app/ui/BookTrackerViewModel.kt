@@ -1,9 +1,6 @@
 package com.example.booktracker.app.ui
 
 import android.content.Context
-import android.app.NotificationManager
-import android.content.Intent
-import android.provider.Settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -124,7 +121,6 @@ class BookTrackerViewModel(
             .sortedByDescending { it.lastUpdated }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    // Timer State
     private val _timerBookId = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     
     val activeTimerBook: StateFlow<Book?> = combine(books, _timerBookId) { bookList, id ->
