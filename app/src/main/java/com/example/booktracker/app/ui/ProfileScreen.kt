@@ -47,6 +47,7 @@ fun ProfileScreen(
     onOpenSettings: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
     onOpenFinished: () -> Unit = {},
+    onOpenPlanner: () -> Unit = {},
     onOpenBook: (Book) -> Unit = {},
     onOpenWrapped: () -> Unit = {},
     onUpdateName: (String) -> Unit = {},
@@ -536,6 +537,12 @@ fun ProfileScreen(
                             icon = Icons.Filled.Flag,
                             label = "Goals & Settings",
                             onClick = onOpenSettings
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        SettingsRow(
+                            icon = Icons.Filled.Event,
+                            label = "Reading Planner",
+                            onClick = onOpenPlanner
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         SettingsRow(

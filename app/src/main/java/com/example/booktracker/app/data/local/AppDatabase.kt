@@ -13,7 +13,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         BookFtsEntity::class,
         NoteFtsEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -118,6 +118,15 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_6_7 = object : Migration(6, 7) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE books ADD COLUMN readCount INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("INSERT INTO `books_fts`(`books_fts`) VALUES('rebuild')")
+            }
+        }
+
+        /** Adds plannedDate and review fields for Phase 12 Planner and Reviews. */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE books ADD COLUMN plannedDate INTEGER")
+                db.execSQL("ALTER TABLE books ADD COLUMN review TEXT")
                 db.execSQL("INSERT INTO `books_fts`(`books_fts`) VALUES('rebuild')")
             }
         }

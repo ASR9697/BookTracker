@@ -13,6 +13,7 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -35,6 +36,14 @@ import kotlinx.coroutines.runBlocking
 
 class ReadingWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val settings = ServiceLocator.settings(context)
+        val dailyGoal = settings.dailyGoal.firstOrNull() ?: 20
+        val db = ServiceLocator.database(context)
+        val streak = com.example.booktracker.app.analytics.StreakEngine.calculate(
+            db.sessionDao().getAllSessions().firstOrNull() ?: emptyList(),
+            settings.dayStartsAtHour.firstOrNull() ?: 3
+        ).currentStreak
+        
         val repository = ServiceLocator.repository(context)
         val books = repository.observeBooks().firstOrNull() ?: emptyList()
         val readingBook = books
@@ -43,13 +52,13 @@ class ReadingWidget : GlanceAppWidget() {
 
         provideContent {
             GlanceTheme {
-                WidgetContent(readingBook)
+                WidgetContent(readingBook, dailyGoal, streak)
             }
         }
     }
 
     @Composable
-    private fun WidgetContent(book: Book?) {
+    private fun WidgetContent(book: Book?, dailyGoal: Int, streak: Int) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
@@ -89,10 +98,8 @@ class ReadingWidget : GlanceAppWidget() {
                     WidgetButton("+1", actionRunCallback<AddProgressAction>(
                         actionParametersOf(AddProgressAction.bookIdKey to book.id, AddProgressAction.amountKey to 1)
                     ))
-                    Spacer(GlanceModifier.width(16.dp))
-                    WidgetButton("+10", actionRunCallback<AddProgressAction>(
-                        actionParametersOf(AddProgressAction.bookIdKey to book.id, AddProgressAction.amountKey to 10)
-                    ))
+                    Spacer(GlanceModifier.width(8.dp))
+                    WidgetButton("Timer", actionStartActivity<com.example.booktracker.app.MainActivity>())
                 }
             } else {
                 Text(
@@ -102,6 +109,15 @@ class ReadingWidget : GlanceAppWidget() {
                     )
                 )
             }
+            
+            Spacer(GlanceModifier.height(16.dp))
+            Text(
+                text = "🔥 Streak: $streak days  •  🎯 Goal: $dailyGoal pages",
+                style = TextStyle(
+                    color = GlanceTheme.colors.primary,
+                    fontWeight = FontWeight.Medium
+                )
+            )
         }
     }
 

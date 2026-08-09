@@ -53,7 +53,9 @@ fun BookEntity.toModel(): Book = Book(
     dateAdded = dateAdded,
     lastUpdated = lastUpdated,
     isFavorite = isFavorite,
-    readCount = readCount
+    readCount = readCount,
+    plannedDate = plannedDate,
+    review = review
 )
 
 fun Book.toEntity(): BookEntity = BookEntity(
@@ -79,7 +81,9 @@ fun Book.toEntity(): BookEntity = BookEntity(
     dateAdded = dateAdded,
     lastUpdated = lastUpdated,
     isFavorite = isFavorite,
-    readCount = readCount
+    readCount = readCount,
+    plannedDate = plannedDate,
+    review = review
 )
 
 fun MarginNoteEntity.toModel(): MarginNote = MarginNote(

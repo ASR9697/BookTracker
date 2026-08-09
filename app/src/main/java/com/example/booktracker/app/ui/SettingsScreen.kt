@@ -29,10 +29,12 @@ import androidx.compose.material.icons.filled.Dataset
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -71,6 +73,7 @@ fun SettingsScreen(
     userName: String,
     dailyGoal: Int,
     yearlyGoal: Int,
+    dayStartsAtHour: Int,
     dndDuringSession: Boolean,
     onDndChange: (Boolean) -> Unit,
     themeMode: com.example.booktracker.app.data.ThemeMode,
@@ -79,7 +82,10 @@ fun SettingsScreen(
     onUserNameChange: (String) -> Unit,
     onDailyGoalChange: (Int) -> Unit,
     onYearlyGoalChange: (Int) -> Unit,
+    onDayStartsAtHourChange: (Int) -> Unit,
     onUseDynamicColorChange: (Boolean) -> Unit,
+    useAppLock: Boolean,
+    onAppLockChange: (Boolean) -> Unit,
     onImportCsv: (Uri, (Int) -> Unit) -> Unit,
     onExportBackup: (Uri, (Boolean) -> Unit) -> Unit,
     onImportBackup: (Uri, (Int) -> Unit) -> Unit,
@@ -198,12 +204,41 @@ fun SettingsScreen(
                     steps = (YEARLY_MAX - YEARLY_MIN) / YEARLY_STEP - 1
                 )
                 Text(
-                    "Tracked on your profile as books finished this year.",
+                    "Track the number of books you finish.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
+            SettingsCard(
+                title = "New day starts at",
+                icon = { Icon(Icons.Filled.NightsStay, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+            ) {
+                var localHour by remember { mutableIntStateOf(dayStartsAtHour) }
+                val amPm = if (localHour < 12) "AM" else "PM"
+                val displayHour = if (localHour == 0) 12 else if (localHour > 12) localHour - 12 else localHour
+                
+                Text(
+                    "$displayHour:00 $amPm",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(4.dp))
+                Slider(
+                    value = localHour.toFloat(),
+                    onValueChange = { localHour = it.toInt() },
+                    onValueChangeFinished = { onDayStartsAtHourChange(localHour) },
+                    valueRange = 0f..23f,
+                    steps = 22
+                )
+                Text(
+                    "Reading past midnight? Delay the day rollover so late-night sessions count for yesterday.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            SettingsSectionTitle("Theme & Display")
             SettingsCard(
                 title = "Deep Focus",
                 icon = { Icon(Icons.Filled.NotificationsOff, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
@@ -281,6 +316,30 @@ fun SettingsScreen(
                         checked = useDynamicColor,
                         onCheckedChange = { onUseDynamicColorChange(it) },
                         enabled = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
+                    )
+                }
+            }
+
+            SettingsSectionTitle("Security")
+            SettingsCard(
+                title = "App Lock",
+                icon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Require biometric authentication to open app",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(16.dp))
+                    Switch(
+                        checked = useAppLock,
+                        onCheckedChange = { onAppLockChange(it) }
                     )
                 }
             }

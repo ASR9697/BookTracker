@@ -1,7 +1,7 @@
 package com.example.booktracker.app
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -17,8 +17,20 @@ import androidx.compose.ui.Modifier
 import com.example.booktracker.app.ui.BookTrackerApp
 import com.example.booktracker.app.ui.BookTrackerViewModel
 import com.example.booktracker.app.ui.theme.BookTrackerTheme
+import androidx.biometric.BiometricPrompt
+import androidx.biometric.BiometricManager
+import androidx.core.content.ContextCompat
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     private val viewModel: BookTrackerViewModel by viewModels {
         BookTrackerViewModel.factory(this)
@@ -70,9 +82,49 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            val useAppLock by viewModel.useAppLock.collectAsState()
+            var isAuthenticated by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+            
+            androidx.compose.runtime.LaunchedEffect(useAppLock) {
+                if (!useAppLock) {
+                    isAuthenticated = true
+                } else {
+                    val biometricManager = BiometricManager.from(this@MainActivity)
+                    if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS) {
+                        val executor = ContextCompat.getMainExecutor(this@MainActivity)
+                        val biometricPrompt = BiometricPrompt(this@MainActivity, executor,
+                            object : BiometricPrompt.AuthenticationCallback() {
+                                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                                    super.onAuthenticationSucceeded(result)
+                                    isAuthenticated = true
+                                }
+                            })
+                        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+                            .setTitle("App Locked")
+                            .setSubtitle("Authenticate to access BookTracker")
+                            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                            .build()
+                        biometricPrompt.authenticate(promptInfo)
+                    } else {
+                        isAuthenticated = true
+                    }
+                }
+            }
+
             BookTrackerTheme(darkTheme = isDarkTheme, dynamicColor = useDynamicColor) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    BookTrackerApp(viewModel, windowSizeClass)
+                    if (isAuthenticated) {
+                        BookTrackerApp(viewModel, windowSizeClass)
+                    } else {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Filled.Lock,
+                                contentDescription = "Locked",
+                                modifier = Modifier.size(64.dp),
+                                tint = androidx.compose.material3.MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
                 }
             }
         }

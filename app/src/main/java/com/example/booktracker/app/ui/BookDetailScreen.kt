@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.filled.Watch
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -180,7 +181,7 @@ fun BookDetailScreen(
     onEditSession: (Session, Int) -> Unit,
     onDeleteSession: (Session) -> Unit,
     onToggleFavorite: () -> Unit,
-    onFinish: (Map<String, Float>) -> Unit,
+    onFinish: (Map<String, Float>, String?) -> Unit,
     onBack: () -> Unit
 ) {
     var showAddNote by remember { mutableStateOf(false) }
@@ -326,6 +327,14 @@ fun BookDetailScreen(
                 }
             }
 
+            if (book.purchaseLog.isNotEmpty() || book.loanRecord.isNotEmpty()) {
+                item {
+                    SectionItem {
+                        LedgerCard(book)
+                    }
+                }
+            }
+
             item {
                 SectionItem {
                     ProgressAndDaysRow(
@@ -345,6 +354,9 @@ fun BookDetailScreen(
 
             if (book.status == BookStatus.FINISHED.name && book.rating.isNotEmpty()) {
                 item { SectionItem { RatingCard(book) } }
+            }
+            if (book.status == BookStatus.FINISHED.name && !book.review.isNullOrBlank()) {
+                item { SectionItem { ReviewCard(book) } }
             }
             if (book.status == BookStatus.DNF.name && book.dnfData != null) {
                 item {
@@ -454,7 +466,8 @@ fun BookDetailScreen(
                             note = note,
                             book = book,
                             onDelete = { onDeleteNote(note.id) },
-                            onToggleFavorite = { onToggleNoteFavorite(note.id) }
+                            onToggleFavorite = { onToggleNoteFavorite(note.id) },
+                            onShare = { /* We will trigger share intent from viewmodel later */ }
                         )
                     }
                 }
@@ -1134,6 +1147,17 @@ private fun RatingCard(book: Book) {
     }
 }
 
+@Composable
+private fun ReviewCard(book: Book) {
+    DetailCard(title = "Your review") {
+        Text(
+            text = book.review ?: "",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
 internal enum class NoteSort(val label: String) {
     CREATED("Created"),
     PAGE("Page"),
@@ -1191,7 +1215,8 @@ private fun NoteCard(
     note: MarginNote,
     book: Book,
     onDelete: () -> Unit,
-    onToggleFavorite: () -> Unit
+    onToggleFavorite: () -> Unit,
+    onShare: (MarginNote) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
@@ -1290,6 +1315,19 @@ private fun NoteCard(
                         Icon(
                             Icons.Filled.ContentCopy,
                             contentDescription = "Copy note",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            onShare(note)
+                        },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.Share,
+                            contentDescription = "Share quote",
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1718,6 +1756,109 @@ private fun EditSessionDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
+}
+
+@Composable
+private fun LedgerCard(book: Book) {
+    DetailCard(title = "Ledger") {
+        if (book.purchaseLog.isNotEmpty()) {
+            Text(
+                "Purchases",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.height(8.dp))
+            book.purchaseLog.forEach { log ->
+                val date = Instant.ofEpochMilli(log.date).atZone(ZoneId.systemDefault()).toLocalDate()
+                val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            log.vendor.takeIf { it.isNotBlank() } ?: "Unknown Vendor",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (log.memo.isNotBlank()) {
+                            Text(
+                                log.memo,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            "${log.currency} ${"%.2f".format(log.price)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            date.format(formatter),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+        
+        if (book.purchaseLog.isNotEmpty() && book.loanRecord.isNotEmpty()) {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+        }
+        
+        if (book.loanRecord.isNotEmpty()) {
+            Text(
+                "Loan Records",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.tertiary
+            )
+            Spacer(Modifier.height(8.dp))
+            book.loanRecord.forEach { log ->
+                val loanDate = Instant.ofEpochMilli(log.loanDate).atZone(ZoneId.systemDefault()).toLocalDate()
+                val dueDate = Instant.ofEpochMilli(log.dueDate).atZone(ZoneId.systemDefault()).toLocalDate()
+                val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "To: ${log.lender.takeIf { it.isNotBlank() } ?: "Unknown"}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (log.memo.isNotBlank()) {
+                            Text(
+                                log.memo,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            "Due: ${dueDate.format(formatter)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Text(
+                            "Lent: ${loanDate.format(formatter)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable

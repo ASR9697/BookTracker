@@ -116,6 +116,8 @@ object BackupEngine {
         put("publishedDate", publication?.date)
         put("isFavorite", isFavorite)
         put("readCount", readCount)
+        plannedDate?.let { put("plannedDate", it) }
+        review?.let { put("review", it) }
     }
 
     private fun JSONObject.toBook(): Book = Book(
@@ -142,7 +144,9 @@ object BackupEngine {
         publication = Publication("", optString("publishedDate")),
         isFavorite = optBoolean("isFavorite", false),
         readCount = optInt("readCount", 0),
-        isbn = null
+        isbn = null,
+        plannedDate = if (has("plannedDate")) optLong("plannedDate") else null,
+        review = if (has("review")) optString("review") else null
     )
 
     private fun Session.toJson(): JSONObject = JSONObject().apply {

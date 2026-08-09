@@ -63,7 +63,10 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
     implementation("androidx.camera:camera-view:$cameraxVersion")
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
-    // On-device Latin-script OCR for the "scan a passage into a margin note"
+    // Security
+    implementation("androidx.biometric:biometric:1.2.0-alpha05")
+
+    // CameraX and ML Kit for Barcode / OCR for the "scan a passage into a margin note"
     // flow. Free + keyless, model bundled in the APK (no download at runtime).
     implementation("com.google.mlkit:text-recognition:16.0.1")
     // On-device handwriting recognition for the stylus scratchpad. Free + keyless;
@@ -71,6 +74,16 @@ dependencies {
     implementation("com.google.mlkit:digital-ink-recognition:18.1.0")
 
     implementation("androidx.glance:glance-appwidget:1.1.1")
+    implementation("androidx.glance:glance-material3:1.1.1")
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
+    
+    // Google Drive Sync
+    implementation("com.google.android.gms:play-services-auth:21.3.0")
+    implementation("com.google.api-client:google-api-client-android:2.7.0")
+    implementation("com.google.apis:google-api-services-drive:v3-rev20250109-2.0.0") {
+        exclude(group = "org.apache.httpcomponents")
+    }
+
     implementation("com.google.code.gson:gson:2.10.1")
 
     testImplementation("junit:junit:4.13.2")

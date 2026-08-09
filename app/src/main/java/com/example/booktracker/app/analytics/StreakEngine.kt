@@ -22,18 +22,19 @@ object StreakEngine {
         sessions: List<Session>,
         dailyGoal: Int = DEFAULT_DAILY_GOAL_PAGES,
         zone: ZoneId = ZoneId.systemDefault(),
-        now: Instant = Instant.now()
+        now: Instant = Instant.now(),
+        dayStartsAtHour: Int = 3
     ): StreakInfo {
-        val today = readingDate(now.toEpochMilli(), zone)
+        val today = readingDate(now.toEpochMilli(), zone, dayStartsAtHour)
 
         val pagesPerDay = sessions
             .filter { it.startTime > 0 }
-            .groupBy { readingDate(it.startTime, zone) }
+            .groupBy { readingDate(it.startTime, zone, dayStartsAtHour) }
             .mapValues { (_, daySessions) -> daySessions.sumOf { it.pagesRead.coerceAtLeast(0) } }
 
         val activeDays = sessions
             .filter { it.startTime > 0 }
-            .map { readingDate(it.startTime, zone) }
+            .map { readingDate(it.startTime, zone, dayStartsAtHour) }
             .toSet()
 
         val pagesToday = pagesPerDay[today] ?: 0
@@ -73,7 +74,9 @@ object StreakEngine {
         return best
     }
 
-    // Reading day = the local calendar day in the phone's current timezone (00:00 rollover).
-    fun readingDate(timestamp: Long, zone: ZoneId): LocalDate =
-        Instant.ofEpochMilli(timestamp).atZone(zone).toLocalDate()
+    // Reading day = the local calendar day in the phone's current timezone.
+    // By subtracting dayStartsAtHour, a session at 2:00 AM (when dayStartsAtHour is 3)
+    // effectively evaluates as 11:00 PM of the previous day, which assigns it to the correct Streak date.
+    fun readingDate(timestamp: Long, zone: ZoneId, dayStartsAtHour: Int = 3): LocalDate =
+        Instant.ofEpochMilli(timestamp).atZone(zone).minusHours(dayStartsAtHour.toLong()).toLocalDate()
 }

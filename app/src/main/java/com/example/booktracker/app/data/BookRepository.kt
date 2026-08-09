@@ -38,9 +38,10 @@ interface BookRepository {
         purchaseLog: List<com.example.booktracker.shared.models.PurchaseLog> = emptyList(),
         loanRecord: List<com.example.booktracker.shared.models.LoanRecord> = emptyList()
     ): Book
+    suspend fun updateBook(book: Book)
     suspend fun updateStatus(id: String, status: BookStatus)
     suspend fun updateFormat(id: String, format: String)
-    suspend fun finishBook(id: String, rating: Map<String, Float>)
+    suspend fun finishBook(id: String, rating: Map<String, Float>, review: String? = null)
     suspend fun markDnf(id: String, abandonedPercentage: Float, reason: String)
     suspend fun addProgress(id: String, delta: Int)
     suspend fun applyRemoteProgress(id: String, currentPage: Int, updatedAt: Long)
@@ -158,6 +159,10 @@ class RoomBookRepository(
         return book
     }
 
+    override suspend fun updateBook(book: Book) {
+        bookDao.upsert(book.toEntity())
+    }
+
     override suspend fun updateStatus(id: String, status: BookStatus) {
         val entity = bookDao.getById(id) ?: return
         bookDao.upsert(
@@ -174,12 +179,13 @@ class RoomBookRepository(
         bookDao.upsert(entity.copy(format = format, lastUpdated = System.currentTimeMillis()))
     }
 
-    override suspend fun finishBook(id: String, rating: Map<String, Float>) {
+    override suspend fun finishBook(id: String, rating: Map<String, Float>, review: String?) {
         val book = bookDao.getById(id)?.toModel() ?: return
         bookDao.upsert(
             book.copy(
                 status = BookStatus.FINISHED.name,
                 rating = rating,
+                review = review,
                 lastUpdated = System.currentTimeMillis()
             ).toEntity()
         )

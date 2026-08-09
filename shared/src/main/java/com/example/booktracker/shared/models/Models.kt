@@ -85,7 +85,9 @@ data class Book(
     val lastUpdated: Long = 0,
     val isFavorite: Boolean = false,
     /** How many times this book has been finished and restarted. 0 = first read. */
-    val readCount: Int = 0
+    val readCount: Int = 0,
+    val plannedDate: Long? = null,
+    val review: String? = null
 ) {
     val authors: List<String> get() = creators.map { it.name }
     val genres: List<String> get() = classification.tags

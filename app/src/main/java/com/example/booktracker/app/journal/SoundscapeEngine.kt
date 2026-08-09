@@ -7,7 +7,7 @@ import kotlinx.coroutines.*
 import kotlin.random.Random
 
 enum class NoiseType {
-    NONE, WHITE, BROWN
+    NONE, WHITE, BROWN, RAIN, FIRE, OCEAN
 }
 
 /**
@@ -65,17 +65,43 @@ class SoundscapeEngine {
         noiseJob = scope.launch {
             val buffer = ShortArray(bufferSize / 2)
             var lastBrown = 0.0
+            var lastRain = 0.0
+            var oceanTime = 0.0
             
             while (isActive) {
                 for (i in buffer.indices) {
                     val white = Random.nextDouble(-1.0, 1.0)
-                    val sample = if (type == NoiseType.WHITE) {
-                        white
-                    } else {
-                        // Simple integrator for brown noise
-                        lastBrown = (lastBrown + (0.02 * white)) / 1.02
-                        // Amplify slightly to match white noise perceived volume
-                        lastBrown * 3.5 
+                    val sample = when (type) {
+                        NoiseType.WHITE -> white
+                        NoiseType.BROWN -> {
+                            lastBrown = (lastBrown + (0.02 * white)) / 1.02
+                            lastBrown * 3.5 
+                        }
+                        NoiseType.RAIN -> {
+                            // Steeper low-pass filter for heavier sound
+                            lastRain = (lastRain + (0.04 * white)) / 1.04
+                            val rain = lastRain * 4.0
+                            // Add occasional light drops (filtered white noise)
+                            rain + if (Random.nextDouble() < 0.05) white * 0.1 else 0.0
+                        }
+                        NoiseType.FIRE -> {
+                            // Low rumble
+                            lastBrown = (lastBrown + (0.015 * white)) / 1.015
+                            var fire = lastBrown * 2.5
+                            // Occasional crackles/pops
+                            if (Random.nextDouble() < 0.0003) {
+                                fire += Random.nextDouble(0.6, 1.0) * (if (Random.nextBoolean()) 1 else -1)
+                            }
+                            fire
+                        }
+                        NoiseType.OCEAN -> {
+                            lastBrown = (lastBrown + (0.02 * white)) / 1.02
+                            oceanTime += 1.0 / sampleRate
+                            // 8-second wave period
+                            val lfo = (Math.sin(oceanTime * 2 * Math.PI / 8.0) + 1.0) / 2.0 
+                            lastBrown * 3.5 * (0.2 + 0.8 * lfo)
+                        }
+                        else -> 0.0
                     }
                     
                     val clamped = sample.coerceIn(-1.0, 1.0)

@@ -484,7 +484,8 @@ androidx.compose.animation.SharedTransitionLayout {
                                                                 onDeleteSession = { id: String -> 
                                                                     viewModel.completedSessions.value.find { it.id == id }?.let { viewModel.deleteSession(it) } 
                                                                 },
-                                                                onOpenBook = { navController.navigate("book/${it.id}") }
+                                                                onOpenBook = { navController.navigate("book/${it.id}") },
+                                                                onGoToLibrary = { navigateTopLevel("library") }
                                                             )
                                                         }
             
@@ -508,7 +509,9 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             onCurationClick = { navController.navigate("tbr_swipe") },
                                                             onReadEpub = { uri -> 
                                                                 navController.navigate("epubReader/${Uri.encode(uri.toString())}") 
-                                                            }
+                                                            },
+                                                            onSearch = { navController.navigate("search") },
+                                                            onScan = { showScanner = true }
                                                         )
             
                                         }
@@ -578,6 +581,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             onOpenSettings = { navController.navigate("settings") },
                                                             onOpenHistory = { navController.navigate("history") },
                                                             onOpenFinished = { navController.navigate("finished") },
+                                                            onOpenPlanner = { navController.navigate("planner") },
                                                             onOpenBook = { navController.navigate("book/${it.id}") },
                                                             onOpenWrapped = { navController.navigate("wrappedAnimated") },
                                                             onUpdateName = viewModel::setUserName
@@ -588,6 +592,15 @@ androidx.compose.animation.SharedTransitionLayout {
                                     composable("wrappedAnimated") {
                                         androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
                                             WrappedAnimatedScreen()
+                                        }
+                                    }
+                                    composable("planner") {
+                                        androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
+                                            PlannerScreen(
+                                                books = books,
+                                                onPlanBook = { bookId, timestamp -> viewModel.planBook(bookId, timestamp) },
+                                                onBack = { navController.popBackStack() }
+                                            )
                                         }
                                     }
                                     composable("book/{bookId}") { 
@@ -640,8 +653,8 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                             onToggleFavorite = {
                                                                 books.find { it.id == bookId }?.let { viewModel.toggleFavorite(it) }
                                                             },
-                                                            onFinish = { rating ->
-                                                                books.find { it.id == bookId }?.let { viewModel.finishBook(it, rating) }
+                                                            onFinish = { rating, review ->
+                                                                books.find { it.id == bookId }?.let { viewModel.finishBook(it, rating, review) }
                                                             },
                                                             onBack = { navController.popBackStack() }
                                                         )
@@ -670,20 +683,26 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                         val themeMode by viewModel.themeMode.collectAsState()
                                                         val dynamicColor by viewModel.useDynamicColor.collectAsState()
                                                         val userName by viewModel.userName.collectAsState()
+                                                        val dayStartsAtHour by viewModel.dayStartsAtHour.collectAsState()
+                                                        val useAppLock by viewModel.useAppLock.collectAsState()
                 
                                                         SettingsScreen(
                                                             userName = userName,
                                                             dailyGoal = goal,
                                                             yearlyGoal = yearly,
+                                                            dayStartsAtHour = dayStartsAtHour,
                                                             dndDuringSession = dnd,
                                                             themeMode = themeMode,
                                                             useDynamicColor = dynamicColor,
+                                                            useAppLock = useAppLock,
                                                             onUserNameChange = viewModel::setUserName,
                                                             onDailyGoalChange = viewModel::setDailyGoal,
                                                             onYearlyGoalChange = viewModel::setYearlyGoal,
+                                                            onDayStartsAtHourChange = viewModel::setDayStartsAtHour,
                                                             onDndChange = viewModel::setDndDuringSession,
                                                             onThemeModeChange = viewModel::setThemeMode,
                                                             onUseDynamicColorChange = viewModel::setUseDynamicColor,
+                                                            onAppLockChange = viewModel::setUseAppLock,
                                                             onImportCsv = { uri, onDone -> viewModel.importCsv(context, uri, onDone) },
                                                             onExportBackup = { uri, onDone -> viewModel.exportBackup(context, uri, onDone) },
                                                             onImportBackup = { uri, onDone -> viewModel.importBackup(context, uri, onDone) },
@@ -837,8 +856,8 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                     viewModel.finishBook(outcomeBook, emptyMap())
                     pendingOutcome = null
                 },
-                onConfirm = { rating ->
-                    viewModel.finishBook(outcomeBook, rating)
+                onConfirm = { rating, review ->
+                    viewModel.finishBook(outcomeBook, rating, review)
                     pendingOutcome = null
                 }
             )
@@ -881,6 +900,10 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
             onConfirm = { book ->
                 showStartTimerDialog = false
                 navController.navigate("focus/${book.id}")
+            },
+            onGoToLibrary = {
+                showStartTimerDialog = false
+                navigateTopLevel("library")
             }
         )
     }
@@ -894,12 +917,13 @@ fun ReadingHero(
     sessions: List<Session>,
     streak: StreakEngine.StreakInfo,
     onProgress: (Book, Int) -> Unit,
-    onFinish: (Book, Map<String, Float>) -> Unit,
+    onFinish: (Book, Map<String, Float>, String?) -> Unit,
     onDnf: (Book, Float, String) -> Unit,
     onStartSession: (Book, Int?) -> Unit,
     onEndSession: (Book) -> Unit,
     onDeleteSession: (String) -> Unit,
-    onOpenBook: (Book) -> Unit = {}
+    onOpenBook: (Book) -> Unit = {},
+    onGoToLibrary: () -> Unit = {}
 ) {
     var bookToFinish by remember { mutableStateOf<Book?>(null) }
     var bookToDnf by remember { mutableStateOf<Book?>(null) }
@@ -957,6 +981,10 @@ fun ReadingHero(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(Modifier.height(16.dp))
+                    FilledTonalButton(onClick = onGoToLibrary) {
+                        Text("Go to Library")
+                    }
                 }
             }
         } else {
@@ -1210,8 +1238,8 @@ fun ReadingHero(
         FinishDialog(
             book = finishBook,
             onDismiss = { bookToFinish = null },
-            onConfirm = { rating ->
-                onFinish(finishBook, rating)
+            onConfirm = { rating, review ->
+                onFinish(finishBook, rating, review)
                 bookToFinish = null
             }
         )
@@ -1349,7 +1377,9 @@ fun LibraryScreen(
     onOpenBook: (Book) -> Unit,
     onStartReading: (Book) -> Unit,
     onCurationClick: () -> Unit,
-    onReadEpub: (Uri) -> Unit = {}
+    onReadEpub: (Uri) -> Unit = {},
+    onSearch: () -> Unit,
+    onScan: () -> Unit
 ) {
     var selectedFilter by remember { mutableStateOf<BookStatus?>(null) }
     var showFavoritesOnly by remember { mutableStateOf(false) }
@@ -1382,7 +1412,7 @@ fun LibraryScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             val filters = listOf(
-                null to "All To-Read",
+                null to "Backlog",
                 BookStatus.READING to BookStatus.READING.label,
                 BookStatus.SHORTLIST to BookStatus.SHORTLIST.label,
                 BookStatus.UP_NEXT to BookStatus.UP_NEXT.label,
@@ -1447,6 +1477,28 @@ fun LibraryScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
+                        Spacer(Modifier.height(24.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Button(
+                                onClick = onScan,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Filled.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Scan")
+                            }
+                            FilledTonalButton(
+                                onClick = onSearch,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Search")
+                            }
+                        }
                     }
                 }
             }
@@ -1763,45 +1815,52 @@ fun BookCard(
         else -> null
     }
     ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().fillMaxHeight(),
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            BookCover(book.coverUrl, Modifier.heroSharedElement("cover-${book.id}").size(width = 48.dp, height = 72.dp))
-            Spacer(Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
+            BookCover(
+                book.coverUrl, 
+                Modifier
+                    .heroSharedElement("cover-${book.id}")
+                    .size(width = 96.dp, height = 144.dp)
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                book.title,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center
+            )
+            if (book.authors.isNotEmpty()) {
                 Text(
-                    book.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    book.authors.joinToString(", "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center
                 )
-                if (book.authors.isNotEmpty()) {
-                    Text(
-                        book.authors.joinToString(", "),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                if (book.totalPages > 0) {
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        "${book.totalPages} pages",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+            }
+            if (book.totalPages > 0) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "${book.totalPages} pages",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
             }
             if (promoteLabel != null) {
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.height(12.dp))
                 FilledTonalButton(
                     onClick = { onPromote(book) },
+                    modifier = Modifier.fillMaxWidth(),
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                 ) {
                     Text(promoteLabel, style = MaterialTheme.typography.labelMedium)
@@ -1846,7 +1905,8 @@ fun BookCover(url: String, modifier: Modifier = Modifier) {
 private fun SelectTimerBookDialog(
     books: List<Book>,
     onDismiss: () -> Unit,
-    onConfirm: (Book) -> Unit
+    onConfirm: (Book) -> Unit,
+    onGoToLibrary: () -> Unit = {}
 ) {
     val options = books.filter { it.status == BookStatus.READING.name || it.status == BookStatus.PAUSED.name || it.status == BookStatus.UP_NEXT.name || it.status == BookStatus.SHORTLIST.name }
         .sortedByDescending { it.lastUpdated }
@@ -1856,7 +1916,12 @@ private fun SelectTimerBookDialog(
             onDismissRequest = onDismiss,
             title = { Text("No Books") },
             text = { Text("Add a book to your library first to start a session.") },
-            confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } }
+            confirmButton = { 
+                TextButton(onClick = onGoToLibrary) { Text("Go to Library") } 
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
         )
         return
     }

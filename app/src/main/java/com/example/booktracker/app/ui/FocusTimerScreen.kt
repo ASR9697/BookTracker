@@ -288,18 +288,21 @@ fun FocusTimerScreen(
                 Text("Soundscape", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(16.dp))
                 val options = NoiseType.entries.toTypedArray()
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    options.forEachIndexed { index, type ->
-                        SegmentedButton(
-                            shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                androidx.compose.foundation.layout.FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    options.forEach { type ->
+                        androidx.compose.material3.FilterChip(
+                            selected = noiseType == type,
                             onClick = { viewModel.setNoiseType(type) },
-                            selected = noiseType == type
-                        ) {
-                            Text(type.name.lowercase().replaceFirstChar { it.uppercase() }, maxLines = 1)
-                        }
+                            label = { Text(type.name.lowercase().replaceFirstChar { it.uppercase() }) }
+                        )
                     }
                 }
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(16.dp))
                 Text("Volume", style = MaterialTheme.typography.labelMedium)
                 Slider(
                     value = volume,

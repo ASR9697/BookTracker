@@ -4,9 +4,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -17,6 +21,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.DnfReasons
@@ -27,13 +32,14 @@ import kotlin.math.roundToInt
 fun FinishDialog(
     book: Book,
     onDismiss: () -> Unit,
-    onConfirm: (rating: Map<String, Float>) -> Unit
+    onConfirm: (rating: Map<String, Float>, review: String) -> Unit
 ) {
     val values = remember {
         mutableStateMapOf<String, Float>().apply {
             putAll(RatingAxis.ALL.associateWith { 2.5f })
         }
     }
+    var review by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -46,17 +52,27 @@ fun FinishDialog(
                     Text("$axis: ${formatRating(v)}", style = MaterialTheme.typography.bodySmall)
                     Slider(
                         value = v,
-                        onValueChange = { values[axis] = it },
-                        valueRange = 0f..5f
+                        onValueChange = { values[axis] = (it * 2).roundToInt() / 2f },
+                        valueRange = 0f..5f,
+                        steps = 9
                     )
                 }
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = review,
+                    onValueChange = { review = it },
+                    label = { Text("Write a review (Markdown)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 5
+                )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(values.toMap()) }) { Text("Finish") }
+            TextButton(onClick = { onConfirm(values.toMap(), review) }) { Text("Finish") }
         },
         dismissButton = {
-            TextButton(onClick = { onConfirm(emptyMap()) }) { Text("Skip") }
+            TextButton(onClick = { onConfirm(emptyMap(), "") }) { Text("Skip") }
         }
     )
 }

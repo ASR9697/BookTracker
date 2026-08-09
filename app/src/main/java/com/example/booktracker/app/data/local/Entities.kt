@@ -32,7 +32,9 @@ data class BookEntity(
     // The SQL default must be declared here too, or Room's post-migration schema
     // validation sees a default the expected TableInfo doesn't have and throws.
     @androidx.room.ColumnInfo(defaultValue = "0")
-    val readCount: Int = 0
+    val readCount: Int = 0,
+    val plannedDate: Long? = null,
+    val review: String? = null
 )
 
 @Entity(

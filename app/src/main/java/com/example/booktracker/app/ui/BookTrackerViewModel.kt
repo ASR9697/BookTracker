@@ -89,6 +89,9 @@ class BookTrackerViewModel(
             true
         )
 
+    val useAppLock: StateFlow<Boolean> = settings.useAppLock
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     val userName: StateFlow<String> = settings.userName
         .stateIn(
             viewModelScope,
@@ -96,14 +99,44 @@ class BookTrackerViewModel(
             "Reader"
         )
 
+    val dayStartsAtHour: StateFlow<Int> = settings.dayStartsAtHour
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            3
+        )
+
     val streak: StateFlow<StreakEngine.StreakInfo> =
-        combine(completedSessions, settings.dailyGoal) { sessions, goal ->
-            StreakEngine.compute(sessions, goal)
+        combine(completedSessions, settings.dailyGoal, settings.dayStartsAtHour) { sessions, goal, dayStart ->
+            StreakEngine.compute(sessions, goal, dayStartsAtHour = dayStart)
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
             StreakEngine.compute(emptyList())
         )
+
+    val estimatedTimeRemainingMap: StateFlow<Map<String, String>> = combine(
+        books, completedSessions
+    ) { bks, sessions ->
+        bks.associate { book ->
+            val bookSessions = sessions.filter { it.bookId == book.id && it.durationSeconds > 0 && it.pagesRead > 0 }
+            val totalPagesRead = bookSessions.sumOf { it.pagesRead }
+            val totalDuration = bookSessions.sumOf { it.durationSeconds }
+            
+            val remainingStr = if (totalPagesRead > 0 && totalDuration > 0) {
+                val avgSpeed = totalPagesRead.toDouble() / totalDuration // pages per sec
+                val remainingPages = book.totalPages - book.currentPage
+                if (remainingPages > 0) {
+                    val remainingSeconds = (remainingPages / avgSpeed).toLong()
+                    val hours = remainingSeconds / 3600
+                    val minutes = (remainingSeconds % 3600) / 60
+                    if (hours > 0) "${hours}h ${minutes}m remaining" else "${minutes}m remaining"
+                } else null
+            } else null
+            
+            book.id to remainingStr
+        }.mapNotNull { (id, str) -> if (str != null) id to str else null }.toMap()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     val allNotes: StateFlow<List<MarginNote>> = repository.observeAllNotes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -264,6 +297,10 @@ class BookTrackerViewModel(
         viewModelScope.launch { repository.addBook(title.trim(), authors, totalPages) }
     }
 
+    fun shareNote(context: android.content.Context, note: MarginNote, book: Book) {
+        QuoteShareHelper.shareQuote(context, note, book)
+    }
+
     fun addScannedBook(scanned: BookMetadata, status: BookStatus = BookStatus.SHORTLIST, format: com.example.booktracker.shared.models.BookFormat = com.example.booktracker.shared.models.BookFormat.Paperback) {
         viewModelScope.launch {
             repository.addBook(
@@ -326,8 +363,8 @@ class BookTrackerViewModel(
         viewModelScope.launch { repository.updateFormat(book.id, format) }
     }
 
-    fun finishBook(book: Book, rating: Map<String, Float>) {
-        viewModelScope.launch { repository.finishBook(book.id, rating) }
+    fun finishBook(book: Book, rating: Map<String, Float>, review: String? = null) {
+        viewModelScope.launch { repository.finishBook(book.id, rating, review) }
     }
 
     fun readAgain(book: Book) {
@@ -481,6 +518,15 @@ class BookTrackerViewModel(
 
 
 
+    fun planBook(bookId: String, timestamp: Long?) {
+        viewModelScope.launch {
+            val book = repository.observeBooks().firstOrNull()?.find { it.id == bookId }
+            if (book != null) {
+                repository.updateBook(book.copy(plannedDate = timestamp))
+            }
+        }
+    }
+
     // Timer Controls
     fun setTimerBook(bookId: String?) {
         com.example.booktracker.app.data.ServiceLocator.timerBookId.value = bookId
@@ -565,6 +611,14 @@ class BookTrackerViewModel(
         if (com.example.booktracker.app.data.ServiceLocator.timerPhase.value == TimerPhase.BREAK && !com.example.booktracker.app.data.ServiceLocator.timerIsRunning.value) {
             com.example.booktracker.app.data.ServiceLocator.timeLeftSeconds.value = mins * 60
         }
+    }
+
+    fun setDayStartsAtHour(hour: Int) {
+        viewModelScope.launch { settings.setDayStartsAtHour(hour) }
+    }
+    
+    fun setUseAppLock(enabled: Boolean) {
+        viewModelScope.launch { settings.setUseAppLock(enabled) }
     }
 
     fun setNoiseType(type: NoiseType) {

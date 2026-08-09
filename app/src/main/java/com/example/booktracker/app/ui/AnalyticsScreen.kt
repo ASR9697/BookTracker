@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import com.example.booktracker.app.analytics.AnalyticsEngine
@@ -81,6 +82,25 @@ fun AnalyticsScreen(
         }
     }
     val monthlyGoal = (yearlyGoal / 12).coerceAtLeast(1)
+
+    val genreDistribution = remember(books) {
+        val distribution = mutableMapOf<String, Int>()
+        books.forEach { book ->
+            book.classification.tags.forEach { tag ->
+                distribution[tag] = (distribution[tag] ?: 0) + 1
+            }
+        }
+        distribution.toList().sortedByDescending { it.second }
+    }
+    
+    val formatDistribution = remember(books) {
+        val distribution = mutableMapOf<String, Int>()
+        books.forEach { book ->
+            val format = book.format.name
+            distribution[format] = (distribution[format] ?: 0) + 1
+        }
+        distribution.toList().sortedByDescending { it.second }
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -308,6 +328,92 @@ fun AnalyticsScreen(
                         )
                         genreCounts.forEachIndexed { index, (genre, _) ->
                             GenreChip(genre, chipColors[index % chipColors.size])
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (genreDistribution.isNotEmpty()) {
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Genre Distribution", style = MaterialTheme.typography.titleLarge)
+                        Spacer(Modifier.height(16.dp))
+                        PieChart(
+                            data = genreDistribution,
+                            modifier = Modifier.fillMaxWidth().height(220.dp).padding(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+        
+        if (formatDistribution.isNotEmpty()) {
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Format Distribution", style = MaterialTheme.typography.titleLarge)
+                        Spacer(Modifier.height(16.dp))
+                        PieChart(
+                            data = formatDistribution,
+                            modifier = Modifier.fillMaxWidth().height(220.dp).padding(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Where you read best — volume and pace per environment tag.
+        if (environments.isNotEmpty()) {
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Environments", style = MaterialTheme.typography.titleLarge)
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Tagged when you end a session.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        environments.take(6).forEach { env ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    env.tag,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    buildString {
+                                        append("${env.totalPages} pages")
+                                        env.pagesPerHour?.let {
+                                            append(" · ${it.roundToInt()} p/h")
+                                        }
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
@@ -543,6 +649,78 @@ fun SmoothLineChart(
                     y = height + 8.dp.toPx()
                 )
             )
+        }
+    }
+}
+
+@Composable
+fun PieChart(
+    data: List<Pair<String, Int>>,
+    modifier: Modifier = Modifier
+) {
+    if (data.isEmpty()) return
+    
+    val colors = listOf(
+        MaterialTheme.colorScheme.primary,
+        MaterialTheme.colorScheme.secondary,
+        MaterialTheme.colorScheme.tertiary,
+        MaterialTheme.colorScheme.error,
+        MaterialTheme.colorScheme.primaryContainer,
+        MaterialTheme.colorScheme.secondaryContainer,
+        MaterialTheme.colorScheme.tertiaryContainer,
+    )
+    
+    val total = data.sumOf { it.second }.toFloat()
+    val proportions = data.map { it.second.toFloat() / total }
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        Box(modifier = Modifier.weight(1f).aspectRatio(1f)) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                var startAngle = -90f
+                val strokeWidth = 32.dp.toPx()
+                val radius = (size.minDimension - strokeWidth) / 2
+                val center = Offset(size.width / 2, size.height / 2)
+                
+                proportions.forEachIndexed { index, proportion ->
+                    val sweepAngle = proportion * 360f
+                    val color = colors[index % colors.size]
+                    
+                    drawArc(
+                        color = color,
+                        startAngle = startAngle,
+                        sweepAngle = sweepAngle,
+                        useCenter = false,
+                        topLeft = Offset(center.x - radius, center.y - radius),
+                        size = Size(radius * 2, radius * 2),
+                        style = Stroke(width = strokeWidth)
+                    )
+                    startAngle += sweepAngle
+                }
+            }
+        }
+        
+        Spacer(Modifier.width(24.dp))
+        
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            data.forEachIndexed { index, (label, count) ->
+                val color = colors[index % colors.size]
+                val percentage = ((count.toFloat() / total) * 100).roundToInt()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(12.dp).background(color, CircleShape))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "$label ($percentage%)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
         }
     }
 }
