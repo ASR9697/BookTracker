@@ -38,13 +38,11 @@ class ReadingWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val settings = ServiceLocator.settings(context)
         val dailyGoal = settings.dailyGoal.firstOrNull() ?: 20
-        val db = ServiceLocator.database(context)
-        val streak = com.example.booktracker.app.analytics.StreakEngine.calculate(
-            db.sessionDao().getAllSessions().firstOrNull() ?: emptyList(),
+        val repository = ServiceLocator.repository(context)
+        val streak = com.example.booktracker.app.analytics.StreakEngine.compute(
+            repository.observeCompletedSessions().firstOrNull() ?: emptyList(),
             settings.dayStartsAtHour.firstOrNull() ?: 3
         ).currentStreak
-        
-        val repository = ServiceLocator.repository(context)
         val books = repository.observeBooks().firstOrNull() ?: emptyList()
         val readingBook = books
             .filter { it.status == BookStatus.READING.name }
@@ -95,11 +93,16 @@ class ReadingWidget : GlanceAppWidget() {
                     modifier = GlanceModifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    val context = androidx.glance.LocalContext.current
                     WidgetButton("+1", actionRunCallback<AddProgressAction>(
                         actionParametersOf(AddProgressAction.bookIdKey to book.id, AddProgressAction.amountKey to 1)
                     ))
                     Spacer(GlanceModifier.width(8.dp))
-                    WidgetButton("Timer", actionStartActivity<com.example.booktracker.app.MainActivity>())
+                    WidgetButton("Timer", actionStartActivity(
+                        android.content.Intent(context, com.example.booktracker.app.MainActivity::class.java).apply {
+                            flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        }
+                    ))
                 }
             } else {
                 Text(

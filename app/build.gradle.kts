@@ -77,12 +77,6 @@ dependencies {
     implementation("androidx.glance:glance-material3:1.1.1")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
     
-    // Google Drive Sync
-    implementation("com.google.android.gms:play-services-auth:21.3.0")
-    implementation("com.google.api-client:google-api-client-android:2.7.0")
-    implementation("com.google.apis:google-api-services-drive:v3-rev20250109-2.0.0") {
-        exclude(group = "org.apache.httpcomponents")
-    }
 
     implementation("com.google.code.gson:gson:2.10.1")
 

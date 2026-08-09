@@ -659,8 +659,8 @@ fun BookDetailScreen(
         FinishDialog(
             book = book,
             onDismiss = { showFinishDialog = false },
-            onConfirm = { rating ->
-                onFinish(rating)
+            onConfirm = { rating, review ->
+                onFinish(rating, review)
                 showFinishDialog = false
             }
         )
