@@ -235,9 +235,9 @@ private fun NoteHitRow(note: MarginNote, book: Book?, onClick: () -> Unit) {
                 Text(
                     buildString {
                         append(book?.title ?: "Unknown book")
-                        if (note.pageOrUnit > 0) {
-                            val abbrev = book?.let { com.example.booktracker.app.format.FormatAdaptabilityLayer.unitAbbrev(it.format) } ?: "p."
-                            append(" · $abbrev ${note.pageOrUnit}")
+                        if (note.pageNumber > 0) {
+                            val abbrev = book?.let { com.example.booktracker.app.format.FormatAdaptabilityLayer.unitAbbrev(it) } ?: "p."
+                            append(" · $abbrev ${note.pageNumber}")
                         }
                     },
                     style = MaterialTheme.typography.labelSmall,

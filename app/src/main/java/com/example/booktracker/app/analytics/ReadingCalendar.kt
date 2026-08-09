@@ -25,9 +25,9 @@ object ReadingCalendar {
         zone: ZoneId = ZoneId.systemDefault()
     ): Map<LocalDate, Int> =
         sessions
-            .filter { it.endTime > 0 && it.unitsRead > 0 }
-            .groupBy { Instant.ofEpochMilli(it.endTime).atZone(zone).toLocalDate() }
-            .mapValues { (_, daySessions) -> daySessions.sumOf { it.unitsRead } }
+            .filter { it.endTime > 0 && it.pagesRead > 0 }
+            .groupBy { StreakEngine.readingDate(it.endTime, zone) }
+            .mapValues { (_, daySessions) -> daySessions.sumOf { it.pagesRead } }
 
     /** Sunday of the earliest visible week, so the grid is 7 whole rows tall. */
     fun gridStart(today: LocalDate): LocalDate {

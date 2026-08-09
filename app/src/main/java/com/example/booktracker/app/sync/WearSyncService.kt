@@ -29,11 +29,11 @@ class WearSyncService : WearableListenerService() {
                     val noteId = dataMap.getString(Constants.KEY_NOTE_ID) ?: continue
                     val bookId = dataMap.getString(Constants.KEY_BOOK_ID) ?: continue
                     val text = dataMap.getString(Constants.KEY_NOTE_TEXT) ?: continue
-                    val pageOrUnit = dataMap.getInt(Constants.KEY_PAGE_OR_UNIT)
+                    val page = dataMap.getInt(Constants.KEY_PAGE_OR_UNIT)
                     val timestamp = dataMap.getLong(Constants.KEY_UPDATED_AT)
                     runBlocking {
                         ServiceLocator.repository(applicationContext)
-                            .addRemoteNote(noteId, bookId, pageOrUnit, text, timestamp)
+                            .addRemoteNote(noteId, bookId, page, text, timestamp)
                     }
                     // The note is now persisted locally; drop the transport item so
                     // dictated notes don't accumulate in the Data Layer indefinitely.
@@ -47,15 +47,15 @@ class WearSyncService : WearableListenerService() {
 
                 path.startsWith(Constants.PROGRESS_PATH_PREFIX) -> {
                     val bookId = dataMap.getString(Constants.KEY_BOOK_ID) ?: continue
-                    val currentUnit = dataMap.getInt(Constants.KEY_CURRENT_UNIT)
+                    val currentPage = dataMap.getInt(Constants.KEY_CURRENT_UNIT)
                     val updatedAt = dataMap.getLong(Constants.KEY_UPDATED_AT)
                     // onDataChanged runs on a background thread; finishing the write
                     // before returning keeps the service alive for the duration.
                     runBlocking {
                         ServiceLocator.repository(applicationContext)
-                            .applyRemoteProgress(bookId, currentUnit, updatedAt)
+                            .applyRemoteProgress(bookId, currentPage, updatedAt)
                     }
-                    Log.d(TAG, "Applied watch progress for $bookId -> $currentUnit")
+                    Log.d(TAG, "Applied watch progress for $bookId -> $currentPage")
                 }
 
                 path.startsWith(Constants.TIMER_CONTROL_PATH) -> {

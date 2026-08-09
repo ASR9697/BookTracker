@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Literary Motion - Add Note</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Inter:wght@400;500&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#b50048",
+                        "surfaceVariant": "#E7E0EC",
+                        "inverse-surface": "#2f3037",
+                        "on-secondary-fixed-variant": "#005048",
+                        "onPrimaryContainer": "#1A237E",
+                        "primary": "#24389c",
+                        "secondary-fixed": "#85f6e5",
+                        "on-tertiary-fixed": "#400014",
+                        "on-secondary-container": "#007166",
+                        "surface-container-lowest": "#ffffff",
+                        "outline-variant": "#c5c5d4",
+                        "inverse-on-surface": "#f2eff9",
+                        "secondaryContainer": "#E0F2F1",
+                        "surface-variant": "#e3e1ea",
+                        "tertiary": "#890035",
+                        "surface-dim": "#dbd9e2",
+                        "secondary-fixed-dim": "#67d9c9",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#900038",
+                        "on-primary-container": "#cacfff",
+                        "on-secondary-fixed": "#00201c",
+                        "outline": "#757684",
+                        "secondary": "#006a60",
+                        "on-error-container": "#93000a",
+                        "on-primary-fixed-variant": "#293ca0",
+                        "primaryContainer": "#E8EAF6",
+                        "surface": "#FFFBFE",
+                        "error": "#ba1a1a",
+                        "onSurfaceVariant": "#49454F",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb2be",
+                        "on-primary": "#ffffff",
+                        "background": "#fbf8ff",
+                        "primary-fixed-dim": "#bac3ff",
+                        "glassOverlay": "rgba(255, 255, 255, 0.7)",
+                        "inverse-primary": "#bac3ff",
+                        "on-background": "#1a1b22",
+                        "surface-container": "#efedf6",
+                        "surface-bright": "#fbf8ff",
+                        "secondary-container": "#85f6e5",
+                        "surface-container-high": "#e9e7f0",
+                        "surface-tint": "#4355b9",
+                        "on-surface": "#1a1b22",
+                        "on-surface-variant": "#454652",
+                        "on-error": "#ffffff",
+                        "primary-container": "#3f51b5",
+                        "onSecondaryContainer": "#004D40",
+                        "primary-fixed": "#dee0ff",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#ffd9de",
+                        "surface-container-low": "#f4f2fc",
+                        "on-tertiary-container": "#ffc3cb",
+                        "surface-container-highest": "#e3e1ea",
+                        "on-primary-fixed": "#00105c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "baseline": "4px",
+                        "margin-mobile": "16px",
+                        "margin-tablet": "24px",
+                        "touch-target": "48px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "title-lg": ["Manrope"],
+                        "label-md": ["JetBrains Mono"],
+                        "display-lg": ["Manrope"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "600" }],
+                        "title-lg": ["22px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500" }],
+                        "display-lg": ["57px", { "lineHeight": "64px", "letterSpacing": "-0.25px", "fontWeight": "700" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.25px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0.5px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Bottom Sheet Animation */
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        
+        .bottom-sheet {
+            animation: slideUp 0.4s cubic-bezier(0.2, 0, 0, 1) forwards;
+        }
+        
+        /* Hide scrollbar for chips */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-dim font-body-md text-on-surface antialiased h-screen w-screen overflow-hidden flex flex-col justify-end">
+<!-- Scrim (Background Dim) -->
+<div class="absolute inset-0 bg-inverse-surface/40 backdrop-blur-sm z-40 transition-opacity duration-300"></div>
+<!-- Modal Bottom Sheet -->
+<div class="bottom-sheet relative z-50 w-full max-w-2xl mx-auto bg-surface-container-low rounded-t-3xl shadow-2xl flex flex-col h-[795px] md:h-[707px]">
+<!-- Drag Handle -->
+<div class="w-full flex justify-center pt-4 pb-2 cursor-grab active:cursor-grabbing">
+<div class="w-8 h-1 bg-outline-variant rounded-full opacity-50"></div>
+</div>
+<!-- Header -->
+<header class="flex justify-between items-center px-margin-mobile md:px-margin-tablet pb-4 border-b border-surface-variant">
+<div class="flex items-center gap-3">
+<button class="w-touch-target h-touch-target flex items-center justify-center -ml-3 rounded-full hover:bg-surface-variant/50 transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">close</span>
+</button>
+<h2 class="font-title-lg text-title-lg text-on-surface">Add Margin Note</h2>
+</div>
+<button class="h-10 px-4 rounded-full bg-primaryContainer text-onPrimaryContainer font-label-md text-label-md hover:bg-primary-fixed transition-colors flex items-center justify-center gap-2">
+                Save
+            </button>
+</header>
+<!-- Scrollable Content Area -->
+<main class="flex-1 overflow-y-auto px-margin-mobile md:px-margin-tablet py-6 space-y-8">
+<!-- Context Picker (Page/Chapter + Number) -->
+<section class="space-y-4">
+<div class="flex items-center gap-4">
+<!-- Type Selector -->
+<div class="flex p-1 bg-surface-container-high rounded-lg flex-1 h-12">
+<label class="flex-1 relative">
+<input checked="" class="peer sr-only" name="locationType" type="radio" value="page"/>
+<div class="h-full w-full flex items-center justify-center font-label-md text-label-md text-on-surface-variant peer-checked:bg-surface peer-checked:text-primary peer-checked:shadow-sm rounded-md transition-all cursor-pointer">
+                                Page
+                            </div>
+</label>
+<label class="flex-1 relative">
+<input class="peer sr-only" name="locationType" type="radio" value="chapter"/>
+<div class="h-full w-full flex items-center justify-center font-label-md text-label-md text-on-surface-variant peer-checked:bg-surface peer-checked:text-primary peer-checked:shadow-sm rounded-md transition-all cursor-pointer">
+                                Chapter
+                            </div>
+</label>
+<label class="flex-1 relative">
+<input class="peer sr-only" name="locationType" type="radio" value="volume"/>
+<div class="h-full w-full flex items-center justify-center font-label-md text-label-md text-on-surface-variant peer-checked:bg-surface peer-checked:text-primary peer-checked:shadow-sm rounded-md transition-all cursor-pointer">
+                                Vol.
+                            </div>
+</label>
+</div>
+<!-- Number Input -->
+<div class="relative w-32 h-12 bg-surface-container-high rounded-lg flex items-center px-4 focus-within:bg-surface-container focus-within:ring-2 focus-within:ring-primary transition-all">
+<span class="font-label-md text-label-md text-on-surface-variant mr-2 select-none">#</span>
+<input class="bg-transparent border-none p-0 w-full font-body-lg text-body-lg text-on-surface placeholder:text-outline focus:ring-0 focus:outline-none appearance-none" placeholder="142" type="number"/>
+<!-- Bottom Line Indicator (Material Style inside the rounded field for this specific design) -->
+<div class="absolute bottom-0 left-0 right-0 h-0.5 bg-outline-variant opacity-50 rounded-b-lg"></div>
+</div>
+</div>
+</section>
+<!-- Tags / Categories -->
+<section class="space-y-3">
+<h3 class="font-label-md text-label-md text-on-surface-variant px-1 uppercase tracking-wider">Category</h3>
+<div class="flex gap-2 overflow-x-auto hide-scrollbar pb-2 -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0">
+<label class="shrink-0 cursor-pointer">
+<input checked="" class="peer sr-only" name="tag" type="radio"/>
+<div class="px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant peer-checked:bg-secondaryContainer peer-checked:text-onSecondaryContainer peer-checked:border-secondaryContainer font-label-md text-label-md transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">format_quote</span>
+                            Quote
+                        </div>
+</label>
+<label class="shrink-0 cursor-pointer">
+<input class="peer sr-only" name="tag" type="radio"/>
+<div class="px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant peer-checked:bg-secondaryContainer peer-checked:text-onSecondaryContainer peer-checked:border-secondaryContainer font-label-md text-label-md transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">lightbulb</span>
+                            Insight
+                        </div>
+</label>
+<label class="shrink-0 cursor-pointer">
+<input class="peer sr-only" name="tag" type="radio"/>
+<div class="px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant peer-checked:bg-secondaryContainer peer-checked:text-onSecondaryContainer peer-checked:border-secondaryContainer font-label-md text-label-md transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">help</span>
+                            Question
+                        </div>
+</label>
+<label class="shrink-0 cursor-pointer">
+<input class="peer sr-only" name="tag" type="radio"/>
+<div class="px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant peer-checked:bg-secondaryContainer peer-checked:text-onSecondaryContainer peer-checked:border-secondaryContainer font-label-md text-label-md transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">person</span>
+                            Personal
+                        </div>
+</label>
+</div>
+</section>
+<!-- Rich Text Area -->
+<section class="flex-1 flex flex-col min-h-[300px]">
+<div class="relative flex-1 bg-surface-container-highest rounded-xl p-1 focus-within:ring-2 focus-within:ring-primary/20 transition-all flex flex-col">
+<!-- Toolbar mini -->
+<div class="flex gap-1 p-2 border-b border-outline-variant/30 text-on-surface-variant">
+<button class="w-8 h-8 flex items-center justify-center rounded hover:bg-surface-variant transition-colors" title="Bold">
+<span class="material-symbols-outlined text-[20px]">format_bold</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded hover:bg-surface-variant transition-colors" title="Italic">
+<span class="material-symbols-outlined text-[20px]">format_italic</span>
+</button>
+<div class="w-px h-6 bg-outline-variant/30 my-auto mx-1"></div>
+<button class="w-8 h-8 flex items-center justify-center rounded hover:bg-surface-variant transition-colors" title="List">
+<span class="material-symbols-outlined text-[20px]">format_list_bulleted</span>
+</button>
+</div>
+<textarea autofocus="" class="flex-1 w-full bg-transparent border-none resize-none p-4 font-body-lg text-body-lg text-on-surface placeholder:text-outline focus:ring-0 focus:outline-none leading-relaxed" placeholder="Your thoughts, quotes, or questions..."></textarea>
+</div>
+</section>
+</main>
+<!-- Safe Area Padding for iOS -->
+<div class="pb-safe"></div>
+</div>
+<!-- Script for handling inputs to simulate tactile feedback -->
+<script>
+        document.querySelectorAll('input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                // Simulate haptic feedback on selection
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
+            });
+        });
+        
+        const saveBtn = document.querySelector('header button.bg-primaryContainer');
+        saveBtn.addEventListener('click', () => {
+            if (navigator.vibrate) navigator.vibrate(100);
+            saveBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">check</span> Saved';
+            setTimeout(() => {
+                document.querySelector('.bottom-sheet').style.transform = 'translateY(100%)';
+                document.querySelector('.bg-inverse-surface\\/40').style.opacity = '0';
+            }, 600);
+        });
+    </script>
+</body></html>

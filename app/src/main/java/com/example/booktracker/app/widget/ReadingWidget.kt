@@ -69,10 +69,10 @@ class ReadingWidget : GlanceAppWidget() {
                 )
                 Spacer(GlanceModifier.height(4.dp))
                 
-                val progressStr = if (book.totalUnits > 0) {
-                    "${book.currentUnit} / ${book.totalUnits} ${book.format.lowercase()}"
+                val progressStr = if (book.totalPages > 0) {
+                    "${book.currentPage} / ${book.totalPages} ${book.format.name.lowercase()}"
                 } else {
-                    "${book.currentUnit} ${book.format.lowercase()}"
+                    "${book.currentPage} ${book.format.name.lowercase()}"
                 }
                 
                 Text(

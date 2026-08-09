@@ -37,4 +37,5 @@ object Constants {
     const val KEY_TIMER_PHASE = "timer_phase"
     const val KEY_TIMER_BOOK_ID = "timer_book_id"
     const val KEY_TIMER_CONTROL_ACTION = "timer_action" // "PAUSE", "RESUME"
+    const val KEY_TIMER_MODE = "timer_mode" // "COUNTDOWN", "STOPWATCH"
 }

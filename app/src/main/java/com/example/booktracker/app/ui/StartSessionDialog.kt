@@ -20,13 +20,13 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun StartSessionDialog(
-    currentUnit: Int,
-    totalUnits: Int,
+    currentPage: Int,
+    totalPages: Int,
     unitName: String = "Page",
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit
 ) {
-    var startPage by remember { mutableStateOf(currentUnit.toString()) }
+    var startPage by remember { mutableStateOf(currentPage.toString()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -45,11 +45,11 @@ fun StartSessionDialog(
                     label = { Text("Start $unitName") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
-                    isError = startPage.toIntOrNull()?.let { it > totalUnits && totalUnits > 0 } == true
+                    isError = startPage.toIntOrNull()?.let { it > totalPages && totalPages > 0 } == true
                 )
-                if (startPage.toIntOrNull()?.let { it > totalUnits && totalUnits > 0 } == true) {
+                if (startPage.toIntOrNull()?.let { it > totalPages && totalPages > 0 } == true) {
                     Text(
-                        "Cannot exceed total ${unitName}s ($totalUnits)",
+                        "Cannot exceed total ${unitName}s ($totalPages)",
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(start = 16.dp, top = 4.dp)
@@ -60,10 +60,10 @@ fun StartSessionDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    val finalPage = startPage.toIntOrNull() ?: currentUnit
+                    val finalPage = startPage.toIntOrNull() ?: currentPage
                     onConfirm(finalPage)
                 },
-                enabled = startPage.toIntOrNull()?.let { it <= totalUnits || totalUnits == 0 } != false
+                enabled = startPage.toIntOrNull()?.let { it <= totalPages || totalPages == 0 } != false
             ) {
                 Text("Start")
             }

@@ -51,29 +51,35 @@ object CsvImportEngine {
                 val status = when {
                     combinedShelves.contains("read") && !combinedShelves.contains("currently-reading") && !combinedShelves.contains("to-read") -> BookStatus.FINISHED.name
                     combinedShelves.contains("currently-reading") -> BookStatus.READING.name
-                    combinedShelves.contains("to-read") -> BookStatus.BACKLOG.name
+                    combinedShelves.contains("to-read") -> BookStatus.SHORTLIST.name
                     else -> BookStatus.FINISHED.name // Default for old books typically
                 }
 
                 val authorsList = if (author.isNotBlank()) listOf(author) else emptyList()
-                val authorsJson = org.json.JSONArray(authorsList).toString()
+                val creatorsJson = org.json.JSONArray(authorsList.map { org.json.JSONObject().put("name", it).put("role", "Author") }).toString()
 
                 val entity = BookEntity(
-                    id = UUID.randomUUID().toString(),
+                    id = java.util.UUID.randomUUID().toString(),
                     title = title,
-                    authors = authorsJson,
-                    coverUrl = "", // No cover from CSV
-                    format = "",
-                    totalUnits = pages,
-                    currentUnit = if (status == BookStatus.FINISHED.name) pages else 0,
-                    status = status,
-                    dnfPercentage = null,
-                    dnfReason = null,
-                    lastUpdated = System.currentTimeMillis(),
-                    rating = "{}",
+                    isbn = isbn.ifBlank { null },
+                    coverUrl = "",
+                    totalPages = pages,
+                    currentPage = if (status == BookStatus.FINISHED.name) pages else 0,
+                    language = "",
+                    creators = creatorsJson,
+                    publication = null,
+                    format = com.example.booktracker.shared.models.BookFormat.Paperback.name,
+                    progressUnit = com.example.booktracker.shared.models.ProgressUnit.Page.name,
                     description = "",
-                    genres = "[]",
-                    publishedDate = "",
+                    seriesInfo = null,
+                    classification = "{\"tags\":[],\"collections\":[]}",
+                    status = status,
+                    rating = "{}",
+                    dnfData = null,
+                    purchaseLog = "[]",
+                    loanRecord = "[]",
+                    dateAdded = System.currentTimeMillis(),
+                    lastUpdated = System.currentTimeMillis(),
                     isFavorite = false
                 )
                 

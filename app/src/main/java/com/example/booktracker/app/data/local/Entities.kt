@@ -9,60 +9,90 @@ import androidx.room.PrimaryKey
 data class BookEntity(
     @PrimaryKey val id: String,
     val title: String,
-    val authors: String, // JSON array of strings
+    val isbn: String?,
     val coverUrl: String,
+    val totalPages: Int,
+    val currentPage: Int,
+    val language: String,
+    val creators: String, // JSON array of Creator objects
+    val publication: String?, // JSON object
     val format: String,
-    val totalUnits: Int,
-    val currentUnit: Int,
-    val status: String,
-    val dnfPercentage: Float?,
-    val dnfReason: String?,
-    val lastUpdated: Long,
-    val rating: String, // JSON object of String -> Float
+    val progressUnit: String,
     val description: String,
-    val genres: String, // JSON array of strings
-    val publishedDate: String,
-    val isFavorite: Boolean
+    val seriesInfo: String?, // JSON object
+    val classification: String, // JSON object
+    val status: String,
+    val rating: String,
+    val dnfData: String?,
+    val purchaseLog: String, // JSON array
+    val loanRecord: String, // JSON array
+    val dateAdded: Long,
+    val lastUpdated: Long,
+    val isFavorite: Boolean,
+    // The SQL default must be declared here too, or Room's post-migration schema
+    // validation sees a default the expected TableInfo doesn't have and throws.
+    @androidx.room.ColumnInfo(defaultValue = "0")
+    val readCount: Int = 0
 )
 
-@Entity(tableName = "sessions", indices = [Index("bookId")])
+@Entity(
+    tableName = "sessions",
+    indices = [Index("bookId")],
+    foreignKeys = [
+        androidx.room.ForeignKey(
+            entity = BookEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["bookId"],
+            onDelete = androidx.room.ForeignKey.CASCADE
+        )
+    ]
+)
 data class SessionEntity(
     @PrimaryKey val id: String,
     val bookId: String,
     val startTime: Long,
     val endTime: Long,
-    val startUnit: Int,
-    val endUnit: Int,
-    val unitsRead: Int,
-    val deviceSource: String,
-    val environmentTag: String,
-    val isInterrupted: Boolean
+    val durationSeconds: Int,
+    val startPage: Int,
+    val endPage: Int,
+    val pagesRead: Int,
+    val environmentTag: String
 )
 
-@Entity(tableName = "margin_notes", indices = [Index("bookId")])
+@Entity(
+    tableName = "margin_notes",
+    indices = [Index("bookId")],
+    foreignKeys = [
+        androidx.room.ForeignKey(
+            entity = BookEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["bookId"],
+            onDelete = androidx.room.ForeignKey.CASCADE
+        )
+    ]
+)
 data class MarginNoteEntity(
     @PrimaryKey val id: String,
     val bookId: String,
-    val timestamp: Long,
-    val pageOrUnit: Int,
-    val markdownContent: String,
-    val isVoiceDictated: Boolean
+    val pageNumber: Int,
+    val content: String,
+    val type: String,
+    val isFavorite: Boolean,
+    val timestamp: Long
 )
 
-// External-content FTS mirrors: Room keeps them in sync with their content
-// tables via triggers, so they cost nothing to maintain and stay queryable
-// with MATCH for the universal search screen.
+// External-content FTS mirrors
 @Fts4(contentEntity = BookEntity::class)
 @Entity(tableName = "books_fts")
 data class BookFtsEntity(
     val title: String,
-    val authors: String,
+    val creators: String,
     val description: String,
-    val genres: String
+    val classification: String
 )
 
 @Fts4(contentEntity = MarginNoteEntity::class)
 @Entity(tableName = "notes_fts")
 data class NoteFtsEntity(
-    val markdownContent: String
+    val content: String
 )

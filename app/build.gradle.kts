@@ -45,6 +45,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     implementation("androidx.navigation:navigation-compose:2.8.8")
     implementation("androidx.datastore:datastore-preferences:1.1.7")
+    implementation("androidx.compose.material3:material3-window-size-class")
+    implementation("androidx.palette:palette-ktx:1.0.0")
     
     implementation("androidx.compose.ui:ui-text-google-fonts")
     implementation("androidx.core:core-splashscreen:1.0.1")
@@ -69,4 +71,7 @@ dependencies {
     implementation("com.google.mlkit:digital-ink-recognition:18.1.0")
 
     implementation("androidx.glance:glance-appwidget:1.1.1")
+    implementation("com.google.code.gson:gson:2.10.1")
+
+    testImplementation("junit:junit:4.13.2")
 }

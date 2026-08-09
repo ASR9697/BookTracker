@@ -11,6 +11,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
@@ -52,7 +53,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 @Composable
 fun AddBookScreen(
     onDismiss: () -> Unit,
-    onAddBook: (BookMetadata, BookStatus) -> Unit,
+    onAddBook: (BookMetadata, BookStatus, com.example.booktracker.shared.models.BookFormat) -> Unit,
     onScanBarcode: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -235,8 +236,8 @@ fun AddBookScreen(
         BookPreviewDialog(
             book = book,
             onDismiss = { previewBook = null },
-            onConfirmAdd = { status, startPage ->
-                onAddBook(book.copy(currentUnit = startPage), status)
+            onConfirmAdd = { status, startPage, format ->
+                onAddBook(book.copy(currentPage = startPage), status, format)
                 previewBook = null
             }
         )
@@ -245,8 +246,8 @@ fun AddBookScreen(
     if (showManualEntry) {
         ManualAddBookDialog(
             onDismiss = { showManualEntry = false },
-            onConfirmAdd = { metadata, status ->
-                onAddBook(metadata, status)
+            onConfirmAdd = { metadata, status, format ->
+                onAddBook(metadata, status, format)
                 showManualEntry = false
             }
         )
@@ -296,9 +297,10 @@ fun BookSuggestionCard(book: BookMetadata, onAdd: (BookMetadata) -> Unit) {
 fun BookPreviewDialog(
     book: BookMetadata,
     onDismiss: () -> Unit,
-    onConfirmAdd: (BookStatus, Int) -> Unit
+    onConfirmAdd: (BookStatus, Int, com.example.booktracker.shared.models.BookFormat) -> Unit
 ) {
-    var selectedStatus by remember { mutableStateOf(BookStatus.BACKLOG) }
+    var selectedStatus by remember { mutableStateOf(BookStatus.SHORTLIST) }
+    var selectedFormat by remember { mutableStateOf(com.example.booktracker.shared.models.BookFormat.Paperback) }
     var startPage by remember { mutableStateOf("") }
     
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
@@ -369,6 +371,28 @@ fun BookPreviewDialog(
                 Spacer(Modifier.height(24.dp))
                 
                 Text(
+                    text = "Format",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    com.example.booktracker.shared.models.BookFormat.values().forEach { format ->
+                        FilterChip(
+                            selected = selectedFormat == format,
+                            onClick = { selectedFormat = format },
+                            label = { Text(format.name) }
+                        )
+                    }
+                }
+                
+                Spacer(Modifier.height(24.dp))
+                
+                Text(
                     text = "Add to...",
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary,
@@ -377,7 +401,6 @@ fun BookPreviewDialog(
                 Spacer(Modifier.height(8.dp))
                 
                 val options = listOf(
-                    BookStatus.BACKLOG,
                     BookStatus.SHORTLIST,
                     BookStatus.UP_NEXT,
                     BookStatus.READING
@@ -422,7 +445,7 @@ fun BookPreviewDialog(
                         Text("Cancel")
                     }
                     Spacer(Modifier.width(8.dp))
-                    Button(onClick = { onConfirmAdd(selectedStatus, startPage.toIntOrNull() ?: 0) }) {
+                    Button(onClick = { onConfirmAdd(selectedStatus, startPage.toIntOrNull() ?: 0, selectedFormat) }) {
                         Text("Save Book")
                     }
                 }
@@ -434,17 +457,24 @@ fun BookPreviewDialog(
 @Composable
 fun ManualAddBookDialog(
     onDismiss: () -> Unit,
-    onConfirmAdd: (BookMetadata, BookStatus) -> Unit
+    onConfirmAdd: (BookMetadata, BookStatus, com.example.booktracker.shared.models.BookFormat) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
-    var author by remember { mutableStateOf("") }
+    var creators by remember { mutableStateOf(listOf(com.example.booktracker.shared.models.Creator(com.example.booktracker.shared.models.CreatorRole.Author, ""))) }
     var pages by remember { mutableStateOf("") }
     var coverUrl by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var publishedDate by remember { mutableStateOf("") }
     var genres by remember { mutableStateOf("") }
     var startPage by remember { mutableStateOf("") }
-    var selectedStatus by remember { mutableStateOf(BookStatus.BACKLOG) }
+    var selectedStatus by remember { mutableStateOf(BookStatus.SHORTLIST) }
+    var selectedFormat by remember { mutableStateOf(com.example.booktracker.shared.models.BookFormat.Paperback) }
+    
+    var purchaseLogs by remember { mutableStateOf(emptyList<com.example.booktracker.shared.models.PurchaseLog>()) }
+    var showPurchaseLogForm by remember { mutableStateOf(false) }
+    
+    var loanRecords by remember { mutableStateOf(emptyList<com.example.booktracker.shared.models.LoanRecord>()) }
+    var showLoanRecordForm by remember { mutableStateOf(false) }
     
     val context = LocalContext.current
     val takePictureLauncher = rememberLauncherForActivityResult(
@@ -487,33 +517,107 @@ fun ManualAddBookDialog(
                 )
                 Spacer(Modifier.height(8.dp))
 
-                OutlinedTextField(
-                    value = author,
-                    onValueChange = { author = it },
-                    label = { Text("Author (optional)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                Text(
+                    text = "Creators",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.align(Alignment.Start)
                 )
+                creators.forEachIndexed { index, creator ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = creator.name,
+                            onValueChange = { newName ->
+                                val updated = creators.toMutableList()
+                                updated[index] = creator.copy(name = newName)
+                                creators = updated
+                            },
+                            label = { Text("Name") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        var expanded by remember { mutableStateOf(false) }
+                        Box {
+                            OutlinedButton(onClick = { expanded = true }) {
+                                Text(creator.role.name)
+                            }
+                            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                com.example.booktracker.shared.models.CreatorRole.values().forEach { role ->
+                                    DropdownMenuItem(
+                                        text = { Text(role.name) },
+                                        onClick = {
+                                            val updated = creators.toMutableList()
+                                            updated[index] = creator.copy(role = role)
+                                            creators = updated
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        IconButton(onClick = {
+                            if (creators.size > 1) {
+                                val updated = creators.toMutableList()
+                                updated.removeAt(index)
+                                creators = updated
+                            }
+                        }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Remove")
+                        }
+                    }
+                }
+                TextButton(onClick = {
+                    creators = creators + com.example.booktracker.shared.models.Creator(com.example.booktracker.shared.models.CreatorRole.Author, "")
+                }) {
+                    Text("+ Add Creator")
+                }
                 Spacer(Modifier.height(8.dp))
 
+                val pagesInt = pages.toIntOrNull()
+                val isPagesError = pagesInt != null && pagesInt < 0
                 OutlinedTextField(
                     value = pages,
-                    onValueChange = { pages = it },
+                    onValueChange = { pages = it.filter { char -> char.isDigit() } },
                     label = { Text("Total Pages") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = isPagesError
                 )
+                if (isPagesError) {
+                    Text(
+                        "Total pages cannot be negative",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp).align(Alignment.Start)
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
 
+                val startPageInt = startPage.toIntOrNull()
+                val isStartPageError = startPageInt != null && (startPageInt < 0 || (pagesInt != null && pagesInt > 0 && startPageInt > pagesInt))
                 OutlinedTextField(
                     value = startPage,
-                    onValueChange = { startPage = it },
+                    onValueChange = { startPage = it.filter { char -> char.isDigit() } },
                     label = { Text("Start Page (optional)") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = isStartPageError
                 )
+                if (isStartPageError) {
+                    Text(
+                        if (startPageInt != null && startPageInt < 0) "Start page cannot be negative"
+                        else "Cannot exceed total pages ($pagesInt)",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp).align(Alignment.Start)
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -561,6 +665,88 @@ fun ManualAddBookDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(24.dp))
+                
+                // Purchase Logs Accordion
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { showPurchaseLogForm = !showPurchaseLogForm }) {
+                            Text("Purchase Logs (${purchaseLogs.size})", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                            Text(if (showPurchaseLogForm) "Hide" else "Show", color = MaterialTheme.colorScheme.primary)
+                        }
+                        if (showPurchaseLogForm) {
+                            Spacer(Modifier.height(8.dp))
+                            purchaseLogs.forEachIndexed { idx, log ->
+                                Text("• ${log.vendor} - ${log.price} ${log.currency}")
+                            }
+                            var vendor by remember { mutableStateOf("") }
+                            var price by remember { mutableStateOf("") }
+                            Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(value = vendor, onValueChange = { vendor = it }, label = { Text("Vendor") }, modifier = Modifier.weight(1f), singleLine = true)
+                                OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Price") }, modifier = Modifier.weight(1f), singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                            }
+                            Button(onClick = {
+                                if (vendor.isNotBlank() && price.toDoubleOrNull() != null) {
+                                    purchaseLogs = purchaseLogs + com.example.booktracker.shared.models.PurchaseLog(System.currentTimeMillis(), vendor, price.toDouble(), "USD", "")
+                                    vendor = ""
+                                    price = ""
+                                }
+                            }, modifier = Modifier.padding(top = 8.dp)) { Text("Add Log") }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                
+                // Loan Records Accordion
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { showLoanRecordForm = !showLoanRecordForm }) {
+                            Text("Loan Records (${loanRecords.size})", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                            Text(if (showLoanRecordForm) "Hide" else "Show", color = MaterialTheme.colorScheme.primary)
+                        }
+                        if (showLoanRecordForm) {
+                            Spacer(Modifier.height(8.dp))
+                            loanRecords.forEachIndexed { idx, log ->
+                                Text("• Lent to ${log.lender}")
+                            }
+                            var lender by remember { mutableStateOf("") }
+                            OutlinedTextField(value = lender, onValueChange = { lender = it }, label = { Text("Lender Name") }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), singleLine = true)
+                            Button(onClick = {
+                                if (lender.isNotBlank()) {
+                                    loanRecords = loanRecords + com.example.booktracker.shared.models.LoanRecord(System.currentTimeMillis(), 0L, lender, "")
+                                    lender = ""
+                                }
+                            }, modifier = Modifier.padding(top = 8.dp)) { Text("Add Record") }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
+
+                Text(
+                    text = "Format",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    com.example.booktracker.shared.models.BookFormat.values().forEach { format ->
+                        FilterChip(
+                            selected = selectedFormat == format,
+                            onClick = { selectedFormat = format },
+                            label = { Text(format.name) }
+                        )
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
 
                 Text(
                     text = "Add to...",
@@ -571,7 +757,6 @@ fun ManualAddBookDialog(
                 Spacer(Modifier.height(8.dp))
 
                 val options = listOf(
-                    BookStatus.BACKLOG,
                     BookStatus.SHORTLIST,
                     BookStatus.UP_NEXT,
                     BookStatus.READING
@@ -618,20 +803,24 @@ fun ManualAddBookDialog(
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = {
+                            val finalCreators = creators.filter { it.name.isNotBlank() }.ifEmpty { listOf(com.example.booktracker.shared.models.Creator(com.example.booktracker.shared.models.CreatorRole.Author, "Unknown Author")) }
                             val metadata = BookMetadata(
                                 title = title.takeIf { it.isNotBlank() } ?: "Unknown Title",
-                                authors = author.split(",").map { it.trim() }.filter { it.isNotBlank() }.ifEmpty { listOf("Unknown Author") },
+                                authors = finalCreators.map { it.name },
+                                creators = finalCreators,
                                 isbn = "manual_${System.currentTimeMillis()}", // Fake ISBN
                                 coverUrl = coverUrl.trim(),
                                 pageCount = pages.toIntOrNull() ?: 0,
                                 publishedDate = publishedDate.trim(),
                                 genres = genres.split(",").map { it.trim() }.filter { it.isNotBlank() },
                                 description = description.trim(),
-                                currentUnit = startPage.toIntOrNull() ?: 0
+                                currentPage = startPage.toIntOrNull() ?: 0,
+                                purchaseLog = purchaseLogs,
+                                loanRecord = loanRecords
                             )
-                            onConfirmAdd(metadata, selectedStatus)
+                            onConfirmAdd(metadata, selectedStatus, selectedFormat)
                         },
-                        enabled = title.isNotBlank()
+                        enabled = title.isNotBlank() && !isPagesError && !isStartPageError
                     ) {
                         Text("Save Book")
                     }

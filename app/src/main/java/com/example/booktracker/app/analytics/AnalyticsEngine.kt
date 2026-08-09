@@ -21,7 +21,7 @@ object AnalyticsEngine {
 
     fun timedSessions(sessions: List<Session>): List<Session> =
         sessions.filter {
-            it.endTime - it.startTime >= MIN_TIMED_SESSION_MILLIS && it.unitsRead > 0
+            it.endTime - it.startTime >= MIN_TIMED_SESSION_MILLIS && it.pagesRead > 0
         }
 
     /**
@@ -33,15 +33,15 @@ object AnalyticsEngine {
         val timed = timedSessions(sessions)
         if (timed.isEmpty()) return null
         val totalMillis = timed.sumOf { it.endTime - it.startTime }
-        val totalPages = timed.sumOf { it.unitsRead }
+        val totalPages = timed.sumOf { it.pagesRead }
         if (totalMillis <= 0L || totalPages <= 0) return null
         return totalPages / (totalMillis / 3_600_000f)
     }
 
     /** Minutes left in [book] at the reader's measured velocity; null when unknowable. */
     fun estimatedMinutesLeft(book: Book, sessions: List<Session>): Long? {
-        if (book.totalUnits <= 0) return null
-        val remaining = (book.totalUnits - book.currentUnit).coerceAtLeast(0)
+        if (book.totalPages <= 0) return null
+        val remaining = (book.totalPages - book.currentPage).coerceAtLeast(0)
         if (remaining == 0) return 0L
         val velocity = pagesPerHour(sessions) ?: return null
         return (remaining / velocity * 60f).toLong()
@@ -53,7 +53,7 @@ object AnalyticsEngine {
         zone: ZoneId = ZoneId.systemDefault()
     ): Map<LocalDate, Long> =
         timedSessions(sessions)
-            .groupBy { Instant.ofEpochMilli(it.endTime).atZone(zone).toLocalDate() }
+            .groupBy { StreakEngine.readingDate(it.endTime, zone) }
             .mapValues { (_, day) -> day.sumOf { it.endTime - it.startTime } / 60_000L }
 
     data class TimeSummary(
@@ -70,7 +70,7 @@ object AnalyticsEngine {
         val timed = timedSessions(sessions)
         val weekStart = today.minusDays(6)
         val last7 = timed.filter {
-            val day = Instant.ofEpochMilli(it.endTime).atZone(zone).toLocalDate()
+            val day = StreakEngine.readingDate(it.endTime, zone)
             !day.isBefore(weekStart) && !day.isAfter(today)
         }
         val totalMinutes = { list: List<Session> ->
@@ -90,7 +90,7 @@ object AnalyticsEngine {
     ): String? =
         timedSessions(sessions)
             .groupBy { dayPart(Instant.ofEpochMilli(it.startTime).atZone(zone).hour) }
-            .mapValues { (_, part) -> part.sumOf { it.unitsRead } }
+            .mapValues { (_, part) -> part.sumOf { it.pagesRead } }
             .maxByOrNull { it.value }
             ?.key
 
@@ -117,7 +117,7 @@ object AnalyticsEngine {
                 EnvironmentStat(
                     tag = tag,
                     sessionCount = tagged.size,
-                    totalPages = tagged.sumOf { it.unitsRead },
+                    totalPages = tagged.sumOf { it.pagesRead },
                     pagesPerHour = pagesPerHour(tagged)
                 )
             }

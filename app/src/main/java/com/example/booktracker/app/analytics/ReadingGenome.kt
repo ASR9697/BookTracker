@@ -48,7 +48,7 @@ object ReadingGenome {
 
         // Find candidates
         val candidates = books.filter { 
-            it.status == BookStatus.BACKLOG.name || it.status == BookStatus.SHORTLIST.name
+            it.status == BookStatus.SHORTLIST.name || it.status == BookStatus.SHORTLIST.name
         }
 
         val scored = candidates.mapNotNull { candidate ->

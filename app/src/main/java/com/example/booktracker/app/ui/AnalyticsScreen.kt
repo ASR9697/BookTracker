@@ -420,6 +420,20 @@ fun SmoothLineChart(
 ) {
     if (data.isEmpty()) return
     
+    var animationPlayed by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        animationPlayed = true
+    }
+    
+    val animationProgress by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (animationPlayed) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(
+            durationMillis = 1500,
+            easing = androidx.compose.animation.core.FastOutSlowInEasing
+        ),
+        label = "chartAnimation"
+    )
+    
     val textStyle = MaterialTheme.typography.labelSmall
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
     val textMeasurer = rememberTextMeasurer()
@@ -432,9 +446,9 @@ fun SmoothLineChart(
         
         val points = data.mapIndexed { index, (_, value) ->
             val normalizedValue = if (maxValue > 0) value.toFloat() / maxValue else 0f
-            // Y is inverted in canvas (0 is top)
+            // Y is inverted in canvas (0 is top), animate the Y growth
             val x = index * pointSpacing
-            val y = height - (normalizedValue * height)
+            val y = height - ((normalizedValue * animationProgress) * height)
             Offset(x, y)
         }
         

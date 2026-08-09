@@ -31,70 +31,76 @@ class SettingsRepository(context: Context) {
     private val userNameKey = androidx.datastore.preferences.core.stringPreferencesKey("user_name")
     private val workMinutesKey = intPreferencesKey("work_minutes")
     private val breakMinutesKey = intPreferencesKey("break_minutes")
+    
+    private val activeTimerModeKey = androidx.datastore.preferences.core.stringPreferencesKey("active_timer_mode")
+    private val activeTimerBookIdKey = androidx.datastore.preferences.core.stringPreferencesKey("active_timer_book_id")
+    private val activeTimerPhaseKey = androidx.datastore.preferences.core.stringPreferencesKey("active_timer_phase")
+    private val activeTimerIsRunningKey = androidx.datastore.preferences.core.booleanPreferencesKey("active_timer_is_running")
+    private val activeTimerTimeLeftKey = intPreferencesKey("active_timer_time_left")
+    private val activeTimerElapsedKey = intPreferencesKey("active_timer_elapsed")
+    private val activeTimerActiveReadingKey = intPreferencesKey("active_timer_active_reading")
+    private val activeTimerLastTickTimeKey = androidx.datastore.preferences.core.longPreferencesKey("active_timer_last_tick_time")
 
-    val userName: Flow<String> = appContext.settingsDataStore.data.map { prefs ->
-        prefs[userNameKey] ?: "Reader"
+    val dailyGoal: Flow<Int> = appContext.settingsDataStore.data.map { it[dailyGoalKey] ?: 20 }
+    val yearlyGoal: Flow<Int> = appContext.settingsDataStore.data.map { it[yearlyGoalKey] ?: Companion.DEFAULT_YEARLY_GOAL_BOOKS }
+    val dndDuringSession: Flow<Boolean> = appContext.settingsDataStore.data.map { it[dndKey] ?: false }
+    val themeMode: Flow<Int> = appContext.settingsDataStore.data.map { it[themeModeKey] ?: ThemeMode.SYSTEM.ordinal }
+    val useDynamicColor: Flow<Boolean> = appContext.settingsDataStore.data.map { it[useDynamicColorKey] ?: true }
+    val userName: Flow<String> = appContext.settingsDataStore.data.map { it[userNameKey] ?: "Reader" }
+    val workMinutes: Flow<Int> = appContext.settingsDataStore.data.map { it[workMinutesKey] ?: 25 }
+    val breakMinutes: Flow<Int> = appContext.settingsDataStore.data.map { it[breakMinutesKey] ?: 5 }
+
+    suspend fun setDailyGoal(pages: Int) { appContext.settingsDataStore.edit { it[dailyGoalKey] = pages } }
+    suspend fun setYearlyGoal(books: Int) { appContext.settingsDataStore.edit { it[yearlyGoalKey] = books } }
+    suspend fun setDndDuringSession(enabled: Boolean) { appContext.settingsDataStore.edit { it[dndKey] = enabled } }
+    suspend fun setThemeMode(mode: Int) { appContext.settingsDataStore.edit { it[themeModeKey] = mode } }
+    suspend fun setUseDynamicColor(enabled: Boolean) { appContext.settingsDataStore.edit { it[useDynamicColorKey] = enabled } }
+    suspend fun setUserName(name: String) { appContext.settingsDataStore.edit { it[userNameKey] = name } }
+    suspend fun setWorkMinutes(mins: Int) { appContext.settingsDataStore.edit { it[workMinutesKey] = mins } }
+    suspend fun setBreakMinutes(mins: Int) { appContext.settingsDataStore.edit { it[breakMinutesKey] = mins } }
+
+    val activeTimerMode: Flow<String?> = appContext.settingsDataStore.data.map { it[activeTimerModeKey] }
+    val activeTimerBookId: Flow<String?> = appContext.settingsDataStore.data.map { it[activeTimerBookIdKey] }
+    val activeTimerPhase: Flow<String?> = appContext.settingsDataStore.data.map { it[activeTimerPhaseKey] }
+    val activeTimerIsRunning: Flow<Boolean?> = appContext.settingsDataStore.data.map { it[activeTimerIsRunningKey] }
+    val activeTimerTimeLeft: Flow<Int?> = appContext.settingsDataStore.data.map { it[activeTimerTimeLeftKey] }
+    val activeTimerElapsed: Flow<Int?> = appContext.settingsDataStore.data.map { it[activeTimerElapsedKey] }
+    val activeTimerActiveReading: Flow<Int?> = appContext.settingsDataStore.data.map { it[activeTimerActiveReadingKey] }
+    val activeTimerLastTickTime: Flow<Long?> = appContext.settingsDataStore.data.map { it[activeTimerLastTickTimeKey] }
+
+    suspend fun saveTimerState(
+        mode: String?,
+        bookId: String?,
+        phase: String?,
+        isRunning: Boolean?,
+        timeLeft: Int?,
+        elapsed: Int?,
+        activeReading: Int?,
+        lastTickTime: Long?
+    ) {
+        appContext.settingsDataStore.edit { prefs ->
+            if (mode != null) prefs[activeTimerModeKey] = mode else prefs.remove(activeTimerModeKey)
+            if (bookId != null) prefs[activeTimerBookIdKey] = bookId else prefs.remove(activeTimerBookIdKey)
+            if (phase != null) prefs[activeTimerPhaseKey] = phase else prefs.remove(activeTimerPhaseKey)
+            if (isRunning != null) prefs[activeTimerIsRunningKey] = isRunning else prefs.remove(activeTimerIsRunningKey)
+            if (timeLeft != null) prefs[activeTimerTimeLeftKey] = timeLeft else prefs.remove(activeTimerTimeLeftKey)
+            if (elapsed != null) prefs[activeTimerElapsedKey] = elapsed else prefs.remove(activeTimerElapsedKey)
+            if (activeReading != null) prefs[activeTimerActiveReadingKey] = activeReading else prefs.remove(activeTimerActiveReadingKey)
+            if (lastTickTime != null) prefs[activeTimerLastTickTimeKey] = lastTickTime else prefs.remove(activeTimerLastTickTimeKey)
+        }
     }
 
-    suspend fun setUserName(name: String) {
-        appContext.settingsDataStore.edit { it[userNameKey] = name }
-    }
-
-    val dailyGoal: Flow<Int> = appContext.settingsDataStore.data.map { prefs ->
-        prefs[dailyGoalKey] ?: StreakEngine.DEFAULT_DAILY_GOAL_PAGES
-    }
-
-    suspend fun setDailyGoal(pages: Int) {
-        appContext.settingsDataStore.edit { it[dailyGoalKey] = pages }
-    }
-
-    val yearlyGoal: Flow<Int> = appContext.settingsDataStore.data.map { prefs ->
-        prefs[yearlyGoalKey] ?: DEFAULT_YEARLY_GOAL_BOOKS
-    }
-
-    suspend fun setYearlyGoal(books: Int) {
-        appContext.settingsDataStore.edit { it[yearlyGoalKey] = books }
-    }
-
-    val dndDuringSession: Flow<Boolean> = appContext.settingsDataStore.data.map { prefs ->
-        prefs[dndKey] ?: false
-    }
-
-    suspend fun setDndDuringSession(enabled: Boolean) {
-        appContext.settingsDataStore.edit { it[dndKey] = enabled }
-    }
-
-    val themeMode: Flow<ThemeMode> = appContext.settingsDataStore.data.map { prefs ->
-        val modeInt = prefs[themeModeKey] ?: 0
-        ThemeMode.entries.getOrElse(modeInt) { ThemeMode.SYSTEM }
-    }
-
-    suspend fun setThemeMode(mode: ThemeMode) {
-        appContext.settingsDataStore.edit { it[themeModeKey] = mode.ordinal }
-    }
-
-    val useDynamicColor: Flow<Boolean> = appContext.settingsDataStore.data.map { prefs ->
-        prefs[useDynamicColorKey] ?: true
-    }
-
-    suspend fun setUseDynamicColor(enabled: Boolean) {
-        appContext.settingsDataStore.edit { it[useDynamicColorKey] = enabled }
-    }
-
-    val workMinutes: Flow<Int> = appContext.settingsDataStore.data.map { prefs ->
-        prefs[workMinutesKey] ?: 25
-    }
-
-    suspend fun setWorkMinutes(minutes: Int) {
-        appContext.settingsDataStore.edit { it[workMinutesKey] = minutes }
-    }
-
-    val breakMinutes: Flow<Int> = appContext.settingsDataStore.data.map { prefs ->
-        prefs[breakMinutesKey] ?: 5
-    }
-
-    suspend fun setBreakMinutes(minutes: Int) {
-        appContext.settingsDataStore.edit { it[breakMinutesKey] = minutes }
+    suspend fun clearTimerState() {
+        appContext.settingsDataStore.edit { prefs ->
+            prefs.remove(activeTimerModeKey)
+            prefs.remove(activeTimerBookIdKey)
+            prefs.remove(activeTimerPhaseKey)
+            prefs.remove(activeTimerIsRunningKey)
+            prefs.remove(activeTimerTimeLeftKey)
+            prefs.remove(activeTimerElapsedKey)
+            prefs.remove(activeTimerActiveReadingKey)
+            prefs.remove(activeTimerLastTickTimeKey)
+        }
     }
 
     private val seenBadgesKey = androidx.datastore.preferences.core.stringSetPreferencesKey("seen_badges")

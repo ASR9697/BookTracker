@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -26,7 +27,9 @@ import com.example.booktracker.app.analytics.AnalyticsEngine
 import com.example.booktracker.app.analytics.BadgeEngine
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
+import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.Session
+import com.example.booktracker.app.util.MarkdownExporter
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -38,6 +41,7 @@ fun ProfileScreen(
     userName: String,
     books: List<Book>,
     sessions: List<Session>,
+    notes: List<MarginNote> = emptyList(),
     streak: Int,
     yearlyGoal: Int,
     onOpenSettings: () -> Unit = {},
@@ -49,9 +53,10 @@ fun ProfileScreen(
     unlockedBadges: Set<String> = emptySet(),
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val zone = remember { ZoneId.systemDefault() }
     val completedBooks = books.filter { it.status == BookStatus.FINISHED.name }
-    val pagesRead = completedBooks.sumOf { it.totalUnits }
+    val pagesRead = completedBooks.sumOf { it.totalPages }
     val currentBook = books.firstOrNull { it.status == BookStatus.READING.name }
     val velocity = remember(sessions) { AnalyticsEngine.pagesPerHour(sessions) }
     val totalMinutes = remember(sessions) {
@@ -256,6 +261,19 @@ fun ProfileScreen(
             }
         }
 
+        item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+            ) {
+                ReadingHeatmap(
+                    sessions = sessions,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+
         // Current Book Card (if any)
         if (currentBook != null) {
             item {
@@ -284,7 +302,7 @@ fun ProfileScreen(
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
                             Spacer(Modifier.height(8.dp))
-                            val targetProgress = if (currentBook.totalUnits > 0) currentBook.currentUnit.toFloat() / currentBook.totalUnits else 0f
+                            val targetProgress = if (currentBook.totalPages > 0) currentBook.currentPage.toFloat() / currentBook.totalPages else 0f
                             val progress by androidx.compose.animation.core.animateFloatAsState(targetValue = targetProgress, label = "progress")
                             LinearProgressIndicator(
                                 progress = { progress },
@@ -458,11 +476,12 @@ fun ProfileScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         } else {
+                            val colorScheme = MaterialTheme.colorScheme
                             genreShares.forEachIndexed { index, (genre, pct) ->
                                 val color = when (index) {
-                                    0 -> MaterialTheme.colorScheme.primary
-                                    1 -> MaterialTheme.colorScheme.secondary
-                                    else -> MaterialTheme.colorScheme.tertiary
+                                    0 -> colorScheme.primary
+                                    1 -> colorScheme.secondary
+                                    else -> colorScheme.tertiary
                                 }
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Text(genre, style = MaterialTheme.typography.labelSmall)
@@ -517,6 +536,12 @@ fun ProfileScreen(
                             icon = Icons.Filled.Flag,
                             label = "Goals & Settings",
                             onClick = onOpenSettings
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        SettingsRow(
+                            icon = Icons.Filled.Share,
+                            label = "Export Knowledge Base (.md)",
+                            onClick = { MarkdownExporter.exportToMarkdown(context, books, notes) }
                         )
                     }
                 }

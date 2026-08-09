@@ -3,6 +3,7 @@ package com.example.booktracker.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -10,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.material3.Surface
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.ui.Modifier
 import com.example.booktracker.app.ui.BookTrackerApp
 import com.example.booktracker.app.ui.BookTrackerViewModel
@@ -21,10 +24,13 @@ class MainActivity : ComponentActivity() {
         BookTrackerViewModel.factory(this)
     }
 
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent {
+            val windowSizeClass = calculateWindowSizeClass(this)
             val themeMode by viewModel.themeMode.collectAsState()
             val useDynamicColor by viewModel.useDynamicColor.collectAsState()
             
@@ -34,9 +40,8 @@ class MainActivity : ComponentActivity() {
                 else -> isSystemInDarkTheme()
             }
             
-            val timerIsRunning by viewModel.timerIsRunning.collectAsState()
-            val timeLeftSeconds by viewModel.timeLeftSeconds.collectAsState()
-            val timerPhase by viewModel.timerPhase.collectAsState()
+            val timerBookId by viewModel.activeTimerBook.collectAsState()
+            val serviceStartedState = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
 
             val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
                 androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
@@ -47,42 +52,30 @@ class MainActivity : ComponentActivity() {
                     permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
-
-            val serviceStartedState = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-            var serviceStarted = serviceStartedState.value
-            androidx.compose.runtime.LaunchedEffect(timerIsRunning) {
+            
+            androidx.compose.runtime.LaunchedEffect(timerBookId) {
                 val intent = android.content.Intent(this@MainActivity, com.example.booktracker.app.service.TimerService::class.java)
-                if (timerIsRunning) {
+                if (timerBookId != null) {
                     intent.action = com.example.booktracker.app.service.TimerService.ACTION_START
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                         startForegroundService(intent)
                     } else {
                         startService(intent)
                     }
-                    serviceStarted = true
-                } else if (serviceStarted) {
+                    serviceStartedState.value = true
+                } else if (serviceStartedState.value) {
                     intent.action = com.example.booktracker.app.service.TimerService.ACTION_STOP
                     startService(intent)
-                    serviceStarted = false
-                }
-            }
-
-            androidx.compose.runtime.LaunchedEffect(timeLeftSeconds, timerPhase) {
-                if (timerIsRunning) {
-                    val intent = android.content.Intent(this@MainActivity, com.example.booktracker.app.service.TimerService::class.java).apply {
-                        action = com.example.booktracker.app.service.TimerService.ACTION_UPDATE
-                        putExtra(com.example.booktracker.app.service.TimerService.EXTRA_TIME_LEFT, timeLeftSeconds)
-                        putExtra(com.example.booktracker.app.service.TimerService.EXTRA_PHASE, timerPhase.name)
-                    }
-                    startService(intent)
+                    serviceStartedState.value = false
                 }
             }
 
             BookTrackerTheme(darkTheme = isDarkTheme, dynamicColor = useDynamicColor) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    BookTrackerApp(viewModel)
+                    BookTrackerApp(viewModel, windowSizeClass)
                 }
             }
         }
     }
 }
+

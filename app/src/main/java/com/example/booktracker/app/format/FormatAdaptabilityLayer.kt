@@ -23,32 +23,24 @@ import java.util.Locale
  */
 object FormatAdaptabilityLayer {
 
-    /** Ordered for the picker; first entry is the default. Values match [Book.format] codes. */
-    val FORMATS = listOf("PAGES", "CHAPTERS", "VOLUMES", "HOURS")
+    val FORMATS = com.example.booktracker.shared.models.BookFormat.entries.map { it.name }
 
-    /** Plural noun for section labels/axes, e.g. "Pages". */
-    fun getDisplayUnit(format: String): String = when (format.uppercase()) {
-        "PAGES" -> "Pages"
-        "VOLUMES" -> "Volumes"
-        "CHAPTERS" -> "Chapters"
-        "HOURS" -> "Hours"
-        else -> "Units"
+    fun getDisplayUnit(book: Book): String = when (book.progressUnit) {
+        com.example.booktracker.shared.models.ProgressUnit.Page -> "Pages"
+        com.example.booktracker.shared.models.ProgressUnit.Chapter -> "Chapters"
+        com.example.booktracker.shared.models.ProgressUnit.Percentage -> "Percentage"
+        com.example.booktracker.shared.models.ProgressUnit.Minute -> "Hours"
     }
 
-    fun getDisplayUnit(book: Book): String = getDisplayUnit(book.format)
-
-    /** Compact position prefix, e.g. "p." / "ch." / "vol." / "hr". */
-    fun unitAbbrev(format: String): String = when (format.uppercase()) {
-        "PAGES" -> "p."
-        "VOLUMES" -> "vol."
-        "CHAPTERS" -> "ch."
-        "HOURS" -> "hr"
-        else -> "#"
+    fun unitAbbrev(book: Book): String = when (book.progressUnit) {
+        com.example.booktracker.shared.models.ProgressUnit.Page -> "p."
+        com.example.booktracker.shared.models.ProgressUnit.Chapter -> "ch."
+        com.example.booktracker.shared.models.ProgressUnit.Percentage -> "%"
+        com.example.booktracker.shared.models.ProgressUnit.Minute -> "hr"
     }
 
-    /** Lowercase inline count, e.g. "12 pages". */
-    fun countLabel(format: String, count: Int): String =
-        "$count ${getDisplayUnit(format).lowercase()}"
+    fun countLabel(book: Book, count: Int): String =
+        "$count ${getDisplayUnit(book).lowercase()}"
 
     /** The blurb spoken by read-aloud: title, author, then the summary. */
     fun readAloudText(book: Book): String = buildString {

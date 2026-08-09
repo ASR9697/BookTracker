@@ -145,7 +145,7 @@ private fun completionDetail(book: Book): String? = when (book.status) {
             "Not rated"
         } else {
             RatingAxis.ALL
-                .mapNotNull { axis -> book.rating[axis]?.let { "$axis ${formatRating(it)}" } }
+                .mapNotNull { axis -> book.rating[axis]?.let { "$axis ${formatFinishedRating(it)}" } }
                 .joinToString(" · ")
         }
     }
@@ -161,4 +161,4 @@ private fun completionDetail(book: Book): String? = when (book.status) {
     else -> null
 }
 
-private fun formatRating(v: Float): String = ((v * 2).roundToInt() / 2.0).toString()
+private fun formatFinishedRating(v: Float): String = ((v * 2).roundToInt() / 2.0).toString()

@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.booktracker.app.camera.BarcodeAnalyzer
 import com.example.booktracker.app.data.remote.BookSearch
@@ -76,6 +78,8 @@ fun ScannerScreen(
         ActivityResultContracts.RequestPermission()
     ) { hasPermission = it }
 
+    val haptic = LocalHapticFeedback.current
+
     LaunchedEffect(Unit) {
         if (!hasPermission) permissionLauncher.launch(Manifest.permission.CAMERA)
     }
@@ -86,7 +90,12 @@ fun ScannerScreen(
         val lookingUp = state as? ScanState.LookingUp ?: return@LaunchedEffect
         state = try {
             val book = BookSearch.lookup(lookingUp.isbn)
-            if (book != null) ScanState.Found(book) else ScanState.NotFound(lookingUp.isbn)
+            if (book != null) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                ScanState.Found(book)
+            } else {
+                ScanState.NotFound(lookingUp.isbn)
+            }
         } catch (e: Exception) {
             ScanState.LookupError(lookingUp.isbn)
         }

@@ -35,10 +35,12 @@ private val NocturnalColorScheme = darkColorScheme(
     onSecondary = OnSecondary,
     secondaryContainer = SecondaryContainer,
     onSecondaryContainer = OnSecondaryContainer,
-    error = Error,
-    onError = OnError,
     errorContainer = ErrorContainer,
     onErrorContainer = OnErrorContainer,
+    tertiary = Tertiary,
+    onTertiary = OnTertiary,
+    tertiaryContainer = TertiaryContainer,
+    onTertiaryContainer = OnTertiaryContainer,
     outline = Outline,
     outlineVariant = OutlineVariant
 )
@@ -62,6 +64,10 @@ private val DaylightColorScheme = lightColorScheme(
     onSecondary = LightOnSecondary,
     secondaryContainer = LightSecondaryContainer,
     onSecondaryContainer = LightOnSecondaryContainer,
+    tertiary = LightTertiary,
+    onTertiary = LightOnTertiary,
+    tertiaryContainer = LightTertiaryContainer,
+    onTertiaryContainer = LightOnTertiaryContainer,
     error = LightError,
     onError = LightOnError,
     errorContainer = LightErrorContainer,
@@ -79,9 +85,23 @@ fun BookTrackerTheme(
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            if (darkTheme) {
+                dynamicDarkColorScheme(context).copy(
+                    background = Color.Black,
+                    surface = Color.Black,
+                    surfaceContainerLowest = Color.Black,
+                    surfaceContainerLow = Color(0xFF111111)
+                )
+            } else {
+                dynamicLightColorScheme(context)
+            }
         }
-        darkTheme -> NocturnalColorScheme
+        darkTheme -> NocturnalColorScheme.copy(
+            background = Color.Black,
+            surface = Color.Black,
+            surfaceContainerLowest = Color.Black,
+            surfaceContainerLow = Color(0xFF111111)
+        )
         else -> DaylightColorScheme
     }
 

@@ -18,7 +18,10 @@ data class BookMetadata(
     val description: String = "",
     val genres: List<String> = emptyList(),
     val publishedDate: String = "",
-    val currentUnit: Int = 0
+    val currentPage: Int = 0,
+    val creators: List<com.example.booktracker.shared.models.Creator> = emptyList(),
+    val purchaseLog: List<com.example.booktracker.shared.models.PurchaseLog> = emptyList(),
+    val loanRecord: List<com.example.booktracker.shared.models.LoanRecord> = emptyList()
 )
 
 // Typed so the UI can tell "slow down" (rate limit) from "you're offline" from a

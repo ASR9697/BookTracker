@@ -1,0 +1,8 @@
+{
+  "name": "book-tracker-tools",
+  "version": "1.0.0",
+  "description": "Tools for maintaining AI maps",
+  "scripts": {
+    "update-maps": "node scripts/update-maps.js"
+  }
+}

@@ -58,7 +58,7 @@ fun WrappedScreen(
         it.status == BookStatus.FINISHED.name && it.lastUpdated >= periodStart
     }
     
-    val totalPages = periodSessions.sumOf { it.unitsRead }
+    val totalPages = periodSessions.sumOf { it.pagesRead }
     val totalMinutes = periodSessions.sumOf { (it.endTime - it.startTime) } / 60_000L
     val totalHours = totalMinutes / 60
     

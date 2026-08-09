@@ -24,8 +24,8 @@ class WearBridge(context: Context) {
                 val map = com.google.android.gms.wearable.DataMap()
                 map.putString(Constants.KEY_BOOK_ID, book.id)
                 map.putString(Constants.KEY_TITLE, book.title)
-                map.putInt(Constants.KEY_CURRENT_UNIT, book.currentUnit)
-                map.putInt(Constants.KEY_TOTAL_UNITS, book.totalUnits)
+                map.putInt(Constants.KEY_CURRENT_UNIT, book.currentPage)
+                map.putInt(Constants.KEY_TOTAL_UNITS, book.totalPages)
                 map.putLong(Constants.KEY_UPDATED_AT, book.lastUpdated)
                 map.putInt(Constants.KEY_DAILY_GOAL, dailyGoal)
                 map.putInt(Constants.KEY_PAGES_TODAY, pagesToday)
@@ -42,11 +42,12 @@ class WearBridge(context: Context) {
         }
     }
 
-    suspend fun publishTimerState(isRunning: Boolean, timeLeft: Int, phase: Int, bookId: String?) {
+    suspend fun publishTimerState(isRunning: Boolean, timeValue: Int, phase: Int, bookId: String?, mode: String) {
         val request = PutDataMapRequest.create(Constants.TIMER_STATE_PATH).apply {
             dataMap.putBoolean(Constants.KEY_TIMER_RUNNING, isRunning)
-            dataMap.putInt(Constants.KEY_TIMER_TIME_LEFT, timeLeft)
+            dataMap.putInt(Constants.KEY_TIMER_TIME_LEFT, timeValue) // Used for both time left and elapsed time
             dataMap.putInt(Constants.KEY_TIMER_PHASE, phase)
+            dataMap.putString(Constants.KEY_TIMER_MODE, mode)
             if (bookId != null) {
                 dataMap.putString(Constants.KEY_TIMER_BOOK_ID, bookId)
             } else {

@@ -12,9 +12,12 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
@@ -40,6 +43,14 @@ fun Modifier.bounceClick(
         label = "bounceScale"
     )
 
+    val haptic = LocalHapticFeedback.current
+    LaunchedEffect(isPressed) {
+        if (isPressed) {
+            // A crisp, subtle tick for the physical squish
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        }
+    }
+
     this
         .graphicsLayer {
             scaleX = scale
@@ -48,6 +59,7 @@ fun Modifier.bounceClick(
         .clickable(
             interactionSource = actualInteractionSource,
             indication = null, // Remove standard ripple, the physics is the feedback
+            role = androidx.compose.ui.semantics.Role.Button,
             onClick = onClick
         )
 }

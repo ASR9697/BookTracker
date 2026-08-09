@@ -68,8 +68,8 @@ fun DnfDialog(
     onDismiss: () -> Unit,
     onConfirm: (abandonedPercentage: Float, reason: String) -> Unit
 ) {
-    val autoPercent = if (book.totalUnits > 0) {
-        (book.currentUnit.toFloat() / book.totalUnits * 100f).coerceIn(0f, 100f)
+    val autoPercent = if (book.totalPages > 0) {
+        (book.currentPage.toFloat() / book.totalPages * 100f).coerceIn(0f, 100f)
     } else {
         0f
     }

@@ -73,7 +73,8 @@ data class TimerState(
     val isRunning: Boolean,
     val timeLeft: Int,
     val phase: Int,
-    val bookId: String?
+    val bookId: String?,
+    val mode: String
 )
 
 class WearActivity : ComponentActivity(), DataClient.OnDataChangedListener {
@@ -192,7 +193,8 @@ class WearActivity : ComponentActivity(), DataClient.OnDataChangedListener {
             isRunning = dataMap.getBoolean(Constants.KEY_TIMER_RUNNING),
             timeLeft = dataMap.getInt(Constants.KEY_TIMER_TIME_LEFT),
             phase = dataMap.getInt(Constants.KEY_TIMER_PHASE),
-            bookId = dataMap.getString(Constants.KEY_TIMER_BOOK_ID)
+            bookId = dataMap.getString(Constants.KEY_TIMER_BOOK_ID),
+            mode = dataMap.getString(Constants.KEY_TIMER_MODE) ?: "COUNTDOWN"
         )
     }
 
@@ -446,20 +448,31 @@ private fun ActiveBookContent(
                 
                 LaunchedEffect(timerState) {
                     if (timerState.isRunning) {
-                        while (localTimeLeft > 0) {
-                            delay(1000)
-                            localTimeLeft--
+                        while (true) {
+                            if (timerState.mode == "STOPWATCH") {
+                                delay(1000)
+                                localTimeLeft++
+                            } else {
+                                if (localTimeLeft > 0) {
+                                    delay(1000)
+                                    localTimeLeft--
+                                } else {
+                                    break
+                                }
+                            }
                         }
                     }
                 }
 
-                val mins = localTimeLeft / 60
+                val hours = localTimeLeft / 3600
+                val mins = (localTimeLeft % 3600) / 60
                 val secs = localTimeLeft % 60
-                val phaseName = if (timerState.phase == 0) "FOCUS" else "BREAK"
+                val phaseName = if (timerState.mode == "STOPWATCH") "READING" else if (timerState.phase == 0) "FOCUS" else "BREAK"
+                val timeString = if (hours > 0) String.format("%02d:%02d:%02d", hours, mins, secs) else String.format("%02d:%02d", mins, secs)
                 Text(
-                    text = String.format("%02d:%02d", mins, secs),
+                    text = timeString,
                     style = MaterialTheme.typography.displayMedium,
-                    color = if (timerState.phase == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                    color = if (timerState.mode == "STOPWATCH" || timerState.phase == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                     androidx.wear.compose.material3.CompactButton(

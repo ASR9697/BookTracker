@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import com.example.booktracker.shared.models.*
 
 /**
  * User-managed local backups: the whole Room DB plus settings as one
@@ -100,8 +101,8 @@ object BackupEngine {
         put("authors", JSONArray(authors))
         put("coverUrl", coverUrl)
         put("format", format)
-        put("totalUnits", totalUnits)
-        put("currentUnit", currentUnit)
+        put("totalPages", totalPages)
+        put("currentPage", currentPage)
         put("status", status)
         dnfData?.let {
             put("dnfPercentage", it.abandonedPercentage.toDouble())
@@ -111,18 +112,20 @@ object BackupEngine {
         put("rating", JSONObject(rating.mapValues { it.value.toDouble() }))
         put("description", description)
         put("genres", JSONArray(genres))
-        put("publishedDate", publishedDate)
+        put("collections", JSONArray(classification.collections))
+        put("publishedDate", publication?.date)
         put("isFavorite", isFavorite)
+        put("readCount", readCount)
     }
 
     private fun JSONObject.toBook(): Book = Book(
         id = getString("id"),
         title = optString("title"),
-        authors = optJSONArray("authors").mapStrings(),
+        creators = optJSONArray("authors").mapStrings().map { Creator(CreatorRole.Author, it) },
         coverUrl = optString("coverUrl"),
-        format = optString("format", "PAGES"),
-        totalUnits = optInt("totalUnits"),
-        currentUnit = optInt("currentUnit"),
+        format = runCatching { BookFormat.valueOf(optString("format")) }.getOrDefault(BookFormat.Paperback),
+        totalPages = optInt("totalPages"),
+        currentPage = optInt("currentPage"),
         status = optString("status"),
         dnfData = if (has("dnfPercentage")) {
             DnfData(getDouble("dnfPercentage").toFloat(), optString("dnfReason"))
@@ -132,9 +135,14 @@ object BackupEngine {
             obj.keys().asSequence().associateWith { obj.getDouble(it).toFloat() }
         } ?: emptyMap(),
         description = optString("description"),
-        genres = optJSONArray("genres").mapStrings(),
-        publishedDate = optString("publishedDate"),
-        isFavorite = optBoolean("isFavorite", false)
+        classification = Classification(
+            optJSONArray("collections").mapStrings(),
+            optJSONArray("genres").mapStrings()
+        ),
+        publication = Publication("", optString("publishedDate")),
+        isFavorite = optBoolean("isFavorite", false),
+        readCount = optInt("readCount", 0),
+        isbn = null
     )
 
     private fun Session.toJson(): JSONObject = JSONObject().apply {
@@ -142,12 +150,11 @@ object BackupEngine {
         put("bookId", bookId)
         put("startTime", startTime)
         put("endTime", endTime)
-        put("startUnit", startUnit)
-        put("endUnit", endUnit)
-        put("unitsRead", unitsRead)
-        put("deviceSource", deviceSource)
+        put("startPage", startPage)
+        put("endPage", endPage)
+        put("pagesRead", pagesRead)
+        put("durationSeconds", durationSeconds)
         put("environmentTag", environmentTag)
-        put("isInterrupted", isInterrupted)
     }
 
     private fun JSONObject.toSession(): Session = Session(
@@ -155,30 +162,29 @@ object BackupEngine {
         bookId = optString("bookId"),
         startTime = optLong("startTime"),
         endTime = optLong("endTime"),
-        startUnit = optInt("startUnit"),
-        endUnit = optInt("endUnit"),
-        unitsRead = optInt("unitsRead"),
-        deviceSource = optString("deviceSource"),
-        environmentTag = optString("environmentTag"),
-        isInterrupted = optBoolean("isInterrupted")
+        startPage = optInt("startPage"),
+        endPage = optInt("endPage"),
+        pagesRead = optInt("pagesRead"),
+        durationSeconds = optInt("durationSeconds"),
+        environmentTag = optString("environmentTag")
     )
 
     private fun MarginNote.toJson(): JSONObject = JSONObject().apply {
         put("id", id)
         put("bookId", bookId)
         put("timestamp", timestamp)
-        put("pageOrUnit", pageOrUnit)
-        put("markdownContent", markdownContent)
-        put("isVoiceDictated", isVoiceDictated)
+        put("pageNumber", pageNumber)
+        put("content", content)
+        put("isFavorite", isFavorite)
     }
 
     private fun JSONObject.toNote(): MarginNote = MarginNote(
         id = getString("id"),
         bookId = optString("bookId"),
         timestamp = optLong("timestamp"),
-        pageOrUnit = optInt("pageOrUnit"),
-        markdownContent = optString("markdownContent"),
-        isVoiceDictated = optBoolean("isVoiceDictated")
+        pageNumber = optInt("pageNumber"),
+        content = optString("content"),
+        isFavorite = optBoolean("isFavorite")
     )
 
     private fun <T> JSONArray?.mapObjects(transform: (JSONObject) -> T): List<T> {

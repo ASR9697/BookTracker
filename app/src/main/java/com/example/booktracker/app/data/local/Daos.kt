@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface BookDao {
-    @Query("SELECT * FROM books ORDER BY lastUpdated DESC")
+    @Query("SELECT * FROM books")
     fun observeAll(): Flow<List<BookEntity>>
 
     @Query("SELECT * FROM books")
@@ -22,7 +22,7 @@ interface BookDao {
 
     @Query(
         "SELECT books.* FROM books JOIN books_fts ON books.rowid = books_fts.rowid " +
-            "WHERE books_fts MATCH :query ORDER BY books.lastUpdated DESC"
+            "WHERE books_fts MATCH :query"
     )
     suspend fun search(query: String): List<BookEntity>
 
@@ -78,6 +78,9 @@ interface MarginNoteDao {
     @Query("SELECT * FROM margin_notes WHERE bookId = :bookId ORDER BY timestamp DESC")
     fun observeForBook(bookId: String): Flow<List<MarginNoteEntity>>
 
+    @Query("SELECT * FROM margin_notes ORDER BY timestamp DESC")
+    fun observeAll(): Flow<List<MarginNoteEntity>>
+
     @Query("SELECT COUNT(*) FROM margin_notes")
     fun observeTotalNotesCount(): Flow<Int>
 
@@ -100,6 +103,9 @@ interface MarginNoteDao {
 
     @Query("DELETE FROM margin_notes WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    @Query("UPDATE margin_notes SET isFavorite = :isFavorite WHERE id = :id")
+    suspend fun updateFavorite(id: String, isFavorite: Boolean)
 
     @Query("DELETE FROM margin_notes WHERE bookId = :bookId")
     suspend fun deleteByBookId(bookId: String)

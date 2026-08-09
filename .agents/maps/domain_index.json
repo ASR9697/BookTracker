@@ -1,0 +1,28 @@
+{
+  "UI": [
+    "app/src/main/java/com/example/booktracker/app/ui/"
+  ],
+  "Wear OS UI": [
+    "wear/src/main/java/com/example/booktracker/wear/WearActivity.kt"
+  ],
+  "Services & Hardware": [
+    "app/src/main/java/com/example/booktracker/app/hardware/",
+    "app/src/main/java/com/example/booktracker/app/data/remote/"
+  ],
+  "State Management & Repository": [
+    "app/src/main/java/com/example/booktracker/app/data/BookRepository.kt",
+    "app/src/main/java/com/example/booktracker/app/data/BackupEngine.kt"
+  ],
+  "Database & Entities": [
+    "app/src/main/java/com/example/booktracker/app/data/local/"
+  ],
+  "Analytics & Tracking": [
+    "app/src/main/java/com/example/booktracker/app/analytics/"
+  ],
+  "Journal & Smart Planning": [
+    "app/src/main/java/com/example/booktracker/app/journal/"
+  ],
+  "Shared Domain Models": [
+    "shared/src/main/java/com/example/booktracker/shared/models/"
+  ]
+}

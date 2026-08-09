@@ -92,8 +92,10 @@ fun HistoryScreen(
         var sessionToEdit by remember { mutableStateOf<Session?>(null) }
         
         sessionToEdit?.let { session ->
+            val book = books.find { it.id == session.bookId }
             EditSessionDialog(
                 session = session,
+                book = book,
                 onDismiss = { sessionToEdit = null },
                 onUpdate = { updated ->
                     onUpdateSession(updated)
@@ -127,7 +129,7 @@ fun HistoryScreen(
         ) {
             byDay.forEach { (day, daySessions) ->
                 item(key = "header-$day") {
-                    val pages = daySessions.sumOf { it.unitsRead }
+                    val pages = daySessions.sumOf { it.pagesRead }
                     val minutes = AnalyticsEngine.timedSessions(daySessions)
                         .sumOf { it.endTime - it.startTime } / 60_000L
                     Row(
@@ -191,27 +193,46 @@ fun HistoryScreen(
 @Composable
 private fun EditSessionDialog(
     session: Session,
+    book: Book?,
     onDismiss: () -> Unit,
     onUpdate: (Session) -> Unit
 ) {
-    var unitsReadText by remember { mutableStateOf(session.unitsRead.toString()) }
+    var pagesReadText by remember { mutableStateOf(session.pagesRead.toString()) }
+    val newUnits = pagesReadText.toIntOrNull()
+    val isError = newUnits != null && (newUnits < 0 || (book != null && book.totalPages > 0 && newUnits > book.totalPages))
+    
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Edit Session") },
         text = {
-            OutlinedTextField(
-                value = unitsReadText,
-                onValueChange = { unitsReadText = it },
-                label = { Text("Pages read") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true
-            )
+            Column {
+                OutlinedTextField(
+                    value = pagesReadText,
+                    onValueChange = { pagesReadText = it.filter { char -> char.isDigit() } },
+                    label = { Text("Pages read") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    isError = isError
+                )
+                if (isError) {
+                    Text(
+                        if (newUnits != null && newUnits < 0) "Pages cannot be negative"
+                        else "Cannot exceed total pages (${book?.totalPages ?: "?"})",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                    )
+                }
+            }
         },
         confirmButton = {
-            TextButton(onClick = {
-                val newUnits = unitsReadText.toIntOrNull() ?: session.unitsRead
-                onUpdate(session.copy(unitsRead = newUnits))
-            }) { Text("Save") }
+            TextButton(
+                onClick = {
+                    val finalUnits = newUnits ?: session.pagesRead
+                    onUpdate(session.copy(pagesRead = finalUnits))
+                },
+                enabled = newUnits != null && !isError
+            ) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
@@ -236,7 +257,7 @@ private fun HistorySessionRow(session: Session, bookTitle: String, onClick: () -
                 overflow = TextOverflow.Ellipsis
             )
             val parts = buildList {
-                add("${session.unitsRead} pages")
+                add("${session.pagesRead} pages")
                 if (durationMinutes >= 1) add(AnalyticsEngine.formatMinutes(durationMinutes))
                 if (session.environmentTag.isNotBlank()) add(session.environmentTag)
             }

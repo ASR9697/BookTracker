@@ -1,23 +1,21 @@
 package com.example.booktracker.app.data.local
 
-import com.example.booktracker.shared.models.Book
-import com.example.booktracker.shared.models.DnfData
-import com.example.booktracker.shared.models.MarginNote
-import com.example.booktracker.shared.models.Session
-import org.json.JSONArray
-import org.json.JSONObject
+import com.example.booktracker.shared.models.*
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+
+private val gson = Gson()
 
 fun SessionEntity.toModel(): Session = Session(
     id = id,
     bookId = bookId,
     startTime = startTime,
     endTime = endTime,
-    startUnit = startUnit,
-    endUnit = endUnit,
-    unitsRead = unitsRead,
-    deviceSource = deviceSource,
-    environmentTag = environmentTag,
-    isInterrupted = isInterrupted
+    durationSeconds = durationSeconds,
+    startPage = startPage,
+    endPage = endPage,
+    pagesRead = pagesRead,
+    environmentTag = environmentTag
 )
 
 fun Session.toEntity(): SessionEntity = SessionEntity(
@@ -25,81 +23,81 @@ fun Session.toEntity(): SessionEntity = SessionEntity(
     bookId = bookId,
     startTime = startTime,
     endTime = endTime,
-    startUnit = startUnit,
-    endUnit = endUnit,
-    unitsRead = unitsRead,
-    deviceSource = deviceSource,
-    environmentTag = environmentTag,
-    isInterrupted = isInterrupted
+    durationSeconds = durationSeconds,
+    startPage = startPage,
+    endPage = endPage,
+    pagesRead = pagesRead,
+    environmentTag = environmentTag
 )
 
 fun BookEntity.toModel(): Book = Book(
     id = id,
     title = title,
-    authors = authors.toStringList(),
+    isbn = isbn,
     coverUrl = coverUrl,
-    format = format,
-    totalUnits = totalUnits,
-    currentUnit = currentUnit,
-    status = status,
-    dnfData = dnfPercentage?.let { DnfData(it, dnfReason.orEmpty()) },
-    lastUpdated = lastUpdated,
-    rating = rating.toFloatMap(),
+    totalPages = totalPages,
+    currentPage = currentPage,
+    language = language,
+    creators = gson.fromJson(creators, object : TypeToken<List<Creator>>() {}.type) ?: emptyList(),
+    publication = publication?.let { gson.fromJson(it, Publication::class.java) },
+    format = runCatching { BookFormat.valueOf(format) }.getOrDefault(BookFormat.Paperback),
+    progressUnit = runCatching { ProgressUnit.valueOf(progressUnit) }.getOrDefault(ProgressUnit.Page),
     description = description,
-    genres = genres.toStringList(),
-    publishedDate = publishedDate,
-    isFavorite = isFavorite
+    seriesInfo = seriesInfo?.let { gson.fromJson(it, SeriesInfo::class.java) },
+    classification = gson.fromJson(classification, Classification::class.java) ?: Classification(emptyList(), emptyList()),
+    status = status,
+    rating = gson.fromJson(rating, object : TypeToken<Map<String, Float>>() {}.type) ?: emptyMap(),
+    dnfData = dnfData?.let { gson.fromJson(it, DnfData::class.java) },
+    purchaseLog = gson.fromJson(purchaseLog, object : TypeToken<List<PurchaseLog>>() {}.type) ?: emptyList(),
+    loanRecord = gson.fromJson(loanRecord, object : TypeToken<List<LoanRecord>>() {}.type) ?: emptyList(),
+    dateAdded = dateAdded,
+    lastUpdated = lastUpdated,
+    isFavorite = isFavorite,
+    readCount = readCount
 )
 
 fun Book.toEntity(): BookEntity = BookEntity(
     id = id,
     title = title,
-    authors = JSONArray(authors).toString(),
+    isbn = isbn,
     coverUrl = coverUrl,
-    format = format,
-    totalUnits = totalUnits,
-    currentUnit = currentUnit,
-    status = status,
-    dnfPercentage = dnfData?.abandonedPercentage,
-    dnfReason = dnfData?.reason,
-    lastUpdated = lastUpdated,
-    rating = JSONObject(rating.mapValues { it.value.toDouble() }).toString(),
+    totalPages = totalPages,
+    currentPage = currentPage,
+    language = language,
+    creators = gson.toJson(creators),
+    publication = publication?.let { gson.toJson(it) },
+    format = format.name,
+    progressUnit = progressUnit.name,
     description = description,
-    genres = JSONArray(genres).toString(),
-    publishedDate = publishedDate,
-    isFavorite = isFavorite
+    seriesInfo = seriesInfo?.let { gson.toJson(it) },
+    classification = gson.toJson(classification),
+    status = status,
+    rating = gson.toJson(rating),
+    dnfData = dnfData?.let { gson.toJson(it) },
+    purchaseLog = gson.toJson(purchaseLog),
+    loanRecord = gson.toJson(loanRecord),
+    dateAdded = dateAdded,
+    lastUpdated = lastUpdated,
+    isFavorite = isFavorite,
+    readCount = readCount
 )
 
 fun MarginNoteEntity.toModel(): MarginNote = MarginNote(
     id = id,
     bookId = bookId,
     timestamp = timestamp,
-    pageOrUnit = pageOrUnit,
-    markdownContent = markdownContent,
-    isVoiceDictated = isVoiceDictated
+    pageNumber = pageNumber,
+    content = content,
+    type = runCatching { NoteType.valueOf(type) }.getOrDefault(NoteType.BOOK_CONTENT),
+    isFavorite = isFavorite
 )
 
 fun MarginNote.toEntity(): MarginNoteEntity = MarginNoteEntity(
     id = id,
     bookId = bookId,
     timestamp = timestamp,
-    pageOrUnit = pageOrUnit,
-    markdownContent = markdownContent,
-    isVoiceDictated = isVoiceDictated
+    pageNumber = pageNumber,
+    content = content,
+    type = type.name,
+    isFavorite = isFavorite
 )
-
-private fun String.toStringList(): List<String> {
-    if (isBlank()) return emptyList()
-    val array = JSONArray(this)
-    return (0 until array.length()).map { array.getString(it) }
-}
-
-private fun String.toFloatMap(): Map<String, Float> {
-    if (isBlank()) return emptyMap()
-    val obj = JSONObject(this)
-    val result = mutableMapOf<String, Float>()
-    for (key in obj.keys()) {
-        result[key] = obj.getDouble(key).toFloat()
-    }
-    return result
-}

@@ -1,0 +1,362 @@
+{
+  "TimeSummary": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/analytics/AnalyticsEngine.kt",
+    "line": 59
+  },
+  "EnvironmentStat": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/analytics/AnalyticsEngine.kt",
+    "line": 104
+  },
+  "Badge": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/analytics/BadgeEngine.kt",
+    "line": 17
+  },
+  "Summary": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/analytics/ReadingCalendar.kt",
+    "line": 17
+  },
+  "Recommendation": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/analytics/ReadingGenome.kt",
+    "line": 6
+  },
+  "StreakInfo": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/analytics/StreakEngine.kt",
+    "line": 12
+  },
+  "BookTrackerApplication": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/BookTrackerApplication.kt",
+    "line": 16
+  },
+  "BarcodeAnalyzer": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/camera/BarcodeScanner.kt",
+    "line": 13
+  },
+  "TextRecognitionAnalyzer": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/camera/TextRecognitionAnalyzer.kt",
+    "line": 13
+  },
+  "Parsed": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/BackupEngine.kt",
+    "line": 30
+  },
+  "BookRepository": {
+    "type": "interface",
+    "file": "app/src/main/java/com/example/booktracker/app/data/BookRepository.kt",
+    "line": 24
+  },
+  "LibrarySearchResults": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/BookRepository.kt",
+    "line": 81
+  },
+  "LibrarySnapshot": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/BookRepository.kt",
+    "line": 88
+  },
+  "RoomBookRepository": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/BookRepository.kt",
+    "line": 94
+  },
+  "DndManager": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/DndManager.kt",
+    "line": 10
+  },
+  "AppDatabase": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/local/AppDatabase.kt",
+    "line": 19
+  },
+  "BookDao": {
+    "type": "interface",
+    "file": "app/src/main/java/com/example/booktracker/app/data/local/Daos.kt",
+    "line": 10
+  },
+  "SessionDao": {
+    "type": "interface",
+    "file": "app/src/main/java/com/example/booktracker/app/data/local/Daos.kt",
+    "line": 41
+  },
+  "MarginNoteDao": {
+    "type": "interface",
+    "file": "app/src/main/java/com/example/booktracker/app/data/local/Daos.kt",
+    "line": 77
+  },
+  "BookEntity": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/local/Entities.kt",
+    "line": 9
+  },
+  "SessionEntity": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/local/Entities.kt",
+    "line": 46
+  },
+  "MarginNoteEntity": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/local/Entities.kt",
+    "line": 70
+  },
+  "BookFtsEntity": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/local/Entities.kt",
+    "line": 83
+  },
+  "NoteFtsEntity": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/local/Entities.kt",
+    "line": 92
+  },
+  "BookMetadata": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/remote/GoogleBooksClient.kt",
+    "line": 12
+  },
+  "BookSearchException": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/remote/GoogleBooksClient.kt",
+    "line": 29
+  },
+  "Kind": {
+    "type": "enum class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/remote/GoogleBooksClient.kt",
+    "line": 34
+  },
+  "ThemeMode": {
+    "type": "enum class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/SettingsRepository.kt",
+    "line": 18
+  },
+  "SettingsRepository": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/SettingsRepository.kt",
+    "line": 23
+  },
+  "ReadAloudController": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/format/FormatAdaptabilityLayer.kt",
+    "line": 87
+  },
+  "StylusPoint": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/hardware/HardwareIntegrations.kt",
+    "line": 13
+  },
+  "HardwareIntegrations": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/hardware/HardwareIntegrations.kt",
+    "line": 19
+  },
+  "Marker": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/journal/SmartPlanningEngine.kt",
+    "line": 46
+  },
+  "NoiseType": {
+    "type": "enum class",
+    "file": "app/src/main/java/com/example/booktracker/app/journal/SoundscapeEngine.kt",
+    "line": 9
+  },
+  "SoundscapeEngine": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/journal/SoundscapeEngine.kt",
+    "line": 17
+  },
+  "MainActivity": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/MainActivity.kt",
+    "line": 21
+  },
+  "TimerService": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/service/TimerService.kt",
+    "line": 25
+  },
+  "WearBridge": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/sync/WearBridge.kt",
+    "line": 16
+  },
+  "WearSyncService": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/sync/WearSyncService.kt",
+    "line": 19
+  },
+  "Particle": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/ui/animations/Confetti.kt",
+    "line": 17
+  },
+  "PipelineTab": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/ui/BookTrackerScreen.kt",
+    "line": 142
+  },
+  "BookTrackerViewModel": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/ui/BookTrackerViewModel.kt",
+    "line": 44
+  },
+  "TimerPhase": {
+    "type": "enum class",
+    "file": "app/src/main/java/com/example/booktracker/app/ui/FocusTimerScreen.kt",
+    "line": 28
+  },
+  "TimerMode": {
+    "type": "enum class",
+    "file": "app/src/main/java/com/example/booktracker/app/ui/FocusTimerScreen.kt",
+    "line": 29
+  },
+  "ScanState": {
+    "type": "interface",
+    "file": "app/src/main/java/com/example/booktracker/app/ui/ScannerScreen.kt",
+    "line": 56
+  },
+  "LookingUp": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/ui/ScannerScreen.kt",
+    "line": 58
+  },
+  "Found": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/ui/ScannerScreen.kt",
+    "line": 59
+  },
+  "NotFound": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/ui/ScannerScreen.kt",
+    "line": 60
+  },
+  "LookupError": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/ui/ScannerScreen.kt",
+    "line": 61
+  },
+  "ReadingWidget": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/widget/ReadingWidget.kt",
+    "line": 36
+  },
+  "AddProgressAction": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/widget/ReadingWidget.kt",
+    "line": 124
+  },
+  "ReadingWidgetReceiver": {
+    "type": "class",
+    "file": "app/src/main/java/com/example/booktracker/app/widget/ReadingWidget.kt",
+    "line": 149
+  },
+  "CreatorRole": {
+    "type": "enum class",
+    "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
+    "line": 5
+  },
+  "Creator": {
+    "type": "data class",
+    "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
+    "line": 9
+  },
+  "Publication": {
+    "type": "data class",
+    "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
+    "line": 14
+  },
+  "BookFormat": {
+    "type": "enum class",
+    "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
+    "line": 19
+  },
+  "ProgressUnit": {
+    "type": "enum class",
+    "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
+    "line": 23
+  },
+  "SeriesInfo": {
+    "type": "data class",
+    "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
+    "line": 27
+  },
+  "Classification": {
+    "type": "data class",
+    "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
+    "line": 33
+  },
+  "BookStatus": {
+    "type": "enum class",
+    "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
+    "line": 38
+  },
+  "PurchaseLog": {
+    "type": "data class",
+    "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
+    "line": 49
+  },
+  "LoanRecord": {
+    "type": "data class",
+    "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
+    "line": 57
+  },
+  "Book": {
+    "type": "data class",
+    "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
+    "line": 64
+  },
+  "Session": {
+    "type": "data class",
+    "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
+    "line": 92
+  },
+  "NoteType": {
+    "type": "enum class",
+    "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
+    "line": 105
+  },
+  "MarginNote": {
+    "type": "data class",
+    "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
+    "line": 109
+  },
+  "DnfData": {
+    "type": "data class",
+    "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
+    "line": 128
+  },
+  "DataLayerListenerService": {
+    "type": "class",
+    "file": "wear/src/main/java/com/example/booktracker/wear/DataLayerListenerService.kt",
+    "line": 8
+  },
+  "GoalComplicationService": {
+    "type": "class",
+    "file": "wear/src/main/java/com/example/booktracker/wear/GoalComplicationService.kt",
+    "line": 19
+  },
+  "ActiveBook": {
+    "type": "data class",
+    "file": "wear/src/main/java/com/example/booktracker/wear/WearActivity.kt",
+    "line": 64
+  },
+  "TimerState": {
+    "type": "data class",
+    "file": "wear/src/main/java/com/example/booktracker/wear/WearActivity.kt",
+    "line": 72
+  },
+  "WearActivity": {
+    "type": "class",
+    "file": "wear/src/main/java/com/example/booktracker/wear/WearActivity.kt",
+    "line": 80
+  }
+}
