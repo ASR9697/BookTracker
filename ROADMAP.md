@@ -134,8 +134,8 @@ These features build on top of our existing 100% offline, local-first Room + Dat
 - **Goal:** [DONE] A GitHub-style 52-week horizontal calendar reading intensity matrix in `ReadingCalendarView` and `ProfileScreen`.
 - **Details:** 5 intensity levels (Neutral, Soft Tint, Radiant Primary, High-Intensity Accent, Fiery Flame) reflecting pages read per day. Tap-to-inspect displays a day's logged reading sessions, completed books, and margin notes.
 
-### 5.3 Single Book "Finished Wrap-Up" Victory Card
-- **Goal:** A dedicated, shareable victory graphic card generated when a reader finishes a book.
+### [x] 5.3 Single Book "Finished Wrap-Up" Victory Card
+- **Goal:** [DONE] A dedicated, shareable victory graphic card generated when a reader finishes a book.
 - **Details:** High-res Canvas export (1:1 square & 9:16 story) featuring the book cover art with ambient blur backdrop, star rating breakdown, personal review snippet, total reading time, average velocity, and top highlighted quote.
 
 ### 5.4 Smart Reading Challenges & Goal Pace Forecaster

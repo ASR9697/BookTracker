@@ -9,8 +9,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
@@ -19,7 +24,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
+import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.RatingAxis
+import com.example.booktracker.shared.models.Session
 import com.example.booktracker.app.ui.animations.bounceClick
 import kotlin.math.roundToInt
 
@@ -27,10 +34,13 @@ import kotlin.math.roundToInt
 @Composable
 fun FinishedScreen(
     books: List<Book>,
+    sessions: List<Session> = emptyList(),
+    notes: List<MarginNote> = emptyList(),
     onBack: () -> Unit,
     onOpenBook: (Book) -> Unit = {},
     onOpenJourneyMap: () -> Unit = {}
 ) {
+    var bookForVictoryCard by remember { mutableStateOf<Book?>(null) }
     val finished = books
         .filter { it.status == BookStatus.FINISHED.name }
         .sortedByDescending { it.lastUpdated }
@@ -79,7 +89,14 @@ fun FinishedScreen(
             ) {
                 if (finished.isNotEmpty()) {
                     item { SectionHeader("Finished (${finished.size})") }
-                    items(finished, key = { it.id }) { CompletedBookCard(it, onClick = { onOpenBook(it) }, modifier = Modifier.animateItem()) }
+                    items(finished, key = { it.id }) { 
+                        CompletedBookCard(
+                            book = it, 
+                            onClick = { onOpenBook(it) }, 
+                            onShareVictory = { bookForVictoryCard = it },
+                            modifier = Modifier.animateItem()
+                        ) 
+                    }
                 }
                 if (dnf.isNotEmpty()) {
                     item { SectionHeader("Did not finish (${dnf.size})") }
@@ -87,6 +104,15 @@ fun FinishedScreen(
                 }
             }
         }
+    }
+
+    bookForVictoryCard?.let { victoryBook ->
+        BookVictoryCardDialog(
+            book = victoryBook,
+            sessions = sessions,
+            notes = notes,
+            onDismiss = { bookForVictoryCard = null }
+        )
     }
 }
 
@@ -101,7 +127,12 @@ private fun SectionHeader(text: String) {
 }
 
 @Composable
-private fun CompletedBookCard(book: Book, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun CompletedBookCard(
+    book: Book,
+    onClick: () -> Unit,
+    onShareVictory: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
     ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
@@ -140,6 +171,19 @@ private fun CompletedBookCard(book: Book, onClick: () -> Unit, modifier: Modifie
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                if (onShareVictory != null) {
+                    IconButton(
+                        onClick = onShareVictory,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.EmojiEvents,
+                            contentDescription = "Share Victory Card",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }

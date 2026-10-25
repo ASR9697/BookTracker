@@ -827,8 +827,12 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                     }
                                     composable("finished") {
                                         androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
+                                            val finishedSessions by viewModel.completedSessions.collectAsState()
+                                            val finishedNotes by viewModel.allNotes.collectAsState()
                                             FinishedScreen(
                                                 books = books,
+                                                sessions = finishedSessions,
+                                                notes = finishedNotes,
                                                 onBack = { navController.popBackStack() },
                                                 onOpenBook = { navController.navigate("book/${it.id}") },
                                                 onOpenJourneyMap = { navController.navigate("journey_map") }

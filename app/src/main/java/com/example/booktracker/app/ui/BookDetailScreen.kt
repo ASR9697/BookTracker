@@ -45,6 +45,7 @@ import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -274,6 +275,7 @@ fun BookDetailScreen(
     var showCollectionPicker by remember { mutableStateOf(false) }
     var noteSort by remember { mutableStateOf(NoteSort.CREATED) }
     var noteToShare by remember { mutableStateOf<MarginNote?>(null) }
+    var showVictoryCard by remember { mutableStateOf(false) }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
 
     LaunchedEffect(book) {
@@ -510,6 +512,63 @@ fun BookDetailScreen(
                     }
                     if (book.status == BookStatus.FINISHED.name && !book.review.isNullOrBlank()) {
                         item { SectionItem { ReviewCard(book) } }
+                    }
+                    if (book.status == BookStatus.FINISHED.name) {
+                        item {
+                            SectionItem {
+                                Surface(
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 24.dp)
+                                        .clickable { showVictoryCard = true }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(44.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.primary),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.EmojiEvents,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onPrimary,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                        Spacer(Modifier.width(14.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                "READING VICTORY",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            Spacer(Modifier.height(2.dp))
+                                            Text(
+                                                "Finished Wrap-Up Card",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                        Icon(
+                                            Icons.Filled.Share,
+                                            contentDescription = "Share",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                     if (book.status == BookStatus.DNF.name && book.dnfData != null) {
                         item {
@@ -796,6 +855,22 @@ fun BookDetailScreen(
                         expanded = showOverflow,
                         onDismissRequest = { showOverflow = false }
                     ) {
+                        if (book.status == BookStatus.FINISHED.name) {
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = { Text("Victory Card") },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Filled.EmojiEvents,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                onClick = {
+                                    showOverflow = false
+                                    showVictoryCard = true
+                                }
+                            )
+                        }
                         androidx.compose.material3.DropdownMenuItem(
                             text = { Text("Delete from library") },
                             leadingIcon = {
@@ -916,7 +991,17 @@ fun BookDetailScreen(
             onConfirm = { rating, review ->
                 onFinish(rating, review)
                 showFinishDialog = false
+                showVictoryCard = true
             }
+        )
+    }
+
+    if (showVictoryCard) {
+        BookVictoryCardDialog(
+            book = book,
+            sessions = sessions,
+            notes = notes,
+            onDismiss = { showVictoryCard = false }
         )
     }
 
