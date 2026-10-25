@@ -1909,14 +1909,16 @@ private fun ProgressAndDaysRow(
                 .clickable(onClick = onEditProgress)
         ) {
             // Bookmark ribbon whose fill mirrors how far through the book you are.
-            Box(
+            com.example.booktracker.app.ui.animations.LiquidWaveProgressBar(
+                progress = fraction,
                 modifier = Modifier
-                    .fillMaxWidth(fraction.coerceIn(0f, 1f))
-                    .height(6.dp)
-                    .background(
-                        com.example.booktracker.app.ui.theme.ProgressAmber,
-                        RoundedCornerShape(topStart = 20.dp)
-                    )
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
+                height = 6.dp,
+                waveColor = com.example.booktracker.app.ui.theme.ProgressAmber,
+                secondaryWaveColor = com.example.booktracker.app.ui.theme.ProgressAmber.copy(alpha = 0.5f),
+                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.3f),
+                cornerRadius = 0.dp
             )
             Column(modifier = Modifier.padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

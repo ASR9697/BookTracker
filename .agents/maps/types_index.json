@@ -292,12 +292,12 @@
   "TimerPhase": {
     "type": "enum class",
     "file": "app/src/main/java/com/example/booktracker/app/ui/FocusTimerScreen.kt",
-    "line": 52
+    "line": 55
   },
   "TimerMode": {
     "type": "enum class",
     "file": "app/src/main/java/com/example/booktracker/app/ui/FocusTimerScreen.kt",
-    "line": 53
+    "line": 56
   },
   "GoalType": {
     "type": "enum class",

@@ -1211,15 +1211,13 @@ fun ReadingHero(
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                     }
-                                    Spacer(Modifier.height(8.dp))
-                                    LinearProgressIndicator(
-                                        progress = { progress },
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(8.dp),
-                                        color = MaterialTheme.colorScheme.primary,
-                                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                                    com.example.booktracker.app.ui.animations.LiquidWaveProgressBar(
+                                        progress = progressVal,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        height = 10.dp,
+                                        waveColor = MaterialTheme.colorScheme.primary,
+                                        secondaryWaveColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f),
+                                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
                                     )
                                     Spacer(Modifier.height(12.dp))
                                     if (openSession != null && openSession.bookId == book.id) {

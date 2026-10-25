@@ -32,7 +32,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import kotlin.math.cos
+import kotlin.math.sin
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -339,9 +342,14 @@ fun FocusTimerScreen(
             Spacer(Modifier.weight(0.4f))
 
             // Central Luminous Halo Ring & 3D Book Showcase
+            val ringScale = if (isRunning) 0.98f + (auraScale - 1f) * 0.45f else 1f
             Box(
                 modifier = Modifier
-                    .size(240.dp),
+                    .size(256.dp)
+                    .graphicsLayer {
+                        scaleX = ringScale
+                        scaleY = ringScale
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 // Outer Luminous Halo Arc Canvas
@@ -354,11 +362,42 @@ fun FocusTimerScreen(
                 }
 
                 Canvas(modifier = Modifier.fillMaxSize()) {
+                    val center = Offset(size.width / 2f, size.height / 2f)
                     val strokeWidth = 5.dp.toPx()
-                    val inset = strokeWidth / 2f
-                    val arcSize = Size(size.width - strokeWidth, size.height - strokeWidth)
+                    val inset = strokeWidth / 2f + 12.dp.toPx()
+                    val arcSize = Size(size.width - inset * 2f, size.height - inset * 2f)
+                    val radius = arcSize.width / 2f
+                    val sweep = if (mode == TimerMode.COUNTDOWN) (360f * haloProgress) else (360f * haloProgress.coerceAtLeast(0.04f))
+                    val activePhaseColor = if (phase == TimerPhase.BREAK) Color(0xFF38EF7D) else baseVibrant
 
-                    // Track ring
+                    // 1. 60 Precision Minute Bezel Ticks
+                    for (i in 0 until 60) {
+                        val tickAngle = -90f + (i * 6f)
+                        val rad = Math.toRadians(tickAngle.toDouble())
+                        val isElapsed = (i * 6f) <= sweep
+                        val tickLen = if (i % 5 == 0) 6.dp.toPx() else 3.5.dp.toPx()
+                        val tickWidth = if (i % 5 == 0) 1.5.dp.toPx() else 1.dp.toPx()
+                        val outerR = radius + (strokeWidth / 2f) + 8.dp.toPx()
+                        val innerR = outerR - tickLen
+
+                        val p1 = Offset(
+                            x = center.x + (outerR * cos(rad)).toFloat(),
+                            y = center.y + (outerR * sin(rad)).toFloat()
+                        )
+                        val p2 = Offset(
+                            x = center.x + (innerR * cos(rad)).toFloat(),
+                            y = center.y + (innerR * sin(rad)).toFloat()
+                        )
+                        drawLine(
+                            color = if (isElapsed) activePhaseColor.copy(alpha = 0.85f) else onBackground.copy(alpha = 0.14f),
+                            start = p1,
+                            end = p2,
+                            strokeWidth = tickWidth,
+                            cap = StrokeCap.Round
+                        )
+                    }
+
+                    // 2. Track ring
                     drawArc(
                         color = onBackground.copy(alpha = 0.12f),
                         startAngle = -90f,
@@ -369,16 +408,30 @@ fun FocusTimerScreen(
                         style = Stroke(width = strokeWidth)
                     )
 
-                    // Animated progress halo
-                    val sweep = if (mode == TimerMode.COUNTDOWN) (360f * haloProgress) else (360f * haloProgress.coerceAtLeast(0.04f))
+                    // 3. Diffused Ambient Breathing Glow Arc (behind progress stroke)
+                    if (sweep > 1f) {
+                        drawArc(
+                            color = activePhaseColor.copy(alpha = if (isRunning) auraAlpha * 0.45f else 0.15f),
+                            startAngle = -90f,
+                            sweepAngle = sweep,
+                            useCenter = false,
+                            topLeft = Offset(inset - 3.dp.toPx(), inset - 3.dp.toPx()),
+                            size = Size(arcSize.width + 6.dp.toPx(), arcSize.height + 6.dp.toPx()),
+                            style = Stroke(width = strokeWidth * 2.6f, cap = StrokeCap.Round)
+                        )
+                    }
+
+                    // 4. Foreground Multi-Stop Gradient Progress Arc
+                    val haloBrush = Brush.sweepGradient(
+                        listOf(
+                            activePhaseColor.copy(alpha = 0.45f),
+                            activePhaseColor,
+                            Color.White.copy(alpha = 0.95f),
+                            activePhaseColor
+                        )
+                    )
                     drawArc(
-                        brush = Brush.sweepGradient(
-                            listOf(
-                                baseVibrant,
-                                baseVibrant.copy(alpha = 0.7f),
-                                baseVibrant
-                            )
-                        ),
+                        brush = haloBrush,
                         startAngle = -90f,
                         sweepAngle = sweep,
                         useCenter = false,
@@ -386,6 +439,27 @@ fun FocusTimerScreen(
                         size = arcSize,
                         style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                     )
+
+                    // 5. Luminous Orbital Spark at leading edge
+                    if (sweep > 2f) {
+                        val leadingAngleRad = Math.toRadians((-90f + sweep).toDouble())
+                        val beadCenter = Offset(
+                            x = center.x + (radius * cos(leadingAngleRad)).toFloat(),
+                            y = center.y + (radius * sin(leadingAngleRad)).toFloat()
+                        )
+                        // Soft outer particle aura
+                        drawCircle(
+                            color = activePhaseColor.copy(alpha = 0.45f),
+                            radius = 9.dp.toPx(),
+                            center = beadCenter
+                        )
+                        // Radiant inner core
+                        drawCircle(
+                            color = Color.White,
+                            radius = 3.5.dp.toPx(),
+                            center = beadCenter
+                        )
+                    }
                 }
 
                 // Centered Book Cover Card with Progress Pill
