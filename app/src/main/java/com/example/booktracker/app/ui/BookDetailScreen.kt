@@ -97,6 +97,8 @@ import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.NoteType
 import com.example.booktracker.shared.models.RatingAxis
 import com.example.booktracker.shared.models.Session
+import com.example.booktracker.shared.models.LoanRecord
+import com.example.booktracker.app.analytics.LoanEngine
 import com.example.booktracker.app.analytics.ReadingCalendar
 import com.example.booktracker.app.analytics.StreakEngine
 import java.time.Instant
@@ -133,6 +135,9 @@ import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.PostAdd
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Sell
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.TopAppBar
@@ -261,6 +266,8 @@ fun BookDetailScreen(
     onDeleteSession: (Session) -> Unit,
     onToggleFavorite: () -> Unit,
     onFinish: (Map<String, Float>, String?) -> Unit,
+    onRecordLoan: (LoanRecord) -> Unit = {},
+    onMarkLoanReturned: () -> Unit = {},
     onBack: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(BookDetailTab.OVERVIEW) }
@@ -276,7 +283,21 @@ fun BookDetailScreen(
     var noteSort by remember { mutableStateOf(NoteSort.CREATED) }
     var noteToShare by remember { mutableStateOf<MarginNote?>(null) }
     var showVictoryCard by remember { mutableStateOf(false) }
+    var showLoanDialog by remember { mutableStateOf(false) }
+    val activeLoan = remember(book?.loanRecord) { book?.let { LoanEngine.activeLoan(it) } }
+    val loanStatus = remember(activeLoan) { activeLoan?.let { LoanEngine.getLoanStatus(it) } }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+    if (showLoanDialog && book != null) {
+        LoanRecordDialog(
+            existingLoan = activeLoan,
+            onDismiss = { showLoanDialog = false },
+            onSave = { record ->
+                onRecordLoan(record)
+                showLoanDialog = false
+            }
+        )
+    }
 
     LaunchedEffect(book) {
         if (book != null && book.currentPage == book.totalPages && book.totalPages > 0 && book.status == BookStatus.READING.name) {
@@ -493,7 +514,56 @@ fun BookDetailScreen(
                         }
                     }
 
-                    if (book.purchaseLog.isNotEmpty() || book.loanRecord.isNotEmpty()) {
+                    if (loanStatus != null && (loanStatus.urgency == LoanEngine.LoanUrgency.OVERDUE || loanStatus.urgency == LoanEngine.LoanUrgency.DUE_SOON)) {
+                        item {
+                                SectionItem {
+                                    Surface(
+                                        shape = RoundedCornerShape(16.dp),
+                                        color = if (loanStatus.urgency == LoanEngine.LoanUrgency.OVERDUE)
+                                            MaterialTheme.colorScheme.errorContainer
+                                        else
+                                            MaterialTheme.colorScheme.tertiaryContainer,
+                                        contentColor = if (loanStatus.urgency == LoanEngine.LoanUrgency.OVERDUE)
+                                            MaterialTheme.colorScheme.onErrorContainer
+                                        else
+                                            MaterialTheme.colorScheme.onTertiaryContainer,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 24.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(14.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                if (loanStatus.urgency == LoanEngine.LoanUrgency.OVERDUE) Icons.Filled.Warning else Icons.Filled.Schedule,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            Spacer(Modifier.width(10.dp))
+                                            Text(
+                                                loanStatus.detailText,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                    }
+
+                    item {
+                        SectionItem {
+                            LoanDetailCard(
+                                book = book,
+                                activeLoan = activeLoan,
+                                onRecordLoan = onRecordLoan,
+                                onMarkReturned = onMarkLoanReturned
+                            )
+                        }
+                    }
+
+                    if (book.purchaseLog.isNotEmpty()) {
                         item {
                             SectionItem {
                                 LedgerCard(book)
@@ -871,6 +941,20 @@ fun BookDetailScreen(
                                 }
                             )
                         }
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text(if (activeLoan != null) "Manage Loan" else "Record Loan / Borrow") },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.MenuBook,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            onClick = {
+                                showOverflow = false
+                                showLoanDialog = true
+                            }
+                        )
                         androidx.compose.material3.DropdownMenuItem(
                             text = { Text("Delete from library") },
                             leadingIcon = {

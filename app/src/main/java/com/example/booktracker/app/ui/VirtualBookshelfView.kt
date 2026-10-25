@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.example.booktracker.app.analytics.LoanEngine
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -392,7 +393,14 @@ private fun BookSpineItem(
 
                 // Bottom double gold ribs & status indicator
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    if (book.isFavorite) {
+                    val activeLoan = remember(book.loanRecord) { LoanEngine.activeLoan(book) }
+                    if (activeLoan != null) {
+                        Text(
+                            if (activeLoan.isLentOut) "🤝" else "🏛️",
+                            fontSize = 9.sp,
+                            modifier = Modifier.padding(bottom = 1.dp)
+                        )
+                    } else if (book.isFavorite) {
                         Text(
                             "★",
                             color = Color(0xFFFFD54F),
@@ -710,6 +718,13 @@ private fun BookPullOutInspector(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+
+                    val activeLoan = remember(book.loanRecord) { LoanEngine.activeLoan(book) }
+                    if (activeLoan != null) {
+                        Spacer(Modifier.height(6.dp))
+                        val loanStatus = remember(activeLoan) { LoanEngine.getLoanStatus(activeLoan) }
+                        LoanBadge(loanStatus)
+                    }
                 }
 
                 IconButton(onClick = onDismiss) {

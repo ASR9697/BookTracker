@@ -118,7 +118,28 @@ object BackupEngine {
         put("readCount", readCount)
         plannedDate?.let { put("plannedDate", it) }
         review?.let { put("review", it) }
+        if (loanRecord.isNotEmpty()) {
+            put("loanRecord", JSONArray(loanRecord.map { it.toJson() }))
+        }
     }
+
+    private fun LoanRecord.toJson(): JSONObject = JSONObject().apply {
+        put("loanDate", loanDate)
+        put("dueDate", dueDate)
+        put("lender", lender)
+        put("memo", memo)
+        returnDate?.let { put("returnDate", it) }
+        put("isLentOut", isLentOut)
+    }
+
+    private fun JSONObject.toLoanRecord(): LoanRecord = LoanRecord(
+        loanDate = optLong("loanDate"),
+        dueDate = optLong("dueDate"),
+        lender = optString("lender"),
+        memo = optString("memo"),
+        returnDate = if (has("returnDate")) optLong("returnDate") else null,
+        isLentOut = optBoolean("isLentOut", false)
+    )
 
     private fun JSONObject.toBook(): Book = Book(
         id = getString("id"),
@@ -146,7 +167,8 @@ object BackupEngine {
         readCount = optInt("readCount", 0),
         isbn = null,
         plannedDate = if (has("plannedDate")) optLong("plannedDate") else null,
-        review = if (has("review")) optString("review") else null
+        review = if (has("review")) optString("review") else null,
+        loanRecord = optJSONArray("loanRecord").mapObjects { it.toLoanRecord() }
     )
 
     private fun Session.toJson(): JSONObject = JSONObject().apply {

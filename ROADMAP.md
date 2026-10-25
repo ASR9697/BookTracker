@@ -142,9 +142,9 @@ These features build on top of our existing 100% offline, local-first Room + Dat
 - **Goal:** [DONE] Comprehensive goal projections and challenge tracking in `GoalEngine.kt`.
 - **Details:** Pace ahead/behind gauge (e.g. *"You are 2 books ahead of your yearly target! Projected to finish 28 books"*), velocity-based year-end completion forecast (`projectedFinishBooks`), daily habit consistency percentage (`calculateHabitConsistency` with 30-day rolling window & tier ratings), and seasonal reading sprint challenges (Spring/Summer/Autumn/Winter 5-book sprint challenges with countdowns and progress tracking). Displayed in `AnalyticsScreen.kt` and `ProfileScreen.kt`.
 
-### 5.5 Library Loan Due Date Alerts & Lending Tracker
-- **Goal:** Track library return deadlines and books lent to friends using the existing `LoanRecord` schema.
-- **Details:** Visual due date countdown badges for library books (*"Due back to library in 3 days"*) and a lent-out register with contact names and loan dates.
+### [x] 5.5 Library Loan Due Date Alerts & Lending Tracker
+- **Goal:** [DONE] Track library return deadlines and books lent to friends using the `LoanRecord` schema.
+- **Details:** Visual due date countdown badges for library books (*"Due in 2 days"*, *"Overdue by 1 day"*), lending register tracking friends and contact memos, urgent return alert banner on Home dashboard, dedicated "On Loan" library filter chip with loan badges on grid cards, authentic bookshelf spine stamps (`🏛️` for library, `🤝` for lent out) and pull-out inspector badges (`analytics/LoanEngine.kt`, `ui/LoanComponents.kt`, `ui/BookDetailScreen.kt`, `ui/BookTrackerScreen.kt`, `ui/VirtualBookshelfView.kt`).
 
 ---
 

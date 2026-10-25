@@ -380,6 +380,23 @@ class BookTrackerViewModel(
         viewModelScope.launch { repository.addProgress(book.id, delta) }
     }
 
+    fun recordLoan(book: Book, loan: com.example.booktracker.shared.models.LoanRecord) {
+        val updatedLoans = book.loanRecord + loan
+        viewModelScope.launch {
+            repository.updateBook(book.copy(loanRecord = updatedLoans, lastUpdated = System.currentTimeMillis()))
+        }
+    }
+
+    fun markLoanReturned(book: Book) {
+        val now = System.currentTimeMillis()
+        val updatedLoans = book.loanRecord.map {
+            if (it.isActive) it.copy(returnDate = now) else it
+        }
+        viewModelScope.launch {
+            repository.updateBook(book.copy(loanRecord = updatedLoans, lastUpdated = System.currentTimeMillis()))
+        }
+    }
+
     fun setFormat(book: Book, format: String) {
         viewModelScope.launch { repository.updateFormat(book.id, format) }
     }

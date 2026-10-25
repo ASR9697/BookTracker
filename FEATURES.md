@@ -65,6 +65,7 @@ This file acts as the central source of truth for all implemented and planned fe
 - [x] **Annual Reading Heatmap ("Year in Pixels")**: A 52-week horizontal calendar reading intensity matrix with 5 dynamic tiers (Neutral, Soft Tint, Radiant Primary, High-Intensity Accent, and Fiery Flame) reflecting daily pages read, featuring month headers, day labels, and an interactive bottom sheet detailing logged sessions, completed books, and margin notes for any inspected day (`ui/ReadingHeatmap.kt`, `ui/ReadingCalendarView.kt`, `ui/ProfileScreen.kt`).
 - [x] **Single Book "Finished Wrap-Up" Victory Card**: High-definition, shareable Canvas victory graphic card generated when completing a book (in both 1:1 Square and 9:16 Story formats) featuring the book cover art with ambient blur backdrop, star ratings and multi-axis score breakdown, personal review snippet or top highlighted quote, and reading pace analytics with 5 distinct luxury aesthetics (`ui/BookVictoryShareHelper.kt`, `ui/BookVictoryCardDialog.kt`).
 - [x] **Smart Reading Challenges & Goal Pace Forecaster**: Velocity-based year-end completion forecast (`projectedFinishBooks` and pace status), 30-day rolling habit consistency percentage and rating tiers ("Elite Daily Habit", "Consistent Reader", etc.), and 4-season reading sprint challenges (Spring, Summer, Autumn, Winter 5-book sprints) with countdowns, status messages, and animated progress gauges (`analytics/GoalEngine.kt`, `ui/AnalyticsScreen.kt`, `ui/ProfileScreen.kt`).
+- [x] **Library Loan Due Date Alerts & Lending Tracker**: Visual due date countdown badges for library loans and peer lending tracker ("Due in 2 days", "Overdue by 1 day", "Lent to Alice"), with urgent alert banners on the Home dashboard when due within 3 days, dedicated "On Loan" filter chips in library view, loan badges on book cards, authentic bookshelf spine stamps (`🏛️` and `🤝`), and a full lending manager dialog with presets and return status recording (`analytics/LoanEngine.kt`, `ui/LoanComponents.kt`, `ui/BookDetailScreen.kt`, `ui/BookTrackerScreen.kt`, `ui/VirtualBookshelfView.kt`).
 
 ### 🔎 Search, Data & OCR
 - [x] **Universal Full-Text Search**: A search icon in the top app bar opens a dedicated screen that queries a Room FTS4 index across every book field (title, author, description, genre) *and* the full text of all margin notes/quotes, grouped into "Books" and "Margin notes" result sections (`ui/LibrarySearchScreen.kt`, `BookRepository.searchLibrary`). Raw input is turned into a forgiving prefix query so partial words match, and it runs 100% offline against the local database.
@@ -82,13 +83,12 @@ This file acts as the central source of truth for all implemented and planned fe
 
 *(Add any newly discussed features here before starting work on them. **CRITICAL:** When moving a feature to the Completed section, you MUST write a detailed 1-2 sentence description explaining exactly what it does, following the format of the completed features above.)*
 
-> **Sequencing note:** Phase 1 (watch precision/longevity) and Phase 2 (search, backup, OCR)
-> are done and are in the Completed section above. The items below are Phases 3–4. See
-> [ROADMAP.md](ROADMAP.md) for the detailed implementation plan, ordering, and per-feature approach.
+> **Sequencing note:** Phase 1 (watch precision/longevity), Phase 2 (search, backup, OCR),
+> and Phase 5 (visual excellence & reading immersion) are complete and in the Completed section above.
 
-### Phase 5 — Visual Excellence & Reading Immersion (Backlog)
+### Phase 5 — Visual Excellence & Reading Immersion (Completed)
 - [x] **Virtual 3D Spine Bookshelf View**: Realistic wooden/dark bookshelf layout where books stand side-by-side with page-proportional spine thickness, cover-derived palette styling, embossed titles, dangling ribbons for currently-reading books, and pull-out animations.
 - [x] **Annual Reading Heatmap ("Year in Pixels")**: 52-week calendar matrix with 5 intensity levels (Neutral, Soft Tint, Radiant Primary, High-Intensity Accent, Fiery Flame) reflecting pages read per day, complete with a day-detail inspection sheet.
 - [x] **Single Book "Finished Wrap-Up" Victory Card**: Dedicated 1:1 and 9:16 export cards celebrating completed books with rating stars, personal review snippet, reading duration, velocity, and top quotes.
 - [x] **Smart Reading Challenges & Goal Pace Forecaster**: Comprehensive goal projections in `GoalEngine` including pace ahead/behind metrics, daily habit consistency percentages, and seasonal reading sprint challenges.
-- [ ] **Library Loan Due Date Alerts & Lending Tracker**: Visual due date countdown badges for library loans and a lent-out register tracking physical copies lent to friends.
+- [x] **Library Loan Due Date Alerts & Lending Tracker**: Visual due date countdown badges for library loans and peer lending tracker with urgent return alert banners, "On Loan" filter chips, spine stamps, and loan manager dialog.

@@ -49,6 +49,16 @@
     "file": "app/src/main/java/com/example/booktracker/app/analytics/GoalEngine.kt",
     "line": 70
   },
+  "LoanUrgency": {
+    "type": "enum class",
+    "file": "app/src/main/java/com/example/booktracker/app/analytics/LoanEngine.kt",
+    "line": 16
+  },
+  "LoanStatusInfo": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/analytics/LoanEngine.kt",
+    "line": 23
+  },
   "Summary": {
     "type": "data class",
     "file": "app/src/main/java/com/example/booktracker/app/analytics/ReadingCalendar.kt",
@@ -242,22 +252,22 @@
   "BookDetailTab": {
     "type": "enum class",
     "file": "app/src/main/java/com/example/booktracker/app/ui/BookDetailScreen.kt",
-    "line": 153
+    "line": 158
   },
   "NoteSort": {
     "type": "enum class",
     "file": "app/src/main/java/com/example/booktracker/app/ui/BookDetailScreen.kt",
-    "line": 1556
+    "line": 1640
   },
   "HomeTabMode": {
     "type": "enum class",
     "file": "app/src/main/java/com/example/booktracker/app/ui/BookTrackerScreen.kt",
-    "line": 153
+    "line": 154
   },
   "LibraryViewMode": {
     "type": "enum class",
     "file": "app/src/main/java/com/example/booktracker/app/ui/BookTrackerScreen.kt",
-    "line": 154
+    "line": 155
   },
   "BookTrackerViewModel": {
     "type": "class",
@@ -267,7 +277,7 @@
   "SessionResult": {
     "type": "data class",
     "file": "app/src/main/java/com/example/booktracker/app/ui/BookTrackerViewModel.kt",
-    "line": 426
+    "line": 443
   },
   "VictoryCardTheme": {
     "type": "enum class",
@@ -357,7 +367,7 @@
   "BookshelfWoodTheme": {
     "type": "enum class",
     "file": "app/src/main/java/com/example/booktracker/app/ui/VirtualBookshelfView.kt",
-    "line": 59
+    "line": 60
   },
   "ReadingWidget": {
     "type": "class",
@@ -403,6 +413,11 @@
     "type": "class",
     "file": "app/src/test/java/com/example/booktracker/app/analytics/GoalEngineTest.kt",
     "line": 12
+  },
+  "LoanEngineTest": {
+    "type": "class",
+    "file": "app/src/test/java/com/example/booktracker/app/analytics/LoanEngineTest.kt",
+    "line": 13
   },
   "StreakEngineTest": {
     "type": "class",
@@ -462,27 +477,27 @@
   "Book": {
     "type": "data class",
     "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
-    "line": 64
+    "line": 69
   },
   "Session": {
     "type": "data class",
     "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
-    "line": 105
+    "line": 110
   },
   "NoteType": {
     "type": "enum class",
     "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
-    "line": 118
+    "line": 123
   },
   "MarginNote": {
     "type": "data class",
     "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
-    "line": 122
+    "line": 127
   },
   "DnfData": {
     "type": "data class",
     "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
-    "line": 141
+    "line": 146
   },
   "DataLayerListenerService": {
     "type": "class",

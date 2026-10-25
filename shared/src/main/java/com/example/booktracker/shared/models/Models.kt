@@ -58,8 +58,13 @@ data class LoanRecord(
     val loanDate: Long,
     val dueDate: Long,
     val lender: String,
-    val memo: String
-)
+    val memo: String,
+    val returnDate: Long? = null,
+    val isLentOut: Boolean = false
+) {
+    val isReturned: Boolean get() = returnDate != null
+    val isActive: Boolean get() = returnDate == null
+}
 
 data class Book(
     val id: String,

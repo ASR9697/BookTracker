@@ -141,6 +141,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.example.booktracker.app.analytics.AnalyticsEngine
 import com.example.booktracker.app.analytics.StreakEngine
+import com.example.booktracker.app.analytics.LoanEngine
 import com.example.booktracker.app.ui.animations.ConfettiExplosion
 import com.example.booktracker.app.ui.theme.StreakFlame
 import com.example.booktracker.shared.models.Book
@@ -478,6 +479,15 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             .fillMaxSize()
                                                             .verticalScroll(rememberScrollState())
                                                     ) {
+                                                        val urgentLoans = remember(books) { LoanEngine.urgentLoans(books) }
+                                                        if (urgentLoans.isNotEmpty()) {
+                                                            UrgentLoanBanner(
+                                                                urgentLoans = urgentLoans,
+                                                                onOpenBook = { navController.navigate("book/${it.id}") },
+                                                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                                            )
+                                                        }
+
                                                         if (openSession == null && books.isNotEmpty()) {
                                                             ElevatedCard(
                                                                 onClick = { 
@@ -766,6 +776,12 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                             },
                                                             onFinish = { rating, review ->
                                                                 books.find { it.id == bookId }?.let { viewModel.finishBook(it, rating, review) }
+                                                            },
+                                                            onRecordLoan = { loan ->
+                                                                books.find { it.id == bookId }?.let { viewModel.recordLoan(it, loan) }
+                                                            },
+                                                            onMarkLoanReturned = {
+                                                                books.find { it.id == bookId }?.let { viewModel.markLoanReturned(it) }
                                                             },
                                                             onBack = { navController.popBackStack() }
                                                         )
@@ -1594,6 +1610,7 @@ fun LibraryScreen(
 ) {
     var selectedFilter by remember { mutableStateOf<BookStatus?>(null) }
     var showFavoritesOnly by remember { mutableStateOf(false) }
+    var showLoansOnly by remember { mutableStateOf(false) }
     var viewMode by remember { mutableStateOf(LibraryViewMode.GRID) }
     val haptic = LocalHapticFeedback.current
 
@@ -1606,6 +1623,11 @@ fun LibraryScreen(
     }
     
     val displayBooks = books.filter { 
+        if (showLoansOnly) {
+            val hasLoan = LoanEngine.activeLoan(it) != null
+            val favoriteMatches = if (showFavoritesOnly) it.isFavorite else true
+            return@filter hasLoan && favoriteMatches
+        }
         val statusMatches = if (selectedFilter == null) {
             it.status != BookStatus.READING.name && it.status != BookStatus.FINISHED.name && it.status != BookStatus.DNF.name
         } else {
@@ -1640,6 +1662,20 @@ fun LibraryScreen(
                 colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
                     selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
                     selectedLabelColor = MaterialTheme.colorScheme.onTertiaryContainer
+                ),
+                shape = CircleShape
+            )
+
+            androidx.compose.material3.FilterChip(
+                selected = showLoansOnly,
+                onClick = {
+                    showLoansOnly = !showLoansOnly
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                },
+                label = { Text("🏛️ On Loan") },
+                colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
                 ),
                 shape = CircleShape
             )
@@ -1820,6 +1856,17 @@ fun LibraryGridCard(
         Box(modifier = Modifier.fillMaxSize()) {
             BookCover(book.coverUrl, Modifier.heroSharedElement("cover-${book.id}").fillMaxSize())
             
+            val activeLoan = remember(book.loanRecord) { LoanEngine.activeLoan(book) }
+            if (activeLoan != null) {
+                val loanStatus = remember(activeLoan) { LoanEngine.getLoanStatus(activeLoan) }
+                LoanBadge(
+                    status = loanStatus,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(6.dp)
+                )
+            }
+
             var expanded by remember { androidx.compose.runtime.mutableStateOf(false) }
             val statusText = try {
                 BookStatus.valueOf(book.status).label
