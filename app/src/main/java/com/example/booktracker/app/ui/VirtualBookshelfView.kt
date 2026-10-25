@@ -34,6 +34,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
@@ -318,19 +319,35 @@ private fun BookSpineItem(
     )
 
     val spineScale by animateFloatAsState(
-        targetValue = if (isSelected) 1.04f else 1.0f,
+        targetValue = if (isSelected) 1.05f else 1.0f,
         label = "spineScale"
+    )
+
+    val rotationY by animateFloatAsState(
+        targetValue = if (isSelected) -11f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "spineRotationY"
+    )
+    val rotationZ by animateFloatAsState(
+        targetValue = if (isSelected) -1.8f else 0f,
+        label = "spineRotationZ"
     )
 
     val isReading = book.status == BookStatus.READING.name
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Box(
+        contentAlignment = Alignment.BottomCenter,
         modifier = Modifier
             .offset(y = pullOutOffset)
             .graphicsLayer {
                 scaleX = spineScale
                 scaleY = spineScale
+                this.rotationY = rotationY
+                this.rotationZ = rotationZ
+                cameraDistance = 14f * density
             }
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -338,41 +355,92 @@ private fun BookSpineItem(
                 onClick = onClick
             )
     ) {
-        // Spine Body
-        Box(
-            modifier = Modifier
-                .width(spineWidth)
-                .height(spineHeight)
-                .shadow(
-                    elevation = if (isSelected) 18.dp else 4.dp,
-                    shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 1.dp, bottomEnd = 1.dp),
-                    spotColor = if (isSelected) Color(0xFFD4AF37) else Color.Black
-                )
-                .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 1.dp, bottomEnd = 1.dp))
-                .background(
-                    brush = Brush.horizontalGradient(
-                        listOf(
-                            baseColor.copy(alpha = 0.95f),
-                            baseColor.lighter(0.18f),
-                            baseColor,
-                            baseColor.darker(0.25f)
+        // Ambient golden halo spotlight behind the selected pull-out spine
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .size(width = spineWidth + 14.dp, height = spineHeight + 18.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                Color(0xFFFFD54F).copy(alpha = 0.35f),
+                                Color.Transparent
+                            )
                         )
                     )
-                )
-                .border(
-                    width = if (isSelected) 2.dp else 0.5.dp,
-                    color = if (isSelected) Color(0xFFFFD54F) else Color.Black.copy(alpha = 0.4f),
-                    shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 1.dp, bottomEnd = 1.dp)
-                )
+            )
+        }
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Embossed decorative headcap and tail bands
-            Column(
+            // Spine Body
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(vertical = 8.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .width(spineWidth)
+                    .height(spineHeight)
+                    .shadow(
+                        elevation = if (isSelected) 22.dp else 4.dp,
+                        shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 1.dp, bottomEnd = 1.dp),
+                        spotColor = if (isSelected) Color(0xFFD4AF37) else Color.Black
+                    )
+                    .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 1.dp, bottomEnd = 1.dp))
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            listOf(
+                                baseColor.copy(alpha = 0.95f),
+                                baseColor.lighter(0.18f),
+                                baseColor,
+                                baseColor.darker(0.25f)
+                            )
+                        )
+                    )
+                    .border(
+                        width = if (isSelected) 2.dp else 0.5.dp,
+                        color = if (isSelected) Color(0xFFFFD54F) else Color.Black.copy(alpha = 0.4f),
+                        shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 1.dp, bottomEnd = 1.dp)
+                    )
             ) {
+                // Left book joint / hinge groove
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .width(3.dp)
+                        .fillMaxHeight()
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    Color.Black.copy(alpha = 0.45f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+                // Right page edge bevel shadow
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .width(3.5.dp)
+                        .fillMaxHeight()
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.5f)
+                                )
+                            )
+                        )
+                )
+
+                // Embossed decorative headcap and tail bands
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(vertical = 8.dp),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                 // Top double gold ribs
                 SpineGoldRibs()
 
@@ -421,6 +489,7 @@ private fun BookSpineItem(
         } else {
             Spacer(Modifier.height(14.dp))
         }
+    }
     }
 }
 
@@ -554,41 +623,102 @@ private fun BookmarkRibbon(progressPercent: Int?) {
 }
 
 /**
- * 3D Wooden Shelf Plank with depth beveling and drop shadow.
+ * 3D Wooden Shelf Plank with depth beveling, procedural wood grain texture, brass accent inlay, and drop shadow.
  */
 @Composable
 private fun WoodenShelfPlank(woodTheme: BookshelfWoodTheme) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        // Top bevel highlight of the wooden plank
-        Box(
+        // Shelf face and procedural wood-grain canvas
+        androidx.compose.foundation.Canvas(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(3.dp)
-                .background(woodTheme.plankHighlightColor)
-        )
-        // Main wooden plank face
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(16.dp)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            woodTheme.plankMainColor,
-                            woodTheme.plankShadowColor
-                        )
+                .height(20.dp)
+        ) {
+            val width = size.width
+            val height = size.height
+
+            // 1. Top chamfer bevel highlight
+            val bevelHeight = 3.dp.toPx()
+            drawRect(
+                color = woodTheme.plankHighlightColor,
+                topLeft = Offset(0f, 0f),
+                size = Size(width, bevelHeight)
+            )
+
+            // 2. Brass accent inlay runner strip embedded in the front lip
+            val brassHeight = 1.dp.toPx()
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    listOf(
+                        woodTheme.brassTrimColor.copy(alpha = 0.5f),
+                        woodTheme.brassTrimColor,
+                        woodTheme.brassTrimColor.copy(alpha = 0.8f),
+                        woodTheme.brassTrimColor.copy(alpha = 0.4f)
                     )
+                ),
+                topLeft = Offset(0f, bevelHeight),
+                size = Size(width, brassHeight)
+            )
+
+            // 3. Main fascia vertical gradient
+            val fasciaTop = bevelHeight + brassHeight
+            val fasciaHeight = height - fasciaTop - 2.5.dp.toPx()
+            drawRect(
+                brush = Brush.verticalGradient(
+                    listOf(
+                        woodTheme.plankMainColor,
+                        woodTheme.plankShadowColor
+                    ),
+                    startY = fasciaTop,
+                    endY = fasciaTop + fasciaHeight
+                ),
+                topLeft = Offset(0f, fasciaTop),
+                size = Size(width, fasciaHeight)
+            )
+
+            // 4. Procedural organic wood grain striations
+            val grainColor = woodTheme.plankHighlightColor.copy(alpha = 0.14f)
+            val shadowGrainColor = woodTheme.plankShadowColor.darker(0.3f).copy(alpha = 0.28f)
+            val grainYOffsets = listOf(0.22f, 0.42f, 0.65f, 0.85f)
+            grainYOffsets.forEachIndexed { idx, frac ->
+                val lineY = fasciaTop + (fasciaHeight * frac)
+                val path = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(0f, lineY)
+                    var x = 0f
+                    val waveLen = 80f + (idx * 25f)
+                    while (x <= width) {
+                        val dy = (kotlin.math.sin((x / waveLen).toDouble()) * 1.2).toFloat()
+                        lineTo(x, lineY + dy)
+                        x += 16f
+                    }
+                }
+                drawPath(
+                    path = path,
+                    color = if (idx % 2 == 0) grainColor else shadowGrainColor,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
                 )
-        )
-        // Deep underside cast shadow onto the wall below
+            }
+
+            // 5. Bottom angled chamfer undercut
+            val undercutY = fasciaTop + fasciaHeight
+            val undercutHeight = height - undercutY
+            drawRect(
+                color = woodTheme.plankShadowColor.darker(0.4f),
+                topLeft = Offset(0f, undercutY),
+                size = Size(width, undercutHeight)
+            )
+        }
+
+        // Deep underside cast shadow onto the wall/books below
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(8.dp)
+                .height(10.dp)
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            Color.Black.copy(alpha = 0.6f),
+                            Color.Black.copy(alpha = 0.65f),
+                            Color.Black.copy(alpha = 0.25f),
                             Color.Transparent
                         )
                     )
