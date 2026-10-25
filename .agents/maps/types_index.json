@@ -292,7 +292,12 @@
   "CalendarViewMode": {
     "type": "enum class",
     "file": "app/src/main/java/com/example/booktracker/app/ui/ReadingCalendarView.kt",
-    "line": 53
+    "line": 54
+  },
+  "ReadingIntensityLevel": {
+    "type": "enum class",
+    "file": "app/src/main/java/com/example/booktracker/app/ui/ReadingHeatmap.kt",
+    "line": 47
   },
   "ScanState": {
     "type": "interface",

@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.Session
+import com.example.booktracker.app.ui.animations.bounceClick
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -52,7 +53,8 @@ import com.example.booktracker.shared.models.BookStatus
 
 enum class CalendarViewMode {
     PAGES,
-    COVERS
+    COVERS,
+    YEAR_HEATMAP
 }
 
 private val monthYearFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
@@ -77,6 +79,7 @@ fun ReadingCalendarView(
 ) {
     val zone = remember { ZoneId.systemDefault() }
     val today = remember { LocalDate.now(zone) }
+    val haptic = LocalHapticFeedback.current
     var selectedMonth by remember { mutableStateOf(YearMonth.now(zone)) }
     var selectedDate by remember { mutableStateOf(today) }
     var viewMode by remember { mutableStateOf(CalendarViewMode.PAGES) }
@@ -318,14 +321,18 @@ fun ReadingCalendarView(
                         Row(modifier = Modifier.padding(2.dp)) {
                             val modes = listOf(
                                 CalendarViewMode.PAGES to "Pages",
-                                CalendarViewMode.COVERS to "Covers"
+                                CalendarViewMode.COVERS to "Covers",
+                                CalendarViewMode.YEAR_HEATMAP to "Year"
                             )
                             modes.forEach { (mode, label) ->
                                 val isSelected = viewMode == mode
                                 Surface(
                                     shape = RoundedCornerShape(10.dp),
                                     color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                                    modifier = Modifier.clickable { viewMode = mode }
+                                    modifier = Modifier.bounceClick {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        viewMode = mode
+                                    }
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
@@ -333,7 +340,11 @@ fun ReadingCalendarView(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                                     ) {
                                         Icon(
-                                            imageVector = if (mode == CalendarViewMode.PAGES) Icons.Filled.AutoStories else Icons.Filled.PhotoLibrary,
+                                            imageVector = when (mode) {
+                                                CalendarViewMode.PAGES -> Icons.Filled.AutoStories
+                                                CalendarViewMode.COVERS -> Icons.Filled.PhotoLibrary
+                                                CalendarViewMode.YEAR_HEATMAP -> Icons.Filled.CalendarMonth
+                                            },
                                             contentDescription = null,
                                             modifier = Modifier.size(13.dp),
                                             tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
@@ -350,6 +361,16 @@ fun ReadingCalendarView(
                         }
                     }
                 }
+
+                if (viewMode == CalendarViewMode.YEAR_HEATMAP) {
+                    ReadingHeatmap(
+                        sessions = sessions,
+                        books = books,
+                        notes = notes,
+                        onOpenBook = onOpenBook,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
+                    )
+                } else {
 
                 Spacer(Modifier.height(4.dp))
 
@@ -441,6 +462,7 @@ fun ReadingCalendarView(
                 }
             }
         }
+        }
 
         Spacer(Modifier.height(16.dp))
 
@@ -452,12 +474,38 @@ fun ReadingCalendarView(
             notesByDate[selectedDate].orEmpty()
         }
 
-        Text(
-            text = selectedDate.format(dayDetailFormatter),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
-        )
+        if (viewMode == CalendarViewMode.YEAR_HEATMAP) {
+            Spacer(Modifier.height(16.dp))
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Filled.TouchApp,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        "Tap any pixel in the 52-week matrix to inspect that day's reading sessions, finished books, and quotes.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            Text(
+                text = selectedDate.format(dayDetailFormatter),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+            )
 
         if (selectedDaySessions.isEmpty() && selectedDayNotes.isEmpty()) {
             Surface(
@@ -556,6 +604,7 @@ fun ReadingCalendarView(
                 }
             }
         }
+    }
     }
 
     if (showMonthlyShareDialog) {

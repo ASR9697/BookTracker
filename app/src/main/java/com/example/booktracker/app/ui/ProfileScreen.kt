@@ -309,6 +309,9 @@ fun ProfileScreen(
             ) {
                 ReadingHeatmap(
                     sessions = sessions,
+                    books = books,
+                    notes = notes,
+                    onOpenBook = onOpenBook,
                     modifier = Modifier.padding(16.dp)
                 )
             }

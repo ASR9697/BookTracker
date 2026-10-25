@@ -130,8 +130,8 @@ These features build on top of our existing 100% offline, local-first Room + Dat
 - **Goal:** [DONE] In addition to List and Grid library views, provide an interactive wooden/dark Bookshelf view.
 - **Details:** Books stand vertically side-by-side with dynamic spine thickness proportional to `totalPages`. Spines are styled with cover-derived palettes or genre themes, vertical embossed metallic titles, and dangling bookmark ribbons for actively read books. Includes smooth pull-out selection animations.
 
-### 5.2 Annual Reading Heatmap ("Year in Pixels")
-- **Goal:** A GitHub-style 52-week horizontal calendar reading intensity matrix in `ReadingCalendarView` and `ProfileScreen`.
+### [x] 5.2 Annual Reading Heatmap ("Year in Pixels")
+- **Goal:** [DONE] A GitHub-style 52-week horizontal calendar reading intensity matrix in `ReadingCalendarView` and `ProfileScreen`.
 - **Details:** 5 intensity levels (Neutral, Soft Tint, Radiant Primary, High-Intensity Accent, Fiery Flame) reflecting pages read per day. Tap-to-inspect displays a day's logged reading sessions, completed books, and margin notes.
 
 ### 5.3 Single Book "Finished Wrap-Up" Victory Card
