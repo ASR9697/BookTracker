@@ -126,8 +126,8 @@ reduced scope before implementing.**
 
 These features build on top of our existing 100% offline, local-first Room + DataStore architecture with zero cloud dependencies.
 
-### 5.1 Virtual 3D "Spine Bookshelf" View
-- **Goal:** In addition to List and Grid library views, provide an interactive wooden/dark Bookshelf view.
+### [x] 5.1 Virtual 3D "Spine Bookshelf" View
+- **Goal:** [DONE] In addition to List and Grid library views, provide an interactive wooden/dark Bookshelf view.
 - **Details:** Books stand vertically side-by-side with dynamic spine thickness proportional to `totalPages`. Spines are styled with cover-derived palettes or genre themes, vertical embossed metallic titles, and dangling bookmark ribbons for actively read books. Includes smooth pull-out selection animations.
 
 ### 5.2 Annual Reading Heatmap ("Year in Pixels")

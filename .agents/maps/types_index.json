@@ -239,6 +239,11 @@
     "file": "app/src/main/java/com/example/booktracker/app/ui/BookTrackerScreen.kt",
     "line": 153
   },
+  "LibraryViewMode": {
+    "type": "enum class",
+    "file": "app/src/main/java/com/example/booktracker/app/ui/BookTrackerScreen.kt",
+    "line": 154
+  },
   "BookTrackerViewModel": {
     "type": "class",
     "file": "app/src/main/java/com/example/booktracker/app/ui/BookTrackerViewModel.kt",
@@ -323,6 +328,11 @@
     "type": "data class",
     "file": "app/src/main/java/com/example/booktracker/app/ui/theme/Color.kt",
     "line": 92
+  },
+  "BookshelfWoodTheme": {
+    "type": "enum class",
+    "file": "app/src/main/java/com/example/booktracker/app/ui/VirtualBookshelfView.kt",
+    "line": 59
   },
   "ReadingWidget": {
     "type": "class",

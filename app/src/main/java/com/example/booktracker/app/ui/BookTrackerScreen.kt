@@ -151,6 +151,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 private enum class HomeTabMode { CALENDAR, BOOKSHELF }
+enum class LibraryViewMode { GRID, BOOKSHELF }
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 @Composable
@@ -1589,6 +1590,8 @@ fun LibraryScreen(
 ) {
     var selectedFilter by remember { mutableStateOf<BookStatus?>(null) }
     var showFavoritesOnly by remember { mutableStateOf(false) }
+    var viewMode by remember { mutableStateOf(LibraryViewMode.GRID) }
+    val haptic = LocalHapticFeedback.current
 
     val epubPickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
@@ -1677,6 +1680,26 @@ fun LibraryScreen(
                 Spacer(Modifier.width(6.dp))
                 Text("Read EPUB", maxLines = 1)
             }
+            androidx.compose.material3.FilterChip(
+                selected = viewMode == LibraryViewMode.BOOKSHELF,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    viewMode = if (viewMode == LibraryViewMode.GRID) LibraryViewMode.BOOKSHELF else LibraryViewMode.GRID
+                },
+                label = { Text(if (viewMode == LibraryViewMode.BOOKSHELF) "3D Shelf" else "Grid") },
+                leadingIcon = {
+                    Icon(
+                        Icons.AutoMirrored.Filled.MenuBook,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                },
+                colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
+                shape = RoundedCornerShape(12.dp)
+            )
         }
         
         if (displayBooks.isEmpty()) {
@@ -1740,21 +1763,29 @@ fun LibraryScreen(
                 books.filter { it.status == BookStatus.FINISHED.name }
             } else displayBooks
 
-            androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-                columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(minSize = 140.dp),
-                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 120.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(displayBooksWithStatus, key = { it.id }) { book ->
-                    LibraryGridCard(
-                        book = book,
-                        modifier = Modifier.animateItem(),
-                        onClick = { onOpenBook(book) },
-                        onPromote = { onPromote(book) },
-                        onStartReading = { onStartReading(book) },
-                        onDelete = { onDelete(book) }
-                    )
+            if (viewMode == LibraryViewMode.BOOKSHELF) {
+                VirtualBookshelfView(
+                    books = displayBooksWithStatus,
+                    onOpenBook = onOpenBook,
+                    onStartReading = onStartReading
+                )
+            } else {
+                androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                    columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(minSize = 140.dp),
+                    contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 120.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(displayBooksWithStatus, key = { it.id }) { book ->
+                        LibraryGridCard(
+                            book = book,
+                            modifier = Modifier.animateItem(),
+                            onClick = { onOpenBook(book) },
+                            onPromote = { onPromote(book) },
+                            onStartReading = { onStartReading(book) },
+                            onDelete = { onDelete(book) }
+                        )
+                    }
                 }
             }
         }

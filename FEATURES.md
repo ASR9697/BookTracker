@@ -61,6 +61,7 @@ This file acts as the central source of truth for all implemented and planned fe
 - [x] **Dopamine Confetti**: A high-performance Canvas particle system triggers a vibrant burst of confetti across the screen when you log pages and hit your daily reading goal.
 - [x] **Modern Empty States & Shimmer Skeletons**: Replaced plain text empty states with illustrative, glassmorphic cards. Used sweeping, animated shimmer gradients (instead of circular spinners) for loading screens like the Google Books API search.
 - [x] **TBR "Tinder-Style" Swiping**: An interactive card-swiping interface to curate your `BACKLOG`. Accessible from the Library screen, you can swipe cards right to promote to Shortlist/Up Next, up to start reading immediately, or left to skip them for now.
+- [x] **Virtual 3D Spine Bookshelf View**: Realistic wooden and dark bookcase layout where books stand side-by-side with page-proportional spine thickness, cover-derived and genre binding palettes, embossed metallic gold titles, dangling silky bookmark ribbons for active reads, and smooth spring pull-out selection inspection cards (`ui/VirtualBookshelfView.kt`).
 
 ### 🔎 Search, Data & OCR
 - [x] **Universal Full-Text Search**: A search icon in the top app bar opens a dedicated screen that queries a Room FTS4 index across every book field (title, author, description, genre) *and* the full text of all margin notes/quotes, grouped into "Books" and "Margin notes" result sections (`ui/LibrarySearchScreen.kt`, `BookRepository.searchLibrary`). Raw input is turned into a forgiving prefix query so partial words match, and it runs 100% offline against the local database.
@@ -83,7 +84,7 @@ This file acts as the central source of truth for all implemented and planned fe
 > [ROADMAP.md](ROADMAP.md) for the detailed implementation plan, ordering, and per-feature approach.
 
 ### Phase 5 — Visual Excellence & Reading Immersion (Backlog)
-- [ ] **Virtual 3D Spine Bookshelf View**: Realistic wooden/dark bookshelf layout where books stand side-by-side with page-proportional spine thickness, cover-derived palette styling, embossed titles, dangling ribbons for currently-reading books, and pull-out animations.
+- [x] **Virtual 3D Spine Bookshelf View**: Realistic wooden/dark bookshelf layout where books stand side-by-side with page-proportional spine thickness, cover-derived palette styling, embossed titles, dangling ribbons for currently-reading books, and pull-out animations.
 - [ ] **Annual Reading Heatmap ("Year in Pixels")**: 52-week calendar matrix with 5 intensity levels (Neutral, Soft Tint, Radiant Primary, High-Intensity Accent, Fiery Flame) reflecting pages read per day, complete with a day-detail inspection sheet.
 - [ ] **Single Book "Finished Wrap-Up" Victory Card**: Dedicated 1:1 and 9:16 export cards celebrating completed books with rating stars, personal review snippet, reading duration, velocity, and top quotes.
 - [ ] **Smart Reading Challenges & Goal Pace Forecaster**: Comprehensive goal projections in `GoalEngine` including pace ahead/behind metrics, daily habit consistency percentages, and seasonal reading sprint challenges.
