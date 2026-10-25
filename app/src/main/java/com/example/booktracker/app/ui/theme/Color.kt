@@ -1,8 +1,9 @@
 package com.example.booktracker.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import com.example.booktracker.app.data.AppPalette
 
-// Material 3 Baseline Dark Colors
+// Baseline Fallbacks
 val Background = Color(0xFF141218)
 val Surface = Color(0xFF141218)
 val SurfaceVariant = Color(0xFF49454F)
@@ -15,20 +16,20 @@ val SurfaceContainerHighest = Color(0xFF36343B)
 val OnSurface = Color(0xFFE6E0E9)
 val OnSurfaceVariant = Color(0xFFCAC4D0)
 
-val Primary = Color(0xFFD0BCFF)
-val OnPrimary = Color(0xFF381E72)
-val PrimaryContainer = Color(0xFF4F378B)
-val OnPrimaryContainer = Color(0xFFEADDFF)
+val Primary = Color(0xFFF59E0B)
+val OnPrimary = Color(0xFF451A03)
+val PrimaryContainer = Color(0xFF78350F)
+val OnPrimaryContainer = Color(0xFFFEF3C7)
 
-val Secondary = Color(0xFFCCC2DC)
-val OnSecondary = Color(0xFF332D41)
-val SecondaryContainer = Color(0xFF4A4458)
-val OnSecondaryContainer = Color(0xFFE8DEF8)
+val Secondary = Color(0xFFFB923C)
+val OnSecondary = Color(0xFF431407)
+val SecondaryContainer = Color(0xFF7C2D12)
+val OnSecondaryContainer = Color(0xFFFFEDD5)
 
-val Tertiary = Color(0xFFEFB8C8)
-val OnTertiary = Color(0xFF492532)
-val TertiaryContainer = Color(0xFF633B48)
-val OnTertiaryContainer = Color(0xFFFFD8E4)
+val Tertiary = Color(0xFFFDE047)
+val OnTertiary = Color(0xFF3F2C00)
+val TertiaryContainer = Color(0xFF713F12)
+val OnTertiaryContainer = Color(0xFFFEF9C3)
 
 val Error = Color(0xFFF2B8B5)
 val OnError = Color(0xFF601410)
@@ -38,52 +39,366 @@ val OnErrorContainer = Color(0xFFF9DEDC)
 val Outline = Color(0xFF938F99)
 val OutlineVariant = Color(0xFF49454F)
 
-val PremiumGradientStart = Color(0xFF4F378B)
-val PremiumGradientEnd = Color(0xFF211F26)
+val PremiumGradientStart = Color(0xFFF59E0B)
+val PremiumGradientEnd = Color(0xFFEA580C)
 
 // Material 3 Baseline Light Colors
-val LightBackground = Color(0xFFFEF7FF)
-val LightSurface = Color(0xFFFEF7FF)
-val LightSurfaceVariant = Color(0xFFE7E0EC)
+val LightBackground = Color(0xFFFAF7F2)
+val LightSurface = Color(0xFFFFFFFF)
+val LightSurfaceVariant = Color(0xFFEDE5D8)
 val LightSurfaceContainerLowest = Color(0xFFFFFFFF)
-val LightSurfaceContainerLow = Color(0xFFF7F2FA)
-val LightSurfaceContainer = Color(0xFFF3EDF7)
-val LightSurfaceContainerHigh = Color(0xFFECE6F0)
-val LightSurfaceContainerHighest = Color(0xFFE6E0E9)
+val LightSurfaceContainerLow = Color(0xFFF7F3EB)
+val LightSurfaceContainer = Color(0xFFF2ECE1)
+val LightSurfaceContainerHigh = Color(0xFFECE4D7)
+val LightSurfaceContainerHighest = Color(0xFFE5DCCF)
 
 val LightOnSurface = Color(0xFF1D1B20)
 val LightOnSurfaceVariant = Color(0xFF49454F)
 
-val LightPrimary = Color(0xFF6750A4)
+val LightPrimary = Color(0xFFD97706)
 val LightOnPrimary = Color(0xFFFFFFFF)
-val LightPrimaryContainer = Color(0xFFEADDFF)
-val LightOnPrimaryContainer = Color(0xFF21005D)
+val LightPrimaryContainer = Color(0xFFFEF3C7)
+val LightOnPrimaryContainer = Color(0xFF451A03)
 
-val LightSecondary = Color(0xFF625B71)
+val LightSecondary = Color(0xFFC2410C)
 val LightOnSecondary = Color(0xFFFFFFFF)
-val LightSecondaryContainer = Color(0xFFE8DEF8)
-val LightOnSecondaryContainer = Color(0xFF1D192B)
+val LightSecondaryContainer = Color(0xFFFFEDD5)
+val LightOnSecondaryContainer = Color(0xFF431407)
 
-val LightTertiary = Color(0xFF7D5260)
+val LightTertiary = Color(0xFFB45309)
 val LightOnTertiary = Color(0xFFFFFFFF)
-val LightTertiaryContainer = Color(0xFFFFD8E4)
-val LightOnTertiaryContainer = Color(0xFF31111D)
+val LightTertiaryContainer = Color(0xFFFEF9C3)
+val LightOnTertiaryContainer = Color(0xFF3F2C00)
 
 val LightError = Color(0xFFB3261E)
 val LightOnError = Color(0xFFFFFFFF)
 val LightErrorContainer = Color(0xFFF9DEDC)
 val LightOnErrorContainer = Color(0xFF410E0B)
 
-val LightOutline = Color(0xFF79747E)
-val LightOutlineVariant = Color(0xFFCAC4D0)
+val LightOutline = Color(0xFF9E9282)
+val LightOutlineVariant = Color(0xFFD5CBBF)
 
 // Streak flame accent
-val StreakFlame = Color(0xFFEF6C00)
+val StreakFlame = Color(0xFFFF6D00)
+val StreakFlameGlow = Color(0xFFFFAB00)
 
-/**
- * Progress accent. Deliberately independent of the theme's primary and of the
- * per-book cover palette, so "how far through am I" reads the same amber on
- * every book — the completion ring, the bookmark ribbon, and the day counter.
- */
-val ProgressAmber = Color(0xFFF2C14E)
+// Progress amber accent
+val ProgressAmber = Color(0xFFF59E0B)
+
+// -------------------------------------------------------------------------
+// Curated Palette Colors
+// -------------------------------------------------------------------------
+
+data class PaletteColors(
+    val primary: Color,
+    val onPrimary: Color,
+    val primaryContainer: Color,
+    val onPrimaryContainer: Color,
+    val secondary: Color,
+    val onSecondary: Color,
+    val secondaryContainer: Color,
+    val onSecondaryContainer: Color,
+    val tertiary: Color,
+    val onTertiary: Color,
+    val tertiaryContainer: Color,
+    val onTertiaryContainer: Color,
+    val background: Color,
+    val surface: Color,
+    val surfaceVariant: Color,
+    val surfaceContainerLowest: Color,
+    val surfaceContainerLow: Color,
+    val surfaceContainer: Color,
+    val surfaceContainerHigh: Color,
+    val surfaceContainerHighest: Color,
+    val outline: Color,
+    val outlineVariant: Color,
+    val onSurface: Color,
+    val onSurfaceVariant: Color
+)
+
+// 1. BOOKMORY AMBER (Literary Gold & Terracotta)
+val BookmoryAmberDark = PaletteColors(
+    primary = Color(0xFFF59E0B),
+    onPrimary = Color(0xFF451A03),
+    primaryContainer = Color(0xFF78350F),
+    onPrimaryContainer = Color(0xFFFEF3C7),
+    secondary = Color(0xFFFB923C),
+    onSecondary = Color(0xFF431407),
+    secondaryContainer = Color(0xFF7C2D12),
+    onSecondaryContainer = Color(0xFFFFEDD5),
+    tertiary = Color(0xFFFDE047),
+    onTertiary = Color(0xFF3F2C00),
+    tertiaryContainer = Color(0xFF713F12),
+    onTertiaryContainer = Color(0xFFFEF9C3),
+    background = Color(0xFF131012),
+    surface = Color(0xFF1B171A),
+    surfaceVariant = Color(0xFF383236),
+    surfaceContainerLowest = Color(0xFF0D0A0C),
+    surfaceContainerLow = Color(0xFF171316),
+    surfaceContainer = Color(0xFF211C20),
+    surfaceContainerHigh = Color(0xFF2C262B),
+    surfaceContainerHighest = Color(0xFF383137),
+    outline = Color(0xFF7A6F75),
+    outlineVariant = Color(0xFF463E44),
+    onSurface = Color(0xFFF3ECEE),
+    onSurfaceVariant = Color(0xFFD6CBCF)
+)
+
+val BookmoryAmberLight = PaletteColors(
+    primary = Color(0xFFD97706),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFFEF3C7),
+    onPrimaryContainer = Color(0xFF451A03),
+    secondary = Color(0xFFC2410C),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFFFEDD5),
+    onSecondaryContainer = Color(0xFF431407),
+    tertiary = Color(0xFFB45309),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFFEF9C3),
+    onTertiaryContainer = Color(0xFF3F2C00),
+    background = Color(0xFFFAF7F2),
+    surface = Color(0xFFFFFFFF),
+    surfaceVariant = Color(0xFFEDE5D8),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF7F3EB),
+    surfaceContainer = Color(0xFFF2ECE1),
+    surfaceContainerHigh = Color(0xFFECE4D7),
+    surfaceContainerHighest = Color(0xFFE5DCCF),
+    outline = Color(0xFF9E9282),
+    outlineVariant = Color(0xFFD5CBBF),
+    onSurface = Color(0xFF1F1B18),
+    onSurfaceVariant = Color(0xFF5A524A)
+)
+
+// 2. MIDNIGHT VELVET (Electric Indigo & Sky Twilight)
+val MidnightVelvetDark = PaletteColors(
+    primary = Color(0xFF818CF8),
+    onPrimary = Color(0xFF1E1B4B),
+    primaryContainer = Color(0xFF3730A3),
+    onPrimaryContainer = Color(0xFFE0E7FF),
+    secondary = Color(0xFF38BDF8),
+    onSecondary = Color(0xFF082F49),
+    secondaryContainer = Color(0xFF0369A1),
+    onSecondaryContainer = Color(0xFFE0F2FE),
+    tertiary = Color(0xFFA855F7),
+    onTertiary = Color(0xFF2E1065),
+    tertiaryContainer = Color(0xFF6B21A8),
+    onTertiaryContainer = Color(0xFFF3E8FF),
+    background = Color(0xFF0B0E17),
+    surface = Color(0xFF121724),
+    surfaceVariant = Color(0xFF273147),
+    surfaceContainerLowest = Color(0xFF070910),
+    surfaceContainerLow = Color(0xFF0E121E),
+    surfaceContainer = Color(0xFF171E2E),
+    surfaceContainerHigh = Color(0xFF202A3F),
+    surfaceContainerHighest = Color(0xFF2B3751),
+    outline = Color(0xFF5D6E90),
+    outlineVariant = Color(0xFF303B52),
+    onSurface = Color(0xFFE8EDF8),
+    onSurfaceVariant = Color(0xFFBAC5DA)
+)
+
+val MidnightVelvetLight = PaletteColors(
+    primary = Color(0xFF4F46E5),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFE0E7FF),
+    onPrimaryContainer = Color(0xFF1E1B4B),
+    secondary = Color(0xFF0284C7),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFE0F2FE),
+    onSecondaryContainer = Color(0xFF082F49),
+    tertiary = Color(0xFF7E22CE),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFF3E8FF),
+    onTertiaryContainer = Color(0xFF2E1065),
+    background = Color(0xFFF6F8FC),
+    surface = Color(0xFFFFFFFF),
+    surfaceVariant = Color(0xFFDFE5F2),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF0F4FA),
+    surfaceContainer = Color(0xFFE8EEF7),
+    surfaceContainerHigh = Color(0xFFDFE7F2),
+    surfaceContainerHighest = Color(0xFFD6E0EE),
+    outline = Color(0xFF7D8FA9),
+    outlineVariant = Color(0xFFC4D0E3),
+    onSurface = Color(0xFF141923),
+    onSurfaceVariant = Color(0xFF475266)
+)
+
+// 3. NORDIC EMERALD (Botanical Sage & Forest Pine)
+val NordicEmeraldDark = PaletteColors(
+    primary = Color(0xFF34D399),
+    onPrimary = Color(0xFF064E3B),
+    primaryContainer = Color(0xFF065F46),
+    onPrimaryContainer = Color(0xFFD1FAE5),
+    secondary = Color(0xFF2DD4BF),
+    onSecondary = Color(0xFF042F2E),
+    secondaryContainer = Color(0xFF0F766E),
+    onSecondaryContainer = Color(0xFFCCFBF1),
+    tertiary = Color(0xFFA3E635),
+    onTertiary = Color(0xFF1A2E05),
+    tertiaryContainer = Color(0xFF365314),
+    onTertiaryContainer = Color(0xFFECFCCB),
+    background = Color(0xFF09120E),
+    surface = Color(0xFF0F1C16),
+    surfaceVariant = Color(0xFF233B31),
+    surfaceContainerLowest = Color(0xFF050B08),
+    surfaceContainerLow = Color(0xFF0C1612),
+    surfaceContainer = Color(0xFF14241E),
+    surfaceContainerHigh = Color(0xFF1C3129),
+    surfaceContainerHighest = Color(0xFF264036),
+    outline = Color(0xFF5A7C6E),
+    outlineVariant = Color(0xFF2C443A),
+    onSurface = Color(0xFFE8F5EF),
+    onSurfaceVariant = Color(0xFFB8D3C6)
+)
+
+val NordicEmeraldLight = PaletteColors(
+    primary = Color(0xFF059669),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFD1FAE5),
+    onPrimaryContainer = Color(0xFF064E3B),
+    secondary = Color(0xFF0D9488),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFCCFBF1),
+    onSecondaryContainer = Color(0xFF042F2E),
+    tertiary = Color(0xFF4D7C0F),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFECFCCB),
+    onTertiaryContainer = Color(0xFF1A2E05),
+    background = Color(0xFFF4F9F6),
+    surface = Color(0xFFFFFFFF),
+    surfaceVariant = Color(0xFFD9E7E0),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFEEF5F1),
+    surfaceContainer = Color(0xFFE5EFE9),
+    surfaceContainerHigh = Color(0xFFDCE8E1),
+    surfaceContainerHighest = Color(0xFFD3E1DA),
+    outline = Color(0xFF729184),
+    outlineVariant = Color(0xFFBFD4CA),
+    onSurface = Color(0xFF121F19),
+    onSurfaceVariant = Color(0xFF42594F)
+)
+
+// 4. SAKURA ROSE (Sunset Coral & Rose Gold)
+val SakuraRoseDark = PaletteColors(
+    primary = Color(0xFFFB7185),
+    onPrimary = Color(0xFF4C0519),
+    primaryContainer = Color(0xFF881337),
+    onPrimaryContainer = Color(0xFFFFE4E6),
+    secondary = Color(0xFFF472B6),
+    onSecondary = Color(0xFF500724),
+    secondaryContainer = Color(0xFF831843),
+    onSecondaryContainer = Color(0xFFFCE7F3),
+    tertiary = Color(0xFFFBBF24),
+    onTertiary = Color(0xFF451A03),
+    tertiaryContainer = Color(0xFF78350F),
+    onTertiaryContainer = Color(0xFFFEF3C7),
+    background = Color(0xFF140D11),
+    surface = Color(0xFF1C1319),
+    surfaceVariant = Color(0xFF382732),
+    surfaceContainerLowest = Color(0xFF0E080C),
+    surfaceContainerLow = Color(0xFF170F14),
+    surfaceContainer = Color(0xFF22171F),
+    surfaceContainerHigh = Color(0xFF2D1F2A),
+    surfaceContainerHighest = Color(0xFF3A2937),
+    outline = Color(0xFF7D596E),
+    outlineVariant = Color(0xFF472F3E),
+    onSurface = Color(0xFFF8ECF2),
+    onSurfaceVariant = Color(0xFFDAC0CE)
+)
+
+val SakuraRoseLight = PaletteColors(
+    primary = Color(0xFFE11D48),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFFFE4E6),
+    onPrimaryContainer = Color(0xFF4C0519),
+    secondary = Color(0xFFDB2777),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFFCE7F3),
+    onSecondaryContainer = Color(0xFF500724),
+    tertiary = Color(0xFFD97706),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFFEF3C7),
+    onTertiaryContainer = Color(0xFF451A03),
+    background = Color(0xFFFAF5F7),
+    surface = Color(0xFFFFFFFF),
+    surfaceVariant = Color(0xFFEEDFE5),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF7EFF2),
+    surfaceContainer = Color(0xFFF2E6EB),
+    surfaceContainerHigh = Color(0xFFEBDDE3),
+    surfaceContainerHighest = Color(0xFFE3D3DB),
+    outline = Color(0xFF9C7A8B),
+    outlineVariant = Color(0xFFD7C2CC),
+    onSurface = Color(0xFF20131A),
+    onSurfaceVariant = Color(0xFF5F4653)
+)
+
+// 5. ESPRESSO CARAMEL (Roasted Coffee & Spiced Cinnamon)
+val EspressoCaramelDark = PaletteColors(
+    primary = Color(0xFFF59E0B),
+    onPrimary = Color(0xFF451A03),
+    primaryContainer = Color(0xFF78350F),
+    onPrimaryContainer = Color(0xFFFEF3C7),
+    secondary = Color(0xFFEA580C),
+    onSecondary = Color(0xFF431407),
+    secondaryContainer = Color(0xFF7C2D12),
+    onSecondaryContainer = Color(0xFFFFEDD5),
+    tertiary = Color(0xFFEAB308),
+    onTertiary = Color(0xFF422006),
+    tertiaryContainer = Color(0xFF713F12),
+    onTertiaryContainer = Color(0xFFFEF9C3),
+    background = Color(0xFF130E0C),
+    surface = Color(0xFF1C1512),
+    surfaceVariant = Color(0xFF382B24),
+    surfaceContainerLowest = Color(0xFF0D0A08),
+    surfaceContainerLow = Color(0xFF17110E),
+    surfaceContainer = Color(0xFF221A16),
+    surfaceContainerHigh = Color(0xFF2D231E),
+    surfaceContainerHighest = Color(0xFF3A2D27),
+    outline = Color(0xFF7C6354),
+    outlineVariant = Color(0xFF46362D),
+    onSurface = Color(0xFFF7EFE9),
+    onSurfaceVariant = Color(0xFFD8C6B9)
+)
+
+val EspressoCaramelLight = PaletteColors(
+    primary = Color(0xFFB45309),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFFEF3C7),
+    onPrimaryContainer = Color(0xFF451A03),
+    secondary = Color(0xFF9A3412),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFFFEDD5),
+    onSecondaryContainer = Color(0xFF431407),
+    tertiary = Color(0xFF854D0E),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFFEF9C3),
+    onTertiaryContainer = Color(0xFF422006),
+    background = Color(0xFFFAF7F2),
+    surface = Color(0xFFFFFFFF),
+    surfaceVariant = Color(0xFFEDE4D8),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF7F2E9),
+    surfaceContainer = Color(0xFFF1EAE0),
+    surfaceContainerHigh = Color(0xFFEBE2D6),
+    surfaceContainerHighest = Color(0xFFE4DACD),
+    outline = Color(0xFF988170),
+    outlineVariant = Color(0xFFD2C3B3),
+    onSurface = Color(0xFF1F1813),
+    onSurfaceVariant = Color(0xFF5A4D43)
+)
+
+fun getPaletteColors(palette: AppPalette, darkTheme: Boolean): PaletteColors {
+    return when (palette) {
+        AppPalette.BOOKMORY_AMBER -> if (darkTheme) BookmoryAmberDark else BookmoryAmberLight
+        AppPalette.MIDNIGHT_VELVET -> if (darkTheme) MidnightVelvetDark else MidnightVelvetLight
+        AppPalette.NORDIC_EMERALD -> if (darkTheme) NordicEmeraldDark else NordicEmeraldLight
+        AppPalette.SAKURA_ROSE -> if (darkTheme) SakuraRoseDark else SakuraRoseLight
+        AppPalette.ESPRESSO_CARAMEL -> if (darkTheme) EspressoCaramelDark else EspressoCaramelLight
+    }
+}
+
 

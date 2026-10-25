@@ -122,6 +122,32 @@ reduced scope before implementing.**
 
 ---
 
+## Phase 5 — Visual Excellence & Reading Immersion (Bookmory Flagship Parity)
+
+These features build on top of our existing 100% offline, local-first Room + DataStore architecture with zero cloud dependencies.
+
+### 5.1 Virtual 3D "Spine Bookshelf" View
+- **Goal:** In addition to List and Grid library views, provide an interactive wooden/dark Bookshelf view.
+- **Details:** Books stand vertically side-by-side with dynamic spine thickness proportional to `totalPages`. Spines are styled with cover-derived palettes or genre themes, vertical embossed metallic titles, and dangling bookmark ribbons for actively read books. Includes smooth pull-out selection animations.
+
+### 5.2 Annual Reading Heatmap ("Year in Pixels")
+- **Goal:** A GitHub-style 52-week horizontal calendar reading intensity matrix in `ReadingCalendarView` and `ProfileScreen`.
+- **Details:** 5 intensity levels (Neutral, Soft Tint, Radiant Primary, High-Intensity Accent, Fiery Flame) reflecting pages read per day. Tap-to-inspect displays a day's logged reading sessions, completed books, and margin notes.
+
+### 5.3 Single Book "Finished Wrap-Up" Victory Card
+- **Goal:** A dedicated, shareable victory graphic card generated when a reader finishes a book.
+- **Details:** High-res Canvas export (1:1 square & 9:16 story) featuring the book cover art with ambient blur backdrop, star rating breakdown, personal review snippet, total reading time, average velocity, and top highlighted quote.
+
+### 5.4 Smart Reading Challenges & Goal Pace Forecaster
+- **Goal:** Comprehensive goal projections and challenge tracking in `GoalEngine.kt`.
+- **Details:** Pace ahead/behind gauge (e.g. *"You are 2 books ahead of your yearly target! Projected to finish 28 books"*), daily habit consistency percentage, and seasonal reading sprint challenges (Spring/Summer/Autumn 5-book sprints).
+
+### 5.5 Library Loan Due Date Alerts & Lending Tracker
+- **Goal:** Track library return deadlines and books lent to friends using the existing `LoanRecord` schema.
+- **Details:** Visual due date countdown badges for library books (*"Due back to library in 3 days"*) and a lent-out register with contact names and loan dates.
+
+---
+
 ## Explicitly dropped (do not build without a new ask)
 Removed at the user's request / off-constraint — see [CLAUDE.md](CLAUDE.md) history:
 Google Cast, Android Auto, Desktop PWA, Anime-canon bridge, and any Firebase/paid dependency.

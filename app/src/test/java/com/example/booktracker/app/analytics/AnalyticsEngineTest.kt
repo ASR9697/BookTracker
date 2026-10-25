@@ -88,4 +88,64 @@ class AnalyticsEngineTest {
         assertEquals("2h 15m", AnalyticsEngine.formatMinutes(135))
         assertTrue(AnalyticsEngine.formatMinutes(743).startsWith("12h"))
     }
+
+    @Test
+    fun `reading speed ppm calculates pages per minute`() {
+        val sessions = listOf(timedSession(pages = 60, minutes = 60))
+        val ppm = AnalyticsEngine.readingSpeedPpm(sessions)!!
+        assertEquals(1.0f, ppm, 0.01f)
+    }
+
+    @Test
+    fun `session speed ppm calculates single session velocity`() {
+        val ppm = AnalyticsEngine.sessionSpeedPpm(pagesRead = 30, durationSeconds = 1200) // 20 mins -> 1.5 ppm
+        assertEquals(1.5f, ppm!!, 0.01f)
+
+        assertNull(AnalyticsEngine.sessionSpeedPpm(pagesRead = 0, durationSeconds = 1200))
+        assertNull(AnalyticsEngine.sessionSpeedPpm(pagesRead = 10, durationSeconds = 30))
+    }
+
+    @Test
+    fun `format reading speed outputs ppm format`() {
+        assertEquals("1.0 p/m", AnalyticsEngine.formatReadingSpeed(60f))
+        assertEquals("0.5 p/m", AnalyticsEngine.formatReadingSpeed(30f))
+        assertNull(AnalyticsEngine.formatReadingSpeed(null))
+    }
+
+    @Test
+    fun `format estimated time renders minutes hours and finished`() {
+        assertEquals("Finished", AnalyticsEngine.formatEstimatedTime(0L))
+        assertEquals("Finished", AnalyticsEngine.formatEstimatedTime(-5L))
+        assertEquals("35m left", AnalyticsEngine.formatEstimatedTime(35L))
+        assertEquals("2h 15m left", AnalyticsEngine.formatEstimatedTime(135L))
+        assertNull(AnalyticsEngine.formatEstimatedTime(null))
+    }
+
+    @Test
+    fun `book velocity and estimated minutes fall back to global sessions`() {
+        val globalSessions = listOf(timedSession(pages = 60, minutes = 60, id = "global"))
+        val emptyBookSessions = emptyList<Session>()
+        val myBook = book(total = 200, current = 80)
+
+        // Book has no sessions yet, should use global sessions
+        val rate = AnalyticsEngine.bookPagesPerHour(emptyBookSessions, globalSessions)
+        assertEquals(60f, rate!!, 0.01f)
+
+        val eta = AnalyticsEngine.bookEstimatedMinutesLeft(myBook, emptyBookSessions, globalSessions)
+        assertEquals(120L, eta) // 120 pages left / (60 p/h) = 120 mins
+    }
+
+    @Test
+    fun `predictCompletionDate calculates estimated completion date`() {
+        val globalSessions = listOf(timedSession(pages = 60, minutes = 60, id = "global"))
+        val myBook = book(total = 200, current = 80) // 120 pages left = 120 mins remaining
+
+        val prediction = AnalyticsEngine.predictCompletionDate(myBook, emptyList(), globalSessions)
+        junit.framework.TestCase.assertNotNull(prediction)
+        assertTrue(prediction!!.daysRemaining > 0)
+        assertTrue(prediction.formattedPrediction.isNotBlank())
+
+        val finishedBook = book(total = 200, current = 200)
+        assertNull(AnalyticsEngine.predictCompletionDate(finishedBook, emptyList(), globalSessions))
+    }
 }

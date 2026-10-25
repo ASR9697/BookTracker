@@ -1,42 +1,35 @@
 package com.example.booktracker.app.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.RatingAxis
+import com.example.booktracker.app.ui.animations.bounceClick
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FinishedScreen(
     books: List<Book>,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenBook: (Book) -> Unit = {},
+    onOpenJourneyMap: () -> Unit = {}
 ) {
     val finished = books
         .filter { it.status == BookStatus.FINISHED.name }
@@ -48,10 +41,15 @@ fun FinishedScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Finished books") },
+                title = { Text("Finished & Abandoned") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onOpenJourneyMap) {
+                        Icon(Icons.Filled.Timeline, contentDescription = "Reading Journey Map")
                     }
                 }
             )
@@ -76,16 +74,16 @@ fun FinishedScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 if (finished.isNotEmpty()) {
                     item { SectionHeader("Finished (${finished.size})") }
-                    items(finished, key = { it.id }) { CompletedBookCard(it) }
+                    items(finished, key = { it.id }) { CompletedBookCard(it, onClick = { onOpenBook(it) }, modifier = Modifier.animateItem()) }
                 }
                 if (dnf.isNotEmpty()) {
                     item { SectionHeader("Did not finish (${dnf.size})") }
-                    items(dnf, key = { it.id }) { CompletedBookCard(it) }
+                    items(dnf, key = { it.id }) { CompletedBookCard(it, onClick = { onOpenBook(it) }, modifier = Modifier.animateItem()) }
                 }
             }
         }
@@ -97,41 +95,71 @@ private fun SectionHeader(text: String) {
     Text(
         text,
         style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
     )
 }
 
 @Composable
-private fun CompletedBookCard(book: Book) {
-    ElevatedCard(shape = RoundedCornerShape(20.dp)) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            BookCover(book.coverUrl, Modifier.size(width = 48.dp, height = 72.dp))
-            Spacer(Modifier.width(14.dp))
-            Column {
-                Text(
-                    book.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (book.authors.isNotEmpty()) {
+private fun CompletedBookCard(book: Book, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    ElevatedCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .bounceClick(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                BookCover(book.coverUrl, Modifier.size(width = 52.dp, height = 76.dp))
+                Spacer(Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        book.authors.joinToString(", "),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
+                        book.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
+                    if (book.authors.isNotEmpty()) {
+                        Text(
+                            book.authors.joinToString(", "),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    val detail = completionDetail(book)
+                    if (detail != null) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            detail,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
-                val detail = completionDetail(book)
-                if (detail != null) {
+            }
+
+            if (!book.review.isNullOrBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text(
-                        detail,
+                        text = "“${book.review}”",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontStyle = FontStyle.Italic,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(10.dp)
                     )
                 }
             }
@@ -145,7 +173,7 @@ private fun completionDetail(book: Book): String? = when (book.status) {
             "Not rated"
         } else {
             RatingAxis.ALL
-                .mapNotNull { axis -> book.rating[axis]?.let { "$axis ${formatFinishedRating(it)}" } }
+                .mapNotNull { axis -> book.rating[axis]?.let { "$axis ${formatFinishedRating(it)}★" } }
                 .joinToString(" · ")
         }
     }

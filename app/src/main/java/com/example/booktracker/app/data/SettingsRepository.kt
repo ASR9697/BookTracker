@@ -19,15 +19,26 @@ enum class ThemeMode {
     SYSTEM, LIGHT, DARK
 }
 
+enum class AppPalette(val title: String, val subtitle: String, val primaryHex: Long, val secondaryHex: Long) {
+    BOOKMORY_AMBER("Bookmory Amber", "Literary gold & warm terracotta", 0xFFF59E0BL, 0xFFFB923CL),
+    MIDNIGHT_VELVET("Midnight Velvet", "Electric indigo & cyan twilight", 0xFF818CF8L, 0xFF38BDF8L),
+    NORDIC_EMERALD("Nordic Emerald", "Botanical sage & forest pine", 0xFF34D399L, 0xFF2DD4BFL),
+    SAKURA_ROSE("Sakura Rose", "Sunset coral & blush rose", 0xFFFB7185L, 0xFFF472B6L),
+    ESPRESSO_CARAMEL("Espresso Caramel", "Vintage leather & roasted coffee", 0xFFF59E0BL, 0xFFEA580CL)
+}
+
 /** User preferences: daily page goal (streaks + analytics) and yearly books goal. */
 class SettingsRepository(context: Context) {
 
     private val appContext = context.applicationContext
     private val dailyGoalKey = intPreferencesKey("daily_goal_pages")
     private val yearlyGoalKey = intPreferencesKey("yearly_goal_books")
+    private val monthlyGoalPagesKey = intPreferencesKey("monthly_goal_pages")
+    private val monthlyGoalBooksKey = intPreferencesKey("monthly_goal_books")
     private val dndKey = booleanPreferencesKey("dnd_during_session")
     private val themeModeKey = intPreferencesKey("theme_mode")
     private val useDynamicColorKey = booleanPreferencesKey("use_dynamic_color")
+    private val appPaletteKey = androidx.datastore.preferences.core.stringPreferencesKey("app_palette")
     private val userNameKey = androidx.datastore.preferences.core.stringPreferencesKey("user_name")
     private val workMinutesKey = intPreferencesKey("work_minutes")
     private val breakMinutesKey = intPreferencesKey("break_minutes")
@@ -45,9 +56,19 @@ class SettingsRepository(context: Context) {
 
     val dailyGoal: Flow<Int> = appContext.settingsDataStore.data.map { it[dailyGoalKey] ?: 20 }
     val yearlyGoal: Flow<Int> = appContext.settingsDataStore.data.map { it[yearlyGoalKey] ?: Companion.DEFAULT_YEARLY_GOAL_BOOKS }
+    val monthlyGoalPages: Flow<Int> = appContext.settingsDataStore.data.map { it[monthlyGoalPagesKey] ?: 500 }
+    val monthlyGoalBooks: Flow<Int> = appContext.settingsDataStore.data.map { it[monthlyGoalBooksKey] ?: 2 }
     val dndDuringSession: Flow<Boolean> = appContext.settingsDataStore.data.map { it[dndKey] ?: false }
     val themeMode: Flow<Int> = appContext.settingsDataStore.data.map { it[themeModeKey] ?: ThemeMode.SYSTEM.ordinal }
-    val useDynamicColor: Flow<Boolean> = appContext.settingsDataStore.data.map { it[useDynamicColorKey] ?: true }
+    val useDynamicColor: Flow<Boolean> = appContext.settingsDataStore.data.map { it[useDynamicColorKey] ?: false }
+    val appPalette: Flow<AppPalette> = appContext.settingsDataStore.data.map { prefs ->
+        val name = prefs[appPaletteKey] ?: AppPalette.BOOKMORY_AMBER.name
+        try {
+            AppPalette.valueOf(name)
+        } catch (_: Exception) {
+            AppPalette.BOOKMORY_AMBER
+        }
+    }
     val userName: Flow<String> = appContext.settingsDataStore.data.map { it[userNameKey] ?: "Reader" }
     val workMinutes: Flow<Int> = appContext.settingsDataStore.data.map { it[workMinutesKey] ?: 25 }
     val breakMinutes: Flow<Int> = appContext.settingsDataStore.data.map { it[breakMinutesKey] ?: 5 }
@@ -56,9 +77,12 @@ class SettingsRepository(context: Context) {
 
     suspend fun setDailyGoal(pages: Int) { appContext.settingsDataStore.edit { it[dailyGoalKey] = pages } }
     suspend fun setYearlyGoal(books: Int) { appContext.settingsDataStore.edit { it[yearlyGoalKey] = books } }
+    suspend fun setMonthlyGoalPages(pages: Int) { appContext.settingsDataStore.edit { it[monthlyGoalPagesKey] = pages } }
+    suspend fun setMonthlyGoalBooks(books: Int) { appContext.settingsDataStore.edit { it[monthlyGoalBooksKey] = books } }
     suspend fun setDndDuringSession(enabled: Boolean) { appContext.settingsDataStore.edit { it[dndKey] = enabled } }
     suspend fun setThemeMode(mode: Int) { appContext.settingsDataStore.edit { it[themeModeKey] = mode } }
     suspend fun setUseDynamicColor(enabled: Boolean) { appContext.settingsDataStore.edit { it[useDynamicColorKey] = enabled } }
+    suspend fun setAppPalette(palette: AppPalette) { appContext.settingsDataStore.edit { it[appPaletteKey] = palette.name } }
     suspend fun setUserName(name: String) { appContext.settingsDataStore.edit { it[userNameKey] = name } }
     suspend fun setWorkMinutes(mins: Int) { appContext.settingsDataStore.edit { it[workMinutesKey] = mins } }
     suspend fun setBreakMinutes(mins: Int) { appContext.settingsDataStore.edit { it[breakMinutesKey] = mins } }

@@ -24,8 +24,10 @@ import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Place
+import com.example.booktracker.app.analytics.AnalyticsEngine
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
@@ -191,7 +193,7 @@ fun SessionSaveScreen(
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             val end = endDateTime.atZone(zone).toInstant().toEpochMilli()
                             val start = end - durationSeconds * 1000L
-                            onSave(endPage, tag, start, end, status)
+                            onSave(endPage, tag, start, end, effectiveStatus)
                         },
                         shape = RoundedCornerShape(50),
                         modifier = Modifier.padding(end = 12.dp)
@@ -281,6 +283,55 @@ fun SessionSaveScreen(
                             } else {
                                 status = BookStatus.FINISHED
                                 if (book.totalPages > 0) endPage = book.totalPages
+                            }
+                        }
+                    }
+                }
+            }
+
+            val deltaPages = (endPage - book.currentPage).coerceAtLeast(0)
+            val sessionPpm = remember(deltaPages, durationSeconds) {
+                AnalyticsEngine.sessionSpeedPpm(deltaPages, durationSeconds)
+            }
+            val sessionSpeedText = remember(sessionPpm) { AnalyticsEngine.formatSessionPpm(sessionPpm) }
+            val remainingPages = if (book.totalPages > 0) (book.totalPages - endPage).coerceAtLeast(0) else 0
+            val remainingMinutes = if (remainingPages > 0 && sessionPpm != null && sessionPpm > 0f) {
+                (remainingPages / sessionPpm).toLong()
+            } else null
+            val remainingEtaText = remember(remainingMinutes) { AnalyticsEngine.formatEstimatedTime(remainingMinutes) }
+
+            if (deltaPages > 0 && durationSeconds >= 60 && sessionSpeedText != null) {
+                Spacer(Modifier.height(12.dp))
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Filled.Speed,
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                "+$deltaPages $unit at $sessionSpeedText",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (remainingPages > 0 && remainingEtaText != null) {
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    "~$remainingEtaText to finish book at this pace",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }

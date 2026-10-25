@@ -70,25 +70,51 @@ fun Modifier.bounceClick(
 fun Modifier.shimmer(): Modifier = composed {
     val transition = rememberInfiniteTransition(label = "shimmer")
     val translateAnim by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1000f,
+        initialValue = -500f,
+        targetValue = 2000f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1000),
+            animation = tween(durationMillis = 1200),
             repeatMode = RepeatMode.Restart
         ),
         label = "shimmerTranslate"
     )
 
     val shimmerColors = listOf(
-        Color.LightGray.copy(alpha = 0.6f),
-        Color.LightGray.copy(alpha = 0.2f),
-        Color.LightGray.copy(alpha = 0.6f)
+        Color.LightGray.copy(alpha = 0.35f),
+        Color.LightGray.copy(alpha = 0.1f),
+        Color.LightGray.copy(alpha = 0.35f)
     )
 
     val brush = Brush.linearGradient(
         colors = shimmerColors,
-        start = Offset.Zero,
+        start = Offset(x = translateAnim - 500f, y = translateAnim - 500f),
         end = Offset(x = translateAnim, y = translateAnim)
     )
     Modifier.background(brush)
 }
+
+/**
+ * A gentle, ambient breathing pulse animation for live or active indicators.
+ */
+fun Modifier.pulseAnimation(
+    minScale: Float = 0.96f,
+    maxScale: Float = 1.04f,
+    durationMillis: Int = 1400
+): Modifier = composed {
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = minScale,
+        targetValue = maxScale,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = durationMillis),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseScale"
+    )
+
+    this.graphicsLayer {
+        scaleX = scale
+        scaleY = scale
+    }
+}
+

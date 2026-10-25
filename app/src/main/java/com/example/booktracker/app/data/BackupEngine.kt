@@ -179,6 +179,8 @@ object BackupEngine {
         put("timestamp", timestamp)
         put("pageNumber", pageNumber)
         put("content", content)
+        put("type", type.name)
+        put("markdownContent", markdownContent)
         put("isFavorite", isFavorite)
     }
 
@@ -188,6 +190,8 @@ object BackupEngine {
         timestamp = optLong("timestamp"),
         pageNumber = optInt("pageNumber"),
         content = optString("content"),
+        type = runCatching { NoteType.valueOf(optString("type")) }.getOrDefault(NoteType.BOOK_CONTENT),
+        markdownContent = optString("markdownContent"),
         isFavorite = optBoolean("isFavorite")
     )
 

@@ -1,6 +1,7 @@
 package com.example.booktracker.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,12 +24,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.Color
 import com.example.booktracker.app.analytics.AnalyticsEngine
+import com.example.booktracker.app.analytics.Badge
 import com.example.booktracker.app.analytics.BadgeEngine
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.Session
+import com.example.booktracker.app.ui.animations.bounceClick
+import com.example.booktracker.app.analytics.GoalEngine
 import com.example.booktracker.app.util.MarkdownExporter
 import java.time.Instant
 import java.time.LocalDate
@@ -51,6 +57,7 @@ fun ProfileScreen(
     onOpenBook: (Book) -> Unit = {},
     onOpenWrapped: () -> Unit = {},
     onUpdateName: (String) -> Unit = {},
+    onEditGoal: () -> Unit = {},
     unlockedBadges: Set<String> = emptySet(),
     modifier: Modifier = Modifier
 ) {
@@ -75,6 +82,15 @@ fun ProfileScreen(
             Instant.ofEpochMilli(it).atZone(zone).toLocalDate()
                 .format(DateTimeFormatter.ofPattern("MMM yyyy"))
         }
+    }
+
+    var selectedBadge by remember { mutableStateOf<Badge?>(null) }
+    selectedBadge?.let { badge ->
+        BadgeDetailDialog(
+            badge = badge,
+            isUnlocked = unlockedBadges.contains(badge.id),
+            onDismiss = { selectedBadge = null }
+        )
     }
 
     LazyColumn(
@@ -173,7 +189,7 @@ fun ProfileScreen(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onOpenWrapped() }
+                    .bounceClick { onOpenWrapped() }
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
@@ -209,52 +225,75 @@ fun ProfileScreen(
             }
         }
 
-        // Yearly goal progress (goal set in Settings).
+        // Yearly goal progress with pacing badge
         item {
+            val yearlyPace = remember(yearlyGoal, finishedThisYear) {
+                GoalEngine.calculateYearlyPace(yearlyGoal, finishedThisYear, LocalDate.now(zone))
+            }
             Card(
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .bounceClick(onClick = onEditGoal)
             ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(72.dp)) {
-                        val target = (finishedThisYear.toFloat() / yearlyGoal.coerceAtLeast(1))
-                            .coerceIn(0f, 1f)
-                        val progress by androidx.compose.animation.core.animateFloatAsState(
-                            targetValue = target,
-                            label = "yearlyProgress"
-                        )
-                        CircularProgressIndicator(
-                            progress = { progress },
-                            modifier = Modifier.fillMaxSize(),
-                            color = MaterialTheme.colorScheme.primary,
-                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                            strokeWidth = 8.dp,
-                            strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-                        )
-                        Text(
-                            "$finishedThisYear",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                    }
-                    Spacer(Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("$thisYear Reading Goal", style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            "$finishedThisYear of $yearlyGoal books finished",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        if (finishedThisYear >= yearlyGoal) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(72.dp)) {
+                            val target = (finishedThisYear.toFloat() / yearlyGoal.coerceAtLeast(1))
+                                .coerceIn(0f, 1f)
+                            val progress by androidx.compose.animation.core.animateFloatAsState(
+                                targetValue = target,
+                                label = "yearlyProgress"
+                            )
+                            CircularProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier.fillMaxSize(),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                strokeWidth = 8.dp,
+                                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                            )
+                            Text(
+                                "$finishedThisYear",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("$thisYear Reading Goal", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Icon(
+                                    Icons.Filled.Edit,
+                                    contentDescription = "Edit Goal",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                             Spacer(Modifier.height(2.dp))
                             Text(
-                                "Goal complete — raise it in Settings?",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary
+                                "$finishedThisYear of $yearlyGoal books finished",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                yearlyPace.message,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = when (yearlyPace.status) {
+                                    GoalEngine.GoalPaceStatus.AHEAD -> MaterialTheme.colorScheme.primary
+                                    GoalEngine.GoalPaceStatus.BEHIND -> MaterialTheme.colorScheme.error
+                                    GoalEngine.GoalPaceStatus.ON_TRACK -> MaterialTheme.colorScheme.secondary
+                                }
                             )
                         }
                     }
@@ -283,7 +322,7 @@ fun ProfileScreen(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onOpenBook(currentBook) }
+                        .bounceClick { onOpenBook(currentBook) }
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -376,17 +415,65 @@ fun ProfileScreen(
             }
         }
 
-        // Secret Badges Grid
+        // Reading Achievements & Badges Gallery
         item {
+            var badgeFilter by remember { mutableStateOf("ALL") }
+            val allBadges = BadgeEngine.BADGES
+            val unlockedCount = allBadges.count { unlockedBadges.contains(it.id) }
+            val displayedBadges = remember(badgeFilter, unlockedBadges) {
+                when (badgeFilter) {
+                    "UNLOCKED" -> allBadges.filter { unlockedBadges.contains(it.id) }
+                    "LOCKED" -> allBadges.filter { !unlockedBadges.contains(it.id) }
+                    else -> allBadges
+                }
+            }
+
             Column {
-                Text(
-                    "Secret Badges",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-                // Use a lazy grid equivalent using simple rows because LazyColumn can't easily nest LazyVerticalGrid
-                val badges = BadgeEngine.BADGES
-                val rows = badges.chunked(2)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            "Reading Achievements",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            "$unlockedCount of ${allBadges.size} Unlocked",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    // Filter toggle chips
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf("ALL" to "All", "UNLOCKED" to "Earned", "LOCKED" to "Locked").forEach { (key, label) ->
+                            val selected = badgeFilter == key
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+                                border = if (selected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)) else null,
+                                modifier = Modifier.bounceClick { badgeFilter = key }
+                            ) {
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                val rows = displayedBadges.chunked(2)
                 rows.forEach { rowBadges ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -394,48 +481,90 @@ fun ProfileScreen(
                     ) {
                         rowBadges.forEach { badge ->
                             val isUnlocked = unlockedBadges.contains(badge.id)
+                            val tierColor = getBadgeTierColor(badge.tier)
                             Card(
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .bounceClick { selectedBadge = badge },
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (isUnlocked) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    containerColor = if (isUnlocked) tierColor.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                                 ),
-                                shape = RoundedCornerShape(16.dp)
+                                border = if (isUnlocked) BorderStroke(1.5.dp, tierColor.copy(alpha = 0.45f)) else null,
+                                shape = RoundedCornerShape(18.dp)
                             ) {
                                 Column(
-                                    modifier = Modifier.padding(16.dp),
+                                    modifier = Modifier.padding(14.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
+                                    // Tier tag
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = if (isUnlocked) tierColor.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.7f)
+                                    ) {
+                                        Text(
+                                            badge.tier,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isUnlocked) tierColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+
+                                    Spacer(Modifier.height(10.dp))
+
                                     Box(
                                         modifier = Modifier
-                                            .size(48.dp)
+                                            .size(52.dp)
                                             .clip(CircleShape)
-                                            .background(if (isUnlocked) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surface),
+                                            .background(if (isUnlocked) tierColor.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surface)
+                                            .border(
+                                                1.5.dp,
+                                                if (isUnlocked) tierColor.copy(alpha = 0.8f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                                                CircleShape
+                                            ),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         if (isUnlocked) {
-                                            Icon(badge.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(24.dp))
+                                            Icon(
+                                                badge.icon,
+                                                contentDescription = null,
+                                                tint = tierColor,
+                                                modifier = Modifier.size(26.dp)
+                                            )
                                         } else {
-                                            Icon(Icons.Filled.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+                                            Icon(
+                                                Icons.Filled.Lock,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                                modifier = Modifier.size(24.dp)
+                                            )
                                         }
                                     }
-                                    Spacer(Modifier.height(8.dp))
+
+                                    Spacer(Modifier.height(10.dp))
+
                                     Text(
-                                        if (isUnlocked) badge.title else "???",
+                                        badge.title,
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
-                                        textAlign = TextAlign.Center
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
+
                                     Spacer(Modifier.height(4.dp))
+
                                     Text(
-                                        if (isUnlocked) badge.description else "Keep reading to discover.",
+                                        if (isUnlocked) badge.description else "Tap to view challenge",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        textAlign = TextAlign.Center
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 2,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
                                 }
                             }
                         }
-                        // Handle odd number of badges in the last row
                         if (rowBadges.size == 1) {
                             Spacer(modifier = Modifier.weight(1f))
                         }
@@ -597,7 +726,7 @@ fun SettingsRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .bounceClick(onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -606,4 +735,119 @@ fun SettingsRow(
         Text(label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
         Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
+}
+
+internal fun getBadgeTierColor(tier: String): Color {
+    return when (tier.uppercase()) {
+        "PLATINUM" -> Color(0xFF00E5FF)
+        "GOLD" -> Color(0xFFFFB300)
+        "SILVER" -> Color(0xFFB0BEC5)
+        else -> Color(0xFFCD7F32) // BRONZE
+    }
+}
+
+@Composable
+internal fun BadgeDetailDialog(
+    badge: Badge,
+    isUnlocked: Boolean,
+    onDismiss: () -> Unit
+) {
+    val tierColor = getBadgeTierColor(badge.tier)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = null,
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = tierColor.copy(alpha = 0.18f),
+                    border = BorderStroke(1.dp, tierColor.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        "✦ ${badge.tier} ACHIEVEMENT ✦",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = tierColor,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(if (isUnlocked) tierColor.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant)
+                        .border(
+                            2.dp,
+                            if (isUnlocked) tierColor else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        if (isUnlocked) badge.icon else Icons.Filled.Lock,
+                        contentDescription = null,
+                        tint = if (isUnlocked) tierColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                Text(
+                    badge.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                Text(
+                    badge.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(Modifier.height(20.dp))
+
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (isUnlocked) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            if (isUnlocked) Icons.Filled.CheckCircle else Icons.Filled.Lock,
+                            contentDescription = null,
+                            tint = if (isUnlocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            if (isUnlocked) "Unlocked & Earned!" else "Locked Challenge",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isUnlocked) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close", fontWeight = FontWeight.Bold)
+            }
+        }
+    )
 }

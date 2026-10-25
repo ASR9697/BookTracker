@@ -71,6 +71,20 @@ class BookTrackerViewModel(
             SettingsRepository.DEFAULT_YEARLY_GOAL_BOOKS
         )
 
+    val monthlyGoalPages: StateFlow<Int> = settings.monthlyGoalPages
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            500
+        )
+
+    val monthlyGoalBooks: StateFlow<Int> = settings.monthlyGoalBooks
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            2
+        )
+
     val dndDuringSession: StateFlow<Boolean> = settings.dndDuringSession
         .stateIn(
             viewModelScope,
@@ -86,7 +100,14 @@ class BookTrackerViewModel(
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
-            true
+            false
+        )
+
+    val appPalette: StateFlow<com.example.booktracker.app.data.AppPalette> = settings.appPalette
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            com.example.booktracker.app.data.AppPalette.BOOKMORY_AMBER
         )
 
     val useAppLock: StateFlow<Boolean> = settings.useAppLock
@@ -157,7 +178,7 @@ class BookTrackerViewModel(
     val newUnlockEvents = _newUnlockEvents.receiveAsFlow()
     
     val tbrCurationBooks: StateFlow<List<Book>> = books.map { list ->
-        list.filter { it.status == BookStatus.SHORTLIST.name }
+        list.filter { it.status == BookStatus.TO_READ.name }
             .sortedByDescending { it.lastUpdated }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -504,6 +525,14 @@ class BookTrackerViewModel(
         viewModelScope.launch { settings.setYearlyGoal(books) }
     }
 
+    fun setMonthlyGoalPages(pages: Int) {
+        viewModelScope.launch { settings.setMonthlyGoalPages(pages) }
+    }
+
+    fun setMonthlyGoalBooks(books: Int) {
+        viewModelScope.launch { settings.setMonthlyGoalBooks(books) }
+    }
+
     fun setDndDuringSession(enabled: Boolean) {
         viewModelScope.launch { settings.setDndDuringSession(enabled) }
     }
@@ -514,6 +543,10 @@ class BookTrackerViewModel(
 
     fun setUseDynamicColor(enabled: Boolean) {
         viewModelScope.launch { settings.setUseDynamicColor(enabled) }
+    }
+
+    fun setAppPalette(palette: com.example.booktracker.app.data.AppPalette) {
+        viewModelScope.launch { settings.setAppPalette(palette) }
     }
 
 
@@ -528,8 +561,9 @@ class BookTrackerViewModel(
     }
 
     // Timer Controls
-    fun setTimerBook(bookId: String?) {
+    fun setTimerBook(bookId: String?, bookTitle: String? = null) {
         com.example.booktracker.app.data.ServiceLocator.timerBookId.value = bookId
+        com.example.booktracker.app.data.ServiceLocator.timerBookTitle.value = bookTitle
         if (bookId == null) {
             com.example.booktracker.app.data.ServiceLocator.timerIsRunning.value = false
             soundscapeEngine.stop()

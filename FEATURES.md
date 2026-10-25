@@ -82,5 +82,9 @@ This file acts as the central source of truth for all implemented and planned fe
 > are done and are in the Completed section above. The items below are Phases 3–4. See
 > [ROADMAP.md](ROADMAP.md) for the detailed implementation plan, ordering, and per-feature approach.
 
-### Unscheduled / Backlog
-- [ ] No more pending features in the backlog at this time.
+### Phase 5 — Visual Excellence & Reading Immersion (Backlog)
+- [ ] **Virtual 3D Spine Bookshelf View**: Realistic wooden/dark bookshelf layout where books stand side-by-side with page-proportional spine thickness, cover-derived palette styling, embossed titles, dangling ribbons for currently-reading books, and pull-out animations.
+- [ ] **Annual Reading Heatmap ("Year in Pixels")**: 52-week calendar matrix with 5 intensity levels (Neutral, Soft Tint, Radiant Primary, High-Intensity Accent, Fiery Flame) reflecting pages read per day, complete with a day-detail inspection sheet.
+- [ ] **Single Book "Finished Wrap-Up" Victory Card**: Dedicated 1:1 and 9:16 export cards celebrating completed books with rating stars, personal review snippet, reading duration, velocity, and top quotes.
+- [ ] **Smart Reading Challenges & Goal Pace Forecaster**: Comprehensive goal projections in `GoalEngine` including pace ahead/behind metrics, daily habit consistency percentages, and seasonal reading sprint challenges.
+- [ ] **Library Loan Due Date Alerts & Lending Tracker**: Visual due date countdown badges for library loans and a lent-out register tracking physical copies lent to friends.

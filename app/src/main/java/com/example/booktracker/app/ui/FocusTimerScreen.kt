@@ -1,77 +1,73 @@
 package com.example.booktracker.app.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.*
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.booktracker.app.analytics.AnalyticsEngine
 import com.example.booktracker.app.format.FormatAdaptabilityLayer
 import com.example.booktracker.app.journal.NoiseType
 import com.example.booktracker.shared.models.Book
-import com.example.booktracker.shared.models.NoteType
 import java.util.Locale
 
 enum class TimerPhase { WORK, BREAK }
 enum class TimerMode { COUNTDOWN, STOPWATCH }
 
+private fun formatTimerClock(totalSeconds: Int): String {
+    val hrs = totalSeconds / 3600
+    val mins = (totalSeconds % 3600) / 60
+    val secs = totalSeconds % 60
+    return if (hrs > 0) {
+        String.format(Locale.getDefault(), "%d:%02d:%02d", hrs, mins, secs)
+    } else {
+        String.format(Locale.getDefault(), "%02d:%02d", mins, secs)
+    }
+}
+
 /**
- * The reading screen. Everything on it is in service of one thing — staying in
- * the book — so the surface takes its colour from the cover, the only large
- * control is play/pause, and capturing a note never leaves the timer running
- * behind a different screen.
+ * Flagship Ambient Zen Reading Timer & Focus Companion.
+ * Features reactive breathing cover aura, halo progress ring, live page stepper,
+ * Pomodoro quick presets, procedural soundscape dock with frequency visualizer,
+ * and distraction-free OLED Zen mode.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,190 +88,635 @@ fun FocusTimerScreen(
     val noiseType by viewModel.noiseType.collectAsState()
     val volume by viewModel.timerVolume.collectAsState()
     val openSession by viewModel.openSession.collectAsState()
+    val completedSessions by viewModel.completedSessions.collectAsState()
 
-    var showStartDialog by remember { mutableStateOf(false) }
-    var showCountdownDialog by remember { mutableStateOf(false) }
-    var showSoundscape by remember { mutableStateOf(false) }
+    val bookSessions = remember(book.id, completedSessions) {
+        completedSessions.filter { it.bookId == book.id }
+    }
+    val speedPph = remember(bookSessions, completedSessions) {
+        AnalyticsEngine.bookPagesPerHour(bookSessions, completedSessions)
+    }
+    val speedStr = remember(speedPph) {
+        AnalyticsEngine.formatReadingSpeed(speedPph)
+    }
+    val minutesLeft = remember(book, bookSessions, completedSessions) {
+        AnalyticsEngine.bookEstimatedMinutesLeft(book, bookSessions, completedSessions)
+    }
+    val etaStr = remember(minutesLeft) {
+        AnalyticsEngine.formatEstimatedTime(minutesLeft)
+    }
+
+    // Live session progress
+    var sessionCurrentPage by remember(book.currentPage) { mutableIntStateOf(book.currentPage) }
+    var isZenMode by remember { mutableStateOf(false) }
+    var showSoundscapeSheet by remember { mutableStateOf(false) }
     var showNoteSheet by remember { mutableStateOf(false) }
 
     val haptic = LocalHapticFeedback.current
     val accent = rememberCoverAccent(book.coverUrl)
-    val background = accent.immersiveBackground(MaterialTheme.colorScheme.surfaceContainerHighest)
-    val onBackground = if (background.luminance() > 0.4f) Color.Black else Color.White
+    val baseVibrant = accent.vibrant ?: MaterialTheme.colorScheme.primary
+    val baseDominant = accent.dominant ?: MaterialTheme.colorScheme.surfaceContainerHighest
+    val background = accent.immersiveBackground(MaterialTheme.colorScheme.surfaceContainerLowest)
+    val onBackground = if (background.luminance() > 0.45f) Color.Black else Color.White
 
-    LaunchedEffect(book.id) { viewModel.setTimerBook(book.id) }
-
-    LaunchedEffect(openSession) {
-        if (openSession == null && !isRunning) showStartDialog = true
+    // Auto-start session immediately without modal friction
+    LaunchedEffect(book.id, book.title) {
+        viewModel.setTimerBook(book.id, book.title)
+        if (openSession == null) {
+            onStartSession(book, book.currentPage)
+        }
     }
 
     LaunchedEffect(Unit) {
         com.example.booktracker.app.data.ServiceLocator.timerExpiredEvents.collect { onSaveSession() }
     }
 
+    // Breathing light animation for active focus
+    val infiniteTransition = rememberInfiniteTransition(label = "ambient_focus_aura")
+    val auraScale by infiniteTransition.animateFloat(
+        initialValue = if (isRunning) 0.94f else 1.0f,
+        targetValue = if (isRunning) 1.08f else 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 4000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "aura_scale"
+    )
+    val auraAlpha by infiniteTransition.animateFloat(
+        initialValue = if (isRunning) 0.35f else 0.18f,
+        targetValue = if (isRunning) 0.65f else 0.18f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 4000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "aura_alpha"
+    )
+
     val displaySeconds = if (mode == TimerMode.STOPWATCH) elapsedSeconds else timeLeftSeconds
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(background)
+            .background(if (isZenMode) Color(0xFF090D14) else background)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onDoubleTap = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        isZenMode = !isZenMode
+                    }
+                )
+            }
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
+        // Ambient breathing radial glow behind center
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(320.dp * auraScale)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            baseVibrant.copy(alpha = auraAlpha),
+                            baseDominant.copy(alpha = auraAlpha * 0.5f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Top Bar
+            AnimatedVisibility(
+                visible = !isZenMode,
+                enter = fadeIn(),
+                exit = fadeOut()
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Filled.Close, contentDescription = "Leave timer", tint = onBackground)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier
+                            .background(onBackground.copy(alpha = 0.12f), CircleShape)
+                            .size(42.dp)
+                    ) {
+                        Icon(Icons.Filled.Close, contentDescription = "Exit timer", tint = onBackground)
+                    }
+
+                    // Mode segmented pill: Stopwatch vs Pomodoro
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = onBackground.copy(alpha = 0.12f),
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    ) {
+                        Row(modifier = Modifier.padding(3.dp)) {
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = if (mode == TimerMode.STOPWATCH) onBackground else Color.Transparent,
+                                modifier = Modifier.clickable {
+                                    viewModel.setTimerMode(TimerMode.STOPWATCH)
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Timer,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = if (mode == TimerMode.STOPWATCH) background else onBackground
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        "Stopwatch",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (mode == TimerMode.STOPWATCH) background else onBackground
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = if (mode == TimerMode.COUNTDOWN) onBackground else Color.Transparent,
+                                modifier = Modifier.clickable {
+                                    viewModel.setTimerMode(TimerMode.COUNTDOWN)
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "🍅",
+                                        fontSize = 12.sp
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        "Pomodoro",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (mode == TimerMode.COUNTDOWN) background else onBackground
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconButton(
+                            onClick = { showNoteSheet = true },
+                            modifier = Modifier
+                                .background(onBackground.copy(alpha = 0.12f), CircleShape)
+                                .size(42.dp)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.NoteAdd, contentDescription = "Add quick note", tint = onBackground)
+                        }
+
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                isZenMode = true
+                            },
+                            modifier = Modifier
+                                .background(onBackground.copy(alpha = 0.12f), CircleShape)
+                                .size(42.dp)
+                        ) {
+                            Icon(Icons.Filled.Bedtime, contentDescription = "Enter Zen mode", tint = onBackground)
+                        }
+                    }
                 }
-                Spacer(Modifier.weight(1f))
-                IconButton(onClick = { showSoundscape = true }) {
-                    Icon(Icons.Filled.Tune, contentDescription = "Soundscape", tint = onBackground)
+            }
+
+            // Pomodoro Quick Presets Row
+            AnimatedVisibility(
+                visible = !isZenMode && mode == TimerMode.COUNTDOWN,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp)
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    val presets = listOf(15 to "15m", 25 to "25m Focus", 30 to "30m", 45 to "45m", 60 to "60m Deep")
+                    presets.forEach { (mins, label) ->
+                        val isCurrent = timeLeftSeconds == mins * 60 && !isRunning
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isCurrent) onBackground else onBackground.copy(alpha = 0.12f),
+                            modifier = Modifier
+                                .padding(horizontal = 4.dp)
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    viewModel.setWorkMinutes(mins)
+                                }
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isCurrent) background else onBackground,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
                 }
-                Spacer(Modifier.width(4.dp))
+            }
+
+            Spacer(Modifier.weight(0.4f))
+
+            // Central Luminous Halo Ring & 3D Book Showcase
+            Box(
+                modifier = Modifier
+                    .size(240.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                // Outer Luminous Halo Arc Canvas
+                val haloProgress = when (mode) {
+                    TimerMode.STOPWATCH -> ((elapsedSeconds % 1800) / 1800f).coerceIn(0f, 1f)
+                    TimerMode.COUNTDOWN -> {
+                        val totalSecs = (com.example.booktracker.app.data.ServiceLocator.timeLeftSeconds.value.coerceAtLeast(1))
+                        (timeLeftSeconds.toFloat() / totalSecs).coerceIn(0f, 1f)
+                    }
+                }
+
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val strokeWidth = 5.dp.toPx()
+                    val inset = strokeWidth / 2f
+                    val arcSize = Size(size.width - strokeWidth, size.height - strokeWidth)
+
+                    // Track ring
+                    drawArc(
+                        color = onBackground.copy(alpha = 0.12f),
+                        startAngle = -90f,
+                        sweepAngle = 360f,
+                        useCenter = false,
+                        topLeft = Offset(inset, inset),
+                        size = arcSize,
+                        style = Stroke(width = strokeWidth)
+                    )
+
+                    // Animated progress halo
+                    val sweep = if (mode == TimerMode.COUNTDOWN) (360f * haloProgress) else (360f * haloProgress.coerceAtLeast(0.04f))
+                    drawArc(
+                        brush = Brush.sweepGradient(
+                            listOf(
+                                baseVibrant,
+                                baseVibrant.copy(alpha = 0.7f),
+                                baseVibrant
+                            )
+                        ),
+                        startAngle = -90f,
+                        sweepAngle = sweep,
+                        useCenter = false,
+                        topLeft = Offset(inset, inset),
+                        size = arcSize,
+                        style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                    )
+                }
+
+                // Centered Book Cover Card with Progress Pill
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color.Transparent,
+                    shadowElevation = 16.dp,
+                    modifier = Modifier.size(width = 114.dp, height = 168.dp)
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        BookCover(
+                            url = book.coverUrl,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(16.dp))
+                        )
+
+                        // Bottom page tag pill
+                        Surface(
+                            shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
+                            color = Color.Black.copy(alpha = 0.75f),
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "p. $sessionCurrentPage${if (book.totalPages > 0) " / ${book.totalPages}" else ""}",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            // Digital Clock Face
+            Text(
+                text = formatTimerClock(displaySeconds),
+                fontSize = if (displaySeconds >= 3600) 48.sp else 58.sp,
+                fontWeight = FontWeight.Medium,
+                fontFamily = FontFamily.SansSerif,
+                letterSpacing = 1.sp,
+                color = onBackground
+            )
+
+            Spacer(Modifier.height(6.dp))
+
+            // Status & Velocity Subtitle
+            Text(
+                text = when {
+                    phase == TimerPhase.BREAK -> "☕ Rest your eyes & take a break"
+                    isRunning && speedStr != null -> "📖 Deep Reading · ⚡ $speedStr"
+                    isRunning -> "📖 Deep Reading…"
+                    else -> "⏸ Session Paused"
+                },
+                style = MaterialTheme.typography.titleSmall,
+                color = onBackground.copy(alpha = 0.75f),
+                fontWeight = FontWeight.Medium
+            )
+
+            if (etaStr != null && isRunning) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "⏱ ~$etaStr to finish book",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = onBackground.copy(alpha = 0.55f)
+                )
+            }
+
+            Spacer(Modifier.height(18.dp))
+
+            // In-Session Live Page Stepper Capsule
+            AnimatedVisibility(
+                visible = !isZenMode,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = onBackground.copy(alpha = 0.18f),
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        viewModel.setTimerRunning(false)
-                        onSaveSession()
-                    },
-                    modifier = Modifier.padding(end = 12.dp)
+                    color = onBackground.copy(alpha = 0.12f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, onBackground.copy(alpha = 0.18f))
                 ) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Filled.Check, contentDescription = null, tint = onBackground, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Done", color = onBackground, fontWeight = FontWeight.SemiBold)
+                        IconButton(
+                            onClick = {
+                                if (sessionCurrentPage > 0) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    sessionCurrentPage -= 1
+                                }
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(Icons.Filled.Remove, contentDescription = "Page back", tint = onBackground, modifier = Modifier.size(18.dp))
+                        }
+
+                        val sessionDelta = (sessionCurrentPage - book.currentPage).coerceAtLeast(0)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        ) {
+                            Text(
+                                "Page $sessionCurrentPage",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = onBackground
+                            )
+                            if (sessionDelta > 0) {
+                                Text(
+                                    "+$sessionDelta pages read",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = baseVibrant,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                sessionCurrentPage += 1
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(Icons.Filled.Add, contentDescription = "Page forward", tint = onBackground, modifier = Modifier.size(18.dp))
+                        }
+
+                        VerticalDivider(modifier = Modifier.height(20.dp).padding(horizontal = 4.dp))
+
+                        // Quick +5 button
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = onBackground.copy(alpha = 0.15f),
+                            modifier = Modifier.clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                sessionCurrentPage += 5
+                            }
+                        ) {
+                            Text(
+                                "+5",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = onBackground,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
                     }
                 }
             }
 
             Spacer(Modifier.weight(0.6f))
 
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+            // Fluid Capsule Main Controls (Play/Pause & Finish)
+            AnimatedVisibility(
+                visible = !isZenMode,
+                enter = fadeIn(),
+                exit = fadeOut()
             ) {
-                Text(
-                    formatClock(displaySeconds),
-                    fontSize = 60.sp,
-                    fontWeight = FontWeight.Light,
-                    color = onBackground
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    when {
-                        phase == TimerPhase.BREAK -> "Take a break…"
-                        isRunning -> "Reading…"
-                        else -> "Paused"
-                    },
-                    style = MaterialTheme.typography.titleMedium,
-                    color = onBackground.copy(alpha = 0.7f)
-                )
-
-                Spacer(Modifier.height(32.dp))
-
-                Box(
+                Row(
                     modifier = Modifier
-                        .size(140.dp)
-                        .background(onBackground.copy(alpha = 0.25f), CircleShape)
-                        .padding(10.dp)
-                        .background(onBackground, CircleShape)
-                        .clickable {
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Play / Pause Capsule Button
+                    Button(
+                        onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            if (isRunning) {
-                                viewModel.setTimerRunning(false)
-                            } else if (openSession == null) {
-                                showStartDialog = true
-                            } else {
-                                viewModel.setTimerRunning(true)
-                            }
+                            viewModel.setTimerRunning(!isRunning)
                         },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        if (isRunning) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        contentDescription = if (isRunning) "Pause" else "Resume",
-                        modifier = Modifier.size(56.dp),
-                        tint = background
-                    )
-                }
-
-                Spacer(Modifier.height(28.dp))
-
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = Color.Transparent,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, onBackground.copy(alpha = 0.4f)),
-                    onClick = { showCountdownDialog = true }
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                        modifier = Modifier
+                            .weight(1.3f)
+                            .height(58.dp),
+                        shape = RoundedCornerShape(28.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isRunning) onBackground.copy(alpha = 0.18f) else onBackground,
+                            contentColor = if (isRunning) onBackground else background
+                        )
                     ) {
-                        Icon(Icons.Filled.Timer, contentDescription = null, tint = onBackground, modifier = Modifier.size(18.dp))
+                        Icon(
+                            imageVector = if (isRunning) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                            contentDescription = if (isRunning) "Pause" else "Resume",
+                            modifier = Modifier.size(24.dp)
+                        )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            if (mode == TimerMode.COUNTDOWN) "Change countdown" else "Set countdown",
-                            color = onBackground,
-                            style = MaterialTheme.typography.labelLarge
+                            text = if (isRunning) "Pause" else "Resume",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    // Finish / Done Capsule Button
+                    Button(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            viewModel.setTimerRunning(false)
+                            // Advance current page in book model before moving to session review
+                            if (sessionCurrentPage != book.currentPage) {
+                                viewModel.setProgress(book, sessionCurrentPage)
+                            }
+                            onSaveSession()
+                        },
+                        modifier = Modifier
+                            .weight(1.3f)
+                            .height(58.dp),
+                        shape = RoundedCornerShape(28.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Icon(Icons.Filled.Check, contentDescription = "Done reading", modifier = Modifier.size(22.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Finish",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
             }
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(14.dp))
 
-            NowReadingCard(
-                book = book,
-                tint = onBackground,
-                onAddNote = { showNoteSheet = true }
-            )
+            // Ambient Soundscape Floating Bar (Equalizer Visualizer)
+            AnimatedVisibility(
+                visible = !isZenMode,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = onBackground.copy(alpha = 0.10f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showSoundscapeSheet = true }
+                        .padding(horizontal = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            val soundEmoji = when (noiseType) {
+                                NoiseType.RAIN -> "🌧️"
+                                NoiseType.FIRE -> "🔥"
+                                NoiseType.OCEAN -> "🌊"
+                                NoiseType.WHITE -> "⚪"
+                                NoiseType.BROWN -> "🤎"
+                                NoiseType.NONE -> "🎧"
+                            }
+                            Text(soundEmoji, fontSize = 18.sp)
+                            Spacer(Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = if (noiseType == NoiseType.NONE) "Ambient Soundscapes" else "${noiseType.name.lowercase().replaceFirstChar { it.uppercase() }} Sound",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = onBackground
+                                )
+                                Text(
+                                    text = if (noiseType == NoiseType.NONE) "Tap to play relaxing background audio" else "Volume ${(volume * 100).toInt()}% · Active",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = onBackground.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+
+                        // 3-Bar animated equalizer simulation when active
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val bar1 by infiniteTransition.animateFloat(
+                                initialValue = 6f, targetValue = 18f,
+                                animationSpec = infiniteRepeatable(tween(350, easing = LinearEasing), repeatMode = RepeatMode.Reverse),
+                                label = "eq1"
+                            )
+                            val bar2 by infiniteTransition.animateFloat(
+                                initialValue = 16f, targetValue = 8f,
+                                animationSpec = infiniteRepeatable(tween(420, easing = LinearEasing), repeatMode = RepeatMode.Reverse),
+                                label = "eq2"
+                            )
+                            val bar3 by infiniteTransition.animateFloat(
+                                initialValue = 8f, targetValue = 20f,
+                                animationSpec = infiniteRepeatable(tween(300, easing = LinearEasing), repeatMode = RepeatMode.Reverse),
+                                label = "eq3"
+                            )
+
+                            if (noiseType != NoiseType.NONE && isRunning) {
+                                Box(modifier = Modifier.width(3.dp).height(bar1.dp).background(baseVibrant, CircleShape))
+                                Box(modifier = Modifier.width(3.dp).height(bar2.dp).background(baseVibrant, CircleShape))
+                                Box(modifier = Modifier.width(3.dp).height(bar3.dp).background(baseVibrant, CircleShape))
+                            } else {
+                                Icon(Icons.Filled.Tune, contentDescription = "Soundscape settings", tint = onBackground.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Zen Mode exit helper indicator
+            AnimatedVisibility(
+                visible = isZenMode,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Text(
+                    "Double-tap screen to exit Zen Mode",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = onBackground.copy(alpha = 0.4f),
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+            }
         }
     }
 
-    if (showStartDialog) {
-        StartSessionDialog(
-            currentPage = book.currentPage,
-            totalPages = book.totalPages,
-            unitName = if (book.totalPages > 0) "Page" else "Unit",
-            onDismiss = {
-                showStartDialog = false
-                if (openSession == null) onBack()
-            },
-            onConfirm = { startPage ->
-                onStartSession(book, startPage)
-                viewModel.setTimerRunning(true)
-                showStartDialog = false
-            }
-        )
-    }
-
-    if (showCountdownDialog) {
-        CountdownDialog(
-            currentMode = mode,
-            onDismiss = { showCountdownDialog = false },
-            onStopwatch = {
-                viewModel.setTimerMode(TimerMode.STOPWATCH)
-                showCountdownDialog = false
-            },
-            onMinutes = { minutes ->
-                viewModel.setTimerMode(TimerMode.COUNTDOWN)
-                viewModel.setCustomWorkMinutes(minutes)
-                showCountdownDialog = false
-            }
-        )
-    }
-
-    if (showSoundscape) {
+    // Ambient Soundscape Modal Drawer
+    if (showSoundscapeSheet) {
         ModalBottomSheet(
-            onDismissRequest = { showSoundscape = false },
+            onDismissRequest = { showSoundscapeSheet = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
         ) {
@@ -285,37 +726,84 @@ fun FocusTimerScreen(
                     .padding(horizontal = 24.dp)
                     .padding(bottom = 32.dp)
             ) {
-                Text("Soundscape", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(16.dp))
-                val options = NoiseType.entries.toTypedArray()
-                @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-                androidx.compose.foundation.layout.FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    options.forEach { type ->
-                        androidx.compose.material3.FilterChip(
-                            selected = noiseType == type,
-                            onClick = { viewModel.setNoiseType(type) },
-                            label = { Text(type.name.lowercase().replaceFirstChar { it.uppercase() }) }
-                        )
+                Text("Ambient Soundscapes", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("Procedural relaxing audio to enhance concentration", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(18.dp))
+
+                val sounds = listOf(
+                    NoiseType.NONE to ("Off" to "Mute audio"),
+                    NoiseType.RAIN to ("Rain on Window" to "Cozy gentle rain droplets"),
+                    NoiseType.FIRE to ("Crackling Hearth" to "Warm cozy fireplace rumble"),
+                    NoiseType.OCEAN to ("Ocean Waves" to "Rhythmic rolling sea swells"),
+                    NoiseType.BROWN to ("Deep Brown Noise" to "Low-frequency steady warmth"),
+                    NoiseType.WHITE to ("White Noise" to "Broadband sound isolation")
+                )
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    sounds.forEach { (type, meta) ->
+                        val isSelected = noiseType == type
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    viewModel.setNoiseType(type)
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text(
+                                        meta.first,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        meta.second,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                if (isSelected) {
+                                    Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
                     }
                 }
-                Spacer(Modifier.height(16.dp))
-                Text("Volume", style = MaterialTheme.typography.labelMedium)
+
+                Spacer(Modifier.height(20.dp))
+
+                // Sound Volume Slider
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Volume", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Text("${(volume * 100).toInt()}%", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                }
                 Slider(
                     value = volume,
                     onValueChange = { viewModel.setTimerVolume(it) },
-                    valueRange = 0f..1f
+                    valueRange = 0f..1f,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
     }
 
+    // Quick Quote / Memo Sheet
     if (showNoteSheet) {
         InSessionNoteSheet(
             book = book,
+            defaultPage = sessionCurrentPage,
             onDismiss = { showNoteSheet = false },
             onConfirm = { page, text ->
                 onAddNote(page, text)
@@ -325,132 +813,15 @@ fun FocusTimerScreen(
     }
 }
 
-@Composable
-private fun NowReadingCard(book: Book, tint: Color, onAddNote: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(20.dp)
-            .background(tint.copy(alpha = 0.12f), RoundedCornerShape(24.dp))
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        BookCover(book.coverUrl, Modifier.size(width = 62.dp, height = 92.dp))
-        Spacer(Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                book.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = tint,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (book.authors.isNotEmpty()) {
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    book.authors.joinToString(", "),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = tint.copy(alpha = 0.7f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Spacer(Modifier.height(6.dp))
-            Text(
-                buildString {
-                    append("${FormatAdaptabilityLayer.unitAbbrev(book)} ${book.currentPage}")
-                    if (book.totalPages > 0) append(" / ${book.totalPages}")
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = tint.copy(alpha = 0.7f)
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-        Surface(
-            shape = CircleShape,
-            color = tint.copy(alpha = 0.2f),
-            onClick = onAddNote
-        ) {
-            Icon(
-                Icons.AutoMirrored.Filled.NoteAdd,
-                contentDescription = "Add a note",
-                tint = tint,
-                modifier = Modifier.padding(12.dp).size(24.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun CountdownDialog(
-    currentMode: TimerMode,
-    onDismiss: () -> Unit,
-    onStopwatch: () -> Unit,
-    onMinutes: (Int) -> Unit
-) {
-    var custom by remember { mutableStateOf("") }
-    val presets = listOf(10, 15, 25, 30, 45, 60)
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Countdown") },
-        text = {
-            Column {
-                Text(
-                    "Switching now keeps the time you have already read.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(16.dp))
-                presets.chunked(3).forEach { row ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        row.forEach { minutes ->
-                            Button(
-                                onClick = { onMinutes(minutes) },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp)
-                            ) { Text("${minutes}m") }
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                }
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = custom,
-                    onValueChange = { custom = it.filter(Char::isDigit).take(3) },
-                    label = { Text("Custom minutes") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { custom.toIntOrNull()?.takeIf { it > 0 }?.let(onMinutes) },
-                enabled = (custom.toIntOrNull() ?: 0) > 0
-            ) { Text("Use custom") }
-        },
-        dismissButton = {
-            TextButton(onClick = if (currentMode == TimerMode.COUNTDOWN) onStopwatch else onDismiss) {
-                Text(if (currentMode == TimerMode.COUNTDOWN) "Count up instead" else "Cancel")
-            }
-        }
-    )
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun InSessionNoteSheet(
     book: Book,
+    defaultPage: Int,
     onDismiss: () -> Unit,
     onConfirm: (page: Int, text: String) -> Unit
 ) {
-    var pageText by remember { mutableStateOf(book.currentPage.toString()) }
+    var pageText by remember { mutableStateOf(defaultPage.toString()) }
     var noteText by remember { mutableStateOf("") }
     val page = pageText.toIntOrNull()
     val pageValid = page != null && page >= 0 && (book.totalPages <= 0 || page <= book.totalPages)
@@ -467,7 +838,7 @@ private fun InSessionNoteSheet(
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Quick note", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Quick Thought or Quote", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             OutlinedTextField(
                 value = pageText,
                 onValueChange = { pageText = it.filter(Char::isDigit).take(6) },
@@ -480,17 +851,17 @@ private fun InSessionNoteSheet(
             OutlinedTextField(
                 value = noteText,
                 onValueChange = { noteText = it },
-                label = { Text("What stood out?") },
+                label = { Text("What stood out in this passage?") },
                 minLines = 4,
                 modifier = Modifier.fillMaxWidth()
             )
             Button(
-                onClick = { onConfirm(page ?: 0, noteText.trim()) },
+                onClick = { onConfirm(page ?: defaultPage, noteText.trim()) },
                 enabled = noteText.isNotBlank() && pageValid,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(18.dp)
             ) {
-                Text("Save note", fontWeight = FontWeight.Bold)
+                Text("Save Memo", fontWeight = FontWeight.Bold)
             }
         }
     }

@@ -24,12 +24,14 @@ class ReminderWorker(
     override suspend fun doWork(): Result {
         val settings = ServiceLocator.settings(context)
         val dailyGoal = settings.dailyGoal.firstOrNull() ?: StreakEngine.DEFAULT_DAILY_GOAL_PAGES
+        val dayStartsAtHour = settings.dayStartsAtHour.firstOrNull() ?: 3
         val repository = ServiceLocator.repository(context)
         val sessions = repository.observeCompletedSessions().firstOrNull() ?: emptyList()
         
-        val todayStr = LocalDate.now().toString()
+        val zone = java.time.ZoneId.systemDefault()
+        val todayStr = StreakEngine.readingDate(System.currentTimeMillis(), zone, dayStartsAtHour).toString()
         val todayProgress = sessions
-            .filter { SessionDateHelper.getDateString(it.startTime) == todayStr }
+            .filter { StreakEngine.readingDate(it.startTime, zone, dayStartsAtHour).toString() == todayStr }
             .sumOf { it.pagesRead }
 
         if (todayProgress < dailyGoal) {
@@ -83,10 +85,3 @@ class ReminderWorker(
     }
 }
 
-object SessionDateHelper {
-    fun getDateString(timestamp: Long): String {
-        return java.time.Instant.ofEpochMilli(timestamp)
-            .atZone(java.time.ZoneId.systemDefault())
-            .toLocalDate().toString()
-    }
-}

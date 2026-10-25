@@ -5,6 +5,7 @@ import com.example.booktracker.shared.models.Session
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlin.math.roundToInt
 
 /**
  * Time-based reading analytics over completed sessions. Pure logic — no Android
@@ -38,6 +39,35 @@ object AnalyticsEngine {
         return totalPages / (totalMillis / 3_600_000f)
     }
 
+    /** Reading speed in pages per minute (ppm). */
+    fun readingSpeedPpm(sessions: List<Session>): Float? {
+        val pph = pagesPerHour(sessions) ?: return null
+        return pph / 60f
+    }
+
+    /** Single session reading velocity in pages per minute (ppm). */
+    fun sessionSpeedPpm(pagesRead: Int, durationSeconds: Int): Float? {
+        if (durationSeconds < 60 || pagesRead <= 0) return null
+        return pagesRead.toFloat() / (durationSeconds / 60f)
+    }
+
+    /** Formatted reading speed string, e.g. "1.2 p/m" or "45 p/h". */
+    fun formatReadingSpeed(pph: Float?): String? {
+        if (pph == null || pph <= 0f) return null
+        val ppm = pph / 60f
+        return if (ppm >= 0.1f) {
+            String.format(java.util.Locale.US, "%.1f p/m", ppm)
+        } else {
+            "${pph.roundToInt()} p/h"
+        }
+    }
+
+    /** Formatted single session speed string, e.g. "1.2 p/m". */
+    fun formatSessionPpm(ppm: Float?): String? {
+        if (ppm == null || ppm <= 0f) return null
+        return String.format(java.util.Locale.US, "%.1f p/m", ppm)
+    }
+
     /** Minutes left in [book] at the reader's measured velocity; null when unknowable. */
     fun estimatedMinutesLeft(book: Book, sessions: List<Session>): Long? {
         if (book.totalPages <= 0) return null
@@ -45,6 +75,95 @@ object AnalyticsEngine {
         if (remaining == 0) return 0L
         val velocity = pagesPerHour(sessions) ?: return null
         return (remaining / velocity * 60f).toLong()
+    }
+
+    /**
+     * Estimated minutes left with fallback: uses book-specific sessions if timed
+     * sessions exist for this book, otherwise falls back to overall reader sessions.
+     */
+    fun bookEstimatedMinutesLeft(
+        book: Book,
+        bookSessions: List<Session>,
+        allSessions: List<Session>
+    ): Long? {
+        val targetSessions = if (timedSessions(bookSessions).isNotEmpty()) bookSessions else allSessions
+        return estimatedMinutesLeft(book, targetSessions)
+    }
+
+    /**
+     * Velocity for this specific book, falling back to overall sessions if this book
+     * has no timed sessions yet.
+     */
+    fun bookPagesPerHour(
+        bookSessions: List<Session>,
+        allSessions: List<Session>
+    ): Float? {
+        val targetSessions = if (timedSessions(bookSessions).isNotEmpty()) bookSessions else allSessions
+        return pagesPerHour(targetSessions)
+    }
+
+    /** Formats estimated minutes into "45m left", "2h 15m left", or "Finished". */
+    fun formatEstimatedTime(minutes: Long?): String? {
+        if (minutes == null) return null
+        if (minutes <= 0L) return "Finished"
+        return when {
+            minutes < 60L -> "${minutes}m left"
+            else -> "${minutes / 60}h ${minutes % 60}m left"
+        }
+    }
+
+    data class CompletionPrediction(
+        val daysRemaining: Int,
+        val estimatedDate: LocalDate,
+        val formattedPrediction: String
+    )
+
+    /**
+     * Estimates when the reader will finish [book] based on their recent reading volume.
+     * Uses average daily reading minutes from the last 14 days or overall history.
+     */
+    fun predictCompletionDate(
+        book: Book,
+        bookSessions: List<Session>,
+        allSessions: List<Session>,
+        zone: ZoneId = ZoneId.systemDefault()
+    ): CompletionPrediction? {
+        if (book.totalPages <= 0 || book.currentPage >= book.totalPages) return null
+        val minutesLeft = bookEstimatedMinutesLeft(book, bookSessions, allSessions) ?: return null
+        if (minutesLeft <= 0L) return null
+
+        val timed = timedSessions(allSessions)
+        val today = LocalDate.now(zone)
+
+        val last14Days = today.minusDays(13)
+        val recentMinutesByDay = timed
+            .filter {
+                val date = StreakEngine.readingDate(it.endTime, zone)
+                !date.isBefore(last14Days) && !date.isAfter(today)
+            }
+            .groupBy { StreakEngine.readingDate(it.endTime, zone) }
+            .mapValues { (_, sList) -> sList.sumOf { it.endTime - it.startTime } / 60_000L }
+
+        val avgDailyMinutes = if (recentMinutesByDay.isNotEmpty()) {
+            recentMinutesByDay.values.average().coerceAtLeast(15.0)
+        } else if (timed.isNotEmpty()) {
+            val totalMins = timed.sumOf { it.endTime - it.startTime } / 60_000L
+            val distinctDays = timed.map { StreakEngine.readingDate(it.endTime, zone) }.distinct().size.coerceAtLeast(1)
+            (totalMins.toDouble() / distinctDays).coerceAtLeast(15.0)
+        } else {
+            25.0
+        }
+
+        val daysRemaining = Math.ceil(minutesLeft.toDouble() / avgDailyMinutes).toInt().coerceAtLeast(1)
+        val estimatedDate = today.plusDays(daysRemaining.toLong())
+
+        val formatted = when (daysRemaining) {
+            1 -> "Tomorrow"
+            in 2..6 -> "In $daysRemaining days (${estimatedDate.format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d"))})"
+            else -> "~$daysRemaining days (${estimatedDate.format(java.time.format.DateTimeFormatter.ofPattern("MMM d"))})"
+        }
+
+        return CompletionPrediction(daysRemaining, estimatedDate, formatted)
     }
 
     /** Reading minutes per day (timed sessions only), keyed like pagesByDay. */

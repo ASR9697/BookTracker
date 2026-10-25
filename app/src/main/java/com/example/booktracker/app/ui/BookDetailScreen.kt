@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -143,19 +144,96 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Tab
+import androidx.compose.material3.Badge
+
+enum class BookDetailTab(val label: String) {
+    OVERVIEW("Overview"),
+    SESSIONS("Sessions"),
+    NOTES("Notes"),
+    STATS("Stats")
+}
 
 private val dateFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
 private val noteStampFormatter = DateTimeFormatter.ofPattern("M/d/yyyy h:mm a")
 
 @Composable
-private fun SectionItem(content: @Composable () -> Unit) {
+private fun SectionItem(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
             .padding(vertical = 12.dp)
     ) {
         content()
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BookDetailTabRow(
+    selectedTab: BookDetailTab,
+    onTabSelected: (BookDetailTab) -> Unit,
+    noteCount: Int,
+    sessionCount: Int,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        modifier = modifier.fillMaxWidth()
+    ) {
+        PrimaryTabRow(
+            selectedTabIndex = selectedTab.ordinal,
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.primary,
+            divider = {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+            }
+        ) {
+            BookDetailTab.entries.forEach { tab ->
+                Tab(
+                    selected = selectedTab == tab,
+                    onClick = { onTabSelected(tab) },
+                    text = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                tab.label,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Medium
+                            )
+                            when (tab) {
+                                BookDetailTab.NOTES -> if (noteCount > 0) {
+                                    Badge(
+                                        containerColor = if (selectedTab == tab)
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.surfaceContainerHighest
+                                    ) {
+                                        Text("$noteCount")
+                                    }
+                                }
+                                BookDetailTab.SESSIONS -> if (sessionCount > 0) {
+                                    Badge(
+                                        containerColor = if (selectedTab == tab)
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.surfaceContainerHighest
+                                    ) {
+                                        Text("$sessionCount")
+                                    }
+                                }
+                                else -> {}
+                            }
+                        }
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -184,6 +262,7 @@ fun BookDetailScreen(
     onFinish: (Map<String, Float>, String?) -> Unit,
     onBack: () -> Unit
 ) {
+    var selectedTab by remember { mutableStateOf(BookDetailTab.OVERVIEW) }
     var showAddNote by remember { mutableStateOf(false) }
     var sessionToEdit by remember { mutableStateOf<Session?>(null) }
     var sessionToDelete by remember { mutableStateOf<Session?>(null) }
@@ -194,6 +273,7 @@ fun BookDetailScreen(
     var showProgressPicker by remember { mutableStateOf(false) }
     var showCollectionPicker by remember { mutableStateOf(false) }
     var noteSort by remember { mutableStateOf(NoteSort.CREATED) }
+    var noteToShare by remember { mutableStateOf<MarginNote?>(null) }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
 
     LaunchedEffect(book) {
@@ -251,6 +331,9 @@ fun BookDetailScreen(
     }
 
     val completed = sessions.filter { it.endTime > 0 }
+    val completionPrediction = remember(book, completed, allSessions) {
+        AnalyticsEngine.predictCompletionDate(book, completed, allSessions)
+    }
 
     val headerColor = accent.immersiveBackground(MaterialTheme.colorScheme.surfaceContainerHighest)
 
@@ -277,227 +360,389 @@ fun BookDetailScreen(
                 )
             }
 
-            item { Spacer(Modifier.height(20.dp)) }
-
-            item { SectionItem { MetadataChips(book) } }
-
-            item { SectionItem { AboutCard(book) } }
+            item { Spacer(Modifier.height(12.dp)) }
 
             item {
-                SectionItem {
-                    CollectionsCard(
-                        collections = book.classification.collections,
-                        onEdit = { showCollectionPicker = true }
-                    )
-                }
+                BookDetailTabRow(
+                    selectedTab = selectedTab,
+                    onTabSelected = { selectedTab = it },
+                    noteCount = notes.size,
+                    sessionCount = completed.size
+                )
             }
 
-            if (book.genres.isNotEmpty()) {
-                item {
-                    SectionItem {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 24.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Filled.Sell,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            item { Spacer(Modifier.height(8.dp)) }
+
+            when (selectedTab) {
+                BookDetailTab.OVERVIEW -> {
+                    item {
+                        SectionItem {
+                            ProgressAndDaysRow(
+                                book = book,
+                                sessions = completed,
+                                allSessions = allSessions,
+                                onEditProgress = { showProgressPicker = true }
                             )
-                            book.genres.forEach { genre ->
+                        }
+                    }
+
+                    if (completionPrediction != null) {
+                        item {
+                            SectionItem {
                                 Surface(
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 24.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(44.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.primaryContainer),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.Flag,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
+                                        Spacer(Modifier.width(14.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                "PREDICTED FINISH",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            Spacer(Modifier.height(2.dp))
+                                            Text(
+                                                completionPrediction.formattedPrediction,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            val remainingPages = (book.totalPages - book.currentPage).coerceAtLeast(0)
+                                            Text(
+                                                "$remainingPages ${FormatAdaptabilityLayer.getDisplayUnit(book).lowercase()} remaining at your reading pace",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    item { SectionItem { MetadataChips(book) } }
+
+                    item { SectionItem { AboutCard(book) } }
+
+                    item {
+                        SectionItem {
+                            CollectionsCard(
+                                collections = book.classification.collections,
+                                onEdit = { showCollectionPicker = true }
+                            )
+                        }
+                    }
+
+                    if (book.genres.isNotEmpty()) {
+                        item {
+                            SectionItem {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState())
+                                        .padding(horizontal = 24.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Sell,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    book.genres.forEach { genre ->
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            contentColor = MaterialTheme.colorScheme.onSurface
+                                        ) {
+                                            Text(
+                                                "#$genre",
+                                                style = MaterialTheme.typography.labelLarge,
+                                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (book.purchaseLog.isNotEmpty() || book.loanRecord.isNotEmpty()) {
+                        item {
+                            SectionItem {
+                                LedgerCard(book)
+                            }
+                        }
+                    }
+
+                    item { SectionItem { FormatCard(book, onSetFormat) } }
+
+                    if (book.status == BookStatus.READING.name) {
+                        item { SectionItem { PlannerCard(book, completed) } }
+                    }
+
+                    if (book.status == BookStatus.FINISHED.name && book.rating.isNotEmpty()) {
+                        item { SectionItem { RatingCard(book) } }
+                    }
+                    if (book.status == BookStatus.FINISHED.name && !book.review.isNullOrBlank()) {
+                        item { SectionItem { ReviewCard(book) } }
+                    }
+                    if (book.status == BookStatus.DNF.name && book.dnfData != null) {
+                        item {
+                            SectionItem {
+                                DetailCard(title = "Did not finish") {
+                                    Text(
+                                        "Abandoned at ${book.dnfData!!.abandonedPercentage.roundToInt()}%" +
+                                            book.dnfData!!.reason
+                                                .takeIf { it.isNotBlank() }
+                                                ?.let { " · $it" }.orEmpty(),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                BookDetailTab.SESSIONS -> {
+                    item {
+                        SectionItem {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp)
+                            ) {
+                                Text(
+                                    "Session History",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                if (completed.isNotEmpty()) {
+                                    val totalMinutes = AnalyticsEngine.timedSessions(completed).sumOf { it.endTime - it.startTime } / 60_000L
+                                    val totalPages = completed.sumOf { it.pagesRead }
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        "${completed.size} reading sessions · $totalPages pages · ${AnalyticsEngine.formatMinutes(totalMinutes)}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    if (completed.isEmpty()) {
+                        item {
+                            SectionItem {
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                                    shape = RoundedCornerShape(20.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(32.dp).fillMaxWidth(),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.History,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(48.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                        )
+                                        Spacer(Modifier.height(16.dp))
+                                        Text(
+                                            "No reading sessions yet",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Spacer(Modifier.height(8.dp))
+                                        Text(
+                                            "Start reading with the timer above to log your sessions and pace automatically.",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        items(completed, key = { it.id }) { session ->
+                            SectionItem(modifier = Modifier.animateItem()) {
+                                SessionRow(
+                                    session = session,
+                                    onEdit = { sessionToEdit = session },
+                                    onDelete = { sessionToDelete = session }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                BookDetailTab.NOTES -> {
+                    item {
+                        SectionItem {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        "#$genre",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                                        "Notes & Quotes",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.Bold
                                     )
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        IconButton(
+                                            onClick = { showScratchpad = true },
+                                            modifier = Modifier
+                                                .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
+                                                .size(36.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.CenterFocusStrong,
+                                                contentDescription = "Handwrite a note",
+                                                modifier = Modifier.size(18.dp),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = { showOcr = true },
+                                            modifier = Modifier
+                                                .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
+                                                .size(36.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.DocumentScanner,
+                                                contentDescription = "Scan passage",
+                                                modifier = Modifier.size(18.dp),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = { showAddNote = true },
+                                            modifier = Modifier
+                                                .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
+                                                .size(36.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.Add,
+                                                contentDescription = "Add note",
+                                                modifier = Modifier.size(18.dp),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                                if (notes.isNotEmpty()) {
+                                    Spacer(Modifier.height(10.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            if (notes.size == 1) "1 note" else "${notes.size} notes",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        NoteSortToggle(current = noteSort, onChange = { noteSort = it })
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            }
-
-            if (book.purchaseLog.isNotEmpty() || book.loanRecord.isNotEmpty()) {
-                item {
-                    SectionItem {
-                        LedgerCard(book)
-                    }
-                }
-            }
-
-            item {
-                SectionItem {
-                    ProgressAndDaysRow(
-                        book = book,
-                        sessions = completed,
-                        onEditProgress = { showProgressPicker = true }
-                    )
-                }
-            }
-
-            item { SectionItem { BookStatsCard(book, completed) } }
-            item { SectionItem { FormatCard(book, onSetFormat) } }
-            item { SectionItem { ReadingStreakCard(streak, allSessions) } }
-            if (book.status == BookStatus.READING.name) {
-                item { SectionItem { PlannerCard(book, completed) } }
-            }
-
-            if (book.status == BookStatus.FINISHED.name && book.rating.isNotEmpty()) {
-                item { SectionItem { RatingCard(book) } }
-            }
-            if (book.status == BookStatus.FINISHED.name && !book.review.isNullOrBlank()) {
-                item { SectionItem { ReviewCard(book) } }
-            }
-            if (book.status == BookStatus.DNF.name && book.dnfData != null) {
-                item {
-                    SectionItem {
-                        DetailCard(title = "Did not finish") {
-                            Text(
-                                "Abandoned at ${book.dnfData!!.abandonedPercentage.roundToInt()}%" +
-                                    book.dnfData!!.reason
-                                        .takeIf { it.isNotBlank() }
-                                        ?.let { " · $it" }.orEmpty(),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    }
-                }
-            }
-
-            item {
-                SectionItem {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Bottom
-                        ) {
-                            Text(
-                                "Notes",
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                IconButton(
-                                    onClick = { showScratchpad = true },
-                                    modifier = Modifier
-                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
-                                        .size(36.dp)
+                    if (notes.isEmpty()) {
+                        item {
+                            SectionItem {
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                                    shape = RoundedCornerShape(20.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
                                 ) {
-                                    Icon(
-                                        Icons.Filled.CenterFocusStrong,
-                                        contentDescription = "Handwrite a note",
-                                        modifier = Modifier.size(18.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                IconButton(
-                                    onClick = { showAddNote = true },
-                                    modifier = Modifier
-                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
-                                        .size(36.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Filled.Add,
-                                        contentDescription = "Add note",
-                                        modifier = Modifier.size(18.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Column(
+                                        modifier = Modifier.padding(32.dp).fillMaxWidth(),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Bookmark,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(48.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                        )
+                                        Spacer(Modifier.height(16.dp))
+                                        Text(
+                                            "No notes or quotes yet",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Spacer(Modifier.height(8.dp))
+                                        Text(
+                                            "Capture memorable passages, personal thoughts, or scan book pages with OCR.",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                        )
+                                    }
                                 }
                             }
                         }
-                        Spacer(Modifier.height(6.dp))
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                        Spacer(Modifier.height(12.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                if (notes.size == 1) "1 note" else "${notes.size} notes",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        val ordered = when (noteSort) {
+                            NoteSort.CREATED -> notes.sortedByDescending { it.timestamp }
+                            NoteSort.PAGE -> notes.sortedBy { it.pageNumber }
+                            NoteSort.FAVORITES -> notes.sortedWith(
+                                compareByDescending<MarginNote> { it.isFavorite }.thenByDescending { it.timestamp }
                             )
-                            NoteSortToggle(current = noteSort, onChange = { noteSort = it })
+                        }
+                        items(ordered, key = { it.id }) { note ->
+                            SectionItem(modifier = Modifier.animateItem()) {
+                                NoteCard(
+                                    note = note,
+                                    book = book,
+                                    onDelete = { onDeleteNote(note.id) },
+                                    onToggleFavorite = { onToggleNoteFavorite(note.id) },
+                                    onShare = { noteToShare = note }
+                                )
+                            }
                         }
                     }
                 }
-            }
-            if (notes.isEmpty()) {
-                item {
-                    SectionItem {
-                        Text(
-                            "Capture thoughts, quotes, or questions tied to a page.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 24.dp)
-                        )
-                    }
-                }
-            } else {
-                val ordered = when (noteSort) {
-                    NoteSort.CREATED -> notes.sortedByDescending { it.timestamp }
-                    NoteSort.PAGE -> notes.sortedBy { it.pageNumber }
-                    NoteSort.FAVORITES -> notes.sortedWith(
-                        compareByDescending<MarginNote> { it.isFavorite }.thenByDescending { it.timestamp }
-                    )
-                }
-                items(ordered, key = { it.id }) { note ->
-                    SectionItem {
-                        NoteCard(
-                            note = note,
-                            book = book,
-                            onDelete = { onDeleteNote(note.id) },
-                            onToggleFavorite = { onToggleNoteFavorite(note.id) },
-                            onShare = { /* We will trigger share intent from viewmodel later */ }
-                        )
-                    }
-                }
-            }
 
-            item {
-                SectionItem {
-                    Text("Session history", style = MaterialTheme.typography.titleLarge)
-                }
-            }
-            if (completed.isEmpty()) {
-                item {
-                    SectionItem {
-                        Text(
-                            "No recorded sessions yet — start one from the Home tab.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 24.dp)
-                        )
-                    }
-                }
-            } else {
-                items(completed.take(30), key = { it.id }) { session ->
-                    SectionItem {
-                        SessionRow(
-                            session = session,
-                            onEdit = { sessionToEdit = session },
-                            onDelete = { sessionToDelete = session }
-                        )
-                    }
+                BookDetailTab.STATS -> {
+                    item { SectionItem { BookStatsCard(book, completed, allSessions) } }
+                    item { SectionItem { ReadingStreakCard(streak, allSessions) } }
                 }
             }
         }
@@ -590,6 +835,7 @@ fun BookDetailScreen(
                 container = MaterialTheme.colorScheme.surfaceContainerHighest
             )
         }
+        }
     }
 
     if (showAddNote) {
@@ -628,6 +874,14 @@ fun BookDetailScreen(
                 onSetProgress(it)
                 showProgressPicker = false
             }
+        )
+    }
+
+    noteToShare?.let { note ->
+        QuoteCardDialog(
+            note = note,
+            book = book,
+            onDismiss = { noteToShare = null }
         )
     }
 
@@ -685,7 +939,6 @@ fun BookDetailScreen(
                 }
             }
         )
-    }
     }
 }
 
@@ -997,12 +1250,18 @@ private fun PlannerCard(book: Book, completed: List<Session>) {
 }
 
 @Composable
-private fun BookStatsCard(book: Book, completed: List<Session>) {
+private fun BookStatsCard(book: Book, completed: List<Session>, allSessions: List<Session>) {
     val totalMinutes = AnalyticsEngine.timedSessions(completed).sumOf { it.endTime - it.startTime } / 60_000L
-    val velocity = AnalyticsEngine.pagesPerHour(completed)
+    val velocity = AnalyticsEngine.bookPagesPerHour(completed, allSessions)
     val pagesFromSessions = completed.sumOf { it.pagesRead }
     val timeLabel = if (totalMinutes < 1) "<1m" else AnalyticsEngine.formatMinutes(totalMinutes)
-    val speedLabel = velocity?.let { "${it.roundToInt()}" } ?: "—"
+    val speedLabel = AnalyticsEngine.formatReadingSpeed(velocity) ?: "—"
+    val minutesLeft = AnalyticsEngine.bookEstimatedMinutesLeft(book, completed, allSessions)
+    val etaLabel = if (book.status == BookStatus.FINISHED.name || (book.totalPages > 0 && book.currentPage >= book.totalPages)) {
+        "Finished"
+    } else {
+        minutesLeft?.let { AnalyticsEngine.formatMinutes(it) } ?: "—"
+    }
 
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -1014,13 +1273,64 @@ private fun BookStatsCard(book: Book, completed: List<Session>) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 20.dp)) {
                 Icon(Icons.Filled.BarChart, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.width(8.dp))
-                Text("YOUR READING", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("YOUR READING STATS", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                StatCell(Icons.Filled.Schedule, timeLabel, "Time", Modifier.weight(1f))
-                StatCell(Icons.Filled.AutoStories, pagesFromSessions.toString(), "Pages", Modifier.weight(1f))
-                StatCell(Icons.Filled.Speed, speedLabel, "Speed", Modifier.weight(1f))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatCell(Icons.Filled.Schedule, timeLabel, "Total Time", Modifier.weight(1f))
+                StatCell(Icons.Filled.AutoStories, pagesFromSessions.toString(), "Pages Read", Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatCell(Icons.Filled.Speed, speedLabel, "Reading Pace", Modifier.weight(1f))
+                StatCell(Icons.Filled.Timer, etaLabel, if (etaLabel == "Finished") "Status" else "Time Left", Modifier.weight(1f))
+            }
+
+            val prediction = AnalyticsEngine.predictCompletionDate(book, completed, allSessions)
+            if (prediction != null) {
+                Spacer(Modifier.height(16.dp))
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Filled.Flag,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                "ESTIMATED FINISH DATE",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                prediction.formattedPrediction,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -1396,6 +1706,7 @@ private fun MetaChip(icon: androidx.compose.ui.graphics.vector.ImageVector, labe
 private fun ProgressAndDaysRow(
     book: Book,
     sessions: List<Session>,
+    allSessions: List<Session>,
     onEditProgress: () -> Unit
 ) {
     val zone = remember { ZoneId.systemDefault() }
@@ -1410,6 +1721,10 @@ private fun ProgressAndDaysRow(
         }
     }
     val fraction = if (book.totalPages > 0) book.currentPage.toFloat() / book.totalPages else 0f
+    val minutesLeft = remember(book, sessions, allSessions) {
+        AnalyticsEngine.bookEstimatedMinutesLeft(book, sessions, allSessions)
+    }
+    val etaText = remember(minutesLeft) { AnalyticsEngine.formatEstimatedTime(minutesLeft) }
 
     Row(
         modifier = Modifier
@@ -1463,6 +1778,15 @@ private fun ProgressAndDaysRow(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    if (fraction < 1f && etaText != null) {
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            "⏱ $etaText",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
         }

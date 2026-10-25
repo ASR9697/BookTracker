@@ -60,7 +60,16 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Style
+import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
@@ -73,6 +82,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Card
     import androidx.compose.material3.CenterAlignedTopAppBar
     import androidx.compose.material3.ElevatedCard
@@ -140,30 +150,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-private data class PipelineTab(
-    val status: BookStatus,
-    val label: String,
-    val emptyTitle: String,
-    val emptyHint: String
-)
-
-private val PIPELINE_TABS = listOf(
-    PipelineTab(
-        BookStatus.SHORTLIST, BookStatus.SHORTLIST.label,
-        "Your backlog is empty",
-        "Every book you might read someday goes here — scan an ISBN or tap Add book."
-    ),
-    PipelineTab(
-        BookStatus.SHORTLIST, BookStatus.SHORTLIST.label,
-        "Nothing shortlisted",
-        "Promote the backlog books you're serious about reading soon."
-    ),
-    PipelineTab(
-        BookStatus.UP_NEXT, BookStatus.UP_NEXT.label,
-        "Nothing queued",
-        "Pick your next read from the shortlist so it's ready when you finish."
-    )
-)
+private enum class HomeTabMode { CALENDAR, BOOKSHELF }
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 @Composable
@@ -176,9 +163,13 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeC
     var showAddDialog by remember { mutableStateOf(false) }
     var showScanner by remember { mutableStateOf(false) }
     var showStartTimerDialog by remember { mutableStateOf(false) }
-    // Set when a save marks the book Finished or DNF, so the rating / reason
-    // prompt runs once the session itself is safely committed.
     var pendingOutcome by remember { mutableStateOf<Pair<String, BookStatus>?>(null) }
+    var showGoalDialog by remember { mutableStateOf(false) }
+    var initialGoalType by remember { mutableStateOf(GoalType.YEARLY_BOOKS) }
+    val monthlyGoalPages by viewModel.monthlyGoalPages.collectAsState()
+    val monthlyGoalBooks by viewModel.monthlyGoalBooks.collectAsState()
+    val dailyGoal by viewModel.dailyGoal.collectAsState()
+    val yearlyGoal by viewModel.yearlyGoal.collectAsState()
 
 
     if (showScanner) {
@@ -195,6 +186,21 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeC
             }
         )
         return
+    }
+
+    if (showGoalDialog) {
+        GoalEditDialog(
+            initialType = initialGoalType,
+            currentYearlyGoal = yearlyGoal,
+            currentMonthlyPagesGoal = monthlyGoalPages,
+            currentMonthlyBooksGoal = monthlyGoalBooks,
+            currentDailyGoal = dailyGoal,
+            onSaveYearlyGoal = viewModel::setYearlyGoal,
+            onSaveMonthlyPagesGoal = viewModel::setMonthlyGoalPages,
+            onSaveMonthlyBooksGoal = viewModel::setMonthlyGoalBooks,
+            onSaveDailyGoal = viewModel::setDailyGoal,
+            onDismiss = { showGoalDialog = false }
+        )
     }
 
     val navController = rememberNavController()
@@ -255,66 +261,85 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeC
                 val timerIsRunning by viewModel.timerIsRunning.collectAsState()
                 val timeLeftSeconds by viewModel.timeLeftSeconds.collectAsState()
                 val timerPhase by viewModel.timerPhase.collectAsState()
-                
-                if (activeTimerBook != null && currentRoute?.startsWith("focus/") != true) {
-                    TimerMiniPlayer(
-                        book = activeTimerBook!!,
-                        isRunning = timerIsRunning,
-                        timeLeftSeconds = timeLeftSeconds,
-                        phase = timerPhase,
-                        onPlayPause = { viewModel.setTimerRunning(!timerIsRunning) },
-                        onStop = { navController.navigate("focus/${activeTimerBook!!.id}") },
-                        onDismiss = { 
-                            viewModel.setTimerRunning(false)
-                            viewModel.setTimerBook(null)
-                        },
-                        onOpenFullTimer = { navController.navigate("focus/${activeTimerBook!!.id}") },
-                        modifier = Modifier.padding(16.dp)
-                    )
+                val bottomNavHaptic = LocalHapticFeedback.current
+
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = activeTimerBook != null && currentRoute?.startsWith("focus/") != true,
+                    enter = androidx.compose.animation.slideInVertically(initialOffsetY = { it }) + fadeIn(tween(250)),
+                    exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { it }) + fadeOut(tween(200))
+                ) {
+                    activeTimerBook?.let { book ->
+                        TimerMiniPlayer(
+                            book = book,
+                            isRunning = timerIsRunning,
+                            timeLeftSeconds = timeLeftSeconds,
+                            phase = timerPhase,
+                            onPlayPause = { viewModel.setTimerRunning(!timerIsRunning) },
+                            onStop = { navController.navigate("focus/${book.id}") },
+                            onDismiss = { 
+                                viewModel.setTimerRunning(false)
+                                viewModel.setTimerBook(null)
+                            },
+                            onOpenFullTimer = { navController.navigate("focus/${book.id}") },
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
                 }
 
                 if (isTopLevelRoute && windowSizeClass?.widthSizeClass != WindowWidthSizeClass.Expanded) {
                     NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.85f)
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f),
+                        tonalElevation = 6.dp
                     ) {
-                    NavigationBarItem(
-                        selected = currentRoute == "home",
-                        onClick = { navigateTopLevel("home") },
-                        icon = { Icon(Icons.Filled.LocalFireDepartment, contentDescription = "Home") },
-                        label = { Text("Home") }
-                    )
-                    NavigationBarItem(
-                        selected = currentRoute == "library",
-                        onClick = { navigateTopLevel("library") },
-                        icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Library") },
-                        label = { Text("Library") }
-                    )
-                    NavigationBarItem(
-                        selected = currentRoute == "memorize",
-                        onClick = { navigateTopLevel("memorize") },
-                        icon = { Icon(Icons.Filled.Style, contentDescription = "Memorize") },
-                        label = { Text("Memorize") }
-                    )
-                    NavigationBarItem(
-                        selected = currentRoute == "timer",
-                        onClick = { navigateTopLevel("timer") },
-                        icon = { Icon(Icons.Filled.Timer, contentDescription = "Timer") },
-                        label = { Text("Timer") }
-                    )
-                    NavigationBarItem(
-                        selected = currentRoute == "stats",
-                        onClick = { navigateTopLevel("stats") },
-                        icon = { Icon(Icons.Filled.Insights, contentDescription = "Stats") },
-                        label = { Text("Stats") }
-                    )
-                    NavigationBarItem(
-                        selected = currentRoute == "profile",
-                        onClick = { navigateTopLevel("profile") },
-                        icon = { Icon(Icons.Filled.Settings, contentDescription = "Profile") },
-                        label = { Text("Profile") }
-                    )
+                        val navColors = androidx.compose.material3.NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
+                        )
+                        NavigationBarItem(
+                            selected = currentRoute == "home" || currentRoute == "library",
+                            onClick = { 
+                                bottomNavHaptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                navigateTopLevel("home") 
+                            },
+                            icon = { Icon(Icons.Filled.AutoStories, contentDescription = "Home") },
+                            label = { Text("Home") },
+                            colors = navColors
+                        )
+                        NavigationBarItem(
+                            selected = currentRoute == "memorize",
+                            onClick = { 
+                                bottomNavHaptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                navigateTopLevel("memorize") 
+                            },
+                            icon = { Icon(Icons.Filled.Style, contentDescription = "Notes") },
+                            label = { Text("Notes") },
+                            colors = navColors
+                        )
+                        NavigationBarItem(
+                            selected = currentRoute == "stats",
+                            onClick = { 
+                                bottomNavHaptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                navigateTopLevel("stats") 
+                            },
+                            icon = { Icon(Icons.Filled.Insights, contentDescription = "Stats") },
+                            label = { Text("Stats") },
+                            colors = navColors
+                        )
+                        NavigationBarItem(
+                            selected = currentRoute == "profile",
+                            onClick = { 
+                                bottomNavHaptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                navigateTopLevel("profile") 
+                            },
+                            icon = { Icon(Icons.Filled.Person, contentDescription = "Profile") },
+                            label = { Text("Profile") },
+                            colors = navColors
+                        )
+                    }
                 }
-            }
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -323,7 +348,9 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeC
                 ExtendedFloatingActionButton(
                     onClick = { showAddDialog = true },
                     icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                    text = { Text("Add book") }
+                    text = { Text("Add book") },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }
@@ -335,28 +362,16 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeC
                 ) {
                     Spacer(Modifier.weight(1f))
                     NavigationRailItem(
-                        selected = currentRoute == "home",
+                        selected = currentRoute == "home" || currentRoute == "library",
                         onClick = { navigateTopLevel("home") },
-                        icon = { Icon(Icons.Filled.LocalFireDepartment, contentDescription = "Home") },
+                        icon = { Icon(Icons.Filled.AutoStories, contentDescription = "Home") },
                         label = { Text("Home") }
-                    )
-                    NavigationRailItem(
-                        selected = currentRoute == "library",
-                        onClick = { navigateTopLevel("library") },
-                        icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Library") },
-                        label = { Text("Library") }
                     )
                     NavigationRailItem(
                         selected = currentRoute == "memorize",
                         onClick = { navigateTopLevel("memorize") },
-                        icon = { Icon(Icons.Filled.Style, contentDescription = "Memorize") },
-                        label = { Text("Memorize") }
-                    )
-                    NavigationRailItem(
-                        selected = currentRoute == "timer",
-                        onClick = { navigateTopLevel("timer") },
-                        icon = { Icon(Icons.Filled.Timer, contentDescription = "Timer") },
-                        label = { Text("Timer") }
+                        icon = { Icon(Icons.Filled.Style, contentDescription = "Notes") },
+                        label = { Text("Notes") }
                     )
                     NavigationRailItem(
                         selected = currentRoute == "stats",
@@ -367,7 +382,7 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeC
                     NavigationRailItem(
                         selected = currentRoute == "profile",
                         onClick = { navigateTopLevel("profile") },
-                        icon = { Icon(Icons.Filled.Settings, contentDescription = "Profile") },
+                        icon = { Icon(Icons.Filled.Person, contentDescription = "Profile") },
                         label = { Text("Profile") }
                     )
                     Spacer(Modifier.weight(1f))
@@ -389,105 +404,168 @@ androidx.compose.animation.SharedTransitionLayout {
                                     ) {
                                     composable("home") {
                 
-                                        androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {                Column(
-                                                            modifier = Modifier
-                                                                .fillMaxSize()
-                                                                .verticalScroll(rememberScrollState())
-                                                                .padding(bottom = 88.dp)
-                                                        ) {
-                                                            val openSession by viewModel.openSession.collectAsState()
-                                                            val sessions by viewModel.completedSessions.collectAsState()
+                                        androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
+                                            var homeTabMode by remember { mutableStateOf(HomeTabMode.CALENDAR) }
+                                            val openSession by viewModel.openSession.collectAsState()
+                                            val sessions by viewModel.completedSessions.collectAsState()
+                                            val allNotes by viewModel.allNotes.collectAsState()
+                                            val currentUserName by viewModel.userName.collectAsState()
 
-                                                            if (openSession == null && books.isNotEmpty()) {
-                                                                ElevatedCard(
-                                                                    onClick = { 
-                                                                        if (readingBooks.size == 1) {
-                                                                            navController.navigate("focus/${readingBooks.first().id}")
-                                                                        } else {
-                                                                            showStartTimerDialog = true 
-                                                                        }
-                                                                    },
-                                                                    modifier = Modifier
-                                                                        .fillMaxWidth()
-                                                                        .padding(16.dp)
-                                                                        .height(92.dp),
-                                                                    shape = RoundedCornerShape(16.dp),
-                                                                    colors = CardDefaults.elevatedCardColors(
-                                                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                                                    )
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .padding(bottom = 88.dp)
+                                            ) {
+                                                // Segmented Switcher (Bookmory Calendar vs Bookshelf)
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(horizontal = 20.dp, vertical = 6.dp),
+                                                    horizontalArrangement = Arrangement.Center
+                                                ) {
+                                                    SingleChoiceSegmentedButtonRow(
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    ) {
+                                                        SegmentedButton(
+                                                            selected = homeTabMode == HomeTabMode.CALENDAR,
+                                                            onClick = { homeTabMode = HomeTabMode.CALENDAR },
+                                                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                                                            icon = {
+                                                                Icon(
+                                                                    Icons.Filled.CalendarMonth,
+                                                                    contentDescription = null,
+                                                                    modifier = Modifier.size(16.dp)
+                                                                )
+                                                            }
+                                                        ) {
+                                                            Text("Calendar")
+                                                        }
+                                                        SegmentedButton(
+                                                            selected = homeTabMode == HomeTabMode.BOOKSHELF,
+                                                            onClick = { homeTabMode = HomeTabMode.BOOKSHELF },
+                                                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                                                            icon = {
+                                                                Icon(
+                                                                    Icons.AutoMirrored.Filled.MenuBook,
+                                                                    contentDescription = null,
+                                                                    modifier = Modifier.size(16.dp)
+                                                                )
+                                                            }
+                                                        ) {
+                                                            Text("Bookshelf")
+                                                        }
+                                                    }
+                                                }
+
+                                                if (homeTabMode == HomeTabMode.CALENDAR) {
+                                                    ReadingCalendarView(
+                                                        books = books,
+                                                        sessions = sessions,
+                                                        notes = allNotes,
+                                                        monthlyGoalPages = monthlyGoalPages,
+                                                        userName = currentUserName,
+                                                        onOpenBook = { navController.navigate("book/${it.id}") },
+                                                        onStartTimer = { navController.navigate("focus/${it.id}") },
+                                                        onEditGoal = {
+                                                            initialGoalType = GoalType.MONTHLY_PAGES
+                                                            showGoalDialog = true
+                                                        }
+                                                    )
+                                                } else {
+                                                    Column(
+                                                        modifier = Modifier
+                                                            .fillMaxSize()
+                                                            .verticalScroll(rememberScrollState())
+                                                    ) {
+                                                        if (openSession == null && books.isNotEmpty()) {
+                                                            ElevatedCard(
+                                                                onClick = { 
+                                                                    if (readingBooks.size == 1) {
+                                                                        navController.navigate("focus/${readingBooks.first().id}")
+                                                                    } else {
+                                                                        showStartTimerDialog = true 
+                                                                    }
+                                                                },
+                                                                modifier = Modifier
+                                                                    .fillMaxWidth()
+                                                                    .padding(16.dp)
+                                                                    .height(84.dp),
+                                                                shape = RoundedCornerShape(16.dp),
+                                                                colors = CardDefaults.elevatedCardColors(
+                                                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                                                )
+                                                            ) {
+                                                                Row(
+                                                                    modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+                                                                    verticalAlignment = Alignment.CenterVertically
                                                                 ) {
-                                                                    Box(modifier = Modifier
-                                                                        .fillMaxSize()) {
-                                                                        Row(
-                                                                            modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
-                                                                            verticalAlignment = Alignment.CenterVertically
-                                                                        ) {
-                                                                            Box(
-                                                                                modifier = Modifier
-                                                                                    .size(48.dp)
-                                                                                    .clip(CircleShape)
-                                                                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-                                                                                contentAlignment = Alignment.Center
-                                                                            ) {
-                                                                                Icon(
-                                                                                    Icons.Filled.PlayArrow,
-                                                                                    contentDescription = "Start Timer",
-                                                                                    modifier = Modifier.size(28.dp),
-                                                                                    tint = MaterialTheme.colorScheme.primary
-                                                                                )
-                                                                            }
-                                                                            Spacer(Modifier.width(16.dp))
-                                                                            Column {
-                                                                                Text(
-                                                                                    "Start Focus Session",
-                                                                                    style = MaterialTheme.typography.titleMedium,
-                                                                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                                                                )
-                                                                                Text(
-                                                                                    if (readingBooks.size == 1) "Resume ${readingBooks.first().title}"
-                                                                                    else "Pick a book to start tracking",
-                                                                                    style = MaterialTheme.typography.bodyMedium,
-                                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                                                    maxLines = 1,
-                                                                                    overflow = TextOverflow.Ellipsis
-                                                                                )
-                                                                            }
-                                                                        }
+                                                                    Box(
+                                                                        modifier = Modifier
+                                                                            .size(44.dp)
+                                                                            .clip(CircleShape)
+                                                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                                                                        contentAlignment = Alignment.Center
+                                                                    ) {
+                                                                        Icon(
+                                                                            Icons.Filled.PlayArrow,
+                                                                            contentDescription = "Start Timer",
+                                                                            modifier = Modifier.size(26.dp),
+                                                                            tint = MaterialTheme.colorScheme.primary
+                                                                        )
+                                                                    }
+                                                                    Spacer(Modifier.width(16.dp))
+                                                                    Column {
+                                                                        Text(
+                                                                            "Start Focus Session",
+                                                                            style = MaterialTheme.typography.titleMedium,
+                                                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                                                        )
+                                                                        Text(
+                                                                            if (readingBooks.size == 1) "Resume ${readingBooks.first().title}"
+                                                                            else "Pick a book to start tracking",
+                                                                            style = MaterialTheme.typography.bodyMedium,
+                                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                            maxLines = 1,
+                                                                            overflow = TextOverflow.Ellipsis
+                                                                        )
                                                                     }
                                                                 }
                                                             }
-
-                                                            ReadingHero(
-                                                                books = readingBooks,
-                                                                openSession = openSession,
-                                                                sessions = sessions,
-                                                                streak = streak,
-                                                                onProgress = { b, delta ->
-                                                                    viewModel.addProgress(b, delta)
-                                                                    scope.launch {
-                                                                        snackbarHostState.currentSnackbarData?.dismiss()
-                                                                        val result = snackbarHostState.showSnackbar(
-                                                                            message = "Added $delta pages",
-                                                                            actionLabel = "Undo",
-                                                                            duration = SnackbarDuration.Short
-                                                                        )
-                                                                        if (result == SnackbarResult.ActionPerformed) {
-                                                                            viewModel.addProgress(b, -delta)
-                                                                        }
-                                                                    }
-                                                                },
-                                                                onFinish = viewModel::finishBook,
-                                                                onDnf = viewModel::markDnf,
-                                                                onStartSession = viewModel::startSession,
-                                                                onEndSession = { b -> navController.navigate("session_save/${b.id}") },
-                                                                onDeleteSession = { id: String -> 
-                                                                    viewModel.completedSessions.value.find { it.id == id }?.let { viewModel.deleteSession(it) } 
-                                                                },
-                                                                onOpenBook = { navController.navigate("book/${it.id}") },
-                                                                onGoToLibrary = { navigateTopLevel("library") }
-                                                            )
                                                         }
+
+                                                        ReadingHero(
+                                                            books = readingBooks,
+                                                            openSession = openSession,
+                                                            sessions = sessions,
+                                                            streak = streak,
+                                                            onProgress = { b, delta ->
+                                                                viewModel.addProgress(b, delta)
+                                                                scope.launch {
+                                                                    snackbarHostState.currentSnackbarData?.dismiss()
+                                                                    val result = snackbarHostState.showSnackbar(
+                                                                        message = "Added $delta pages",
+                                                                        actionLabel = "Undo",
+                                                                        duration = SnackbarDuration.Short
+                                                                    )
+                                                                    if (result == SnackbarResult.ActionPerformed) {
+                                                                        viewModel.addProgress(b, -delta)
+                                                                    }
+                                                                }
+                                                            },
+                                                            onFinish = viewModel::finishBook,
+                                                            onDnf = viewModel::markDnf,
+                                                            onStartSession = viewModel::startSession,
+                                                            onEndSession = { b -> navController.navigate("session_save/${b.id}") },
+                                                            onDeleteSession = { id: String -> 
+                                                                viewModel.completedSessions.value.find { it.id == id }?.let { viewModel.deleteSession(it) } 
+                                                            },
+                                                            onOpenBook = { navController.navigate("book/${it.id}") },
+                                                            onGoToLibrary = { navigateTopLevel("library") }
+                                                        )
+                                                    }
+                                                }
+                                            }
             
                                         }
                                     }
@@ -552,11 +630,19 @@ androidx.compose.animation.SharedTransitionLayout {
                                         androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {                val sessions by viewModel.completedSessions.collectAsState()
                                                         val goal by viewModel.dailyGoal.collectAsState()
                                                         val yearly by viewModel.yearlyGoal.collectAsState()
+                                                        val monthlyPages by viewModel.monthlyGoalPages.collectAsState()
+                                                        val monthlyBooks by viewModel.monthlyGoalBooks.collectAsState()
                                                         AnalyticsScreen(
                                                             books = books,
                                                             sessions = sessions,
                                                             dailyGoal = goal,
-                                                            yearlyGoal = yearly
+                                                            yearlyGoal = yearly,
+                                                            monthlyGoalPages = monthlyPages,
+                                                            monthlyGoalBooks = monthlyBooks,
+                                                            onEditGoal = { targetGoalType ->
+                                                                initialGoalType = targetGoalType
+                                                                showGoalDialog = true
+                                                            }
                                                         )
             
                                         }
@@ -578,20 +664,44 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             notes = allNotes,
                                                             streak = streak.currentStreak,
                                                             yearlyGoal = yearly,
+                                                            unlockedBadges = unlockedBadges,
                                                             onOpenSettings = { navController.navigate("settings") },
                                                             onOpenHistory = { navController.navigate("history") },
                                                             onOpenFinished = { navController.navigate("finished") },
                                                             onOpenPlanner = { navController.navigate("planner") },
                                                             onOpenBook = { navController.navigate("book/${it.id}") },
                                                             onOpenWrapped = { navController.navigate("wrappedAnimated") },
-                                                            onUpdateName = viewModel::setUserName
+                                                            onUpdateName = viewModel::setUserName,
+                                                            onEditGoal = {
+                                                                initialGoalType = GoalType.YEARLY_BOOKS
+                                                                showGoalDialog = true
+                                                            }
                                                         )
             
                                         }
                                     }
                                     composable("wrappedAnimated") {
                                         androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
-                                            WrappedAnimatedScreen()
+                                            val completedSessions by viewModel.completedSessions.collectAsState()
+                                            val currentStreak by viewModel.streak.collectAsState()
+                                            WrappedScreen(
+                                                books = books,
+                                                sessions = completedSessions,
+                                                streak = currentStreak.currentStreak,
+                                                onBack = { navController.popBackStack() }
+                                            )
+                                        }
+                                    }
+                                    composable("wrapped") {
+                                        androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
+                                            val completedSessions by viewModel.completedSessions.collectAsState()
+                                            val currentStreak by viewModel.streak.collectAsState()
+                                            WrappedScreen(
+                                                books = books,
+                                                sessions = completedSessions,
+                                                streak = currentStreak.currentStreak,
+                                                onBack = { navController.popBackStack() }
+                                            )
                                         }
                                     }
                                     composable("planner") {
@@ -682,6 +792,7 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                         val dnd by viewModel.dndDuringSession.collectAsState()
                                                         val themeMode by viewModel.themeMode.collectAsState()
                                                         val dynamicColor by viewModel.useDynamicColor.collectAsState()
+                                                        val appPalette by viewModel.appPalette.collectAsState()
                                                         val userName by viewModel.userName.collectAsState()
                                                         val dayStartsAtHour by viewModel.dayStartsAtHour.collectAsState()
                                                         val useAppLock by viewModel.useAppLock.collectAsState()
@@ -693,6 +804,8 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                             dayStartsAtHour = dayStartsAtHour,
                                                             dndDuringSession = dnd,
                                                             themeMode = themeMode,
+                                                            palette = appPalette,
+                                                            onPaletteChange = viewModel::setAppPalette,
                                                             useDynamicColor = dynamicColor,
                                                             useAppLock = useAppLock,
                                                             onUserNameChange = viewModel::setUserName,
@@ -712,14 +825,23 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                         }
                                     }
                                     composable("finished") {
-                
                                         androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
-                                                        com.example.booktracker.app.ui.ReadingJourneyMap(
-                                                            books = books,
-                                                            onBack = { navController.popBackStack() },
-                                                            onOpenBook = { navController.navigate("book/${it.id}") }
-                                                        )
-                                                    }
+                                            FinishedScreen(
+                                                books = books,
+                                                onBack = { navController.popBackStack() },
+                                                onOpenBook = { navController.navigate("book/${it.id}") },
+                                                onOpenJourneyMap = { navController.navigate("journey_map") }
+                                            )
+                                        }
+                                    }
+                                    composable("journey_map") {
+                                        androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
+                                            com.example.booktracker.app.ui.ReadingJourneyMap(
+                                                books = books,
+                                                onBack = { navController.popBackStack() },
+                                                onOpenBook = { navController.navigate("book/${it.id}") }
+                                            )
+                                        }
                                     }
                                     composable("search") {
                 
@@ -996,13 +1118,13 @@ fun ReadingHero(
                     val progressVal = if (book.totalPages > 0) book.currentPage.toFloat() / book.totalPages else 0f
                     val progress by androidx.compose.animation.core.animateFloatAsState(targetValue = progressVal, label = "progress")
                     
-                    OutlinedCard(
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .animateContentSize(),
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(modifier = Modifier.clickable { onOpenBook(book) }) {
@@ -1074,8 +1196,8 @@ fun ReadingHero(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(8.dp),
-                                        color = MaterialTheme.colorScheme.secondary,
-                                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                                         strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                                     )
                                     Spacer(Modifier.height(12.dp))
@@ -1144,21 +1266,71 @@ fun ReadingHero(
                             Spacer(Modifier.height(16.dp))
                             androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                             Spacer(Modifier.height(12.dp))
-                            val velocity = remember(sessions) { AnalyticsEngine.pagesPerHour(sessions) }
-                            val minutesLeft = remember(book, sessions) {
-                                AnalyticsEngine.estimatedMinutesLeft(book, sessions)
+                            val bookSessions = remember(book, sessions) { sessions.filter { it.bookId == book.id } }
+                            val velocity = remember(bookSessions, sessions) { AnalyticsEngine.bookPagesPerHour(bookSessions, sessions) }
+                            val speedText = remember(velocity) { AnalyticsEngine.formatReadingSpeed(velocity) }
+                            val minutesLeft = remember(book, bookSessions, sessions) {
+                                AnalyticsEngine.bookEstimatedMinutesLeft(book, bookSessions, sessions)
                             }
-                            if (velocity != null) {
-                                Text(
-                                    buildString {
-                                        append("≈ ${velocity.roundToInt()} pages/hour")
-                                        if (minutesLeft != null && minutesLeft > 0) {
-                                            append(" · ${AnalyticsEngine.formatMinutes(minutesLeft)} left")
+                            val etaText = remember(minutesLeft) { AnalyticsEngine.formatEstimatedTime(minutesLeft) }
+
+                            if (speedText != null || etaText != null) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (speedText != null) {
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    Icons.Filled.Speed,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(13.dp),
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                                Spacer(Modifier.width(4.dp))
+                                                Text(
+                                                    speedText,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            }
                                         }
-                                    },
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                    }
+                                    if (etaText != null) {
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    Icons.Filled.Schedule,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(13.dp),
+                                                    tint = MaterialTheme.colorScheme.secondary
+                                                )
+                                                Spacer(Modifier.width(4.dp))
+                                                Text(
+                                                    etaText,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                                 Spacer(Modifier.height(10.dp))
                             }
                             Row(
@@ -1275,26 +1447,40 @@ private fun formatElapsed(millis: Long): String {
 @Composable
 fun StreakBadge(streak: StreakEngine.StreakInfo) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        val hasStreak = streak.currentStreak > 0
         Surface(
             shape = CircleShape,
-            color = LocalContentColor.current.copy(alpha = 0.10f),
-            contentColor = LocalContentColor.current
+            color = if (streak.goalMetToday) {
+                Color(0xFFFF6D00).copy(alpha = 0.15f)
+            } else if (hasStreak) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerHigh
+            },
+            border = androidx.compose.foundation.BorderStroke(
+                width = 1.dp,
+                color = if (streak.goalMetToday) Color(0xFFFF9800).copy(alpha = 0.6f)
+                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     Icons.Filled.LocalFireDepartment,
                     contentDescription = null,
                     tint = if (streak.goalMetToday) StreakFlame
-                    else LocalContentColor.current.copy(alpha = 0.55f),
-                    modifier = Modifier.size(16.dp)
+                    else if (hasStreak) Color(0xFFFFB74D)
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(18.dp)
                 )
-                Spacer(Modifier.width(5.dp))
+                Spacer(Modifier.width(6.dp))
                 Text(
                     "${streak.currentStreak}-day streak",
-                    style = MaterialTheme.typography.labelMedium
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = if (streak.goalMetToday) Color(0xFFFF9800)
+                    else MaterialTheme.colorScheme.onSurface
                 )
             }
         }
@@ -1318,18 +1504,38 @@ fun StreakBadge(streak: StreakEngine.StreakInfo) {
                 Box(
                     modifier = Modifier
                         .size(24.dp)
-                        .background(
-                            color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                            shape = CircleShape
+                        .then(
+                            if (isActive) {
+                                Modifier.background(
+                                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                        listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
+                                    ),
+                                    shape = CircleShape
+                                )
+                            } else {
+                                Modifier.background(
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    shape = CircleShape
+                                )
+                            }
                         )
                         .then(
-                            if (isToday) Modifier.background(Color.Transparent, CircleShape) else Modifier
+                            if (isToday) {
+                                Modifier.border(
+                                    width = 1.5.dp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    shape = CircleShape
+                                )
+                            } else Modifier
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = day.dayOfWeek.name.take(1),
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 10.sp,
+                            fontWeight = if (isActive || isToday) FontWeight.Bold else FontWeight.Normal
+                        ),
                         color = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -1446,6 +1652,32 @@ fun LibraryScreen(
                 )
             }
         }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = onCurationClick,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Filled.Favorite, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Curate TBR", maxLines = 1)
+            }
+            OutlinedButton(
+                onClick = { epubPickerLauncher.launch("application/epub+zip") },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Read EPUB", maxLines = 1)
+            }
+        }
         
         if (displayBooks.isEmpty()) {
             // Polished Empty State
@@ -1527,28 +1759,6 @@ fun LibraryScreen(
             }
         }
     }
-        
-        // FAB Column
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = 96.dp), // Lift above bottom navigation bar
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.End
-        ) {
-            androidx.compose.material3.ExtendedFloatingActionButton(
-                onClick = { epubPickerLauncher.launch("application/epub+zip") },
-                icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null) },
-                text = { Text("Read EPUB") },
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-            androidx.compose.material3.ExtendedFloatingActionButton(
-                onClick = onCurationClick,
-                icon = { Icon(Icons.Filled.Favorite, contentDescription = null) },
-                text = { Text("Curate TBR") }
-            )
-        }
     }
 }
 
@@ -1561,6 +1771,7 @@ fun LibraryGridCard(
     onStartReading: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val isReading = book.status == BookStatus.READING.name
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -1568,7 +1779,8 @@ fun LibraryGridCard(
             .bounceClick(onClick = onClick)
             .animateContentSize(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        border = if (isReading) androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             BookCover(book.coverUrl, Modifier.heroSharedElement("cover-${book.id}").fillMaxSize())
@@ -1580,6 +1792,23 @@ fun LibraryGridCard(
                 ""
             }
             if (statusText.isNotEmpty()) {
+                val badgeColor = when (book.status) {
+                    BookStatus.READING.name -> MaterialTheme.colorScheme.primary
+                    BookStatus.FINISHED.name -> MaterialTheme.colorScheme.tertiary
+                    BookStatus.UP_NEXT.name -> MaterialTheme.colorScheme.secondary
+                    BookStatus.SHORTLIST.name -> MaterialTheme.colorScheme.secondaryContainer
+                    BookStatus.DNF.name -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.surfaceVariant
+                }
+                val badgeTextColor = when (book.status) {
+                    BookStatus.READING.name -> MaterialTheme.colorScheme.onPrimary
+                    BookStatus.FINISHED.name -> MaterialTheme.colorScheme.onTertiary
+                    BookStatus.UP_NEXT.name -> MaterialTheme.colorScheme.onSecondary
+                    BookStatus.SHORTLIST.name -> MaterialTheme.colorScheme.onSecondaryContainer
+                    BookStatus.DNF.name -> MaterialTheme.colorScheme.onError
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                }
+
                 Row(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -1588,13 +1817,18 @@ fun LibraryGridCard(
                 ) {
                     Box(
                         modifier = Modifier
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f), CircleShape)
+                            .background(badgeColor.copy(alpha = 0.92f), CircleShape)
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
+                        val prefix = if (book.status == BookStatus.FINISHED.name) "🏆 " else ""
+                        val pct = if (book.status == BookStatus.READING.name && book.totalPages > 0) {
+                            " · ${((book.currentPage.toFloat() / book.totalPages) * 100).toInt()}%"
+                        } else ""
                         Text(
-                            statusText,
+                            "$prefix$statusText$pct",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurface
+                            fontWeight = FontWeight.SemiBold,
+                            color = badgeTextColor
                         )
                     }
                     
@@ -1717,40 +1951,7 @@ private fun CountPill(count: Int) {
     }
 }
 
-@Composable
-private fun EmptyPipelineState(tab: PipelineTab) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .size(88.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.AutoMirrored.Filled.MenuBook,
-                contentDescription = null,
-                modifier = Modifier.size(40.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-        Spacer(Modifier.height(16.dp))
-        Text(tab.emptyTitle, style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(4.dp))
-        Text(
-            tab.emptyHint,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-    }
-}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

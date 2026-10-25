@@ -79,20 +79,34 @@ class TimerService : Service() {
         serviceScope.launch {
             ServiceLocator.timerMode.collect { updateNotification() }
         }
+        serviceScope.launch {
+            ServiceLocator.timerBookTitle.collect { updateNotification() }
+        }
+        serviceScope.launch {
+            ServiceLocator.timerIsRunning.collect { updateNotification() }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val action = intent?.action
-        if (action == ACTION_START) {
-            startForegroundService()
-        } else if (action == ACTION_STOP) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-            } else {
-                @Suppress("DEPRECATION")
-                stopForeground(true)
+        when (intent?.action) {
+            ACTION_START -> startForegroundService()
+            ACTION_STOP -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                } else {
+                    @Suppress("DEPRECATION")
+                    stopForeground(true)
+                }
+                stopSelf()
             }
-            stopSelf()
+            ACTION_PAUSE -> {
+                ServiceLocator.timerIsRunning.value = false
+                updateNotification()
+            }
+            ACTION_RESUME -> {
+                ServiceLocator.timerIsRunning.value = true
+                updateNotification()
+            }
         }
         return START_NOT_STICKY
     }
@@ -119,6 +133,8 @@ class TimerService : Service() {
 
     private fun buildNotification(): Notification {
         val mode = ServiceLocator.timerMode.value
+        val isRunning = ServiceLocator.timerIsRunning.value
+        val bookTitle = ServiceLocator.timerBookTitle.value
         val timeValue = if (mode == TimerMode.STOPWATCH) ServiceLocator.elapsedSeconds.value else ServiceLocator.timeLeftSeconds.value
         val phase = ServiceLocator.timerPhase.value
 
@@ -126,23 +142,53 @@ class TimerService : Service() {
         val m = (timeValue % 3600) / 60
         val s = timeValue % 60
         val timeStr = if (h > 0) String.format("%02d:%02d:%02d", h, m, s) else String.format("%02d:%02d", m, s)
-        val title = if (mode == TimerMode.STOPWATCH) "Reading Session" else if (phase.name == "WORK") "Deep Focus" else "Take a Break"
 
-        val intent = Intent(this, MainActivity::class.java).apply {
+        val title = if (bookTitle != null) {
+            if (isRunning) "Reading: $bookTitle" else "Paused: $bookTitle"
+        } else {
+            if (isRunning) {
+                if (mode == TimerMode.STOPWATCH) "Reading Session" else if (phase.name == "WORK") "Deep Focus" else "Take a Break"
+            } else {
+                "Session Paused"
+            }
+        }
+
+        val subText = if (mode == TimerMode.COUNTDOWN) "$timeStr remaining" else "$timeStr reading time"
+
+        val openIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        val openPendingIntent = PendingIntent.getActivity(
+            this, 0, openIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val pauseIntent = Intent(this, TimerService::class.java).apply { action = ACTION_PAUSE }
+        val pausePendingIntent = PendingIntent.getService(
+            this, 1, pauseIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val resumeIntent = Intent(this, TimerService::class.java).apply { action = ACTION_RESUME }
+        val resumePendingIntent = PendingIntent.getService(
+            this, 2, resumeIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
-            .setContentText(timeStr)
+            .setContentText(subText)
             .setSmallIcon(android.R.drawable.ic_media_play)
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
+            .setContentIntent(openPendingIntent)
+            .setOngoing(isRunning)
             .setOnlyAlertOnce(true)
-            .build()
+            .setShowWhen(false)
+
+        if (isRunning) {
+            builder.addAction(android.R.drawable.ic_media_pause, "Pause", pausePendingIntent)
+        } else {
+            builder.addAction(android.R.drawable.ic_media_play, "Resume", resumePendingIntent)
+        }
+        builder.addAction(android.R.drawable.ic_menu_view, "Open", openPendingIntent)
+
+        return builder.build()
     }
 
     private fun createNotificationChannel() {
@@ -162,6 +208,8 @@ class TimerService : Service() {
     companion object {
         const val ACTION_START = "ACTION_START"
         const val ACTION_STOP = "ACTION_STOP"
+        const val ACTION_PAUSE = "ACTION_PAUSE"
+        const val ACTION_RESUME = "ACTION_RESUME"
         private const val CHANNEL_ID = "TimerChannel"
         private const val NOTIFICATION_ID = 1
     }

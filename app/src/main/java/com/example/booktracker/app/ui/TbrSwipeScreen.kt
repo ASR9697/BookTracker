@@ -39,8 +39,10 @@ fun TbrSwipeScreen(
     onStartReading: (Book) -> Unit,
     onBack: () -> Unit
 ) {
-    var currentIndex by remember(books) { mutableIntStateOf(0) }
-    val remainingBooks = if (currentIndex < books.size) books.subList(currentIndex, books.size) else emptyList()
+    val handledIds = remember { mutableStateListOf<String>() }
+    val remainingBooks = remember(books, handledIds.size) {
+        books.filterNot { it.id in handledIds }
+    }
 
     Scaffold(
         topBar = {
@@ -96,29 +98,20 @@ fun TbrSwipeScreen(
                 }
             } else {
                 // Draw bottom card for visual stack depth if there's more than 1
-                if (remainingBooks.size > 1) {
-                    val nextBook = remainingBooks[1]
-                    SwipeCard(
-                        book = nextBook,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = 16.dp, start = 8.dp, end = 8.dp, bottom = 8.dp)
-                            .graphicsLayer { alpha = 0.5f }
-                    )
-                }
-
-                // Draw top card
+                val nextBook = if (remainingBooks.size > 1) remainingBooks[1] else null
                 val currentBook = remainingBooks[0]
+
                 TinderCard(
                     book = currentBook,
-                    onSwipedLeft = { currentIndex++ },
+                    nextBook = nextBook,
+                    onSwipedLeft = { handledIds.add(currentBook.id) },
                     onSwipedRight = {
+                        handledIds.add(currentBook.id)
                         onPromote(currentBook)
-                        currentIndex++
                     },
                     onSwipedUp = {
+                        handledIds.add(currentBook.id)
                         onStartReading(currentBook)
-                        currentIndex++
                     }
                 )
             }
@@ -129,6 +122,7 @@ fun TbrSwipeScreen(
 @Composable
 fun TinderCard(
     book: Book,
+    nextBook: Book? = null,
     onSwipedLeft: () -> Unit,
     onSwipedRight: () -> Unit,
     onSwipedUp: () -> Unit
@@ -137,86 +131,121 @@ fun TinderCard(
     val scope = rememberCoroutineScope()
     val offsetX = remember { Animatable(0f) }
     val offsetY = remember { Animatable(0f) }
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     val rotation = (offsetX.value / 60).coerceIn(-40f, 40f)
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .offset { IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
-            .graphicsLayer {
-                rotationZ = rotation
-            }
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragEnd = {
-                        scope.launch {
-                            if (offsetX.value > screenWidth / 3) {
-                                // Swipe right
-                                offsetX.animateTo(screenWidth * 1.5f, tween(300))
-                                onSwipedRight()
-                            } else if (offsetX.value < -screenWidth / 3) {
-                                // Swipe left
-                                offsetX.animateTo(-screenWidth * 1.5f, tween(300))
-                                onSwipedLeft()
-                            } else if (offsetY.value < -screenWidth / 3) {
-                                // Swipe up
-                                offsetY.animateTo(-screenWidth * 1.5f, tween(300))
-                                onSwipedUp()
-                            } else {
-                                // Reset
-                                launch { offsetX.animateTo(0f, tween(300)) }
-                                launch { offsetY.animateTo(0f, tween(300)) }
+    val dragDist = kotlin.math.sqrt(offsetX.value * offsetX.value + offsetY.value * offsetY.value)
+    val dragFraction = (dragDist / (screenWidth * 0.45f)).coerceIn(0f, 1f)
+    val nextCardAlpha = 0.5f + (0.5f * dragFraction)
+    val nextCardScale = 0.94f + (0.06f * dragFraction)
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Next card in stack scaling up smoothly as user drags
+        if (nextBook != null) {
+            SwipeCard(
+                book = nextBook,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 16.dp, start = 8.dp, end = 8.dp, bottom = 8.dp)
+                    .graphicsLayer {
+                        alpha = nextCardAlpha
+                        scaleX = nextCardScale
+                        scaleY = nextCardScale
+                    }
+            )
+        }
+
+        // Active dragging card
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .offset { IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
+                .graphicsLayer {
+                    rotationZ = rotation
+                }
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragEnd = {
+                            scope.launch {
+                                if (offsetX.value > screenWidth / 3) {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                    offsetX.animateTo(screenWidth * 1.5f, tween(250))
+                                    onSwipedRight()
+                                } else if (offsetX.value < -screenWidth / 3) {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                    offsetX.animateTo(-screenWidth * 1.5f, tween(250))
+                                    onSwipedLeft()
+                                } else if (offsetY.value < -screenWidth / 3) {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                    offsetY.animateTo(-screenWidth * 1.5f, tween(250))
+                                    onSwipedUp()
+                                } else {
+                                    // Bouncy spring reset
+                                    val bounceSpec = androidx.compose.animation.core.spring<Float>(
+                                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                                        stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
+                                    )
+                                    launch { offsetX.animateTo(0f, bounceSpec) }
+                                    launch { offsetY.animateTo(0f, bounceSpec) }
+                                }
                             }
                         }
-                    }
-                ) { change, dragAmount ->
-                    change.consume()
-                    scope.launch {
-                        offsetX.snapTo(offsetX.value + dragAmount.x)
-                        offsetY.snapTo(offsetY.value + dragAmount.y)
+                    ) { change, dragAmount ->
+                        change.consume()
+                        scope.launch {
+                            offsetX.snapTo(offsetX.value + dragAmount.x)
+                            offsetY.snapTo(offsetY.value + dragAmount.y)
+                        }
                     }
                 }
-            }
-    ) {
-        SwipeCard(book = book, modifier = Modifier.fillMaxSize())
+        ) {
+            SwipeCard(book = book, modifier = Modifier.fillMaxSize())
 
-        // Swipe overlays (Like/Pass/Read)
-        if (offsetX.value > 50f) {
-            Text(
-                "SHORTLIST",
-                color = Color.Green,
-                style = MaterialTheme.typography.displayMedium,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(32.dp)
-                    .border(4.dp, Color.Green, RoundedCornerShape(8.dp))
-                    .padding(8.dp)
-                    .graphicsLayer { rotationZ = -15f }
-            )
-        } else if (offsetX.value < -50f) {
-            Text(
-                "PASS",
-                color = Color.Red,
-                style = MaterialTheme.typography.displayMedium,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(32.dp)
-                    .border(4.dp, Color.Red, RoundedCornerShape(8.dp))
-                    .padding(8.dp)
-                    .graphicsLayer { rotationZ = 15f }
-            )
-        } else if (offsetY.value < -50f) {
-            Text(
-                "READ",
-                color = Color.Blue,
-                style = MaterialTheme.typography.displayMedium,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(32.dp)
-                    .border(4.dp, Color.Blue, RoundedCornerShape(8.dp))
-                    .padding(8.dp)
-            )
+            // Swipe overlays (Like/Pass/Read) with smooth opacity and Material You colors
+            val shortlistColor = MaterialTheme.colorScheme.primary
+            val passColor = MaterialTheme.colorScheme.error
+            val readColor = MaterialTheme.colorScheme.tertiary
+
+            if (offsetX.value > 20f) {
+                val stampAlpha = ((offsetX.value - 20f) / 100f).coerceIn(0f, 1f)
+                Text(
+                    "SHORTLIST",
+                    color = shortlistColor.copy(alpha = stampAlpha),
+                    style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(32.dp)
+                        .border(4.dp, shortlistColor.copy(alpha = stampAlpha), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                        .graphicsLayer { rotationZ = -15f }
+                )
+            } else if (offsetX.value < -20f) {
+                val stampAlpha = ((-offsetX.value - 20f) / 100f).coerceIn(0f, 1f)
+                Text(
+                    "PASS",
+                    color = passColor.copy(alpha = stampAlpha),
+                    style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(32.dp)
+                        .border(4.dp, passColor.copy(alpha = stampAlpha), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                        .graphicsLayer { rotationZ = 15f }
+                )
+            } else if (offsetY.value < -20f) {
+                val stampAlpha = ((-offsetY.value - 20f) / 100f).coerceIn(0f, 1f)
+                Text(
+                    "READ",
+                    color = readColor.copy(alpha = stampAlpha),
+                    style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(32.dp)
+                        .border(4.dp, readColor.copy(alpha = stampAlpha), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                )
+            }
         }
     }
 }

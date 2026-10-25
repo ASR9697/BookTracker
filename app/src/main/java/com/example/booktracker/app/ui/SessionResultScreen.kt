@@ -58,9 +58,16 @@ fun SessionResultScreen(
     val unit = FormatAdaptabilityLayer.getDisplayUnit(book).lowercase()
 
     val pagesLeft = (book.totalPages - book.currentPage).coerceAtLeast(0)
-    val minutesLeft = remember(book, allSessions) {
-        AnalyticsEngine.estimatedMinutesLeft(book, allSessions)
+    val bookSessions = remember(book, allSessions) { allSessions.filter { it.bookId == book.id } }
+    val minutesLeft = remember(book, bookSessions, allSessions) {
+        AnalyticsEngine.bookEstimatedMinutesLeft(book, bookSessions, allSessions)
     }
+    val sessionPages = (result.endPage - result.startPage).coerceAtLeast(0)
+    val sessionPpm = remember(sessionPages, result.durationSeconds) {
+        AnalyticsEngine.sessionSpeedPpm(sessionPages, result.durationSeconds)
+    }
+    val sessionSpeedText = remember(sessionPpm) { AnalyticsEngine.formatSessionPpm(sessionPpm) }
+
     val progress = if (book.totalPages > 0) {
         book.currentPage.toFloat() / book.totalPages
     } else 0f
@@ -147,6 +154,10 @@ fun SessionResultScreen(
                 StatSentence {
                     append("That session covered ")
                     highlight("${result.endPage - result.startPage} $unit")
+                    if (sessionSpeedText != null) {
+                        append(" at a pace of ")
+                        highlight(sessionSpeedText)
+                    }
                     append(".")
                 }
             }

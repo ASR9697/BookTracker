@@ -45,6 +45,7 @@ class MainActivity : FragmentActivity() {
             val windowSizeClass = calculateWindowSizeClass(this)
             val themeMode by viewModel.themeMode.collectAsState()
             val useDynamicColor by viewModel.useDynamicColor.collectAsState()
+            val appPalette by viewModel.appPalette.collectAsState()
             
             val isDarkTheme = when (themeMode) {
                 com.example.booktracker.app.data.ThemeMode.LIGHT -> false
@@ -83,7 +84,7 @@ class MainActivity : FragmentActivity() {
             }
 
             val useAppLock by viewModel.useAppLock.collectAsState()
-            var isAuthenticated by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+            var isAuthenticated by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
             
             androidx.compose.runtime.LaunchedEffect(useAppLock) {
                 if (!useAppLock) {
@@ -111,7 +112,7 @@ class MainActivity : FragmentActivity() {
                 }
             }
 
-            BookTrackerTheme(darkTheme = isDarkTheme, dynamicColor = useDynamicColor) {
+            BookTrackerTheme(darkTheme = isDarkTheme, dynamicColor = useDynamicColor, palette = appPalette) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     if (isAuthenticated) {
                         BookTrackerApp(viewModel, windowSizeClass)
