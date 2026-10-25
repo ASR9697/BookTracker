@@ -29,10 +29,25 @@
     "file": "app/src/main/java/com/example/booktracker/app/analytics/GoalEngine.kt",
     "line": 23
   },
+  "HabitConsistency": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/analytics/GoalEngine.kt",
+    "line": 37
+  },
+  "Season": {
+    "type": "enum class",
+    "file": "app/src/main/java/com/example/booktracker/app/analytics/GoalEngine.kt",
+    "line": 45
+  },
+  "SeasonalSprint": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/analytics/GoalEngine.kt",
+    "line": 60
+  },
   "MonthlyGoalSummary": {
     "type": "data class",
     "file": "app/src/main/java/com/example/booktracker/app/analytics/GoalEngine.kt",
-    "line": 34
+    "line": 70
   },
   "Summary": {
     "type": "data class",

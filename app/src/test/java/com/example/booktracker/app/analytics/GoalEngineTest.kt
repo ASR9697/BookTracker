@@ -88,4 +88,63 @@ class GoalEngineTest {
         assertEquals(500, summary.targetPages)
         assertEquals(2, summary.targetBooks)
     }
+
+    @Test
+    fun `calculate yearly pace generates valid year-end forecast`() {
+        val date = LocalDate.of(2026, 6, 29) // day 180 of 365 (~50%)
+        val pace = GoalEngine.calculateYearlyPace(
+            yearlyGoal = 20,
+            completedBooksThisYear = 15,
+            date = date
+        )
+        // 15 books in 180 days -> projected ~30 books by year end
+        assertTrue(pace.projectedFinishBooks >= 29)
+        assertTrue(pace.projectionMessage.contains("Projected to finish"))
+        assertTrue(pace.paceRatio > 1f)
+    }
+
+    @Test
+    fun `calculate habit consistency evaluates active days percentage`() {
+        val zone = ZoneId.of("UTC")
+        val date = LocalDate.of(2026, 10, 30)
+        val sessions = (0..14).map { dayOffset ->
+            val time = date.minusDays(dayOffset.toLong() * 2).atStartOfDay(zone).toInstant().toEpochMilli()
+            Session(id = "s$dayOffset", bookId = "b1", startTime = time, endTime = time + 3600_000L, pagesRead = 20)
+        }
+        val consistency = GoalEngine.calculateHabitConsistency(
+            sessions = sessions,
+            daysWindow = 30,
+            date = date,
+            zone = zone
+        )
+        assertEquals(15, consistency.activeDays)
+        assertEquals(30, consistency.totalDays)
+        assertEquals(50, consistency.consistencyPercent)
+    }
+
+    @Test
+    fun `calculate seasonal sprint identifies season and tracks challenge`() {
+        val zone = ZoneId.of("UTC")
+        val octDate = LocalDate.of(2026, 10, 15)
+        assertEquals(GoalEngine.Season.AUTUMN, GoalEngine.currentSeason(octDate))
+
+        val octTime = octDate.atStartOfDay(zone).toInstant().toEpochMilli()
+        val books = listOf(
+            Book(id = "b1", title = "B1", isbn = null, status = BookStatus.FINISHED.name, lastUpdated = octTime),
+            Book(id = "b2", title = "B2", isbn = null, status = BookStatus.FINISHED.name, lastUpdated = octTime)
+        )
+
+        val sprint = GoalEngine.calculateSeasonalSprint(
+            books = books,
+            date = octDate,
+            zone = zone,
+            sprintGoal = 5
+        )
+
+        assertEquals(GoalEngine.Season.AUTUMN, sprint.season)
+        assertEquals(2, sprint.completedBooks)
+        assertEquals(5, sprint.targetBooks)
+        assertEquals(0.4f, sprint.progress, 0.01f)
+        assertTrue(sprint.daysRemaining > 0)
+    }
 }

@@ -138,9 +138,9 @@ These features build on top of our existing 100% offline, local-first Room + Dat
 - **Goal:** [DONE] A dedicated, shareable victory graphic card generated when a reader finishes a book.
 - **Details:** High-res Canvas export (1:1 square & 9:16 story) featuring the book cover art with ambient blur backdrop, star rating breakdown, personal review snippet, total reading time, average velocity, and top highlighted quote.
 
-### 5.4 Smart Reading Challenges & Goal Pace Forecaster
-- **Goal:** Comprehensive goal projections and challenge tracking in `GoalEngine.kt`.
-- **Details:** Pace ahead/behind gauge (e.g. *"You are 2 books ahead of your yearly target! Projected to finish 28 books"*), daily habit consistency percentage, and seasonal reading sprint challenges (Spring/Summer/Autumn 5-book sprints).
+### [x] 5.4 Smart Reading Challenges & Goal Pace Forecaster
+- **Goal:** [DONE] Comprehensive goal projections and challenge tracking in `GoalEngine.kt`.
+- **Details:** Pace ahead/behind gauge (e.g. *"You are 2 books ahead of your yearly target! Projected to finish 28 books"*), velocity-based year-end completion forecast (`projectedFinishBooks`), daily habit consistency percentage (`calculateHabitConsistency` with 30-day rolling window & tier ratings), and seasonal reading sprint challenges (Spring/Summer/Autumn/Winter 5-book sprint challenges with countdowns and progress tracking). Displayed in `AnalyticsScreen.kt` and `ProfileScreen.kt`.
 
 ### 5.5 Library Loan Due Date Alerts & Lending Tracker
 - **Goal:** Track library return deadlines and books lent to friends using the existing `LoanRecord` schema.

@@ -295,7 +295,49 @@ fun ProfileScreen(
                                     GoalEngine.GoalPaceStatus.ON_TRACK -> MaterialTheme.colorScheme.secondary
                                 }
                             )
+                            if (yearlyPace.projectionMessage.isNotEmpty()) {
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    yearlyPace.projectionMessage,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
+                    }
+                }
+            }
+        }
+
+        item {
+            val seasonalSprint = remember(books) {
+                GoalEngine.calculateSeasonalSprint(books, LocalDate.now(zone), zone, 5)
+            }
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        seasonalSprint.season.emoji,
+                        style = MaterialTheme.typography.headlineMedium
+                    )
+                    Spacer(Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            seasonalSprint.season.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "${seasonalSprint.completedBooks} of ${seasonalSprint.targetBooks} books · ${if (seasonalSprint.isCompleted) "Completed 🎉" else "${seasonalSprint.daysRemaining} days left"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
