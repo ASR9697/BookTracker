@@ -159,10 +159,10 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: SectionItem:175, BookDetailTabRow:188, BookDetailScreen:254, DetailHeader:1266, ActionPill:1352, StatusPill:1395, statusLabel:1422, StatusPickerDialog:1435, AboutCard:1479, FormatCard:1524, OwnershipCard:1570, PlannerCard:1607, BookStatsCard:1645, StatCell:1732, ReadingStreakCard:1755, dayCount:1828, RatingCard:1831, ReviewCard:1870, NoteSortToggle:1887, NoteType.label:1926, NoteType.shortLabel:1932, NoteCard:1939, MetadataChips:2079, MetaChip:2100, ProgressAndDaysRow:2123, CollectionsCard:2239, CollectionPickerDialog:2293, SessionRow:2369, EditSessionDialog:2455, LedgerCard:2505, DetailCard:2608, AddNoteBottomSheet:2628
 - **BookEditDialogs.kt** (443) - Edits a book's details after it has been added — fixing a wrong page count or a missing cover is otherwise impossible.
   - fun: EditBookDialog:75, LogSessionDialog:302, PastDatePickerDialog:410, Book.isEnded:441
-- **BookTrackerScreen.kt** (1739)
+- **BookTrackerScreen.kt** (1740)
   - types: LibraryViewMode:160, LibrarySort:162
-  - fun: BookTrackerApp:173, WeekBubbles:1092, LibraryScreen:1155, BookCover:1615, formatElapsed:1640, SubScreen:1655, TimerMiniPlayer:1670
-  - nav routes: home:453, editHome:511, owned/{ownership}:517, calendar:553, bookshelf:575, epubReader/{uri}:585, library:592, memorize:609, scanner:620, privacy:637, stats:640, profile:664, wrappedAnimated:692, wrapped:704, planner:716, book/{bookId}:725, history:804, settings:817, finished:862, journey_map:876, search:885, focus/{bookId}:895, session_save/{bookId}:916, session_result/{bookId}:965, tbr_swipe:987
+  - fun: BookTrackerApp:173, WeekBubbles:1093, LibraryScreen:1156, BookCover:1616, formatElapsed:1641, SubScreen:1656, TimerMiniPlayer:1671
+  - nav routes: home:453, editHome:511, owned/{ownership}:517, calendar:553, bookshelf:575, epubReader/{uri}:585, library:592, memorize:609, scanner:621, privacy:638, stats:641, profile:665, wrappedAnimated:693, wrapped:705, planner:717, book/{bookId}:726, history:805, settings:818, finished:863, journey_map:877, search:886, focus/{bookId}:896, session_save/{bookId}:917, session_result/{bookId}:966, tbr_swipe:988
 - **BookTrackerViewModel.kt** (853)
   - types: BookTrackerViewModel:56, .SessionResult:481
   - fun: .shareNote:307, .addScannedBook:311, .importCsv:338, .promote:345, .promoteToReading:355, .pauseBook:361, .changeStatus:371, .toggleFavorite:381, .addProgress:385, .recordLoan:389, .markLoanReturned:398, .updateBookDetails:409, .setFormat:421, .setOwnership:425, .finishBook:429, .readAgain:433, .setProgress:437, .setCollections:441, .markDnf:445, .startSession:449, .startFocus:459, .saveSession:497, .clearSessionResult:534, .discardOpenSession:539, .leaveUnstartedFocus:555, .logManualSession:570, .delete:576, .deleteSession:583, .updateSession:587, .restore:592, .setHomeLayout:599, .setUserName:603, .setDailyGoal:607, .setYearlyGoal:611, .setMonthlyGoalPages:615, .setMonthlyGoalBooks:619, .setDndDuringSession:623, .setThemeMode:627, .setUseDynamicColor:631, .setAppPalette:635, .setReminder:639, .planBook:643, .setTimerBook:653, .setTimerPhase:666, .setTimerMode:674, .setCustomWorkMinutes:686, .countdownTotalSeconds:696, .setTimerRunning:705, .setWorkMinutes:723, .setBreakMinutes:731, .setDayStartsAtHour:738, .setUseAppLock:742, .setNoiseType:746, .setTimerVolume:754, .sessionsFor:759, .notesFor:762, .addNote:764, .updateNote:773, .toggleNoteFavorite:777, .deleteNote:781, .searchLibrary:785, .exportBackup:788, .importBackup:812
@@ -200,8 +200,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: LibrarySearchScreen:60, SearchSectionHeader:168, BookHitRow:178, NoteHitRow:210, StatusChip:252
 - **LoanComponents.kt** (535) - Reusable visual badge displaying loan status and due date countdown.
   - fun: LoanBadge:40, UrgentLoanBanner:107, LoanDetailCard:188, LoanRecordDialog:402
-- **MemorizeScreen.kt** (244)
-  - fun: MemorizeScreen:30
+- **MemorizeScreen.kt** (476) - The Notes tab: every note as a scrollable feed (default) or as shuffled flashcards.
+  - types: NotesView:50, FeedSort:52
+  - fun: MemorizeScreen:62, NoteFeedCard:373
 - **MonthlyReportDialog.kt** (355) - Bookmory-style Interactive Monthly Wrap-up Dialog.
   - fun: MonthlyReportDialog:47, MiniStatBox:334
 - **MonthlyShareHelper.kt** (331)

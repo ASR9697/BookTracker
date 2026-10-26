@@ -612,7 +612,8 @@ androidx.compose.animation.SharedTransitionLayout {
                                                         MemorizeScreen(
                                                             notes = notes,
                                                             books = books,
-                                                            onToggleFavorite = viewModel::toggleNoteFavorite
+                                                            onToggleFavorite = viewModel::toggleNoteFavorite,
+                                                            onOpenBook = { navController.navigate("book/${it.id}") }
                                                         )
             
                                         }

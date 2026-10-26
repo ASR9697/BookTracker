@@ -1923,13 +1923,13 @@ private fun NoteSortToggle(current: NoteSort, onChange: (NoteSort) -> Unit) {
     }
 }
 
-private fun NoteType.label(): String = when (this) {
+internal fun NoteType.label(): String = when (this) {
     NoteType.BOOK_CONTENT -> "Quote"
     NoteType.PERSONAL_THOUGHT -> "Personal thought"
     NoteType.RANDOM -> "Other"
 }
 
-private fun NoteType.shortLabel(): String = when (this) {
+internal fun NoteType.shortLabel(): String = when (this) {
     NoteType.BOOK_CONTENT -> "Quote"
     NoteType.PERSONAL_THOUGHT -> "Thought"
     NoteType.RANDOM -> "Other"
