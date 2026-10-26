@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,7 +38,6 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.ViewWeek
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -51,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -105,6 +106,7 @@ fun HomeDashboard(
     onOpenWrapped: () -> Unit,
     onEditGoal: (GoalType) -> Unit,
     modifier: Modifier = Modifier,
+    scrollState: ScrollState = rememberScrollState(),
     banner: @Composable () -> Unit = {}
 ) {
     val zone = remember { ZoneId.systemDefault() }
@@ -118,6 +120,9 @@ fun HomeDashboard(
         }
     }
     val trackingStart = remember(books, sessions) { GoalEngine.trackingStart(books, sessions, zone) }
+    val hasYearToReview = remember(books, sessions, year, streak.dayStartsAtHour) {
+        AnalyticsEngine.hasYearToReview(books, sessions, year, zone, streak.dayStartsAtHour)
+    }
     val pagesByMonth = remember(sessions, year, streak.dayStartsAtHour) {
         IntArray(12).also { months ->
             StreakEngine.pagesByDay(sessions, zone, streak.dayStartsAtHour).forEach { (date, pages) ->
@@ -140,7 +145,7 @@ fun HomeDashboard(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .padding(bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -382,8 +387,10 @@ fun HomeDashboard(
                 ShortcutTile(
                     icon = Icons.Filled.AutoAwesome,
                     title = "Year in review",
-                    subtitle = "Your $year so far",
+                    subtitle = if (hasYearToReview) "Your $year so far"
+                    else "Unlocks after ${AnalyticsEngine.MIN_DAYS_FOR_WRAPPED} reading days",
                     onClick = onOpenWrapped,
+                    enabled = hasYearToReview,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -528,8 +535,15 @@ private fun CurrentBookCard(
                     Spacer(Modifier.width(8.dp))
                     Text(if (sessionOpen) "Back to timer" else "Read", fontWeight = FontWeight.SemiBold)
                 }
-                FilledTonalIconButton(onClick = onLogPages, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.Filled.Add, contentDescription = "Log pages")
+                // Labelled: a bare "+" next to Read was read as "add book".
+                FilledTonalButton(
+                    onClick = onLogPages,
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    modifier = Modifier.height(48.dp)
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Pages", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -608,13 +622,15 @@ private fun ShortcutTile(
     title: String,
     subtitle: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     Surface(
         onClick = onClick,
+        enabled = enabled,
         shape = TileShape,
         color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = modifier
+        modifier = modifier.alpha(if (enabled) 1f else 0.6f)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)

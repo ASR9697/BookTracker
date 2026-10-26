@@ -598,12 +598,23 @@ fun AnalyticsScreen(
                                 )
                             }
                         }
-                        Spacer(Modifier.height(24.dp))
-                        SmoothLineChart(
-                            data = last7Days,
-                            maxValue = maxIn7Days,
-                            modifier = Modifier.fillMaxWidth().height(160.dp).padding(top = 16.dp, bottom = 8.dp, start = 8.dp, end = 8.dp)
-                        )
+                        if (last7Days.all { it.second == 0L }) {
+                            // A flat line of zeros reads as broken; say what will fill it instead.
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                if (showMinutes) "No timed reading in the last 7 days. Use the timer on Home and your minutes show up here."
+                                else "No pages logged in the last 7 days. Update your page on Home and your week shows up here.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            Spacer(Modifier.height(24.dp))
+                            SmoothLineChart(
+                                data = last7Days,
+                                maxValue = maxIn7Days,
+                                modifier = Modifier.fillMaxWidth().height(160.dp).padding(top = 16.dp, bottom = 8.dp, start = 8.dp, end = 8.dp)
+                            )
+                        }
                     }
                 }
             }

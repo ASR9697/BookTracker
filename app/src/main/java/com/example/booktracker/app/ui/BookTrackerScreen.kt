@@ -114,6 +114,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -176,6 +177,9 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeC
         .filter { it.status.equals(BookStatus.READING.name, ignoreCase = true) }
         .sortedByDescending { it.lastUpdated }
     var showAddDialog by remember { mutableStateOf(false) }
+    // Hoisted so the Add book button can shrink once Home scrolls under it.
+    val homeScroll = rememberScrollState()
+    val homeAtTop by remember { derivedStateOf { homeScroll.value == 0 } }
     var pendingOutcome by remember { mutableStateOf<Pair<String, BookStatus>?>(null) }
     var showGoalDialog by remember { mutableStateOf(false) }
     var initialGoalType by remember { mutableStateOf(GoalType.YEARLY_BOOKS) }
@@ -384,7 +388,8 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeC
             if (currentRoute == "library" || currentRoute == "home") {
                 ExtendedFloatingActionButton(
                     onClick = { showAddDialog = true },
-                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    expanded = currentRoute != "home" || homeAtTop,
+                    icon = { Icon(Icons.Filled.Add, contentDescription = "Add book") },
                     text = { Text("Add book") },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
@@ -451,6 +456,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                             val sessions by viewModel.completedSessions.collectAsState()
                                             val currentUserName by viewModel.userName.collectAsState()
                                             HomeDashboard(
+                                                scrollState = homeScroll,
                                                 books = books,
                                                 readingBooks = readingBooks,
                                                 sessions = sessions,
@@ -1115,6 +1121,7 @@ fun LibraryScreen(
     var sortOrder by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(LibrarySort.RECENT) }
     var viewMode by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(LibraryViewMode.GRID) }
     var showSortMenu by remember { mutableStateOf(false) }
+    var showMoreMenu by remember { mutableStateOf(false) }
     var showCollectionMenu by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
 
@@ -1295,12 +1302,6 @@ fun LibraryScreen(
                 }
             }
             Spacer(Modifier.weight(1f))
-            IconButton(onClick = onCurationClick) {
-                Icon(Icons.Filled.Style, contentDescription = "Sort your to-read pile")
-            }
-            IconButton(onClick = { epubPickerLauncher.launch("application/epub+zip") }) {
-                Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Open an EPUB file")
-            }
             IconButton(onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 viewMode = if (viewMode == LibraryViewMode.GRID) LibraryViewMode.BOOKSHELF else LibraryViewMode.GRID
@@ -1309,6 +1310,30 @@ fun LibraryScreen(
                     if (viewMode == LibraryViewMode.GRID) Icons.Filled.ViewColumn else Icons.Filled.GridView,
                     contentDescription = if (viewMode == LibraryViewMode.GRID) "Show as bookshelf" else "Show as grid"
                 )
+            }
+            // Less common actions get words, not unexplained icons.
+            Box {
+                IconButton(onClick = { showMoreMenu = true }) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = "More library actions")
+                }
+                DropdownMenu(expanded = showMoreMenu, onDismissRequest = { showMoreMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Sort your to-read pile") },
+                        leadingIcon = { Icon(Icons.Filled.Style, contentDescription = null) },
+                        onClick = {
+                            showMoreMenu = false
+                            onCurationClick()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Open an EPUB file") },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null) },
+                        onClick = {
+                            showMoreMenu = false
+                            epubPickerLauncher.launch("application/epub+zip")
+                        }
+                    )
+                }
             }
         }
 

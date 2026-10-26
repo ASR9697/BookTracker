@@ -41,6 +41,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
+import kotlinx.coroutines.flow.first
 
 /**
  * 5 Reading Intensity Levels for Annual Matrix (GitHub & Bookmory standard).
@@ -124,8 +125,10 @@ fun ReadingHeatmap(
     val startMonday = remember(currentMonday) { currentMonday.minusWeeks((totalWeeks - 1).toLong()) }
 
     val scrollState = rememberScrollState()
-    LaunchedEffect(Unit) {
-        // Auto-scroll to current week so reader sees latest activity immediately
+    LaunchedEffect(scrollState) {
+        // Auto-scroll to current week so reader sees latest activity immediately.
+        // Wait for a measured width: inside a lazy list the first pass can report 0.
+        snapshotFlow { scrollState.maxValue }.first { it in 1 until Int.MAX_VALUE }
         scrollState.scrollTo(scrollState.maxValue)
     }
 
@@ -227,8 +230,10 @@ fun ReadingHeatmap(
                         for (col in 0 until totalWeeks) {
                             val weekStartDate = startMonday.plusWeeks(col.toLong())
                             val month = weekStartDate.monthValue
-                            val showMonth = month != lastMonth
-                            if (showMonth) lastMonth = month
+                            val newMonth = month != lastMonth
+                            lastMonth = month
+                            // A month cut short at the left edge would collide with the next label.
+                            val showMonth = newMonth && (col > 0 || startMonday.plusWeeks(2).monthValue == month)
 
                             Box(
                                 modifier = Modifier.width(12.dp),
@@ -241,7 +246,9 @@ fun ReadingHeatmap(
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.primary,
                                         maxLines = 1,
-                                        softWrap = false
+                                        softWrap = false,
+                                        // The cell is 12dp wide; let "Sep" run into the empty cells after it.
+                                        modifier = Modifier.wrapContentWidth(Alignment.Start, unbounded = true)
                                     )
                                 }
                             }

@@ -1,6 +1,7 @@
 package com.example.booktracker.app.analytics
 
 import com.example.booktracker.shared.models.Book
+import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.Session
 import java.time.Instant
 import java.time.LocalDate
@@ -19,6 +20,28 @@ object AnalyticsEngine {
 
     /** Sessions shorter than this can't produce a meaningful pages/hour. */
     const val MIN_TIMED_SESSION_MILLIS = 60_000L
+
+    /** Reading days in a year before Wrapped has enough to summarize. */
+    const val MIN_DAYS_FOR_WRAPPED = 7
+
+    /**
+     * Wrapped is a shareable card, so it stays locked until the year has a
+     * finished book or [MIN_DAYS_FOR_WRAPPED] reading days, never a card of zeros.
+     */
+    fun hasYearToReview(
+        books: List<Book>,
+        sessions: List<Session>,
+        year: Int,
+        zone: ZoneId = ZoneId.systemDefault(),
+        dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR
+    ): Boolean {
+        val finished = books.any {
+            it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) && it.completedAt > 0 &&
+                Instant.ofEpochMilli(it.completedAt).atZone(zone).year == year
+        }
+        return finished ||
+            StreakEngine.pagesByDay(sessions, zone, dayStartsAtHour).keys.count { it.year == year } >= MIN_DAYS_FOR_WRAPPED
+    }
 
     fun timedSessions(sessions: List<Session>): List<Session> =
         sessions.filter {

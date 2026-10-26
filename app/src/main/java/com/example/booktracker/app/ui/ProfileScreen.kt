@@ -37,6 +37,7 @@ import com.example.booktracker.app.ui.animations.bounceClick
 import com.example.booktracker.app.analytics.GoalEngine
 import com.example.booktracker.app.analytics.StreakEngine
 import com.example.booktracker.app.util.MarkdownExporter
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
@@ -75,6 +76,9 @@ fun ProfileScreen(
     }
     val trackingStart = remember(books, sessions) { GoalEngine.trackingStart(books, sessions, zone) }
     val trackingSince = trackingStart?.format(DateTimeFormatter.ofPattern("MMM yyyy"))
+    val hasYearToReview = remember(books, sessions, dayStartsAtHour) {
+        AnalyticsEngine.hasYearToReview(books, sessions, LocalDate.now(zone).year, zone, dayStartsAtHour)
+    }
 
     var selectedBadge by remember { mutableStateOf<Badge?>(null) }
     selectedBadge?.let { badge ->
@@ -172,7 +176,8 @@ fun ProfileScreen(
             }
         }
 
-        item {
+        // Wrapped stays hidden until there is a year worth sharing.
+        if (hasYearToReview) item {
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
