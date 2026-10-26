@@ -40,8 +40,9 @@ class ReadingWidget : GlanceAppWidget() {
         val dailyGoal = settings.dailyGoal.firstOrNull() ?: 20
         val repository = ServiceLocator.repository(context)
         val streak = com.example.booktracker.app.analytics.StreakEngine.compute(
-            repository.observeCompletedSessions().firstOrNull() ?: emptyList(),
-            settings.dayStartsAtHour.firstOrNull() ?: 3
+            sessions = repository.observeCompletedSessions().firstOrNull() ?: emptyList(),
+            dailyGoal = dailyGoal,
+            dayStartsAtHour = settings.dayStartsAtHour.firstOrNull() ?: 3
         ).currentStreak
         val books = repository.observeBooks().firstOrNull() ?: emptyList()
         val readingBook = books
@@ -76,10 +77,13 @@ class ReadingWidget : GlanceAppWidget() {
                 )
                 Spacer(GlanceModifier.height(4.dp))
                 
+                val unit = com.example.booktracker.app.format.FormatAdaptabilityLayer
+                    .getDisplayUnit(book).lowercase()
                 val progressStr = if (book.totalPages > 0) {
-                    "${book.currentPage} / ${book.totalPages} ${book.format.name.lowercase()}"
+                    val percent = (book.currentPage * 100 / book.totalPages).coerceIn(0, 100)
+                    "${book.currentPage} / ${book.totalPages} $unit · $percent%"
                 } else {
-                    "${book.currentPage} ${book.format.name.lowercase()}"
+                    "${book.currentPage} $unit"
                 }
                 
                 Text(
@@ -98,7 +102,11 @@ class ReadingWidget : GlanceAppWidget() {
                         actionParametersOf(AddProgressAction.bookIdKey to book.id, AddProgressAction.amountKey to 1)
                     ))
                     Spacer(GlanceModifier.width(8.dp))
-                    WidgetButton("Timer", actionStartActivity(
+                    WidgetButton("+10", actionRunCallback<AddProgressAction>(
+                        actionParametersOf(AddProgressAction.bookIdKey to book.id, AddProgressAction.amountKey to 10)
+                    ))
+                    Spacer(GlanceModifier.width(8.dp))
+                    WidgetButton("Open", actionStartActivity(
                         android.content.Intent(context, com.example.booktracker.app.MainActivity::class.java).apply {
                             flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
                         }
@@ -106,9 +114,17 @@ class ReadingWidget : GlanceAppWidget() {
                 }
             } else {
                 Text(
-                    text = "No active reading",
+                    text = "No book in progress",
                     style = TextStyle(
                         color = GlanceTheme.colors.onSurfaceVariant
+                    ),
+                    modifier = GlanceModifier.clickable(
+                        actionStartActivity(
+                            android.content.Intent(
+                                androidx.glance.LocalContext.current,
+                                com.example.booktracker.app.MainActivity::class.java
+                            ).apply { flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK }
+                        )
                     )
                 )
             }

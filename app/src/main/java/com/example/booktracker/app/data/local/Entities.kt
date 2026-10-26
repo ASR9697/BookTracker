@@ -34,7 +34,8 @@ data class BookEntity(
     @androidx.room.ColumnInfo(defaultValue = "0")
     val readCount: Int = 0,
     val plannedDate: Long? = null,
-    val review: String? = null
+    val review: String? = null,
+    val finishedAt: Long? = null
 )
 
 @Entity(

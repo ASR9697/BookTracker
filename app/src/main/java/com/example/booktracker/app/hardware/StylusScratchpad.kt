@@ -74,7 +74,7 @@ fun StylusScratchpad(
         ) {
             Text("Handwrite a note", style = MaterialTheme.typography.titleLarge)
             Text(
-                "Scribble with your stylus or finger, then tap Recognize.",
+                "Write with your stylus or finger, then tap Recognize. Recognition runs on your device.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -125,16 +125,19 @@ fun StylusScratchpad(
                         message = null
                         val captured = strokes.toList()
                         scope.launch {
+                            var failed = false
                             val text = try {
                                 hardware.recognizeHandwriting(captured)
                             } catch (e: Exception) {
+                                failed = true
                                 null
                             }
                             busy = false
-                            if (text.isNullOrBlank()) {
-                                message = "Couldn't read that — try writing again."
-                            } else {
-                                onRecognized(text)
+                            when {
+                                failed -> message = "Recognition isn't available right now. The first use downloads " +
+                                    "a small handwriting model, so check your internet connection and try again."
+                                text.isNullOrBlank() -> message = "Couldn't read that — try writing again."
+                                else -> onRecognized(text)
                             }
                         }
                     },

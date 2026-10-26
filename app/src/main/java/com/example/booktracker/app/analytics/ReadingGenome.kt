@@ -14,9 +14,7 @@ object ReadingGenome {
 
     fun getRecommendations(books: List<Book>): List<Recommendation> {
         val finishedHighlyRated = books.filter {
-            it.status == BookStatus.FINISHED.name && 
-            it.rating.values.isNotEmpty() && 
-            it.rating.values.average() >= 4.0
+            it.status == BookStatus.FINISHED.name && (it.overallRating ?: 0f) >= 4f
         }
 
         if (finishedHighlyRated.isEmpty()) {
@@ -47,8 +45,10 @@ object ReadingGenome {
         }
 
         // Find candidates
-        val candidates = books.filter { 
-            it.status == BookStatus.SHORTLIST.name || it.status == BookStatus.SHORTLIST.name
+        val candidates = books.filter {
+            it.status == BookStatus.TO_READ.name ||
+                it.status == BookStatus.SHORTLIST.name ||
+                it.status == BookStatus.UP_NEXT.name
         }
 
         val scored = candidates.mapNotNull { candidate ->

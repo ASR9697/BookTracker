@@ -1,20 +1,25 @@
 package com.example.booktracker.app.worker
 
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.example.booktracker.app.MainActivity
 import com.example.booktracker.app.R
 import com.example.booktracker.app.analytics.StreakEngine
+import com.example.booktracker.app.data.ReminderSettings
 import com.example.booktracker.app.data.ServiceLocator
-import kotlinx.coroutines.flow.firstOrNull
-import java.time.LocalDate
+import com.example.booktracker.app.notifications.Notifications
+import java.time.Duration
+import java.time.LocalDateTime
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.flow.first
 
 class ReminderWorker(
     private val context: Context,
@@ -23,47 +28,35 @@ class ReminderWorker(
 
     override suspend fun doWork(): Result {
         val settings = ServiceLocator.settings(context)
-        val dailyGoal = settings.dailyGoal.firstOrNull() ?: StreakEngine.DEFAULT_DAILY_GOAL_PAGES
-        val dayStartsAtHour = settings.dayStartsAtHour.firstOrNull() ?: 3
-        val repository = ServiceLocator.repository(context)
-        val sessions = repository.observeCompletedSessions().firstOrNull() ?: emptyList()
-        
+        if (!settings.reminder.first().enabled || !Notifications.canPost(context)) {
+            return Result.success()
+        }
+        val dailyGoal = settings.dailyGoal.first()
+        val dayStartsAtHour = settings.dayStartsAtHour.first()
+        val sessions = ServiceLocator.repository(context).observeCompletedSessions().first()
+
         val zone = java.time.ZoneId.systemDefault()
-        val todayStr = StreakEngine.readingDate(System.currentTimeMillis(), zone, dayStartsAtHour).toString()
+        val today = StreakEngine.readingDate(System.currentTimeMillis(), zone, dayStartsAtHour)
         val todayProgress = sessions
-            .filter { StreakEngine.readingDate(it.startTime, zone, dayStartsAtHour).toString() == todayStr }
+            .filter { StreakEngine.readingDate(it.startTime, zone, dayStartsAtHour) == today }
             .sumOf { it.pagesRead }
 
         if (todayProgress < dailyGoal) {
-            val progressPercent = if (dailyGoal > 0) ((todayProgress.toFloat() / dailyGoal) * 100).toInt() else 0
             val message = if (todayProgress == 0) {
-                "Time for a reading session! Maintain your streak."
+                "A few pages today keeps your streak alive."
             } else {
-                "You're $progressPercent% there! Read ${dailyGoal - todayProgress} more pages to hit your goal."
+                "${dailyGoal - todayProgress} more pages to hit today's goal of $dailyGoal."
             }
-            showNotification("Daily Reading Goal", message)
+            showNotification("Time to read", message)
         }
 
         return Result.success()
     }
 
     private fun showNotification(title: String, content: String) {
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "reading_reminders"
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "Reading Reminders",
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = "Reminders to reach your daily reading goal"
-            }
-            notificationManager.createNotificationChannel(channel)
-        }
-
+        Notifications.ensureChannels(context)
         val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val pendingIntent = PendingIntent.getActivity(
             context,
@@ -72,16 +65,44 @@ class ReminderWorker(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val builder = NotificationCompat.Builder(context, channelId)
-            // Ideally use R.drawable.ic_launcher_foreground, but android.R.drawable.ic_dialog_info works for now
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+        val notification = NotificationCompat.Builder(context, Notifications.CHANNEL_REMINDERS)
+            .setSmallIcon(R.drawable.ic_stat_book)
             .setContentTitle(title)
             .setContentText(content)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            .build()
 
-        notificationManager.notify(1001, builder.build())
+        context.getSystemService(NotificationManager::class.java)
+            ?.notify(Notifications.ID_REMINDER, notification)
     }
 }
 
+/** Keeps the daily reminder's WorkManager job in line with the reader's settings. */
+object ReminderScheduler {
+    private const val WORK_NAME = "daily_reading_reminder"
+
+    fun apply(context: Context, reminder: ReminderSettings) {
+        val workManager = WorkManager.getInstance(context)
+        if (!reminder.enabled) {
+            workManager.cancelUniqueWork(WORK_NAME)
+            return
+        }
+        val now = LocalDateTime.now()
+        var target = now.withHour(reminder.hour).withMinute(reminder.minute).withSecond(0).withNano(0)
+        if (!target.isAfter(now)) target = target.plusDays(1)
+
+        val request = PeriodicWorkRequestBuilder<ReminderWorker>(24, TimeUnit.HOURS)
+            .setInitialDelay(Duration.between(now, target).toMillis(), TimeUnit.MILLISECONDS)
+            .addTag("reading_reminders")
+            .build()
+
+        // Re-enqueue so a changed time takes effect immediately rather than after the next run.
+        workManager.enqueueUniquePeriodicWork(
+            WORK_NAME,
+            ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
+            request
+        )
+    }
+}

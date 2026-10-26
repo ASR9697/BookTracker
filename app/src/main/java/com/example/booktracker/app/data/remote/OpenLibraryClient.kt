@@ -19,7 +19,7 @@ object OpenLibraryClient {
     private const val SEARCH = "https://openlibrary.org/search.json"
     // Restrict the payload to the handful of fields we map — OpenLibrary docs are huge otherwise.
     private const val FIELDS =
-        "title,author_name,cover_i,number_of_pages_median,isbn,first_publish_year,subject"
+        "title,author_name,cover_i,number_of_pages_median,isbn,first_publish_year,subject,publisher"
 
     suspend fun search(query: String): List<BookMetadata> = withContext(Dispatchers.IO) {
         val url = "$SEARCH?q=${URLEncoder.encode(query, "UTF-8")}&limit=20&fields=$FIELDS"
@@ -105,7 +105,8 @@ object OpenLibraryClient {
                 coverUrl = coverUrl,
                 // No description in OpenLibrary search results; the field stays empty.
                 genres = genres,
-                publishedDate = if (publishYear > 0) publishYear.toString() else ""
+                publishedDate = if (publishYear > 0) publishYear.toString() else "",
+                publisher = doc.optJSONArray("publisher")?.optString(0).orEmpty()
             ))
         }
         return results

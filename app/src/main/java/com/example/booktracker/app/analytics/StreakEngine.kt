@@ -15,7 +15,9 @@ object StreakEngine {
         val pagesToday: Int,
         val dailyGoal: Int,
         val goalMetToday: Boolean,
-        val activeDays: Set<LocalDate> // To support the 7-day bubble bar
+        val activeDays: Set<LocalDate>, // To support the 7-day bubble bar
+        /** "Today" under the day-start setting, so UI week bars agree with the streak. */
+        val today: LocalDate = LocalDate.now()
     )
 
     fun compute(
@@ -53,7 +55,8 @@ object StreakEngine {
             pagesToday = pagesToday,
             dailyGoal = dailyGoal,
             goalMetToday = goalMetToday,
-            activeDays = activeDays
+            activeDays = activeDays,
+            today = today
         )
     }
 

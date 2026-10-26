@@ -66,6 +66,9 @@ interface SessionDao {
     @Query("SELECT * FROM sessions")
     suspend fun getAll(): List<SessionEntity>
 
+    @Query("SELECT * FROM sessions WHERE bookId = :bookId")
+    suspend fun getForBook(bookId: String): List<SessionEntity>
+
     @Query("DELETE FROM sessions WHERE id = :id")
     suspend fun deleteById(id: String)
 
@@ -87,6 +90,12 @@ interface MarginNoteDao {
 
     @Query("SELECT * FROM margin_notes")
     suspend fun getAll(): List<MarginNoteEntity>
+
+    @Query("SELECT * FROM margin_notes WHERE bookId = :bookId")
+    suspend fun getForBook(bookId: String): List<MarginNoteEntity>
+
+    @Query("SELECT * FROM margin_notes WHERE id = :id")
+    suspend fun getById(id: String): MarginNoteEntity?
 
     @Query(
         "SELECT margin_notes.* FROM margin_notes " +

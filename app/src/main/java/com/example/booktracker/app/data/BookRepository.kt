@@ -36,7 +36,9 @@ interface BookRepository {
         format: com.example.booktracker.shared.models.BookFormat = com.example.booktracker.shared.models.BookFormat.Paperback,
         creators: List<com.example.booktracker.shared.models.Creator> = emptyList(),
         purchaseLog: List<com.example.booktracker.shared.models.PurchaseLog> = emptyList(),
-        loanRecord: List<com.example.booktracker.shared.models.LoanRecord> = emptyList()
+        loanRecord: List<com.example.booktracker.shared.models.LoanRecord> = emptyList(),
+        isbn: String? = null,
+        publisher: String = ""
     ): Book
     suspend fun updateBook(book: Book)
     suspend fun updateStatus(id: String, status: BookStatus)
@@ -45,8 +47,9 @@ interface BookRepository {
     suspend fun markDnf(id: String, abandonedPercentage: Float, reason: String)
     suspend fun addProgress(id: String, delta: Int)
     suspend fun applyRemoteProgress(id: String, currentPage: Int, updatedAt: Long)
-    suspend fun deleteBook(id: String)
-    suspend fun restore(book: Book)
+    /** Deletes the book with its sessions and notes, returning them so an Undo can put everything back. */
+    suspend fun deleteBook(id: String): DeletedBook?
+    suspend fun restoreDeleted(deleted: DeletedBook)
     suspend fun toggleFavorite(id: String)
 
     fun observeOpenSession(): Flow<Session?>
@@ -61,10 +64,16 @@ interface BookRepository {
         startTime: Long,
         endTime: Long
     ): Session?
-    suspend fun addManualSession(bookId: String, startPage: Int, endPage: Int, durationMillis: Long)
+    suspend fun addManualSession(
+        bookId: String,
+        startPage: Int,
+        endPage: Int,
+        durationMillis: Long,
+        endTime: Long = System.currentTimeMillis()
+    )
     suspend fun deleteSession(id: String)
     suspend fun updateSession(session: Session)
-    suspend fun importCsv(context: android.content.Context, uri: android.net.Uri): Int
+    suspend fun importCsv(context: android.content.Context, uri: android.net.Uri): CsvImportResult
 
     fun observeNotes(bookId: String): Flow<List<MarginNote>>
     fun observeAllNotes(): Flow<List<MarginNote>>
@@ -88,6 +97,12 @@ interface BookRepository {
         timestamp: Long
     )
     suspend fun deleteNote(id: String)
+    suspend fun updateNote(
+        id: String,
+        page: Int,
+        text: String,
+        type: com.example.booktracker.shared.models.NoteType
+    )
 
     suspend fun searchLibrary(query: String): LibrarySearchResults
     suspend fun snapshotForBackup(): LibrarySnapshot
@@ -108,13 +123,20 @@ data class LibrarySnapshot(
     val notes: List<MarginNote> = emptyList()
 )
 
+/** Everything a book delete removes, held so the Undo snackbar can restore it whole. */
+data class DeletedBook(
+    val book: Book,
+    val sessions: List<Session>,
+    val notes: List<MarginNote>
+)
+
 class RoomBookRepository(
     private val bookDao: BookDao,
     private val sessionDao: SessionDao,
     private val marginNoteDao: MarginNoteDao
 ) : BookRepository {
 
-    override suspend fun importCsv(context: android.content.Context, uri: android.net.Uri): Int {
+    override suspend fun importCsv(context: android.content.Context, uri: android.net.Uri): CsvImportResult {
         return CsvImportEngine.importFromUri(context, uri, bookDao)
     }
 
@@ -134,26 +156,34 @@ class RoomBookRepository(
         format: com.example.booktracker.shared.models.BookFormat,
         creators: List<com.example.booktracker.shared.models.Creator>,
         purchaseLog: List<com.example.booktracker.shared.models.PurchaseLog>,
-        loanRecord: List<com.example.booktracker.shared.models.LoanRecord>
+        loanRecord: List<com.example.booktracker.shared.models.LoanRecord>,
+        isbn: String?,
+        publisher: String
     ): Book {
+        val now = System.currentTimeMillis()
+        val ceiling = if (totalPages > 0) totalPages else Int.MAX_VALUE
+        val startPage = currentPage.coerceIn(0, ceiling)
+        val finished = status == BookStatus.FINISHED
         val book = Book(
-            dateAdded = System.currentTimeMillis(),
+            dateAdded = now,
             id = UUID.randomUUID().toString(),
             title = title,
             creators = if (creators.isNotEmpty()) creators else authors.map { com.example.booktracker.shared.models.Creator(com.example.booktracker.shared.models.CreatorRole.Author, it) },
             coverUrl = coverUrl,
-            currentPage = currentPage,
+            // A book added as already read starts at its last page.
+            currentPage = if (finished && totalPages > 0) totalPages else startPage,
             totalPages = totalPages,
             status = status.name,
-            lastUpdated = System.currentTimeMillis(),
+            lastUpdated = now,
             description = description,
             classification = com.example.booktracker.shared.models.Classification(emptyList(), genres),
-            publication = com.example.booktracker.shared.models.Publication("", publishedDate),
+            publication = com.example.booktracker.shared.models.Publication(publisher, publishedDate),
             format = format,
             progressUnit = com.example.booktracker.shared.models.ProgressUnit.Page,
             purchaseLog = purchaseLog,
             loanRecord = loanRecord,
-            isbn = null
+            isbn = isbn?.takeIf { it.isNotBlank() && !it.startsWith("manual_") },
+            finishedAt = if (finished) now else null
         )
         bookDao.upsert(book.toEntity())
         return book
@@ -165,8 +195,21 @@ class RoomBookRepository(
 
     override suspend fun updateStatus(id: String, status: BookStatus) {
         val entity = bookDao.getById(id) ?: return
+        val now = System.currentTimeMillis()
+        val ended = status == BookStatus.FINISHED || status == BookStatus.DNF
         bookDao.upsert(
-            entity.copy(status = status.name, lastUpdated = System.currentTimeMillis())
+            entity.copy(
+                status = status.name,
+                lastUpdated = now,
+                // Keep an existing finish date when re-saving an ended book; clear it
+                // when the book goes back into the reading pipeline.
+                finishedAt = if (ended) entity.finishedAt ?: now else null,
+                currentPage = if (status == BookStatus.FINISHED && entity.totalPages > 0) {
+                    entity.totalPages
+                } else {
+                    entity.currentPage
+                }
+            )
         )
         // A book leaving READING (finished, DNF, demoted) closes its running session.
         if (status != BookStatus.READING) {
@@ -181,27 +224,34 @@ class RoomBookRepository(
 
     override suspend fun finishBook(id: String, rating: Map<String, Float>, review: String?) {
         val book = bookDao.getById(id)?.toModel() ?: return
+        val now = System.currentTimeMillis()
+        // Close any running session first so it records the pages actually read,
+        // before the bookmark jumps to the last page below.
+        sessionDao.getOpenSessionForBook(id)?.let { finalizeSession(it) }
         bookDao.upsert(
             book.copy(
                 status = BookStatus.FINISHED.name,
                 rating = rating,
-                review = review,
-                lastUpdated = System.currentTimeMillis()
+                review = review?.takeIf { it.isNotBlank() },
+                currentPage = if (book.totalPages > 0) book.totalPages else book.currentPage,
+                finishedAt = book.finishedAt.takeIf { book.status == BookStatus.FINISHED.name } ?: now,
+                lastUpdated = now
             ).toEntity()
         )
-        sessionDao.getOpenSessionForBook(id)?.let { finalizeSession(it) }
     }
 
     override suspend fun markDnf(id: String, abandonedPercentage: Float, reason: String) {
         val book = bookDao.getById(id)?.toModel() ?: return
+        val now = System.currentTimeMillis()
+        sessionDao.getOpenSessionForBook(id)?.let { finalizeSession(it) }
         bookDao.upsert(
             book.copy(
                 status = BookStatus.DNF.name,
                 dnfData = DnfData(abandonedPercentage, reason),
-                lastUpdated = System.currentTimeMillis()
+                finishedAt = now,
+                lastUpdated = now
             ).toEntity()
         )
-        sessionDao.getOpenSessionForBook(id)?.let { finalizeSession(it) }
     }
 
     override suspend fun addProgress(id: String, delta: Int) {
@@ -223,16 +273,25 @@ class RoomBookRepository(
         recordDeltaOutsideSession(id, entity.currentPage, newUnit, updatedAt, source = "watch")
     }
 
-    override suspend fun deleteBook(id: String) {
+    override suspend fun deleteBook(id: String): DeletedBook? {
+        val book = bookDao.getById(id) ?: return null
+        val deleted = DeletedBook(
+            book = book.toModel(),
+            sessions = sessionDao.getForBook(id).map { it.toModel() },
+            notes = marginNoteDao.getForBook(id).map { it.toModel() }
+        )
         sessionDao.deleteByBookId(id)
         marginNoteDao.deleteByBookId(id)
         bookDao.deleteById(id)
+        return deleted
     }
 
-    // Re-inserts a removed book verbatim (id, status, progress, lastUpdated) so
-    // an Undo restores it to its exact prior state and pipeline position.
-    override suspend fun restore(book: Book) {
-        bookDao.upsert(book.toEntity())
+    // Re-inserts a removed book verbatim (id, status, progress, lastUpdated) and
+    // then its children, so an Undo restores reading history and notes too.
+    override suspend fun restoreDeleted(deleted: DeletedBook) {
+        bookDao.upsert(deleted.book.toEntity())
+        if (deleted.sessions.isNotEmpty()) sessionDao.upsert(deleted.sessions.map { it.toEntity() })
+        if (deleted.notes.isNotEmpty()) marginNoteDao.upsert(deleted.notes.map { it.toEntity() })
     }
 
     override suspend fun toggleFavorite(id: String) {
@@ -306,6 +365,8 @@ class RoomBookRepository(
                 status = BookStatus.READING.name,
                 currentPage = 0,
                 readCount = entity.readCount + 1,
+                finishedAt = null,
+                dnfData = null,
                 lastUpdated = System.currentTimeMillis()
             )
         )
@@ -334,14 +395,22 @@ class RoomBookRepository(
     }
 
     override suspend fun toggleNoteFavorite(id: String) {
-        val existing = marginNoteDao.getAll().find { it.id == id }
-        if (existing != null) {
-            marginNoteDao.updateFavorite(id, !existing.isFavorite)
-        }
+        val existing = marginNoteDao.getById(id) ?: return
+        marginNoteDao.updateFavorite(id, !existing.isFavorite)
     }
 
     override suspend fun deleteNote(id: String) {
         marginNoteDao.deleteById(id)
+    }
+
+    override suspend fun updateNote(
+        id: String,
+        page: Int,
+        text: String,
+        type: com.example.booktracker.shared.models.NoteType
+    ) {
+        val existing = marginNoteDao.getById(id) ?: return
+        marginNoteDao.upsert(existing.copy(pageNumber = page, content = text, type = type.name))
     }
 
     override suspend fun searchLibrary(query: String): LibrarySearchResults {
@@ -363,14 +432,24 @@ class RoomBookRepository(
         return LibrarySearchResults(books, notes)
     }
 
-    // Turns raw user input into an FTS4 prefix query ("dune her" -> "dune* her*"),
-    // stripping quotes and operators so nothing the user types is a syntax error.
+    // Turns raw user input into an FTS4 prefix query ("dune her" -> "dune* her*").
+    // Only letters and digits survive (the FTS tokenizer splits on everything
+    // else anyway), and bare operator words are lower-cased, so nothing the user
+    // types — "title:x", "a OR", quotes — can become an FTS syntax error.
     private fun toFtsQuery(raw: String): String? {
-        val tokens = raw.split(Regex("\\s+"))
-            .map { it.replace(Regex("[\"'*^()-]"), "") }
+        val tokens = raw.split(Regex("[^\\p{L}\\p{N}]+"))
             .filter { it.isNotBlank() }
+            .map { token -> if (token in FTS_OPERATORS) token.lowercase() else token }
         if (tokens.isEmpty()) return null
         return tokens.joinToString(" ") { "$it*" }
+    }
+
+    private companion object {
+        val FTS_OPERATORS = setOf("AND", "OR", "NOT", "NEAR")
+        val PIPELINE_STATUSES = setOf(
+            BookStatus.TO_READ.name, BookStatus.SHORTLIST.name,
+            BookStatus.UP_NEXT.name, BookStatus.PAUSED.name, "BACKLOG"
+        )
     }
 
     override suspend fun snapshotForBackup(): LibrarySnapshot = LibrarySnapshot(
@@ -417,8 +496,17 @@ class RoomBookRepository(
         val book = bookDao.getById(bookId) ?: return
         val finalStartUnit = startPage ?: book.currentPage
 
-        if (startPage != null && startPage != book.currentPage) {
-            bookDao.upsert(book.copy(currentPage = startPage, lastUpdated = System.currentTimeMillis()))
+        // Reading a book from the to-read pipeline (or a paused one) makes it a
+        // book in progress. Ended books go through restartReading instead.
+        val promote = book.status in PIPELINE_STATUSES
+        if (promote || (startPage != null && startPage != book.currentPage)) {
+            bookDao.upsert(
+                book.copy(
+                    currentPage = finalStartUnit,
+                    status = if (promote) BookStatus.READING.name else book.status,
+                    lastUpdated = System.currentTimeMillis()
+                )
+            )
         }
 
         sessionDao.getOpenSession()?.let { open ->
@@ -488,7 +576,7 @@ class RoomBookRepository(
         )
         sessionDao.upsert(finalized)
 
-        ServiceLocator.activeReadingSeconds.value = 0
+        if (ServiceLocator.timerBookId.value == bookId) ServiceLocator.activeReadingSeconds.value = 0
         return finalized.toModel()
     }
 
@@ -496,10 +584,12 @@ class RoomBookRepository(
         val book = bookDao.getById(open.bookId)
         val endPage = book?.currentPage ?: open.startPage
         
-        val activeSeconds = com.example.booktracker.app.data.ServiceLocator.activeReadingSeconds.value
+        // The timer's measured reading time only describes the book it is running for.
+        val timerOwnsSession = ServiceLocator.timerBookId.value == open.bookId
+        val activeSeconds = if (timerOwnsSession) ServiceLocator.activeReadingSeconds.value else 0
         val endTime = System.currentTimeMillis()
-        
-        // Fix duration corruption: retroactively align startTime to match exact active reading time
+
+        // Align startTime to the actively-read time so pauses don't inflate the duration.
         val correctedStartTime = if (activeSeconds > 0) {
             endTime - (activeSeconds * 1000L)
         } else {
@@ -519,33 +609,45 @@ class RoomBookRepository(
             )
         )
         
-        // Reset global active reading time
-        com.example.booktracker.app.data.ServiceLocator.activeReadingSeconds.value = 0
+        if (timerOwnsSession) ServiceLocator.activeReadingSeconds.value = 0
     }
 
-    override suspend fun addManualSession(bookId: String, startPage: Int, endPage: Int, durationMillis: Long) {
+    override suspend fun addManualSession(
+        bookId: String,
+        startPage: Int,
+        endPage: Int,
+        durationMillis: Long,
+        endTime: Long
+    ) {
+        val book = bookDao.getById(bookId) ?: return
         val now = System.currentTimeMillis()
-        val pagesRead = (endPage - startPage).coerceAtLeast(0)
+        val ceiling = if (book.totalPages > 0) book.totalPages else Int.MAX_VALUE
+        val cappedStart = startPage.coerceIn(0, ceiling)
+        val cappedEnd = endPage.coerceIn(0, ceiling)
         sessionDao.insert(
             SessionEntity(
                 id = UUID.randomUUID().toString(),
                 bookId = bookId,
-                startTime = now - durationMillis,
-                endTime = now,
-                startPage = startPage,
-                endPage = endPage,
-                pagesRead = pagesRead,
+                startTime = endTime - durationMillis,
+                endTime = endTime,
+                startPage = cappedStart,
+                endPage = cappedEnd,
+                pagesRead = (cappedEnd - cappedStart).coerceAtLeast(0),
                 durationSeconds = (durationMillis / 1000).toInt(),
                 environmentTag = "Manual Entry"
             )
         )
-        
-        // Update the book's progress
-        val book = bookDao.getById(bookId) ?: return
-        if (endPage != book.currentPage) {
-            val ceiling = if (book.totalPages > 0) book.totalPages else Int.MAX_VALUE
-            val newUnit = endPage.coerceIn(0, ceiling)
-            bookDao.upsert(book.copy(currentPage = newUnit, lastUpdated = now, status = if(book.status == BookStatus.FINISHED.name) book.status else BookStatus.READING.name))
+
+        // Logging an older session must never move the bookmark backwards.
+        if (cappedEnd > book.currentPage) {
+            val keepStatus = book.status == BookStatus.FINISHED.name || book.status == BookStatus.DNF.name
+            bookDao.upsert(
+                book.copy(
+                    currentPage = cappedEnd,
+                    lastUpdated = now,
+                    status = if (keepStatus) book.status else BookStatus.READING.name
+                )
+            )
         }
     }
 

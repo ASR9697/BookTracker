@@ -21,7 +21,8 @@ data class BookMetadata(
     val currentPage: Int = 0,
     val creators: List<com.example.booktracker.shared.models.Creator> = emptyList(),
     val purchaseLog: List<com.example.booktracker.shared.models.PurchaseLog> = emptyList(),
-    val loanRecord: List<com.example.booktracker.shared.models.LoanRecord> = emptyList()
+    val loanRecord: List<com.example.booktracker.shared.models.LoanRecord> = emptyList(),
+    val publisher: String = ""
 )
 
 // Typed so the UI can tell "slow down" (rate limit) from "you're offline" from a
@@ -34,7 +35,7 @@ class BookSearchException(
     enum class Kind { RATE_LIMITED, NETWORK, SERVER, UNKNOWN }
 }
 
-internal const val BOOK_CLIENT_USER_AGENT = "BookTracker/1.0 (personal reading tracker)"
+internal const val BOOK_CLIENT_USER_AGENT = "NocturnalReader/2.1 (Android reading tracker)"
 
 /**
  * Google Books volumes endpoint — free, no API key. Google throttles keyless
@@ -123,17 +124,29 @@ object GoogleBooksClient {
             .orEmpty()
             // Thumbnails often come back as http://; cleartext is blocked on modern Android.
             .replace("http://", "https://")
+            // Drop the fake page-curl Google paints onto thumbnails.
+            .replace("&edge=curl", "")
 
         return BookMetadata(
-            isbn = isbn,
+            isbn = isbn.ifBlank { volumeInfo.isbn() },
             title = title,
             authors = authors,
             pageCount = volumeInfo.optInt("pageCount"),
             coverUrl = coverUrl,
             description = volumeInfo.optString("description"),
             genres = volumeInfo.categories(),
-            publishedDate = volumeInfo.optString("publishedDate")
+            publishedDate = volumeInfo.optString("publishedDate"),
+            publisher = volumeInfo.optString("publisher")
         )
+    }
+
+    /** ISBN-13 if the volume lists one, else ISBN-10, else "". */
+    private fun JSONObject.isbn(): String {
+        val ids = optJSONArray("industryIdentifiers") ?: return ""
+        val byType = (0 until ids.length())
+            .mapNotNull { ids.optJSONObject(it) }
+            .associate { it.optString("type") to it.optString("identifier") }
+        return byType["ISBN_13"] ?: byType["ISBN_10"] ?: ""
     }
 
     // Google Books categories arrive as slash-separated paths ("Fiction / Fantasy /
@@ -156,29 +169,7 @@ object GoogleBooksClient {
         val results = mutableListOf<BookMetadata>()
         for (i in 0 until items.length()) {
             val volumeInfo = items.optJSONObject(i)?.optJSONObject("volumeInfo") ?: continue
-
-            val industryIdentifiers = volumeInfo.optJSONArray("industryIdentifiers")
-            var isbn = ""
-            if (industryIdentifiers != null) {
-                for (j in 0 until industryIdentifiers.length()) {
-                    val idObj = industryIdentifiers.optJSONObject(j)
-                    if (idObj?.optString("type") == "ISBN_13") {
-                        isbn = idObj.optString("identifier")
-                        break
-                    }
-                }
-                if (isbn.isEmpty()) {
-                     for (j in 0 until industryIdentifiers.length()) {
-                        val idObj = industryIdentifiers.optJSONObject(j)
-                        if (idObj?.optString("type") == "ISBN_10") {
-                            isbn = idObj.optString("identifier")
-                            break
-                        }
-                    }
-                }
-            }
-
-            val book = parseBook(isbn, volumeInfo)
+            val book = parseBook(volumeInfo.isbn(), volumeInfo)
             if (book != null) {
                 results.add(book)
             }

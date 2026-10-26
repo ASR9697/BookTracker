@@ -26,13 +26,27 @@ object ServiceLocator {
     val elapsedSeconds = kotlinx.coroutines.flow.MutableStateFlow(0)
     val customWorkMinutes = kotlinx.coroutines.flow.MutableStateFlow<Int?>(null)
     val activeReadingSeconds = kotlinx.coroutines.flow.MutableStateFlow(0)
-    
-    // UI Event for timer expiration
-    private val _timerExpiredEvents = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    /** True while MainActivity is started; the timer only alerts when the reader has left the app. */
+    val appInForeground = kotlinx.coroutines.flow.MutableStateFlow(false)
+
+    // Countdown expiry. Replays the latest event so it isn't lost when it fires
+    // with no screen collecting (app backgrounded, or the timer screen closed);
+    // the consumer clears it with [consumeTimerExpired] once handled.
+    private val _timerExpiredEvents = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(
+        replay = 1,
+        extraBufferCapacity = 1,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+    )
     val timerExpiredEvents: kotlinx.coroutines.flow.SharedFlow<Unit> = _timerExpiredEvents
-    
+
     fun notifyTimerExpired() {
         _timerExpiredEvents.tryEmit(Unit)
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    fun consumeTimerExpired() {
+        _timerExpiredEvents.resetReplayCache()
     }
 
     fun emitTimerControlEvent(action: String) {
@@ -64,15 +78,7 @@ object ServiceLocator {
                 AppDatabase::class.java,
                 "booktracker.db"
             )
-                .addMigrations(
-                    AppDatabase.MIGRATION_1_2,
-                    AppDatabase.MIGRATION_2_3,
-                    AppDatabase.MIGRATION_3_4,
-                    AppDatabase.MIGRATION_4_5,
-                    AppDatabase.MIGRATION_5_6,
-                    AppDatabase.MIGRATION_6_7,
-                    AppDatabase.MIGRATION_7_8
-                )
+                .addMigrations(*AppDatabase.ALL_MIGRATIONS)
                 .build().also { database = it }
         }
 }

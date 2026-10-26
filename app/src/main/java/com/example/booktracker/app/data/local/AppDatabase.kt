@@ -13,7 +13,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         BookFtsEntity::class,
         NoteFtsEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -22,7 +22,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun marginNoteDao(): MarginNoteDao
 
     companion object {
-        // ... (Keep existing migrations but I will just replace the whole companion object to be safe)
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE books ADD COLUMN description TEXT NOT NULL DEFAULT ''")
@@ -130,5 +129,31 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("INSERT INTO `books_fts`(`books_fts`) VALUES('rebuild')")
             }
         }
+
+        /**
+         * Stores the finish date explicitly. Until now stats read it from lastUpdated,
+         * which any later edit (favourite, loan, collection) silently moved. Existing
+         * finished/abandoned books keep their best-known date: the last update.
+         */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE books ADD COLUMN finishedAt INTEGER")
+                db.execSQL(
+                    "UPDATE books SET finishedAt = lastUpdated " +
+                        "WHERE status IN ('FINISHED', 'DNF', 'ABANDONED') AND lastUpdated > 0"
+                )
+            }
+        }
+
+        val ALL_MIGRATIONS = arrayOf(
+            MIGRATION_1_2,
+            MIGRATION_2_3,
+            MIGRATION_3_4,
+            MIGRATION_4_5,
+            MIGRATION_5_6,
+            MIGRATION_6_7,
+            MIGRATION_7_8,
+            MIGRATION_8_9
+        )
     }
 }

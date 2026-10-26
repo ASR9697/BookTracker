@@ -92,10 +92,27 @@ data class Book(
     /** How many times this book has been finished and restarted. 0 = first read. */
     val readCount: Int = 0,
     val plannedDate: Long? = null,
-    val review: String? = null
+    val review: String? = null,
+    /** When the current read ended (finished or abandoned); null while unfinished. */
+    val finishedAt: Long? = null
 ) {
     val authors: List<String> get() = creators.map { it.name }
     val genres: List<String> get() = classification.tags
+
+    /**
+     * The date a finished book counts toward stats. lastUpdated moves on every edit
+     * (favourite, loan, collections…), so it's only a fallback for rows written
+     * before finishedAt existed.
+     */
+    val completedAt: Long get() = finishedAt ?: lastUpdated
+
+    /** Star rating out of 5: the explicit overall score, else the mean of rated axes; null if unrated. */
+    val overallRating: Float?
+        get() = rating[RatingAxis.OVERALL]
+            ?: rating.filterKeys { it != RatingAxis.OVERALL }.values
+                .takeIf { it.isNotEmpty() }
+                ?.average()
+                ?.toFloat()
 
     /** "First reading", "2nd reading", … as shown in the detail header. */
     val readingLabel: String
@@ -136,6 +153,8 @@ data class MarginNote(
 )
 
 object RatingAxis {
+    /** The headline star rating; the axes below are optional detail. */
+    const val OVERALL = "Overall"
     val ALL = listOf("Writing", "Characters", "Plot", "Pacing", "Enjoyment")
 }
 

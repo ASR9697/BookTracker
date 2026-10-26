@@ -19,13 +19,16 @@ enum class ThemeMode {
     SYSTEM, LIGHT, DARK
 }
 
+// Enum names are persisted in settings, so they stay fixed even when the display title changes.
 enum class AppPalette(val title: String, val subtitle: String, val primaryHex: Long, val secondaryHex: Long) {
-    BOOKMORY_AMBER("Bookmory Amber", "Literary gold & warm terracotta", 0xFFF59E0BL, 0xFFFB923CL),
+    BOOKMORY_AMBER("Literary Amber", "Literary gold & warm terracotta", 0xFFF59E0BL, 0xFFFB923CL),
     MIDNIGHT_VELVET("Midnight Velvet", "Electric indigo & cyan twilight", 0xFF818CF8L, 0xFF38BDF8L),
     NORDIC_EMERALD("Nordic Emerald", "Botanical sage & forest pine", 0xFF34D399L, 0xFF2DD4BFL),
     SAKURA_ROSE("Sakura Rose", "Sunset coral & blush rose", 0xFFFB7185L, 0xFFF472B6L),
     ESPRESSO_CARAMEL("Espresso Caramel", "Vintage leather & roasted coffee", 0xFFF59E0BL, 0xFFEA580CL)
 }
+
+data class ReminderSettings(val enabled: Boolean, val hour: Int, val minute: Int)
 
 /** User preferences: daily page goal (streaks + analytics) and yearly books goal. */
 class SettingsRepository(context: Context) {
@@ -44,6 +47,9 @@ class SettingsRepository(context: Context) {
     private val breakMinutesKey = intPreferencesKey("break_minutes")
     private val dayStartsAtHourKey = intPreferencesKey("day_starts_at_hour")
     private val useAppLockKey = booleanPreferencesKey("use_app_lock")
+    private val reminderEnabledKey = booleanPreferencesKey("reminder_enabled")
+    private val reminderHourKey = intPreferencesKey("reminder_hour")
+    private val reminderMinuteKey = intPreferencesKey("reminder_minute")
     
     private val activeTimerModeKey = androidx.datastore.preferences.core.stringPreferencesKey("active_timer_mode")
     private val activeTimerBookIdKey = androidx.datastore.preferences.core.stringPreferencesKey("active_timer_book_id")
@@ -74,6 +80,23 @@ class SettingsRepository(context: Context) {
     val breakMinutes: Flow<Int> = appContext.settingsDataStore.data.map { it[breakMinutesKey] ?: 5 }
     val dayStartsAtHour: Flow<Int> = appContext.settingsDataStore.data.map { it[dayStartsAtHourKey] ?: 3 } // Default 3 AM
     val useAppLock: Flow<Boolean> = appContext.settingsDataStore.data.map { it[useAppLockKey] ?: false }
+
+    /** Daily reading reminder: off until the reader opts in, 8:00 PM by default. */
+    val reminder: Flow<ReminderSettings> = appContext.settingsDataStore.data.map {
+        ReminderSettings(
+            enabled = it[reminderEnabledKey] ?: false,
+            hour = it[reminderHourKey] ?: 20,
+            minute = it[reminderMinuteKey] ?: 0
+        )
+    }
+
+    suspend fun setReminder(enabled: Boolean, hour: Int, minute: Int) {
+        appContext.settingsDataStore.edit {
+            it[reminderEnabledKey] = enabled
+            it[reminderHourKey] = hour.coerceIn(0, 23)
+            it[reminderMinuteKey] = minute.coerceIn(0, 59)
+        }
+    }
 
     suspend fun setDailyGoal(pages: Int) { appContext.settingsDataStore.edit { it[dailyGoalKey] = pages } }
     suspend fun setYearlyGoal(books: Int) { appContext.settingsDataStore.edit { it[yearlyGoalKey] = books } }

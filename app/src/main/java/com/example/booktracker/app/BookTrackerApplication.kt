@@ -5,8 +5,14 @@ import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
-
 import com.example.booktracker.app.data.ServiceLocator
+import com.example.booktracker.app.notifications.Notifications
+import com.example.booktracker.app.worker.ReminderScheduler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
 /**
  * Registers Coil's OkHttp network fetcher so AsyncImage can load remote book
@@ -14,37 +20,22 @@ import com.example.booktracker.app.data.ServiceLocator
  * explicitly rather than relying on service-loader auto-registration.
  */
 class BookTrackerApplication : Application(), SingletonImageLoader.Factory {
+
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     override fun onCreate() {
         super.onCreate()
+        Notifications.ensureChannels(this)
         // Initialize DND manager to observe sessions globally
         ServiceLocator.dndManager(this)
 
-        scheduleReminders()
-    }
-
-    private fun scheduleReminders() {
-        val workManager = androidx.work.WorkManager.getInstance(this)
-        
-        // Calculate delay until 8 PM
-        val now = java.time.LocalDateTime.now()
-        var target = now.withHour(20).withMinute(0).withSecond(0).withNano(0)
-        if (now.isAfter(target)) {
-            target = target.plusDays(1)
+        // The reminder job follows the setting: scheduled, rescheduled or cancelled
+        // whenever the reader changes it, and refreshed once per process start.
+        appScope.launch {
+            ServiceLocator.settings(this@BookTrackerApplication).reminder
+                .distinctUntilChanged()
+                .collect { ReminderScheduler.apply(this@BookTrackerApplication, it) }
         }
-        val delay = java.time.Duration.between(now, target).toMillis()
-        
-        val request = androidx.work.PeriodicWorkRequestBuilder<com.example.booktracker.app.worker.ReminderWorker>(
-            24, java.util.concurrent.TimeUnit.HOURS
-        )
-            .setInitialDelay(delay, java.util.concurrent.TimeUnit.MILLISECONDS)
-            .addTag("reading_reminders")
-            .build()
-            
-        workManager.enqueueUniquePeriodicWork(
-            "daily_reading_reminder",
-            androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
-            request
-        )
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader =

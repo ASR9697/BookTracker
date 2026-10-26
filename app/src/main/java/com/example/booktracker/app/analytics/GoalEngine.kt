@@ -217,9 +217,9 @@ object GoalEngine {
         }
 
         val completedThisSeason = books
-            .filter { it.status == BookStatus.FINISHED.name && it.lastUpdated > 0L }
+            .filter { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) && it.completedAt > 0L }
             .count {
-                val finishedDate = Instant.ofEpochMilli(it.lastUpdated).atZone(zone).toLocalDate()
+                val finishedDate = Instant.ofEpochMilli(it.completedAt).atZone(zone).toLocalDate()
                 !finishedDate.isBefore(startDate) && !finishedDate.isAfter(endDate)
             }
 
@@ -267,9 +267,9 @@ object GoalEngine {
             .sumOf { it.pagesRead }
 
         val booksThisMonth = books
-            .filter { it.status == BookStatus.FINISHED.name }
+            .filter { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) }
             .count {
-                val d = Instant.ofEpochMilli(it.lastUpdated).atZone(zone).toLocalDate()
+                val d = Instant.ofEpochMilli(it.completedAt).atZone(zone).toLocalDate()
                 d.year == year && d.monthValue == month
             }
 

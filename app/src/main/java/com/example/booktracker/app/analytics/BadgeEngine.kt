@@ -36,7 +36,7 @@ object BadgeEngine {
             icon = Icons.Filled.EmojiEvents,
             tier = "BRONZE",
             predicate = { books, _, _, _ ->
-                books.any { it.status == BookStatus.FINISHED.name }
+                books.any { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) }
             }
         ),
         Badge(
@@ -76,7 +76,7 @@ object BadgeEngine {
             icon = Icons.Filled.AutoStories,
             tier = "SILVER",
             predicate = { books, _, _, _ ->
-                books.count { it.status == BookStatus.FINISHED.name } >= 5
+                books.count { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) } >= 5
             }
         ),
         Badge(
@@ -86,7 +86,7 @@ object BadgeEngine {
             icon = Icons.Filled.WorkspacePremium,
             tier = "PLATINUM",
             predicate = { books, _, _, _ ->
-                books.count { it.status == BookStatus.FINISHED.name } >= 20
+                books.count { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) } >= 20
             }
         ),
         Badge(
@@ -137,7 +137,7 @@ object BadgeEngine {
             tier = "GOLD",
             predicate = { books, _, _, _ ->
                 val distinctGenres = books
-                    .filter { it.status == BookStatus.FINISHED.name || it.status == BookStatus.READING.name }
+                    .filter { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) || it.status == BookStatus.READING.name }
                     .flatMap { it.genres }
                     .toSet()
                 distinctGenres.size >= 5

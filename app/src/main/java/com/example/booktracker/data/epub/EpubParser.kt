@@ -95,6 +95,40 @@ class EpubParser {
         return EpubBook(title, author, manifest, spine, opfDir)
     }
 
+    /**
+     * Reads every spine chapter in one pass over the archive (in spine order),
+     * instead of re-scanning the whole zip once per chapter.
+     */
+    fun readSpineHtml(context: Context, uri: Uri, book: EpubBook): List<String> {
+        val wanted = book.spine.mapNotNull { book.manifest[it] }
+            .map { normalizePath(book.opfDir + Uri.decode(it.href.substringBefore('#'))) }
+        val wantedSet = wanted.toSet()
+        val found = mutableMapOf<String, String>()
+        context.contentResolver.openInputStream(uri)?.use { stream ->
+            val zip = ZipInputStream(stream)
+            var entry: ZipEntry? = zip.nextEntry
+            while (entry != null && found.size < wantedSet.size) {
+                val name = normalizePath(entry.name)
+                if (name in wantedSet) found[name] = zip.bufferedReader().readText()
+                entry = zip.nextEntry
+            }
+        }
+        return wanted.mapNotNull { found[it] }
+    }
+
+    // Resolves "./" and "../" segments so OPF-relative hrefs match zip entry names.
+    private fun normalizePath(path: String): String {
+        val out = ArrayDeque<String>()
+        for (part in path.split('/')) {
+            when (part) {
+                "", "." -> Unit
+                ".." -> out.removeLastOrNull()
+                else -> out.addLast(part)
+            }
+        }
+        return out.joinToString("/")
+    }
+
     fun readChapterHtml(context: Context, uri: Uri, opfDir: String, href: String): String {
         val targetPath = opfDir + href
         context.contentResolver.openInputStream(uri)?.use { stream ->
