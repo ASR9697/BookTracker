@@ -50,6 +50,7 @@ class SettingsRepository(context: Context) {
     private val reminderEnabledKey = booleanPreferencesKey("reminder_enabled")
     private val reminderHourKey = intPreferencesKey("reminder_hour")
     private val reminderMinuteKey = intPreferencesKey("reminder_minute")
+    private val homeLayoutKey = androidx.datastore.preferences.core.stringPreferencesKey("home_layout")
     
     private val activeTimerModeKey = androidx.datastore.preferences.core.stringPreferencesKey("active_timer_mode")
     private val activeTimerBookIdKey = androidx.datastore.preferences.core.stringPreferencesKey("active_timer_book_id")
@@ -80,6 +81,7 @@ class SettingsRepository(context: Context) {
     val breakMinutes: Flow<Int> = appContext.settingsDataStore.data.map { it[breakMinutesKey] ?: 5 }
     val dayStartsAtHour: Flow<Int> = appContext.settingsDataStore.data.map { it[dayStartsAtHourKey] ?: 3 } // Default 3 AM
     val useAppLock: Flow<Boolean> = appContext.settingsDataStore.data.map { it[useAppLockKey] ?: false }
+    val homeLayout: Flow<HomeLayout> = appContext.settingsDataStore.data.map { HomeLayout.decode(it[homeLayoutKey]) }
 
     /** Daily reading reminder: off until the reader opts in, 8:00 PM by default. */
     val reminder: Flow<ReminderSettings> = appContext.settingsDataStore.data.map {
@@ -111,6 +113,7 @@ class SettingsRepository(context: Context) {
     suspend fun setBreakMinutes(mins: Int) { appContext.settingsDataStore.edit { it[breakMinutesKey] = mins } }
     suspend fun setDayStartsAtHour(hour: Int) { appContext.settingsDataStore.edit { it[dayStartsAtHourKey] = hour } }
     suspend fun setUseAppLock(enabled: Boolean) { appContext.settingsDataStore.edit { it[useAppLockKey] = enabled } }
+    suspend fun setHomeLayout(layout: HomeLayout) { appContext.settingsDataStore.edit { it[homeLayoutKey] = layout.encode() } }
 
     val activeTimerMode: Flow<String?> = appContext.settingsDataStore.data.map { it[activeTimerModeKey] }
     val activeTimerBookId: Flow<String?> = appContext.settingsDataStore.data.map { it[activeTimerBookIdKey] }

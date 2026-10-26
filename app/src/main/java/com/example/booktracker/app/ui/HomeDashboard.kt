@@ -31,6 +31,7 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.PlayArrow
@@ -46,6 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -66,6 +68,8 @@ import androidx.compose.ui.unit.dp
 import com.example.booktracker.app.analytics.AnalyticsEngine
 import com.example.booktracker.app.analytics.GoalEngine
 import com.example.booktracker.app.analytics.StreakEngine
+import com.example.booktracker.app.data.HomeLayout
+import com.example.booktracker.app.data.HomeSection
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.Session
@@ -106,6 +110,8 @@ fun HomeDashboard(
     onOpenWrapped: () -> Unit,
     onEditGoal: (GoalType) -> Unit,
     modifier: Modifier = Modifier,
+    layout: HomeLayout = HomeLayout.DEFAULT,
+    onEditHome: () -> Unit = {},
     scrollState: ScrollState = rememberScrollState(),
     banner: @Composable () -> Unit = {}
 ) {
@@ -215,137 +221,191 @@ fun HomeDashboard(
             }
         }
 
-        // Streak and this week.
-        Tile(modifier = Modifier.padding(horizontal = 16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Filled.LocalFireDepartment,
-                    contentDescription = null,
-                    tint = if (streak.currentStreak > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                    modifier = Modifier.size(28.dp)
-                )
-                Spacer(Modifier.width(10.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        when (streak.currentStreak) {
-                            0 -> "No streak yet"
-                            1 -> "1-day streak"
-                            else -> "${streak.currentStreak}-day streak"
-                        },
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        if (streak.currentStreak == 0) "Read a page today to start one"
-                        else "Best: ${streak.longestStreak} day${if (streak.longestStreak == 1) "" else "s"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+        // Reader-ordered sections; the greeting and current book above stay fixed.
+        for (section in layout.visible) key(section) {
+            when (section) {
+                HomeSection.STREAK -> {
+                    // Streak and this week.
+                    Tile(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Filled.LocalFireDepartment,
+                                contentDescription = null,
+                                tint = if (streak.currentStreak > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    when (streak.currentStreak) {
+                                        0 -> "No streak yet"
+                                        1 -> "1-day streak"
+                                        else -> "${streak.currentStreak}-day streak"
+                                    },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    if (streak.currentStreak == 0) "Read a page today to start one"
+                                    else "Best: ${streak.longestStreak} day${if (streak.longestStreak == 1) "" else "s"}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(14.dp))
+                        WeekBubbles(streak = streak, modifier = Modifier.fillMaxWidth())
+                    }
                 }
-            }
-            Spacer(Modifier.height(14.dp))
-            WeekBubbles(streak = streak, modifier = Modifier.fillMaxWidth())
-        }
-
-        // Today and this year, side by side.
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .height(IntrinsicSize.Min),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            val dailyFraction = if (streak.dailyGoal > 0) streak.pagesToday.toFloat() / streak.dailyGoal else 0f
-            Tile(
-                onClick = { onEditGoal(GoalType.DAILY_PAGES) },
-                modifier = Modifier.weight(1f).fillMaxHeight()
-            ) {
-                RingHeader(title = "Today", fraction = dailyFraction)
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    "${streak.pagesToday} of ${streak.dailyGoal} pages",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    if (minutesToday > 0) formatMinutes(minutesToday) + " read" else "Nothing logged yet",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            val yearFraction = if (yearlyGoal > 0) finishedThisYear.size.toFloat() / yearlyGoal else 0f
-            Tile(
-                onClick = { onEditGoal(GoalType.YEARLY_BOOKS) },
-                modifier = Modifier.weight(1f).fillMaxHeight()
-            ) {
-                RingHeader(title = "$year", fraction = yearFraction)
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    "${finishedThisYear.size} of $yearlyGoal books",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    yearPace(finishedThisYear.size, yearlyGoal, streak.today, trackingStart),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        // Pages per month this year.
-        Tile(onClick = onOpenStats, modifier = Modifier.padding(horizontal = 16.dp)) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    "Pages read in $year",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    "${pagesByMonth.sum()} total",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Spacer(Modifier.height(14.dp))
-            MonthBars(pagesByMonth, currentMonth = streak.today.monthValue)
-        }
-
-        if (upNext.isNotEmpty()) {
-            Column {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 20.dp, end = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "Up next",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    TextButton(onClick = onOpenLibrary) { Text("See all") }
-                }
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(upNext, key = { it.id }) { book ->
-                        Column(
-                            modifier = Modifier
-                                .width(84.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .clickable { onOpenBook(book) }
+                HomeSection.GOALS -> {
+                    // Today and this year, side by side.
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .height(IntrinsicSize.Min),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        val dailyFraction = if (streak.dailyGoal > 0) streak.pagesToday.toFloat() / streak.dailyGoal else 0f
+                        Tile(
+                            onClick = { onEditGoal(GoalType.DAILY_PAGES) },
+                            modifier = Modifier.weight(1f).fillMaxHeight()
                         ) {
-                            BookCover(book.coverUrl, Modifier.size(width = 84.dp, height = 126.dp))
-                            Spacer(Modifier.height(6.dp))
+                            RingHeader(title = "Today", fraction = dailyFraction)
+                            Spacer(Modifier.height(10.dp))
                             Text(
-                                book.title,
-                                style = MaterialTheme.typography.labelMedium,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
+                                "${streak.pagesToday} of ${streak.dailyGoal} pages",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                if (minutesToday > 0) formatMinutes(minutesToday) + " read" else "Nothing logged yet",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        val yearFraction = if (yearlyGoal > 0) finishedThisYear.size.toFloat() / yearlyGoal else 0f
+                        Tile(
+                            onClick = { onEditGoal(GoalType.YEARLY_BOOKS) },
+                            modifier = Modifier.weight(1f).fillMaxHeight()
+                        ) {
+                            RingHeader(title = "$year", fraction = yearFraction)
+                            Spacer(Modifier.height(10.dp))
+                            Text(
+                                "${finishedThisYear.size} of $yearlyGoal books",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                yearPace(finishedThisYear.size, yearlyGoal, streak.today, trackingStart),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                HomeSection.MONTHLY_PAGES -> {
+                    // Pages per month this year.
+                    Tile(onClick = onOpenStats, modifier = Modifier.padding(horizontal = 16.dp)) {
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                "Pages read in $year",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                "${pagesByMonth.sum()} total",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(Modifier.height(14.dp))
+                        MonthBars(pagesByMonth, currentMonth = streak.today.monthValue)
+                    }
+                }
+                HomeSection.UP_NEXT -> {
+                    if (upNext.isNotEmpty()) {
+                        Column {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 20.dp, end = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "Up next",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TextButton(onClick = onOpenLibrary) { Text("See all") }
+                            }
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(upNext, key = { it.id }) { book ->
+                                    Column(
+                                        modifier = Modifier
+                                            .width(84.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .clickable { onOpenBook(book) }
+                                    ) {
+                                        BookCover(book.coverUrl, Modifier.size(width = 84.dp, height = 126.dp))
+                                        Spacer(Modifier.height(6.dp))
+                                        Text(
+                                            book.title,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                HomeSection.SHORTCUTS -> {
+                    // Shortcuts to the deeper views.
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        val thisMonthPages = pagesByMonth[streak.today.monthValue - 1]
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            ShortcutTile(
+                                icon = Icons.Filled.CalendarMonth,
+                                title = "Calendar",
+                                subtitle = if (thisMonthPages > 0) "$thisMonthPages pages this month" else "Your reading by day",
+                                onClick = onOpenCalendar,
+                                modifier = Modifier.weight(1f)
+                            )
+                            ShortcutTile(
+                                icon = Icons.Filled.ViewWeek,
+                                title = "Bookshelf",
+                                subtitle = "${books.size} ${if (books.size == 1) "book" else "books"}",
+                                onClick = onOpenBookshelf,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            val finishedCount = books.count { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) }
+                            ShortcutTile(
+                                icon = Icons.Filled.EmojiEvents,
+                                title = "Finished",
+                                subtitle = "$finishedCount ${if (finishedCount == 1) "book" else "books"} read",
+                                onClick = onOpenFinished,
+                                modifier = Modifier.weight(1f)
+                            )
+                            ShortcutTile(
+                                icon = Icons.Filled.AutoAwesome,
+                                title = "Year in review",
+                                subtitle = if (hasYearToReview) "Your $year so far"
+                                else "Unlocks after ${AnalyticsEngine.MIN_DAYS_FOR_WRAPPED} reading days",
+                                onClick = onOpenWrapped,
+                                enabled = hasYearToReview,
+                                modifier = Modifier.weight(1f)
                             )
                         }
                     }
@@ -353,47 +413,13 @@ fun HomeDashboard(
             }
         }
 
-        // Shortcuts to the deeper views.
-        Column(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        TextButton(
+            onClick = onEditHome,
+            modifier = Modifier.align(Alignment.CenterHorizontally)
         ) {
-            val thisMonthPages = pagesByMonth[streak.today.monthValue - 1]
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ShortcutTile(
-                    icon = Icons.Filled.CalendarMonth,
-                    title = "Calendar",
-                    subtitle = if (thisMonthPages > 0) "$thisMonthPages pages this month" else "Your reading by day",
-                    onClick = onOpenCalendar,
-                    modifier = Modifier.weight(1f)
-                )
-                ShortcutTile(
-                    icon = Icons.Filled.ViewWeek,
-                    title = "Bookshelf",
-                    subtitle = "${books.size} ${if (books.size == 1) "book" else "books"}",
-                    onClick = onOpenBookshelf,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                val finishedCount = books.count { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) }
-                ShortcutTile(
-                    icon = Icons.Filled.EmojiEvents,
-                    title = "Finished",
-                    subtitle = "$finishedCount ${if (finishedCount == 1) "book" else "books"} read",
-                    onClick = onOpenFinished,
-                    modifier = Modifier.weight(1f)
-                )
-                ShortcutTile(
-                    icon = Icons.Filled.AutoAwesome,
-                    title = "Year in review",
-                    subtitle = if (hasYearToReview) "Your $year so far"
-                    else "Unlocks after ${AnalyticsEngine.MIN_DAYS_FOR_WRAPPED} reading days",
-                    onClick = onOpenWrapped,
-                    enabled = hasYearToReview,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("Edit home screen")
         }
     }
 

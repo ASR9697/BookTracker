@@ -453,10 +453,13 @@ androidx.compose.animation.SharedTransitionLayout {
                                     composable("home") {
                                         androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
                                             val openSession by viewModel.openSession.collectAsState()
+                                            val homeLayout by viewModel.homeLayout.collectAsState()
                                             val sessions by viewModel.completedSessions.collectAsState()
                                             val currentUserName by viewModel.userName.collectAsState()
                                             HomeDashboard(
                                                 scrollState = homeScroll,
+                                                layout = homeLayout,
+                                                onEditHome = { navController.navigate("editHome") },
                                                 books = books,
                                                 readingBooks = readingBooks,
                                                 sessions = sessions,
@@ -502,6 +505,12 @@ androidx.compose.animation.SharedTransitionLayout {
                                                     }
                                                 }
                                             )
+                                        }
+                                    }
+                                    composable("editHome") {
+                                        val homeLayout by viewModel.homeLayout.collectAsState()
+                                        SubScreen(title = "Edit home screen", onBack = { navController.popBackStack() }) {
+                                            EditHomeScreen(layout = homeLayout, onLayoutChange = viewModel::setHomeLayout)
                                         }
                                     }
                                     composable("calendar") {
@@ -805,6 +814,7 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                             onExportBackup = { uri, onDone -> viewModel.exportBackup(context, uri, onDone) },
                                                             onImportBackup = { uri, onDone -> viewModel.importBackup(context, uri, onDone) },
                                                             onOpenPrivacyPolicy = { navController.navigate("privacy") },
+                                                            onEditHome = { navController.navigate("editHome") },
                                                             onBack = { navController.popBackStack() }
                                                         )
             

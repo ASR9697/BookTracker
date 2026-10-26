@@ -14,6 +14,7 @@ import com.example.booktracker.app.data.BackupEngine
 import com.example.booktracker.app.data.BookRepository
 import com.example.booktracker.app.data.CsvImportResult
 import com.example.booktracker.app.data.DeletedBook
+import com.example.booktracker.app.data.HomeLayout
 import com.example.booktracker.app.data.LibrarySearchResults
 import com.example.booktracker.app.data.ReminderSettings
 import com.example.booktracker.app.data.ServiceLocator
@@ -107,6 +108,9 @@ class BookTrackerViewModel(
 
     val dayStartsAtHour: StateFlow<Int> = settings.dayStartsAtHour
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 3)
+
+    val homeLayout: StateFlow<HomeLayout> = settings.homeLayout
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeLayout.DEFAULT)
 
     val streak: StateFlow<StreakEngine.StreakInfo> =
         combine(completedSessions, settings.dailyGoal, settings.dayStartsAtHour) { sessions, goal, dayStart ->
@@ -587,6 +591,10 @@ class BookTrackerViewModel(
         }
     }
 
+    fun setHomeLayout(layout: HomeLayout) {
+        viewModelScope.launch { settings.setHomeLayout(layout) }
+    }
+
     fun setUserName(name: String) {
         viewModelScope.launch { settings.setUserName(name.trim().ifBlank { "Reader" }) }
     }
@@ -784,7 +792,8 @@ class BookTrackerViewModel(
                         yearlyGoal = settings.yearlyGoal.first(),
                         monthlyGoalPages = settings.monthlyGoalPages.first(),
                         monthlyGoalBooks = settings.monthlyGoalBooks.first(),
-                        dayStartsAtHour = settings.dayStartsAtHour.first()
+                        dayStartsAtHour = settings.dayStartsAtHour.first(),
+                        homeLayout = settings.homeLayout.first().encode()
                     )
                 )
                 onDone(true)
@@ -805,6 +814,7 @@ class BookTrackerViewModel(
                 parsed.settings.monthlyGoalPages?.let { settings.setMonthlyGoalPages(it) }
                 parsed.settings.monthlyGoalBooks?.let { settings.setMonthlyGoalBooks(it) }
                 parsed.settings.dayStartsAtHour?.let { settings.setDayStartsAtHour(it) }
+                parsed.settings.homeLayout?.let { settings.setHomeLayout(HomeLayout.decode(it)) }
                 onDone(parsed.snapshot.books.size)
             } catch (e: Exception) {
                 onDone(-1)

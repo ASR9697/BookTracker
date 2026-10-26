@@ -47,13 +47,15 @@ object BackupEngine {
         val settings: BackupSettings
     )
 
-    /** Goal and day-boundary preferences; null fields were absent from the file. */
+    /** Goal, day-boundary and Home layout preferences; null fields were absent from the file. */
     data class BackupSettings(
         val dailyGoal: Int? = null,
         val yearlyGoal: Int? = null,
         val monthlyGoalPages: Int? = null,
         val monthlyGoalBooks: Int? = null,
-        val dayStartsAtHour: Int? = null
+        val dayStartsAtHour: Int? = null,
+        /** [HomeLayout.encode] form, decoded leniently on restore. */
+        val homeLayout: String? = null
     )
 
     suspend fun exportToUri(
@@ -78,6 +80,7 @@ object BackupEngine {
                 settings.monthlyGoalPages?.let { put("monthlyGoalPages", it) }
                 settings.monthlyGoalBooks?.let { put("monthlyGoalBooks", it) }
                 settings.dayStartsAtHour?.let { put("dayStartsAtHour", it) }
+                settings.homeLayout?.let { put("homeLayout", it) }
             })
             put("books", JSONArray(snapshot.books.map { book ->
                 book.toJson(coverEntry = localCovers[book.id]?.let { COVER_DIR + it.name })
@@ -147,7 +150,8 @@ object BackupEngine {
                 yearlyGoal = settings?.optIntOrNull("yearlyGoalBooks"),
                 monthlyGoalPages = settings?.optIntOrNull("monthlyGoalPages"),
                 monthlyGoalBooks = settings?.optIntOrNull("monthlyGoalBooks"),
-                dayStartsAtHour = settings?.optIntOrNull("dayStartsAtHour")
+                dayStartsAtHour = settings?.optIntOrNull("dayStartsAtHour"),
+                homeLayout = settings?.optString("homeLayout")?.takeIf { it.isNotBlank() }
             )
         )
     }

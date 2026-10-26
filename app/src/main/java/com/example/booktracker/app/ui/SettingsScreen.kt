@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Backup
@@ -130,6 +131,7 @@ fun SettingsScreen(
     onExportBackup: (Uri, (Boolean) -> Unit) -> Unit,
     onImportBackup: (Uri, (Int) -> Unit) -> Unit,
     onOpenPrivacyPolicy: () -> Unit,
+    onEditHome: () -> Unit = {},
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -502,6 +504,29 @@ fun SettingsScreen(
                         text = "Use wallpaper colors (Material You)",
                         checked = useDynamicColor,
                         onCheckedChange = onUseDynamicColorChange
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onEditHome)
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Edit home screen", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "Reorder or hide Home sections",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
