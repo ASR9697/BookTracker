@@ -43,6 +43,7 @@ interface BookRepository {
     suspend fun updateBook(book: Book)
     suspend fun updateStatus(id: String, status: BookStatus)
     suspend fun updateFormat(id: String, format: String)
+    suspend fun updateOwnership(id: String, ownership: com.example.booktracker.shared.models.Ownership)
     suspend fun finishBook(id: String, rating: Map<String, Float>, review: String? = null)
     suspend fun markDnf(id: String, abandonedPercentage: Float, reason: String)
     suspend fun addProgress(id: String, delta: Int)
@@ -83,7 +84,8 @@ interface BookRepository {
         page: Int,
         text: String,
         type: com.example.booktracker.shared.models.NoteType =
-            com.example.booktracker.shared.models.NoteType.BOOK_CONTENT
+            com.example.booktracker.shared.models.NoteType.BOOK_CONTENT,
+        images: List<String> = emptyList()
     )
     suspend fun updateCollections(bookId: String, collections: List<String>)
     suspend fun setProgress(bookId: String, page: Int)
@@ -101,12 +103,15 @@ interface BookRepository {
         id: String,
         page: Int,
         text: String,
-        type: com.example.booktracker.shared.models.NoteType
+        type: com.example.booktracker.shared.models.NoteType,
+        images: List<String>
     )
 
     suspend fun searchLibrary(query: String): LibrarySearchResults
     suspend fun snapshotForBackup(): LibrarySnapshot
     suspend fun restoreFromBackup(snapshot: LibrarySnapshot)
+    /** Writes sessions as given, replacing any with the same id. */
+    suspend fun upsertSessions(sessions: List<Session>)
 }
 
 /** A margin-note hit carries its book so the UI can label and link it. */
@@ -183,7 +188,10 @@ class RoomBookRepository(
             purchaseLog = purchaseLog,
             loanRecord = loanRecord,
             isbn = isbn?.takeIf { it.isNotBlank() && !it.startsWith("manual_") },
-            finishedAt = if (finished) now else null
+            finishedAt = if (finished) now else null,
+            // Logging a purchase while adding the book says the reader owns it.
+            ownership = if (purchaseLog.isNotEmpty()) com.example.booktracker.shared.models.Ownership.OWNED
+            else com.example.booktracker.shared.models.Ownership.NONE
         )
         bookDao.upsert(book.toEntity())
         return book
@@ -220,6 +228,11 @@ class RoomBookRepository(
     override suspend fun updateFormat(id: String, format: String) {
         val entity = bookDao.getById(id) ?: return
         bookDao.upsert(entity.copy(format = format, lastUpdated = System.currentTimeMillis()))
+    }
+
+    override suspend fun updateOwnership(id: String, ownership: com.example.booktracker.shared.models.Ownership) {
+        val entity = bookDao.getById(id) ?: return
+        bookDao.upsert(entity.copy(ownership = ownership.name, lastUpdated = System.currentTimeMillis()))
     }
 
     override suspend fun finishBook(id: String, rating: Map<String, Float>, review: String?) {
@@ -322,18 +335,19 @@ class RoomBookRepository(
         bookId: String,
         page: Int,
         text: String,
-        type: com.example.booktracker.shared.models.NoteType
+        type: com.example.booktracker.shared.models.NoteType,
+        images: List<String>
     ) {
         marginNoteDao.upsert(
-            MarginNoteEntity(
+            MarginNote(
                 id = UUID.randomUUID().toString(),
                 bookId = bookId,
                 timestamp = System.currentTimeMillis(),
                 pageNumber = page,
                 content = text,
-                type = type.name,
-                isFavorite = false
-            )
+                type = type,
+                imageUris = images
+            ).toEntity()
         )
     }
 
@@ -407,10 +421,11 @@ class RoomBookRepository(
         id: String,
         page: Int,
         text: String,
-        type: com.example.booktracker.shared.models.NoteType
+        type: com.example.booktracker.shared.models.NoteType,
+        images: List<String>
     ) {
-        val existing = marginNoteDao.getById(id) ?: return
-        marginNoteDao.upsert(existing.copy(pageNumber = page, content = text, type = type.name))
+        val existing = marginNoteDao.getById(id)?.toModel() ?: return
+        marginNoteDao.upsert(existing.copy(pageNumber = page, content = text, type = type, imageUris = images).toEntity())
     }
 
     override suspend fun searchLibrary(query: String): LibrarySearchResults {
@@ -457,6 +472,13 @@ class RoomBookRepository(
         sessions = sessionDao.getAll().map { it.toModel() },
         notes = marginNoteDao.getAll().map { it.toModel() }
     )
+
+    override suspend fun upsertSessions(sessions: List<Session>) {
+        if (sessions.isNotEmpty()) sessionDao.upsert(sessions.map { it.toEntity() })
+    }
+
+    /** Zone a new session is recorded in; see [Session.zoneId]. */
+    private fun currentZoneId(): String = java.time.ZoneId.systemDefault().id
 
     override suspend fun restoreFromBackup(snapshot: LibrarySnapshot) {
         val existingBooks = bookDao.getAll().associateBy { it.id }
@@ -523,7 +545,8 @@ class RoomBookRepository(
                 endPage = finalStartUnit,
                 pagesRead = 0,
                 durationSeconds = 0,
-                environmentTag = ""
+                environmentTag = "",
+                zoneId = currentZoneId()
             )
         )
     }
@@ -564,7 +587,8 @@ class RoomBookRepository(
                 startPage = startPage,
                 endPage = startPage,
                 pagesRead = 0,
-                environmentTag = ""
+                environmentTag = "",
+                zoneId = currentZoneId()
             )
             ).copy(
             startTime = startTime,
@@ -634,7 +658,8 @@ class RoomBookRepository(
                 endPage = cappedEnd,
                 pagesRead = (cappedEnd - cappedStart).coerceAtLeast(0),
                 durationSeconds = (durationMillis / 1000).toInt(),
-                environmentTag = "Manual Entry"
+                environmentTag = "Manual Entry",
+                zoneId = currentZoneId()
             )
         )
 
@@ -686,7 +711,8 @@ class RoomBookRepository(
                 endPage = newUnit,
                 pagesRead = gained,
                 durationSeconds = 0,
-                environmentTag = ""
+                environmentTag = "",
+                zoneId = currentZoneId()
             )
         )
     }

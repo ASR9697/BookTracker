@@ -1,6 +1,7 @@
 package com.example.booktracker.app.analytics
 
 import com.example.booktracker.shared.models.Book
+import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.Session
 import java.time.Instant
 import java.time.LocalDate
@@ -19,6 +20,28 @@ object AnalyticsEngine {
 
     /** Sessions shorter than this can't produce a meaningful pages/hour. */
     const val MIN_TIMED_SESSION_MILLIS = 60_000L
+
+    /** Reading days in a year before Wrapped has enough to summarize. */
+    const val MIN_DAYS_FOR_WRAPPED = 7
+
+    /**
+     * Wrapped is a shareable card, so it stays locked until the year has a
+     * finished book or [MIN_DAYS_FOR_WRAPPED] reading days, never a card of zeros.
+     */
+    fun hasYearToReview(
+        books: List<Book>,
+        sessions: List<Session>,
+        year: Int,
+        zone: ZoneId = ZoneId.systemDefault(),
+        dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR
+    ): Boolean {
+        val finished = books.any {
+            it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) && it.completedAt > 0 &&
+                Instant.ofEpochMilli(it.completedAt).atZone(zone).year == year
+        }
+        return finished ||
+            StreakEngine.pagesByDay(sessions, zone, dayStartsAtHour).keys.count { it.year == year } >= MIN_DAYS_FOR_WRAPPED
+    }
 
     fun timedSessions(sessions: List<Session>): List<Session> =
         sessions.filter {
@@ -138,17 +161,17 @@ object AnalyticsEngine {
         val last14Days = today.minusDays(13)
         val recentMinutesByDay = timed
             .filter {
-                val date = StreakEngine.readingDate(it.endTime, zone)
+                val date = StreakEngine.sessionDay(it, zone)
                 !date.isBefore(last14Days) && !date.isAfter(today)
             }
-            .groupBy { StreakEngine.readingDate(it.endTime, zone) }
+            .groupBy { StreakEngine.sessionDay(it, zone) }
             .mapValues { (_, sList) -> sList.sumOf { it.endTime - it.startTime } / 60_000L }
 
         val avgDailyMinutes = if (recentMinutesByDay.isNotEmpty()) {
             recentMinutesByDay.values.average().coerceAtLeast(15.0)
         } else if (timed.isNotEmpty()) {
             val totalMins = timed.sumOf { it.endTime - it.startTime } / 60_000L
-            val distinctDays = timed.map { StreakEngine.readingDate(it.endTime, zone) }.distinct().size.coerceAtLeast(1)
+            val distinctDays = timed.map { StreakEngine.sessionDay(it, zone) }.distinct().size.coerceAtLeast(1)
             (totalMins.toDouble() / distinctDays).coerceAtLeast(15.0)
         } else {
             25.0
@@ -169,10 +192,11 @@ object AnalyticsEngine {
     /** Reading minutes per day (timed sessions only), keyed like pagesByDay. */
     fun minutesByDay(
         sessions: List<Session>,
-        zone: ZoneId = ZoneId.systemDefault()
+        zone: ZoneId = ZoneId.systemDefault(),
+        dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR
     ): Map<LocalDate, Long> =
         timedSessions(sessions)
-            .groupBy { StreakEngine.readingDate(it.endTime, zone) }
+            .groupBy { StreakEngine.sessionDay(it, zone, dayStartsAtHour) }
             .mapValues { (_, day) -> day.sumOf { it.endTime - it.startTime } / 60_000L }
 
     data class TimeSummary(
@@ -189,7 +213,7 @@ object AnalyticsEngine {
         val timed = timedSessions(sessions)
         val weekStart = today.minusDays(6)
         val last7 = timed.filter {
-            val day = StreakEngine.readingDate(it.endTime, zone)
+            val day = StreakEngine.sessionDay(it, zone)
             !day.isBefore(weekStart) && !day.isAfter(today)
         }
         val totalMinutes = { list: List<Session> ->

@@ -205,7 +205,7 @@ object CsvImportEngine {
         return digits.takeIf { it.length == 10 || it.length == 13 }
     }
 
-    private fun dedupeKey(title: String, author: String?): String =
+    internal fun dedupeKey(title: String, author: String?): String =
         title.lowercase().filter { it.isLetterOrDigit() } + "|" +
             author.orEmpty().lowercase().filter { it.isLetterOrDigit() }
 

@@ -104,6 +104,75 @@ class GoalEngineTest {
     }
 
     @Test
+    fun `yearly pace starts from tracking start for a late starter`() {
+        // Started Oct 25, two days in, goal 12: measured against Jan 1 this would be ~10 behind.
+        val pace = GoalEngine.calculateYearlyPace(
+            yearlyGoal = 12,
+            completedBooksThisYear = 0,
+            date = LocalDate.of(2026, 10, 26),
+            trackingStart = LocalDate.of(2026, 10, 25)
+        )
+        assertEquals(GoalEngine.GoalPaceStatus.ON_TRACK, pace.status)
+        assertTrue(pace.expectedBooks < 0.75f)
+    }
+
+    @Test
+    fun `yearly pace still falls behind once a late starter stops reading`() {
+        // Started Sep 1 with a goal of 12, none finished by Dec 1: ~9 expected.
+        val pace = GoalEngine.calculateYearlyPace(
+            yearlyGoal = 12,
+            completedBooksThisYear = 0,
+            date = LocalDate.of(2026, 12, 1),
+            trackingStart = LocalDate.of(2026, 9, 1)
+        )
+        assertEquals(GoalEngine.GoalPaceStatus.BEHIND, pace.status)
+    }
+
+    @Test
+    fun `yearly pace ignores a tracking start from an earlier year`() {
+        val withOldStart = GoalEngine.calculateYearlyPace(
+            yearlyGoal = 24,
+            completedBooksThisYear = 10,
+            date = LocalDate.of(2026, 9, 27),
+            trackingStart = LocalDate.of(2024, 3, 1)
+        )
+        assertEquals(GoalEngine.GoalPaceStatus.BEHIND, withOldStart.status)
+        assertEquals(270, withOldStart.dayOfYear)
+    }
+
+    @Test
+    fun `yearly forecast waits for two weeks of tracking`() {
+        val early = GoalEngine.calculateYearlyPace(
+            yearlyGoal = 12,
+            completedBooksThisYear = 0,
+            date = LocalDate.of(2026, 10, 26),
+            trackingStart = LocalDate.of(2026, 10, 25)
+        )
+        assertTrue(early.projectionMessage.contains("appears after"))
+
+        val later = GoalEngine.calculateYearlyPace(
+            yearlyGoal = 12,
+            completedBooksThisYear = 1,
+            date = LocalDate.of(2026, 11, 20),
+            trackingStart = LocalDate.of(2026, 10, 25)
+        )
+        // 1 book in 27 days over a 68-day window -> 3 projected, singular/plural handled.
+        assertEquals(3, later.projectedFinishBooks)
+        assertTrue(later.projectionMessage.startsWith("Projected to finish 3 books"))
+    }
+
+    @Test
+    fun `trackingStart picks the earliest book or session date`() {
+        val zone = ZoneId.of("UTC")
+        val oct10 = LocalDate.of(2026, 10, 10).atStartOfDay(zone).toInstant().toEpochMilli()
+        val oct20 = LocalDate.of(2026, 10, 20).atStartOfDay(zone).toInstant().toEpochMilli()
+        val book = Book(id = "b1", title = "Test", isbn = null, dateAdded = oct20)
+        val session = Session(id = "s1", bookId = "b1", startTime = oct10, endTime = oct10 + 60_000)
+        assertEquals(LocalDate.of(2026, 10, 10), GoalEngine.trackingStart(listOf(book), listOf(session), zone))
+        assertEquals(null, GoalEngine.trackingStart(emptyList(), emptyList(), zone))
+    }
+
+    @Test
     fun `calculate habit consistency evaluates active days percentage`() {
         val zone = ZoneId.of("UTC")
         val date = LocalDate.of(2026, 10, 30)

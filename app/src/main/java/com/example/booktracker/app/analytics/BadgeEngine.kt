@@ -27,7 +27,7 @@ object BadgeEngine {
             description = "Complete your first reading session.",
             icon = Icons.Filled.PlayArrow,
             tier = "BRONZE",
-            predicate = { _, sessions, _, _ -> sessions.isNotEmpty() }
+            predicate = { _, sessions, _, _ -> sessions.any(StreakEngine::isReading) }
         ),
         Badge(
             id = "finisher",

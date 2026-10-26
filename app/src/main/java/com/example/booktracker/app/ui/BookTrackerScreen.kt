@@ -45,9 +45,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.LocalFireDepartment
@@ -95,7 +95,6 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -114,6 +113,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -135,7 +135,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.border
 import coil3.compose.AsyncImage
-import com.example.booktracker.app.ui.animations.bounceClick
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Folder
@@ -150,6 +149,8 @@ import com.example.booktracker.app.analytics.LoanEngine
 import com.example.booktracker.app.ui.animations.ConfettiExplosion
 import com.example.booktracker.app.ui.theme.StreakFlame
 import com.example.booktracker.shared.models.Book
+import com.example.booktracker.shared.models.BookFormat
+import com.example.booktracker.shared.models.Ownership
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.Session
 import kotlinx.coroutines.delay
@@ -176,6 +177,9 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeC
         .filter { it.status.equals(BookStatus.READING.name, ignoreCase = true) }
         .sortedByDescending { it.lastUpdated }
     var showAddDialog by remember { mutableStateOf(false) }
+    // Hoisted so the Add book button can shrink once Home scrolls under it.
+    val homeScroll = rememberScrollState()
+    val homeAtTop by remember { derivedStateOf { homeScroll.value == 0 } }
     var pendingOutcome by remember { mutableStateOf<Pair<String, BookStatus>?>(null) }
     var showGoalDialog by remember { mutableStateOf(false) }
     var initialGoalType by remember { mutableStateOf(GoalType.YEARLY_BOOKS) }
@@ -384,7 +388,8 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeC
             if (currentRoute == "library" || currentRoute == "home") {
                 ExtendedFloatingActionButton(
                     onClick = { showAddDialog = true },
-                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    expanded = currentRoute != "home" || homeAtTop,
+                    icon = { Icon(Icons.Filled.Add, contentDescription = "Add book") },
                     text = { Text("Add book") },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
@@ -448,9 +453,15 @@ androidx.compose.animation.SharedTransitionLayout {
                                     composable("home") {
                                         androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
                                             val openSession by viewModel.openSession.collectAsState()
+                                            val homeLayout by viewModel.homeLayout.collectAsState()
                                             val sessions by viewModel.completedSessions.collectAsState()
                                             val currentUserName by viewModel.userName.collectAsState()
                                             HomeDashboard(
+                                                scrollState = homeScroll,
+                                                layout = homeLayout,
+                                                onEditHome = { navController.navigate("editHome") },
+                                                onOpenOwnership = { navController.navigate("owned/${it.name}") },
+                                                onAddNote = { book, page, text, type, images -> viewModel.addNote(book.id, page, text, type, images) },
                                                 books = books,
                                                 readingBooks = readingBooks,
                                                 sessions = sessions,
@@ -498,10 +509,53 @@ androidx.compose.animation.SharedTransitionLayout {
                                             )
                                         }
                                     }
+                                    composable("editHome") {
+                                        val homeLayout by viewModel.homeLayout.collectAsState()
+                                        SubScreen(title = "Edit home screen", onBack = { navController.popBackStack() }) {
+                                            EditHomeScreen(layout = homeLayout, onLayoutChange = viewModel::setHomeLayout)
+                                        }
+                                    }
+                                    composable("owned/{ownership}") { entry ->
+                                        val ownership = Ownership.fromStored(entry.arguments?.getString("ownership"), hasPurchase = false)
+                                        val title = if (ownership == Ownership.GIFT) "Gifts" else ownership.label
+                                        SubScreen(title = title, onBack = { navController.popBackStack() }) {
+                                            val shelf = remember(books, ownership) {
+                                                books.filter { it.ownership == ownership }.sortedByDescending { it.lastUpdated }
+                                            }
+                                            if (shelf.isEmpty()) {
+                                                Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                                                    Text(
+                                                        "No books here yet. Open any book and set its ownership to add it.",
+                                                        style = MaterialTheme.typography.bodyLarge,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                                    )
+                                                }
+                                            } else {
+                                                androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                                                    columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(minSize = 100.dp),
+                                                    contentPadding = PaddingValues(16.dp),
+                                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                                                    modifier = Modifier.fillMaxSize()
+                                                ) {
+                                                    items(shelf, key = { it.id }) { book ->
+                                                        LibraryGridCard(
+                                                            book = book,
+                                                            onClick = { navController.navigate("book/${book.id}") },
+                                                            onStartReading = { navController.navigate("focus/${book.id}") },
+                                                            onDelete = { onDeleteWithUndo(book) }
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                     composable("calendar") {
                                         val sessions by viewModel.completedSessions.collectAsState()
                                         val allNotes by viewModel.allNotes.collectAsState()
                                         val currentUserName by viewModel.userName.collectAsState()
+                                        val dayStartsAtHour by viewModel.dayStartsAtHour.collectAsState()
                                         SubScreen(title = "Calendar", onBack = { navController.popBackStack() }) {
                                             ReadingCalendarView(
                                                 books = books,
@@ -514,7 +568,8 @@ androidx.compose.animation.SharedTransitionLayout {
                                                 onEditGoal = {
                                                     initialGoalType = GoalType.MONTHLY_PAGES
                                                     showGoalDialog = true
-                                                }
+                                                },
+                                                dayStartsAtHour = dayStartsAtHour
                                             )
                                         }
                                     }
@@ -539,7 +594,6 @@ androidx.compose.animation.SharedTransitionLayout {
                 
                                         androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {                LibraryScreen(
                                                             books = books,
-                                                            onPromote = viewModel::promote,
                                                             onDelete = onDeleteWithUndo,
                                                             onOpenBook = { navController.navigate("book/${it.id}") },
                                                             onStartReading = { navController.navigate("focus/${it.id}") },
@@ -559,7 +613,10 @@ androidx.compose.animation.SharedTransitionLayout {
                                                         MemorizeScreen(
                                                             notes = notes,
                                                             books = books,
-                                                            onToggleFavorite = viewModel::toggleNoteFavorite
+                                                            onToggleFavorite = viewModel::toggleNoteFavorite,
+                                                            onOpenBook = { navController.navigate("book/${it.id}") },
+                                                            onUpdateNote = viewModel::updateNote,
+                                                            onDeleteNote = viewModel::deleteNote
                                                         )
             
                                         }
@@ -591,6 +648,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                         val yearly by viewModel.yearlyGoal.collectAsState()
                                                         val monthlyPages by viewModel.monthlyGoalPages.collectAsState()
                                                         val monthlyBooks by viewModel.monthlyGoalBooks.collectAsState()
+                                                        val dayStartsAtHour by viewModel.dayStartsAtHour.collectAsState()
                                                         AnalyticsScreen(
                                                             books = books,
                                                             sessions = sessions,
@@ -598,6 +656,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             yearlyGoal = yearly,
                                                             monthlyGoalPages = monthlyPages,
                                                             monthlyGoalBooks = monthlyBooks,
+                                                            dayStartsAtHour = dayStartsAtHour,
                                                             onEditGoal = { targetGoalType ->
                                                                 initialGoalType = targetGoalType
                                                                 showGoalDialog = true
@@ -609,7 +668,6 @@ androidx.compose.animation.SharedTransitionLayout {
                                     composable("profile") {
                 
                                         androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {                val goal by viewModel.dailyGoal.collectAsState()
-                                                        val yearly by viewModel.yearlyGoal.collectAsState()
                                                         val sessions by viewModel.completedSessions.collectAsState()
                                                         val unlockedBadges by viewModel.unlockedBadges.collectAsState()
                                                         val streak by viewModel.streak.collectAsState()
@@ -622,7 +680,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             sessions = sessions,
                                                             notes = allNotes,
                                                             streak = streak.currentStreak,
-                                                            yearlyGoal = yearly,
+                                                            dayStartsAtHour = streak.dayStartsAtHour,
                                                             unlockedBadges = unlockedBadges,
                                                             onOpenSettings = { navController.navigate("settings") },
                                                             onOpenHistory = { navController.navigate("history") },
@@ -630,11 +688,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             onOpenPlanner = { navController.navigate("planner") },
                                                             onOpenBook = { navController.navigate("book/${it.id}") },
                                                             onOpenWrapped = { navController.navigate("wrappedAnimated") },
-                                                            onUpdateName = viewModel::setUserName,
-                                                            onEditGoal = {
-                                                                initialGoalType = GoalType.YEARLY_BOOKS
-                                                                showGoalDialog = true
-                                                            }
+                                                            onUpdateName = viewModel::setUserName
                                                         )
             
                                         }
@@ -687,7 +741,7 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                             allSessions = allSessions,
                                                             streak = streak,
                                                             notes = notes,
-                                                            onAddNote = { page, text, type -> viewModel.addNote(bookId, page, text, type) },
+                                                            onAddNote = { page, text, type, images -> viewModel.addNote(bookId, page, text, type, images) },
                                                             onUpdateNote = viewModel::updateNote,
                                                             onDeleteNote = viewModel::deleteNote,
                                                             onToggleNoteFavorite = viewModel::toggleNoteFavorite,
@@ -716,6 +770,9 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                             },
                                                             onSetFormat = { format ->
                                                                 books.find { it.id == bookId }?.let { viewModel.setFormat(it, format) }
+                                                            },
+                                                            onSetOwnership = { ownership ->
+                                                                books.find { it.id == bookId }?.let { viewModel.setOwnership(it, ownership) }
                                                             },
                                                             onDelete = {
                                                                 books.find { it.id == bookId }?.let { onDeleteWithUndo(it) }
@@ -797,9 +854,11 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                             reminder = reminder,
                                                             onReminderChange = viewModel::setReminder,
                                                             onImportCsv = { uri, onDone -> viewModel.importCsv(context, uri, onDone) },
+                                                            onImportBookmory = { uri, onDone -> viewModel.importBookmory(context, uri, onDone) },
                                                             onExportBackup = { uri, onDone -> viewModel.exportBackup(context, uri, onDone) },
                                                             onImportBackup = { uri, onDone -> viewModel.importBackup(context, uri, onDone) },
                                                             onOpenPrivacyPolicy = { navController.navigate("privacy") },
+                                                            onEditHome = { navController.navigate("editHome") },
                                                             onBack = { navController.popBackStack() }
                                                         )
             
@@ -852,7 +911,7 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                                     onSaveSession = {
                                                                         navController.navigate("session_save/$bookId") { launchSingleTop = true }
                                                                     },
-                                                                    onAddNote = { page, text -> viewModel.addNote(bookId, page, text) }
+                                                                    onAddNote = { page, text, type, images -> viewModel.addNote(bookId, page, text, type, images) }
                                                                 )
                                                             }
                                                         }
@@ -1100,7 +1159,6 @@ fun WeekBubbles(streak: StreakEngine.StreakInfo, modifier: Modifier = Modifier) 
 @Composable
 fun LibraryScreen(
     books: List<Book>,
-    onPromote: (Book) -> Unit,
     onDelete: (Book) -> Unit,
     onOpenBook: (Book) -> Unit,
     onStartReading: (Book) -> Unit,
@@ -1115,7 +1173,12 @@ fun LibraryScreen(
     var selectedCollection by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
     var sortOrder by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(LibrarySort.RECENT) }
     var viewMode by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(LibraryViewMode.GRID) }
+    var selectedFormat by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<BookFormat?>(null) }
+    var showFormatMenu by remember { mutableStateOf(false) }
+    var selectedOwnership by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<Ownership?>(null) }
+    var showOwnershipMenu by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
+    var showMoreMenu by remember { mutableStateOf(false) }
     var showCollectionMenu by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
 
@@ -1131,8 +1194,14 @@ fun LibraryScreen(
         books.flatMap { it.classification.collections }.filter { it.isNotBlank() }.distinct().sorted()
     }
     if (selectedCollection != null && selectedCollection !in collections) selectedCollection = null
+    val formats = remember(books) { BookFormat.entries.filter { f -> books.any { it.format == f } } }
+    if (selectedFormat != null && selectedFormat !in formats) selectedFormat = null
+    val ownershipCounts = remember(books) {
+        SelectableOwnerships.associateWith { o -> books.count { it.ownership == o } }.filterValues { it > 0 }
+    }
+    if (selectedOwnership != null && selectedOwnership !in ownershipCounts) selectedOwnership = null
 
-    val displayBooks = remember(books, selectedFilter, showFavoritesOnly, showLoansOnly, selectedCollection, sortOrder) {
+    val displayBooks = remember(books, selectedFilter, showFavoritesOnly, showLoansOnly, selectedCollection, selectedFormat, selectedOwnership, sortOrder) {
         books.filter { book ->
             val statusMatches = when (selectedFilter) {
                 null -> true
@@ -1143,7 +1212,9 @@ fun LibraryScreen(
             val favoriteMatches = !showFavoritesOnly || book.isFavorite
             val loanMatches = !showLoansOnly || LoanEngine.activeLoan(book) != null
             val collectionMatches = selectedCollection == null || selectedCollection in book.classification.collections
-            statusMatches && favoriteMatches && loanMatches && collectionMatches
+            val formatMatches = selectedFormat == null || book.format == selectedFormat
+            val ownershipMatches = selectedOwnership == null || book.ownership == selectedOwnership
+            statusMatches && favoriteMatches && loanMatches && collectionMatches && formatMatches && ownershipMatches
         }.let { list ->
             when (sortOrder) {
                 LibrarySort.RECENT -> list.sortedByDescending { it.lastUpdated }
@@ -1222,6 +1293,78 @@ fun LibraryScreen(
                 ),
                 shape = CircleShape
             )
+
+            // Appears once the reader has marked any book owned, gifted or wishlisted.
+            if (ownershipCounts.isNotEmpty()) {
+                Box {
+                    androidx.compose.material3.FilterChip(
+                        selected = selectedOwnership != null,
+                        onClick = { showOwnershipMenu = true },
+                        label = { Text(selectedOwnership?.label ?: "Ownership") },
+                        leadingIcon = selectedOwnership?.let { o ->
+                            { Icon(o.icon, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                        },
+                        trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        shape = CircleShape
+                    )
+                    DropdownMenu(expanded = showOwnershipMenu, onDismissRequest = { showOwnershipMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Any ownership") },
+                            onClick = {
+                                selectedOwnership = null
+                                showOwnershipMenu = false
+                            }
+                        )
+                        ownershipCounts.forEach { (ownership, count) ->
+                            DropdownMenuItem(
+                                text = { Text("${ownership.label} ($count)") },
+                                leadingIcon = { Icon(ownership.icon, contentDescription = null) },
+                                onClick = {
+                                    selectedOwnership = ownership
+                                    showOwnershipMenu = false
+                                },
+                                trailingIcon = {
+                                    if (ownership == selectedOwnership) Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Only worth offering once the library mixes formats.
+            if (formats.size > 1) {
+                Box {
+                    androidx.compose.material3.FilterChip(
+                        selected = selectedFormat != null,
+                        onClick = { showFormatMenu = true },
+                        label = { Text(selectedFormat?.name ?: "Format") },
+                        trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        shape = CircleShape
+                    )
+                    DropdownMenu(expanded = showFormatMenu, onDismissRequest = { showFormatMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("All formats") },
+                            onClick = {
+                                selectedFormat = null
+                                showFormatMenu = false
+                            }
+                        )
+                        formats.forEach { format ->
+                            DropdownMenuItem(
+                                text = { Text("${format.name} (${books.count { it.format == format }})") },
+                                onClick = {
+                                    selectedFormat = format
+                                    showFormatMenu = false
+                                },
+                                trailingIcon = {
+                                    if (format == selectedFormat) Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                                }
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         Row(
@@ -1296,12 +1439,6 @@ fun LibraryScreen(
                 }
             }
             Spacer(Modifier.weight(1f))
-            IconButton(onClick = onCurationClick) {
-                Icon(Icons.Filled.Style, contentDescription = "Sort your to-read pile")
-            }
-            IconButton(onClick = { epubPickerLauncher.launch("application/epub+zip") }) {
-                Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Open an EPUB file")
-            }
             IconButton(onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 viewMode = if (viewMode == LibraryViewMode.GRID) LibraryViewMode.BOOKSHELF else LibraryViewMode.GRID
@@ -1310,6 +1447,30 @@ fun LibraryScreen(
                     if (viewMode == LibraryViewMode.GRID) Icons.Filled.ViewColumn else Icons.Filled.GridView,
                     contentDescription = if (viewMode == LibraryViewMode.GRID) "Show as bookshelf" else "Show as grid"
                 )
+            }
+            // Less common actions get words, not unexplained icons.
+            Box {
+                IconButton(onClick = { showMoreMenu = true }) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = "More library actions")
+                }
+                DropdownMenu(expanded = showMoreMenu, onDismissRequest = { showMoreMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Sort your to-read pile") },
+                        leadingIcon = { Icon(Icons.Filled.Style, contentDescription = null) },
+                        onClick = {
+                            showMoreMenu = false
+                            onCurationClick()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Open an EPUB file") },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null) },
+                        onClick = {
+                            showMoreMenu = false
+                            epubPickerLauncher.launch("application/epub+zip")
+                        }
+                    )
+                }
             }
         }
 
@@ -1427,10 +1588,11 @@ fun LibraryScreen(
                     )
                 } else {
                     androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-                        columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(minSize = 140.dp),
-                        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        // Three across on a phone, more on wider screens.
+                        columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(minSize = 100.dp),
+                        contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 88.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(displayBooks, key = { it.id }) { book ->
@@ -1438,7 +1600,6 @@ fun LibraryScreen(
                                 book = book,
                                 modifier = Modifier.animateItem(),
                                 onClick = { onOpenBook(book) },
-                                onPromote = { onPromote(book) },
                                 onStartReading = { onStartReading(book) },
                                 onDelete = { onDelete(book) }
                             )
@@ -1448,194 +1609,6 @@ fun LibraryScreen(
             }
         }
     }
-    }
-}
-
-@Composable
-fun LibraryGridCard(
-    book: Book,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-    onPromote: () -> Unit,
-    onStartReading: () -> Unit,
-    onDelete: () -> Unit
-) {
-    val isReading = book.status == BookStatus.READING.name
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(260.dp)
-            .bounceClick(onClick = onClick)
-            .animateContentSize(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        border = if (isReading) androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            BookCover(book.coverUrl, Modifier.heroSharedElement("cover-${book.id}").fillMaxSize())
-            
-            val activeLoan = remember(book.loanRecord) { LoanEngine.activeLoan(book) }
-            if (activeLoan != null) {
-                val loanStatus = remember(activeLoan) { LoanEngine.getLoanStatus(activeLoan) }
-                LoanBadge(
-                    status = loanStatus,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(6.dp)
-                )
-            }
-
-            var expanded by remember { androidx.compose.runtime.mutableStateOf(false) }
-            val statusText = when (book.status) {
-                "BACKLOG" -> BookStatus.TO_READ.label
-                else -> try {
-                    BookStatus.valueOf(book.status).label
-                } catch (e: Exception) {
-                    book.status
-                }
-            }
-            if (statusText.isNotEmpty()) {
-                val badgeColor = when (book.status) {
-                    BookStatus.READING.name -> MaterialTheme.colorScheme.primary
-                    BookStatus.FINISHED.name -> MaterialTheme.colorScheme.tertiary
-                    BookStatus.UP_NEXT.name -> MaterialTheme.colorScheme.secondary
-                    BookStatus.SHORTLIST.name -> MaterialTheme.colorScheme.secondaryContainer
-                    BookStatus.DNF.name -> MaterialTheme.colorScheme.error
-                    else -> MaterialTheme.colorScheme.surfaceVariant
-                }
-                val badgeTextColor = when (book.status) {
-                    BookStatus.READING.name -> MaterialTheme.colorScheme.onPrimary
-                    BookStatus.FINISHED.name -> MaterialTheme.colorScheme.onTertiary
-                    BookStatus.UP_NEXT.name -> MaterialTheme.colorScheme.onSecondary
-                    BookStatus.SHORTLIST.name -> MaterialTheme.colorScheme.onSecondaryContainer
-                    BookStatus.DNF.name -> MaterialTheme.colorScheme.onError
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                }
-
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .background(badgeColor.copy(alpha = 0.92f), CircleShape)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        val prefix = if (book.status == BookStatus.FINISHED.name) "🏆 " else ""
-                        val pct = if (book.status == BookStatus.READING.name && book.totalPages > 0) {
-                            " · ${((book.currentPage.toFloat() / book.totalPages) * 100).toInt()}%"
-                        } else ""
-                        Text(
-                            "$prefix$statusText$pct",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = badgeTextColor
-                        )
-                    }
-                    
-                    Box {
-                        IconButton(
-                            onClick = { expanded = true },
-                            modifier = Modifier
-                                .padding(start = 4.dp)
-                                .size(28.dp)
-                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f), CircleShape)
-                        ) {
-                            Icon(
-                                Icons.Filled.MoreVert,
-                                contentDescription = "Options",
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
-                        ) {
-                            if (book.status != BookStatus.READING.name && book.status != BookStatus.FINISHED.name) {
-                                DropdownMenuItem(
-                                    text = { Text("Start Reading") },
-                                    onClick = {
-                                        expanded = false
-                                        onStartReading()
-                                    },
-                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null) }
-                                )
-                            }
-                            DropdownMenuItem(
-                                text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
-                                onClick = {
-                                    expanded = false
-                                    onDelete()
-                                },
-                                leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Bottom Gradient Overlay for text
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(100.dp)
-                    .background(
-                        androidx.compose.ui.graphics.Brush.verticalGradient(
-                            colors = listOf(
-                                androidx.compose.ui.graphics.Color.Transparent,
-                                androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.8f)
-                            )
-                        )
-                    )
-            )
-
-            // Content Overlay
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth()
-                    .padding(start = 12.dp, end = 12.dp, bottom = 16.dp)
-            ) {
-                Text(
-                    book.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = androidx.compose.ui.graphics.Color.White,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (book.authors.isNotEmpty()) {
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        book.authors.joinToString(", "),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.7f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            // Progress Bar at the very bottom edge
-            if (book.currentPage > 0 || book.status == BookStatus.FINISHED.name) {
-                val progressFraction = if (book.status == BookStatus.FINISHED.name) 1f else {
-                    val total = book.totalPages.takeIf { it > 0 } ?: 1
-                    (book.currentPage.toFloat() / total).coerceIn(0f, 1f)
-                }
-                LinearProgressIndicator(
-                    progress = { progressFraction },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(4.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.3f),
-                )
-            }
-        }
     }
 }
 

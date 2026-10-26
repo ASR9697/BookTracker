@@ -11,6 +11,7 @@ import com.example.booktracker.shared.models.DnfData
 import com.example.booktracker.shared.models.LoanRecord
 import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.NoteType
+import com.example.booktracker.shared.models.Ownership
 import com.example.booktracker.shared.models.ProgressUnit
 import com.example.booktracker.shared.models.Publication
 import com.example.booktracker.shared.models.PurchaseLog
@@ -41,19 +42,22 @@ object BackupEngine {
     private const val FORMAT_VERSION = 2
     private const val ENTRY_NAME = "booktracker-backup.json"
     private const val COVER_DIR = "covers/"
+    private const val NOTE_IMAGE_DIR = NoteImageStore.DIR + "/"
 
     data class Parsed(
         val snapshot: LibrarySnapshot,
         val settings: BackupSettings
     )
 
-    /** Goal and day-boundary preferences; null fields were absent from the file. */
+    /** Goal, day-boundary and Home layout preferences; null fields were absent from the file. */
     data class BackupSettings(
         val dailyGoal: Int? = null,
         val yearlyGoal: Int? = null,
         val monthlyGoalPages: Int? = null,
         val monthlyGoalBooks: Int? = null,
-        val dayStartsAtHour: Int? = null
+        val dayStartsAtHour: Int? = null,
+        /** [HomeLayout.encode] form, decoded leniently on restore. */
+        val homeLayout: String? = null
     )
 
     suspend fun exportToUri(
@@ -68,6 +72,12 @@ object BackupEngine {
             .mapNotNull { book -> localCoverFile(book.coverUrl)?.let { book.id to it } }
             .filter { (_, file) -> file.isFile }
             .toMap()
+        // Note photos travel the same way, as "note_images/<name>".
+        val noteImages = snapshot.notes
+            .flatMap { it.imageUris }
+            .mapNotNull { NoteImageStore.localFile(it) }
+            .filter { it.isFile }
+            .distinctBy { it.name }
 
         val json = JSONObject().apply {
             put("version", FORMAT_VERSION)
@@ -78,12 +88,17 @@ object BackupEngine {
                 settings.monthlyGoalPages?.let { put("monthlyGoalPages", it) }
                 settings.monthlyGoalBooks?.let { put("monthlyGoalBooks", it) }
                 settings.dayStartsAtHour?.let { put("dayStartsAtHour", it) }
+                settings.homeLayout?.let { put("homeLayout", it) }
             })
             put("books", JSONArray(snapshot.books.map { book ->
                 book.toJson(coverEntry = localCovers[book.id]?.let { COVER_DIR + it.name })
             }))
             put("sessions", JSONArray(snapshot.sessions.map { it.toJson() }))
-            put("notes", JSONArray(snapshot.notes.map { it.toJson() }))
+            put("notes", JSONArray(snapshot.notes.map { note ->
+                note.toJson(imageEntries = note.imageUris.mapNotNull { uri ->
+                    NoteImageStore.localFile(uri)?.takeIf { it.isFile }?.let { NOTE_IMAGE_DIR + it.name }
+                })
+            }))
         }
         val output = context.contentResolver.openOutputStream(uri)
             ?: throw IllegalStateException("Cannot open backup destination")
@@ -96,6 +111,11 @@ object BackupEngine {
                 file.inputStream().use { it.copyTo(zip) }
                 zip.closeEntry()
             }
+            noteImages.forEach { file ->
+                zip.putNextEntry(ZipEntry(NOTE_IMAGE_DIR + file.name))
+                file.inputStream().use { it.copyTo(zip) }
+                zip.closeEntry()
+            }
         }
     }
 
@@ -105,6 +125,8 @@ object BackupEngine {
                 ?: throw IllegalStateException("Cannot open backup file")
             val coverDir = File(context.filesDir, "covers").apply { mkdirs() }
             val restoredCovers = mutableMapOf<String, String>()
+            val noteImageDir = NoteImageStore.dir(context)
+            val restoredNoteImages = mutableMapOf<String, String>()
             var jsonText: String? = null
 
             ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
@@ -124,30 +146,43 @@ object BackupEngine {
                                 restoredCovers[COVER_DIR + safeName] = "file://${target.absolutePath}"
                             }
                         }
+                        name.startsWith(NOTE_IMAGE_DIR) && !entry.isDirectory -> {
+                            val safeName = File(name).name
+                            if (safeName.isNotBlank()) {
+                                val target = File(noteImageDir, safeName)
+                                target.outputStream().use { zip.copyTo(it) }
+                                restoredNoteImages[NOTE_IMAGE_DIR + safeName] = "file://${target.absolutePath}"
+                            }
+                        }
                     }
                     entry = zip.nextEntry
                 }
             }
 
             // Accepts either the .zip we write or a bare .json the user extracted.
-            parse(jsonText ?: bytes.toString(Charsets.UTF_8), restoredCovers)
+            parse(jsonText ?: bytes.toString(Charsets.UTF_8), restoredCovers, restoredNoteImages)
         }
 
-    private fun parse(text: String, restoredCovers: Map<String, String>): Parsed {
+    private fun parse(
+        text: String,
+        restoredCovers: Map<String, String>,
+        restoredNoteImages: Map<String, String> = emptyMap()
+    ): Parsed {
         val root = JSONObject(text)
         val settings = root.optJSONObject("settings")
         return Parsed(
             snapshot = LibrarySnapshot(
                 books = root.optJSONArray("books").mapObjects { it.toBook(restoredCovers) },
                 sessions = root.optJSONArray("sessions").mapObjects { it.toSession() },
-                notes = root.optJSONArray("notes").mapObjects { it.toNote() }
+                notes = root.optJSONArray("notes").mapObjects { it.toNote(restoredNoteImages) }
             ),
             settings = BackupSettings(
                 dailyGoal = settings?.optIntOrNull("dailyGoalPages"),
                 yearlyGoal = settings?.optIntOrNull("yearlyGoalBooks"),
                 monthlyGoalPages = settings?.optIntOrNull("monthlyGoalPages"),
                 monthlyGoalBooks = settings?.optIntOrNull("monthlyGoalBooks"),
-                dayStartsAtHour = settings?.optIntOrNull("dayStartsAtHour")
+                dayStartsAtHour = settings?.optIntOrNull("dayStartsAtHour"),
+                homeLayout = settings?.optString("homeLayout")?.takeIf { it.isNotBlank() }
             )
         )
     }
@@ -195,6 +230,7 @@ object BackupEngine {
         }
         put("isFavorite", isFavorite)
         put("readCount", readCount)
+        put("ownership", ownership.name)
         plannedDate?.let { put("plannedDate", it) }
         review?.let { put("review", it) }
         if (purchaseLog.isNotEmpty()) {
@@ -295,7 +331,12 @@ object BackupEngine {
             plannedDate = if (has("plannedDate")) optLong("plannedDate") else null,
             review = if (has("review")) optString("review") else null,
             purchaseLog = optJSONArray("purchaseLog").mapObjects { it.toPurchaseLog() },
-            loanRecord = optJSONArray("loanRecord").mapObjects { it.toLoanRecord() }
+            loanRecord = optJSONArray("loanRecord").mapObjects { it.toLoanRecord() },
+            // Backups from before ownership existed: a logged purchase means Owned.
+            ownership = Ownership.fromStored(
+                optString("ownership").takeIf { it.isNotBlank() },
+                hasPurchase = optJSONArray("purchaseLog")?.length()?.let { it > 0 } == true
+            )
         )
     }
 
@@ -309,6 +350,7 @@ object BackupEngine {
         put("pagesRead", pagesRead)
         put("durationSeconds", durationSeconds)
         put("environmentTag", environmentTag)
+        if (zoneId.isNotBlank()) put("zoneId", zoneId)
     }
 
     private fun JSONObject.toSession(): Session = Session(
@@ -320,10 +362,11 @@ object BackupEngine {
         endPage = optInt("endPage"),
         pagesRead = optInt("pagesRead"),
         durationSeconds = optInt("durationSeconds"),
-        environmentTag = optString("environmentTag")
+        environmentTag = optString("environmentTag"),
+        zoneId = optString("zoneId")
     )
 
-    private fun MarginNote.toJson(): JSONObject = JSONObject().apply {
+    private fun MarginNote.toJson(imageEntries: List<String>): JSONObject = JSONObject().apply {
         put("id", id)
         put("bookId", bookId)
         put("timestamp", timestamp)
@@ -332,9 +375,11 @@ object BackupEngine {
         put("type", type.name)
         put("markdownContent", markdownContent)
         put("isFavorite", isFavorite)
+        if (imageEntries.isNotEmpty()) put("images", JSONArray(imageEntries))
     }
 
-    private fun JSONObject.toNote(): MarginNote = MarginNote(
+    /** Photos whose files didn't make it into the zip are dropped rather than left dangling. */
+    private fun JSONObject.toNote(restoredImages: Map<String, String>): MarginNote = MarginNote(
         id = getString("id"),
         bookId = optString("bookId"),
         timestamp = optLong("timestamp"),
@@ -342,7 +387,10 @@ object BackupEngine {
         content = optString("content"),
         type = runCatching { NoteType.valueOf(optString("type")) }.getOrDefault(NoteType.BOOK_CONTENT),
         markdownContent = optString("markdownContent"),
-        isFavorite = optBoolean("isFavorite")
+        isFavorite = optBoolean("isFavorite"),
+        imageUris = optJSONArray("images")
+            ?.let { arr -> (0 until arr.length()).mapNotNull { restoredImages[arr.optString(it)] } }
+            .orEmpty()
     )
 
     private fun <T> JSONArray?.mapObjects(transform: (JSONObject) -> T): List<T> {

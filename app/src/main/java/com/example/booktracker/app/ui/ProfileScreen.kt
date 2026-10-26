@@ -35,8 +35,8 @@ import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.Session
 import com.example.booktracker.app.ui.animations.bounceClick
 import com.example.booktracker.app.analytics.GoalEngine
+import com.example.booktracker.app.analytics.StreakEngine
 import com.example.booktracker.app.util.MarkdownExporter
-import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -49,7 +49,7 @@ fun ProfileScreen(
     sessions: List<Session>,
     notes: List<MarginNote> = emptyList(),
     streak: Int,
-    yearlyGoal: Int,
+    dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR,
     onOpenSettings: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
     onOpenFinished: () -> Unit = {},
@@ -57,31 +57,27 @@ fun ProfileScreen(
     onOpenBook: (Book) -> Unit = {},
     onOpenWrapped: () -> Unit = {},
     onUpdateName: (String) -> Unit = {},
-    onEditGoal: () -> Unit = {},
     unlockedBadges: Set<String> = emptySet(),
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val zone = remember { ZoneId.systemDefault() }
     val completedBooks = books.filter { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) }
-    val pagesRead = completedBooks.sumOf { it.totalPages }
+    // Logged reading, plus whole books finished before they were ever tracked (imports).
+    val pagesRead = remember(books, sessions) {
+        val trackedBookIds = sessions.filter(StreakEngine::isReading).map { it.bookId }.toSet()
+        StreakEngine.pagesByDay(sessions).values.sum() +
+            completedBooks.filter { it.id !in trackedBookIds }.sumOf { it.totalPages }
+    }
     val currentBook = books.firstOrNull { it.status.equals(BookStatus.READING.name, ignoreCase = true) }
     val velocity = remember(sessions) { AnalyticsEngine.pagesPerHour(sessions) }
     val totalMinutes = remember(sessions) {
         AnalyticsEngine.timedSessions(sessions).sumOf { it.endTime - it.startTime } / 60_000L
     }
-    val thisYear = remember { LocalDate.now(zone).year }
-    val finishedThisYear = completedBooks.count {
-        Instant.ofEpochMilli(it.completedAt).atZone(zone).toLocalDate().year == thisYear
-    }
-    val trackingSince = remember(books, sessions) {
-        val earliest = (books.map { it.dateAdded.takeIf { d -> d > 0 } ?: it.lastUpdated } + sessions.map { it.startTime })
-            .filter { it > 0 }
-            .minOrNull()
-        earliest?.let {
-            Instant.ofEpochMilli(it).atZone(zone).toLocalDate()
-                .format(DateTimeFormatter.ofPattern("MMM yyyy"))
-        }
+    val trackingStart = remember(books, sessions) { GoalEngine.trackingStart(books, sessions, zone) }
+    val trackingSince = trackingStart?.format(DateTimeFormatter.ofPattern("MMM yyyy"))
+    val hasYearToReview = remember(books, sessions, dayStartsAtHour) {
+        AnalyticsEngine.hasYearToReview(books, sessions, LocalDate.now(zone).year, zone, dayStartsAtHour)
     }
 
     var selectedBadge by remember { mutableStateOf<Badge?>(null) }
@@ -180,7 +176,8 @@ fun ProfileScreen(
             }
         }
 
-        item {
+        // Wrapped stays hidden until there is a year worth sharing.
+        if (hasYearToReview) item {
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
@@ -225,124 +222,6 @@ fun ProfileScreen(
             }
         }
 
-        // Yearly goal progress with pacing badge
-        item {
-            val yearlyPace = remember(yearlyGoal, finishedThisYear) {
-                GoalEngine.calculateYearlyPace(yearlyGoal, finishedThisYear, LocalDate.now(zone))
-            }
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .bounceClick(onClick = onEditGoal)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(72.dp)) {
-                            val target = (finishedThisYear.toFloat() / yearlyGoal.coerceAtLeast(1))
-                                .coerceIn(0f, 1f)
-                            val progress by androidx.compose.animation.core.animateFloatAsState(
-                                targetValue = target,
-                                label = "yearlyProgress"
-                            )
-                            CircularProgressIndicator(
-                                progress = { progress },
-                                modifier = Modifier.fillMaxSize(),
-                                color = MaterialTheme.colorScheme.primary,
-                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                                strokeWidth = 8.dp,
-                                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-                            )
-                            Text(
-                                "$finishedThisYear",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        Spacer(Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("$thisYear Reading Goal", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Icon(
-                                    Icons.Filled.Edit,
-                                    contentDescription = "Edit Goal",
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Spacer(Modifier.height(2.dp))
-                            Text(
-                                "$finishedThisYear of $yearlyGoal books finished",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                yearlyPace.message,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = when (yearlyPace.status) {
-                                    GoalEngine.GoalPaceStatus.AHEAD -> MaterialTheme.colorScheme.primary
-                                    GoalEngine.GoalPaceStatus.BEHIND -> MaterialTheme.colorScheme.error
-                                    GoalEngine.GoalPaceStatus.ON_TRACK -> MaterialTheme.colorScheme.secondary
-                                }
-                            )
-                            if (yearlyPace.projectionMessage.isNotEmpty()) {
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    yearlyPace.projectionMessage,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        item {
-            val seasonalSprint = remember(books) {
-                GoalEngine.calculateSeasonalSprint(books, LocalDate.now(zone), zone, 5)
-            }
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        seasonalSprint.season.emoji,
-                        style = MaterialTheme.typography.headlineMedium
-                    )
-                    Spacer(Modifier.width(14.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            seasonalSprint.season.title,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "${seasonalSprint.completedBooks} of ${seasonalSprint.targetBooks} books · ${if (seasonalSprint.isCompleted) "Completed 🎉" else "${seasonalSprint.daysRemaining} days left"}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
-
         item {
             Card(
                 shape = RoundedCornerShape(16.dp),
@@ -354,6 +233,7 @@ fun ProfileScreen(
                     books = books,
                     notes = notes,
                     onOpenBook = onOpenBook,
+                    dayStartsAtHour = dayStartsAtHour,
                     modifier = Modifier.padding(16.dp)
                 )
             }
@@ -424,7 +304,7 @@ fun ProfileScreen(
                         iconTint = MaterialTheme.colorScheme.tertiary,
                         iconBackground = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f),
                         value = streak.toString(),
-                        label = "Days Streak"
+                        label = if (streak == 1) "Day Streak" else "Days Streak"
                     )
                     AchievementCard(
                         modifier = Modifier.weight(1f),
@@ -615,68 +495,6 @@ fun ProfileScreen(
                         }
                     }
                     Spacer(Modifier.height(12.dp))
-                }
-            }
-        }
-
-        // Library Insights — genre split of the whole library.
-        item {
-            val genreShares = remember(books) {
-                val counts = books.flatMap { it.genres }.groupingBy { it }.eachCount()
-                val total = counts.values.sum().coerceAtLeast(1)
-                counts.entries
-                    .sortedByDescending { it.value }
-                    .take(3)
-                    .map { it.key to it.value.toFloat() / total }
-            }
-            Column {
-                Text(
-                    "Library Insights",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.8f)),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Top Genres", style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(16.dp))
-
-                        if (genreShares.isEmpty()) {
-                            Text(
-                                "Genres appear once you add books via search or the scanner.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        } else {
-                            val colorScheme = MaterialTheme.colorScheme
-                            genreShares.forEachIndexed { index, (genre, pct) ->
-                                val color = when (index) {
-                                    0 -> colorScheme.primary
-                                    1 -> colorScheme.secondary
-                                    else -> colorScheme.tertiary
-                                }
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text(genre, style = MaterialTheme.typography.labelSmall)
-                                    Text(
-                                        "${(pct * 100).roundToInt()}%",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                Spacer(Modifier.height(4.dp))
-                                LinearProgressIndicator(
-                                    progress = { pct },
-                                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
-                                    color = color,
-                                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                                )
-                                Spacer(Modifier.height(12.dp))
-                            }
-                        }
-                    }
                 }
             }
         }

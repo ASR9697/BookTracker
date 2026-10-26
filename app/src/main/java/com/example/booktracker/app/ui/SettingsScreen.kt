@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Backup
@@ -52,6 +53,7 @@ import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.StarRate
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -88,6 +90,8 @@ import androidx.compose.ui.unit.dp
 import com.example.booktracker.app.R
 import com.example.booktracker.app.data.AppPalette
 import com.example.booktracker.app.data.CsvImportResult
+import com.example.booktracker.app.data.bookmory.BookmoryImportSummary
+import com.example.booktracker.app.data.bookmory.BookmoryImporter
 import com.example.booktracker.app.data.ReminderSettings
 import com.example.booktracker.app.data.ThemeMode
 import com.example.booktracker.app.notifications.Notifications
@@ -127,9 +131,11 @@ fun SettingsScreen(
     reminder: ReminderSettings,
     onReminderChange: (enabled: Boolean, hour: Int, minute: Int) -> Unit,
     onImportCsv: (Uri, (CsvImportResult?) -> Unit) -> Unit,
+    onImportBookmory: (Uri, (Result<BookmoryImportSummary>) -> Unit) -> Unit = { _, _ -> },
     onExportBackup: (Uri, (Boolean) -> Unit) -> Unit,
     onImportBackup: (Uri, (Int) -> Unit) -> Unit,
     onOpenPrivacyPolicy: () -> Unit,
+    onEditHome: () -> Unit = {},
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -146,6 +152,53 @@ fun SettingsScreen(
                 Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             }
         }
+    }
+    var bookmoryImporting by remember { mutableStateOf(false) }
+    var bookmoryResult by remember { mutableStateOf<Result<BookmoryImportSummary>?>(null) }
+    // .bookmory has no registered MIME type, so the picker has to allow any file.
+    val bookmoryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            bookmoryImporting = true
+            onImportBookmory(uri) { result ->
+                bookmoryImporting = false
+                bookmoryResult = result
+            }
+        }
+    }
+    bookmoryResult?.let { result ->
+        AlertDialog(
+            onDismissRequest = { bookmoryResult = null },
+            confirmButton = { TextButton(onClick = { bookmoryResult = null }) { Text("OK") } },
+            title = { Text(if (result.isSuccess) "Bookmory import done" else "Couldn't import") },
+            text = {
+                val summary = result.getOrNull()
+                Text(
+                    when {
+                        summary == null ->
+                            if (result.exceptionOrNull() is BookmoryImporter.NotABookmoryBackup) {
+                                "That file isn't a Bookmory backup. In Bookmory, go to My page \u2192 Backup and Restore and save a backup file, then pick that file here."
+                            } else {
+                                "Something went wrong reading that backup. Nothing was changed."
+                            }
+                        summary.booksAdded + summary.sessions + summary.notes == 0 ->
+                            "Everything in this backup is already in your library."
+                        else -> buildString {
+                            append("${summary.booksAdded} ${if (summary.booksAdded == 1) "book" else "books"} added")
+                            if (summary.booksMatched > 0) {
+                                append("\n${summary.booksMatched} already in your library; their history and notes were added to your copy")
+                            }
+                            append("\n${summary.sessions} reading ${if (summary.sessions == 1) "session" else "sessions"}")
+                            append("\n${summary.notes} ${if (summary.notes == 1) "note" else "notes"}")
+                            if (summary.photos > 0) append(" with ${summary.photos} ${if (summary.photos == 1) "photo" else "photos"}")
+                            if (summary.notesSkipped > 0) append("\n${summary.notesSkipped} notes skipped: their book wasn't in the backup")
+                            summary.dayStartHour?.let { hour ->
+                                append("\nDay start set to ${if (hour == 0) "midnight" else "$hour:00"} to match Bookmory")
+                            }
+                        }
+                    }
+                )
+            }
+        )
     }
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/zip")
@@ -504,6 +557,29 @@ fun SettingsScreen(
                         onCheckedChange = onUseDynamicColorChange
                     )
                 }
+
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onEditHome)
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Edit home screen", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "Reorder or hide Home sections",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             SettingsSectionTitle("Privacy & security")
@@ -560,6 +636,26 @@ fun SettingsScreen(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     "Adds your books, shelves, ratings and read dates. Books already in your library are skipped.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(16.dp))
+                FilledTonalButton(
+                    enabled = !bookmoryImporting,
+                    onClick = { bookmoryLauncher.launch(arrayOf("*/*")) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (bookmoryImporting) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Filled.UploadFile, contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (bookmoryImporting) "Importing\u2026" else "Import Bookmory backup")
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Brings over books, reading history, notes and note photos from a .bookmory backup file. Safe to run again: nothing is added twice.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -14,7 +14,11 @@ import com.example.booktracker.app.data.BackupEngine
 import com.example.booktracker.app.data.BookRepository
 import com.example.booktracker.app.data.CsvImportResult
 import com.example.booktracker.app.data.DeletedBook
+import com.example.booktracker.app.data.HomeLayout
+import com.example.booktracker.app.data.bookmory.BookmoryImportSummary
+import com.example.booktracker.app.data.bookmory.BookmoryImporter
 import com.example.booktracker.app.data.LibrarySearchResults
+import com.example.booktracker.app.data.NoteImageStore
 import com.example.booktracker.app.data.ReminderSettings
 import com.example.booktracker.app.data.ServiceLocator
 import com.example.booktracker.app.data.SettingsRepository
@@ -31,6 +35,7 @@ import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.LoanRecord
 import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.NoteType
+import com.example.booktracker.shared.models.Ownership
 import com.example.booktracker.shared.models.Session
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
@@ -108,6 +113,9 @@ class BookTrackerViewModel(
     val dayStartsAtHour: StateFlow<Int> = settings.dayStartsAtHour
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 3)
 
+    val homeLayout: StateFlow<HomeLayout> = settings.homeLayout
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeLayout.DEFAULT)
+
     val streak: StateFlow<StreakEngine.StreakInfo> =
         combine(completedSessions, settings.dailyGoal, settings.dayStartsAtHour) { sessions, goal, dayStart ->
             StreakEngine.compute(sessions, goal, dayStartsAtHour = dayStart)
@@ -169,6 +177,12 @@ class BookTrackerViewModel(
     private val recentlyDeleted = mutableMapOf<String, DeletedBook>()
 
     init {
+        // Photos from notes deleted (and not undone) in an earlier session, or
+        // picked into a note sheet that was then dismissed.
+        viewModelScope.launch {
+            val notes = repository.observeAllNotes().first()
+            NoteImageStore.sweepOrphans(appContext, notes.flatMap { it.imageUris })
+        }
         viewModelScope.launch {
             combine(
                 repository.observeBooks().map { list ->
@@ -337,6 +351,25 @@ class BookTrackerViewModel(
         }
     }
 
+    /**
+     * Imports a Bookmory backup into the library through the normal backup merge,
+     * so anything already imported is left alone. Fails with
+     * [BookmoryImporter.NotABookmoryBackup] for files that aren't one.
+     */
+    fun importBookmory(context: Context, uri: android.net.Uri, onComplete: (Result<BookmoryImportSummary>) -> Unit) {
+        viewModelScope.launch {
+            val result = runCatching {
+                val import = BookmoryImporter.read(context, uri, repository.snapshotForBackup())
+                repository.restoreFromBackup(import.snapshot.copy(sessions = emptyList()))
+                repository.upsertSessions(import.snapshot.sessions)
+                // Same day boundary as Bookmory, so the imported streak reads the same.
+                import.summary.dayStartHour?.let { settings.setDayStartsAtHour(it) }
+                import.summary
+            }
+            onComplete(result)
+        }
+    }
+
     fun promote(book: Book) {
         val next = when (book.status.uppercase()) {
             BookStatus.TO_READ.name, "BACKLOG" -> BookStatus.SHORTLIST
@@ -415,6 +448,10 @@ class BookTrackerViewModel(
 
     fun setFormat(book: Book, format: String) {
         viewModelScope.launch { repository.updateFormat(book.id, format) }
+    }
+
+    fun setOwnership(book: Book, ownership: Ownership) {
+        viewModelScope.launch { repository.updateOwnership(book.id, ownership) }
     }
 
     fun finishBook(book: Book, rating: Map<String, Float>, review: String? = null) {
@@ -587,6 +624,10 @@ class BookTrackerViewModel(
         }
     }
 
+    fun setHomeLayout(layout: HomeLayout) {
+        viewModelScope.launch { settings.setHomeLayout(layout) }
+    }
+
     fun setUserName(name: String) {
         viewModelScope.launch { settings.setUserName(name.trim().ifBlank { "Reader" }) }
     }
@@ -752,13 +793,14 @@ class BookTrackerViewModel(
         bookId: String,
         page: Int,
         text: String,
-        type: NoteType = NoteType.BOOK_CONTENT
+        type: NoteType = NoteType.BOOK_CONTENT,
+        images: List<String> = emptyList()
     ) {
-        viewModelScope.launch { repository.addNote(bookId, page, text, type) }
+        viewModelScope.launch { repository.addNote(bookId, page, text, type, images) }
     }
 
-    fun updateNote(noteId: String, page: Int, text: String, type: NoteType) {
-        viewModelScope.launch { repository.updateNote(noteId, page, text, type) }
+    fun updateNote(noteId: String, page: Int, text: String, type: NoteType, images: List<String>) {
+        viewModelScope.launch { repository.updateNote(noteId, page, text, type, images) }
     }
 
     fun toggleNoteFavorite(noteId: String) {
@@ -784,7 +826,8 @@ class BookTrackerViewModel(
                         yearlyGoal = settings.yearlyGoal.first(),
                         monthlyGoalPages = settings.monthlyGoalPages.first(),
                         monthlyGoalBooks = settings.monthlyGoalBooks.first(),
-                        dayStartsAtHour = settings.dayStartsAtHour.first()
+                        dayStartsAtHour = settings.dayStartsAtHour.first(),
+                        homeLayout = settings.homeLayout.first().encode()
                     )
                 )
                 onDone(true)
@@ -805,6 +848,7 @@ class BookTrackerViewModel(
                 parsed.settings.monthlyGoalPages?.let { settings.setMonthlyGoalPages(it) }
                 parsed.settings.monthlyGoalBooks?.let { settings.setMonthlyGoalBooks(it) }
                 parsed.settings.dayStartsAtHour?.let { settings.setDayStartsAtHour(it) }
+                parsed.settings.homeLayout?.let { settings.setHomeLayout(HomeLayout.decode(it)) }
                 onDone(parsed.snapshot.books.size)
             } catch (e: Exception) {
                 onDone(-1)

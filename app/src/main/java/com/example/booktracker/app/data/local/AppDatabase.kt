@@ -13,7 +13,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         BookFtsEntity::class,
         NoteFtsEntity::class
     ],
-    version = 9,
+    version = 12,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -145,6 +145,34 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Adds ownership (owned, gift, wishlist). Books that already log a purchase
+         * were bought, so they start as Owned; everything else stays unset.
+         */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE books ADD COLUMN ownership TEXT")
+                db.execSQL("UPDATE books SET ownership = 'OWNED' WHERE purchaseLog NOT IN ('', '[]')")
+            }
+        }
+
+        /** Adds photo attachments to notes; existing notes simply have none. */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE margin_notes ADD COLUMN images TEXT")
+            }
+        }
+
+        /**
+         * Records each session's time zone so a streak survives travel. Existing
+         * sessions stay null and keep using the phone's zone, as before.
+         */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE sessions ADD COLUMN zoneId TEXT")
+            }
+        }
+
         val ALL_MIGRATIONS = arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -153,7 +181,10 @@ abstract class AppDatabase : RoomDatabase() {
             MIGRATION_5_6,
             MIGRATION_6_7,
             MIGRATION_7_8,
-            MIGRATION_8_9
+            MIGRATION_8_9,
+            MIGRATION_9_10,
+            MIGRATION_10_11,
+            MIGRATION_11_12
         )
     }
 }

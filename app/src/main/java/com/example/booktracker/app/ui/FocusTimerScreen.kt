@@ -41,6 +41,7 @@ import com.example.booktracker.app.analytics.AnalyticsEngine
 import com.example.booktracker.app.format.FormatAdaptabilityLayer
 import com.example.booktracker.app.journal.NoiseType
 import com.example.booktracker.shared.models.Book
+import com.example.booktracker.shared.models.NoteType
 import java.util.Locale
 
 enum class TimerPhase { WORK, BREAK }
@@ -69,7 +70,7 @@ fun FocusTimerScreen(
     viewModel: BookTrackerViewModel,
     onBack: () -> Unit,
     onSaveSession: () -> Unit,
-    onAddNote: (page: Int, text: String) -> Unit,
+    onAddNote: (page: Int, text: String, type: NoteType, images: List<String>) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val phase by viewModel.timerPhase.collectAsState()
@@ -576,14 +577,17 @@ fun FocusTimerScreen(
     }
 
     if (showNoteSheet) {
-        InSessionNoteSheet(
-            book = book,
-            defaultPage = sessionCurrentPage,
+        NoteSheet(
+            suggestedPage = sessionCurrentPage,
+            totalPages = book.totalPages,
+            pageLabel = FormatAdaptabilityLayer.getDisplayUnit(book).trimEnd('s'),
+            draftKey = book.id,
             onDismiss = { showNoteSheet = false },
-            onConfirm = { page, text ->
-                onAddNote(page, text)
+            onConfirm = { page, text, type, images ->
+                onAddNote(page, text, type, images)
                 showNoteSheet = false
-            }
+            },
+            onConfirmAndAddAnother = onAddNote
         )
     }
 }
@@ -674,61 +678,6 @@ private fun PlayButton(
                     },
                     modifier = Modifier.size(52.dp)
                 )
-            }
-        }
-    }
-}
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun InSessionNoteSheet(
-    book: Book,
-    defaultPage: Int,
-    onDismiss: () -> Unit,
-    onConfirm: (page: Int, text: String) -> Unit
-) {
-    var pageText by remember { mutableStateOf(defaultPage.toString()) }
-    var noteText by remember { mutableStateOf("") }
-    val page = pageText.toIntOrNull()
-    val pageValid = page != null && page >= 0 && (book.totalPages <= 0 || page <= book.totalPages)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text("Quick Thought or Quote", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            OutlinedTextField(
-                value = pageText,
-                onValueChange = { pageText = it.filter(Char::isDigit).take(6) },
-                label = { Text(FormatAdaptabilityLayer.getDisplayUnit(book).trimEnd('s')) },
-                isError = pageText.isNotEmpty() && !pageValid,
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = noteText,
-                onValueChange = { noteText = it },
-                label = { Text("What stood out in this passage?") },
-                minLines = 4,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Button(
-                onClick = { onConfirm(page ?: defaultPage, noteText.trim()) },
-                enabled = noteText.isNotBlank() && pageValid,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Text("Save Memo", fontWeight = FontWeight.Bold)
             }
         }
     }

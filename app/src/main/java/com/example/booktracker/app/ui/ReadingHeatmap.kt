@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.booktracker.app.analytics.StreakEngine
 import com.example.booktracker.app.ui.animations.bounceClick
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
@@ -40,6 +41,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
+import kotlinx.coroutines.flow.first
 
 /**
  * 5 Reading Intensity Levels for Annual Matrix (GitHub & Bookmory standard).
@@ -90,25 +92,19 @@ fun ReadingHeatmap(
     books: List<Book> = emptyList(),
     notes: List<MarginNote> = emptyList(),
     onOpenBook: ((Book) -> Unit)? = null,
+    dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR,
     modifier: Modifier = Modifier
 ) {
     val zone = remember { ZoneId.systemDefault() }
-    val today = remember { LocalDate.now(zone) }
+    val today = remember(dayStartsAtHour) { StreakEngine.readingDate(System.currentTimeMillis(), zone, dayStartsAtHour) }
     val haptic = LocalHapticFeedback.current
 
-    // Aggregate pages by LocalDate
-    val dailyPages = remember(sessions) {
-        val map = mutableMapOf<LocalDate, Int>()
-        for (session in sessions) {
-            val date = Instant.ofEpochMilli(session.startTime).atZone(zone).toLocalDate()
-            map[date] = (map[date] ?: 0) + session.pagesRead
-        }
-        map
-    }
+    // Same per-day rule as the streak, so a day is lit here exactly when it counts there.
+    val dailyPages = remember(sessions, dayStartsAtHour) { StreakEngine.pagesByDay(sessions, zone, dayStartsAtHour) }
 
-    val sessionsByDate = remember(sessions) {
+    val sessionsByDate = remember(sessions, dayStartsAtHour) {
         sessions.filter { it.startTime > 0 }
-            .groupBy { Instant.ofEpochMilli(it.startTime).atZone(zone).toLocalDate() }
+            .groupBy { StreakEngine.sessionDay(it, zone, dayStartsAtHour) }
     }
 
     val booksById = remember(books) { books.associateBy { it.id } }
@@ -129,8 +125,10 @@ fun ReadingHeatmap(
     val startMonday = remember(currentMonday) { currentMonday.minusWeeks((totalWeeks - 1).toLong()) }
 
     val scrollState = rememberScrollState()
-    LaunchedEffect(Unit) {
-        // Auto-scroll to current week so reader sees latest activity immediately
+    LaunchedEffect(scrollState) {
+        // Auto-scroll to current week so reader sees latest activity immediately.
+        // Wait for a measured width: inside a lazy list the first pass can report 0.
+        snapshotFlow { scrollState.maxValue }.first { it in 1 until Int.MAX_VALUE }
         scrollState.scrollTo(scrollState.maxValue)
     }
 
@@ -138,7 +136,7 @@ fun ReadingHeatmap(
 
     // Summary Headline Stats
     val activeDaysPastYear = remember(dailyPages, startMonday, today) {
-        dailyPages.count { (date, pages) -> !date.isBefore(startMonday) && !date.isAfter(today) && pages > 0 }
+        dailyPages.count { (date, _) -> !date.isBefore(startMonday) && !date.isAfter(today) }
     }
     val totalPagesPastYear = remember(dailyPages, startMonday, today) {
         dailyPages.filter { (date, _) -> !date.isBefore(startMonday) && !date.isAfter(today) }.values.sum()
@@ -232,8 +230,10 @@ fun ReadingHeatmap(
                         for (col in 0 until totalWeeks) {
                             val weekStartDate = startMonday.plusWeeks(col.toLong())
                             val month = weekStartDate.monthValue
-                            val showMonth = month != lastMonth
-                            if (showMonth) lastMonth = month
+                            val newMonth = month != lastMonth
+                            lastMonth = month
+                            // A month cut short at the left edge would collide with the next label.
+                            val showMonth = newMonth && (col > 0 || startMonday.plusWeeks(2).monthValue == month)
 
                             Box(
                                 modifier = Modifier.width(12.dp),
@@ -246,7 +246,9 @@ fun ReadingHeatmap(
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.primary,
                                         maxLines = 1,
-                                        softWrap = false
+                                        softWrap = false,
+                                        // The cell is 12dp wide; let "Sep" run into the empty cells after it.
+                                        modifier = Modifier.wrapContentWidth(Alignment.Start, unbounded = true)
                                     )
                                 }
                             }
@@ -261,7 +263,12 @@ fun ReadingHeatmap(
                                     val date = startMonday.plusWeeks(col.toLong()).plusDays(row.toLong())
                                     val isFuture = date.isAfter(today)
                                     val pages = if (isFuture) 0 else (dailyPages[date] ?: 0)
-                                    val intensity = if (isFuture) null else getReadingIntensity(pages)
+                                    // A timer-only day still counts, so it gets the faintest colour rather than none.
+                                    val intensity = when {
+                                        isFuture -> null
+                                        pages == 0 && date in dailyPages -> ReadingIntensityLevel.SOFT_TINT
+                                        else -> getReadingIntensity(pages)
+                                    }
                                     val cellColor = if (isFuture) {
                                         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
                                     } else {

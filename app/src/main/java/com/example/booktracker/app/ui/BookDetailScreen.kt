@@ -100,6 +100,7 @@ import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.NoteType
+import com.example.booktracker.shared.models.Ownership
 import com.example.booktracker.shared.models.RatingAxis
 import com.example.booktracker.shared.models.Session
 import com.example.booktracker.shared.models.LoanRecord
@@ -151,6 +152,14 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.material3.SheetValue
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.selection.selectableGroup
@@ -256,8 +265,8 @@ fun BookDetailScreen(
     allSessions: List<Session>,
     streak: StreakEngine.StreakInfo,
     notes: List<MarginNote>,
-    onAddNote: (page: Int, text: String, type: NoteType) -> Unit,
-    onUpdateNote: (noteId: String, page: Int, text: String, type: NoteType) -> Unit,
+    onAddNote: (page: Int, text: String, type: NoteType, images: List<String>) -> Unit,
+    onUpdateNote: (noteId: String, page: Int, text: String, type: NoteType, images: List<String>) -> Unit,
     onDeleteNote: (String) -> Unit,
     onToggleNoteFavorite: (String) -> Unit,
     onSaveDetails: (Book) -> Unit,
@@ -268,6 +277,7 @@ fun BookDetailScreen(
     onSetCollections: (List<String>) -> Unit,
     allCollections: List<String>,
     onSetFormat: (String) -> Unit,
+    onSetOwnership: (Ownership) -> Unit = {},
     onDelete: () -> Unit,
     onStartReading: () -> Unit,
     onReadAgain: () -> Unit,
@@ -584,6 +594,7 @@ fun BookDetailScreen(
                     }
 
                     item { SectionItem { FormatCard(book, onSetFormat) } }
+                    item { SectionItem { OwnershipCard(book, onSetOwnership) } }
 
                     if (book.status == BookStatus.READING.name) {
                         item { SectionItem { PlannerCard(book, completed) } }
@@ -1059,32 +1070,37 @@ fun BookDetailScreen(
     }
 
     if (showAddNote) {
-        AddNoteBottomSheet(
+        NoteSheet(
             suggestedPage = book.currentPage,
             totalPages = book.totalPages,
             initialText = ocrDraft ?: "",
+            pageLabel = FormatAdaptabilityLayer.getDisplayUnit(book).trimEnd('s'),
+            draftKey = book.id,
             onDismiss = {
                 showAddNote = false
                 ocrDraft = null
             },
-            onConfirm = { page, text, type ->
-                onAddNote(page, text, type)
+            onConfirm = { page, text, type, images ->
+                onAddNote(page, text, type, images)
                 showAddNote = false
                 ocrDraft = null
-            }
+            },
+            onConfirmAndAddAnother = onAddNote
         )
     }
 
     noteToEdit?.let { note ->
-        AddNoteBottomSheet(
+        NoteSheet(
             suggestedPage = note.pageNumber,
             totalPages = book.totalPages,
             initialText = note.content,
             initialType = note.type,
+            initialImages = note.imageUris,
+            pageLabel = FormatAdaptabilityLayer.getDisplayUnit(book).trimEnd('s'),
             isEditing = true,
             onDismiss = { noteToEdit = null },
-            onConfirm = { page, text, type ->
-                onUpdateNote(note.id, page, text, type)
+            onConfirm = { page, text, type, images ->
+                onUpdateNote(note.id, page, text, type, images)
                 noteToEdit = null
             }
         )
@@ -1157,7 +1173,7 @@ fun BookDetailScreen(
         StylusScratchpad(
             onDismiss = { showScratchpad = false },
             onRecognized = { text ->
-                onAddNote(book.currentPage, text, NoteType.BOOK_CONTENT)
+                onAddNote(book.currentPage, text, NoteType.BOOK_CONTENT, emptyList())
                 showScratchpad = false
             }
         )
@@ -1564,6 +1580,43 @@ private fun FormatCard(book: Book, onSetFormat: (String) -> Unit) {
 }
 
 @Composable
+private fun OwnershipCard(book: Book, onSetOwnership: (Ownership) -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        shape = RoundedCornerShape(24.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text("Ownership", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                if (book.ownership == Ownership.NONE) "Do you own this book, was it a gift, or is it on your wishlist?"
+                else "Tap again to clear. Borrowed books are tracked under loans.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SelectableOwnerships.forEach { option ->
+                    val isSelected = book.ownership == option
+                    androidx.compose.material3.FilterChip(
+                        selected = isSelected,
+                        onClick = { onSetOwnership(if (isSelected) Ownership.NONE else option) },
+                        label = { Text(option.label, maxLines = 1) },
+                        leadingIcon = { Icon(option.icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun PlannerCard(book: Book, completed: List<Session>) {
     val velocity = AnalyticsEngine.pagesPerHour(completed)
     val unit = FormatAdaptabilityLayer.getDisplayUnit(book).lowercase()
@@ -1883,13 +1936,13 @@ private fun NoteSortToggle(current: NoteSort, onChange: (NoteSort) -> Unit) {
     }
 }
 
-private fun NoteType.label(): String = when (this) {
+internal fun NoteType.label(): String = when (this) {
     NoteType.BOOK_CONTENT -> "Quote"
     NoteType.PERSONAL_THOUGHT -> "Personal thought"
     NoteType.RANDOM -> "Other"
 }
 
-private fun NoteType.shortLabel(): String = when (this) {
+internal fun NoteType.shortLabel(): String = when (this) {
     NoteType.BOOK_CONTENT -> "Quote"
     NoteType.PERSONAL_THOUGHT -> "Thought"
     NoteType.RANDOM -> "Other"
@@ -1961,11 +2014,17 @@ private fun NoteCard(
                 }
 
                 Spacer(Modifier.height(12.dp))
-                Text(
-                    JournalingEngine.render(note.content),
-                    style = MaterialTheme.typography.bodyMedium,
-                    lineHeight = androidx.compose.ui.unit.TextUnit(24f, androidx.compose.ui.unit.TextUnitType.Sp)
-                )
+                if (note.content.isNotBlank()) {
+                    Text(
+                        JournalingEngine.render(note.content),
+                        style = MaterialTheme.typography.bodyMedium,
+                        lineHeight = androidx.compose.ui.unit.TextUnit(24f, androidx.compose.ui.unit.TextUnitType.Sp)
+                    )
+                }
+                if (note.imageUris.isNotEmpty()) {
+                    if (note.content.isNotBlank()) Spacer(Modifier.height(12.dp))
+                    NotePhotos(note.imageUris)
+                }
 
                 Spacer(Modifier.height(16.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
@@ -2578,108 +2637,6 @@ private fun DetailCard(title: String, content: @Composable () -> Unit) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(16.dp))
             content()
-        }
-    }
-}
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AddNoteBottomSheet(
-    suggestedPage: Int,
-    totalPages: Int,
-    initialText: String = "",
-    initialType: NoteType = NoteType.BOOK_CONTENT,
-    isEditing: Boolean = false,
-    onDismiss: () -> Unit,
-    onConfirm: (page: Int, text: String, type: NoteType) -> Unit
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var pageText by remember { mutableStateOf(if (suggestedPage > 0) "$suggestedPage" else "") }
-    var noteText by remember { mutableStateOf(initialText) }
-    var noteType by remember { mutableStateOf(initialType) }
-    
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-        dragHandle = { BottomSheetDefaults.DragHandle() },
-        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            Text(
-                if (isEditing) "Edit note" else "Add a note",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                NoteType.entries.forEachIndexed { index, type ->
-                    SegmentedButton(
-                        shape = SegmentedButtonDefaults.itemShape(index = index, count = NoteType.entries.size),
-                        onClick = { noteType = type },
-                        selected = noteType == type,
-                        icon = {}
-                    ) {
-                        // Short labels: the full names don't fit three segments on a phone.
-                        Text(type.shortLabel(), style = MaterialTheme.typography.labelLarge, maxLines = 1)
-                    }
-                }
-            }
-
-            val pageInt = pageText.toIntOrNull()
-            val isPageError = pageInt != null && (pageInt < 0 || (totalPages > 0 && pageInt > totalPages))
-            
-            OutlinedTextField(
-                value = pageText,
-                onValueChange = { pageText = it.filter(Char::isDigit) },
-                label = { Text("Page") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth(),
-                isError = isPageError,
-                shape = RoundedCornerShape(16.dp),
-                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                )
-            )
-            if (isPageError) {
-                Text(
-                    if (pageInt < 0) "Page cannot be negative"
-                    else "Cannot exceed total pages ($totalPages)",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
-                )
-            }
-            OutlinedTextField(
-                value = noteText,
-                onValueChange = { noteText = it },
-                label = { Text("Your thoughts...") },
-                minLines = 5,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                )
-            )
-            
-            Button(
-                enabled = noteText.isNotBlank() && !isPageError,
-                onClick = { onConfirm(pageInt ?: 0, noteText.trim(), noteType) },
-                modifier = Modifier.fillMaxWidth().height(64.dp),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Text(if (isEditing) "Save changes" else "Save note", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            }
         }
     }
 }
