@@ -15,7 +15,8 @@ fun SessionEntity.toModel(): Session = Session(
     startPage = startPage,
     endPage = endPage,
     pagesRead = pagesRead,
-    environmentTag = environmentTag
+    environmentTag = environmentTag,
+    zoneId = zoneId.orEmpty()
 )
 
 fun Session.toEntity(): SessionEntity = SessionEntity(
@@ -27,7 +28,8 @@ fun Session.toEntity(): SessionEntity = SessionEntity(
     startPage = startPage,
     endPage = endPage,
     pagesRead = pagesRead,
-    environmentTag = environmentTag
+    environmentTag = environmentTag,
+    zoneId = zoneId.takeIf { it.isNotBlank() }
 )
 
 fun BookEntity.toModel(): Book = Book(
@@ -98,7 +100,8 @@ fun MarginNoteEntity.toModel(): MarginNote = MarginNote(
     pageNumber = pageNumber,
     content = content,
     type = runCatching { NoteType.valueOf(type) }.getOrDefault(NoteType.BOOK_CONTENT),
-    isFavorite = isFavorite
+    isFavorite = isFavorite,
+    imageUris = images?.let { gson.fromJson<List<String>>(it, object : TypeToken<List<String>>() {}.type) }.orEmpty()
 )
 
 fun MarginNote.toEntity(): MarginNoteEntity = MarginNoteEntity(
@@ -108,5 +111,6 @@ fun MarginNote.toEntity(): MarginNoteEntity = MarginNoteEntity(
     pageNumber = pageNumber,
     content = content,
     type = type.name,
-    isFavorite = isFavorite
+    isFavorite = isFavorite,
+    images = imageUris.takeIf { it.isNotEmpty() }?.let { gson.toJson(it) }
 )

@@ -38,7 +38,7 @@ class ReminderWorker(
         val zone = java.time.ZoneId.systemDefault()
         val today = StreakEngine.readingDate(System.currentTimeMillis(), zone, dayStartsAtHour)
         val todayProgress = sessions
-            .filter { StreakEngine.readingDate(it.startTime, zone, dayStartsAtHour) == today }
+            .filter { StreakEngine.sessionDay(it, zone, dayStartsAtHour) == today }
             .sumOf { it.pagesRead }
 
         if (todayProgress < dailyGoal) {

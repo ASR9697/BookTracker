@@ -461,6 +461,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                 layout = homeLayout,
                                                 onEditHome = { navController.navigate("editHome") },
                                                 onOpenOwnership = { navController.navigate("owned/${it.name}") },
+                                                onAddNote = { book, page, text, type, images -> viewModel.addNote(book.id, page, text, type, images) },
                                                 books = books,
                                                 readingBooks = readingBooks,
                                                 sessions = sessions,
@@ -613,7 +614,9 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             notes = notes,
                                                             books = books,
                                                             onToggleFavorite = viewModel::toggleNoteFavorite,
-                                                            onOpenBook = { navController.navigate("book/${it.id}") }
+                                                            onOpenBook = { navController.navigate("book/${it.id}") },
+                                                            onUpdateNote = viewModel::updateNote,
+                                                            onDeleteNote = viewModel::deleteNote
                                                         )
             
                                         }
@@ -738,7 +741,7 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                             allSessions = allSessions,
                                                             streak = streak,
                                                             notes = notes,
-                                                            onAddNote = { page, text, type -> viewModel.addNote(bookId, page, text, type) },
+                                                            onAddNote = { page, text, type, images -> viewModel.addNote(bookId, page, text, type, images) },
                                                             onUpdateNote = viewModel::updateNote,
                                                             onDeleteNote = viewModel::deleteNote,
                                                             onToggleNoteFavorite = viewModel::toggleNoteFavorite,
@@ -851,6 +854,7 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                             reminder = reminder,
                                                             onReminderChange = viewModel::setReminder,
                                                             onImportCsv = { uri, onDone -> viewModel.importCsv(context, uri, onDone) },
+                                                            onImportBookmory = { uri, onDone -> viewModel.importBookmory(context, uri, onDone) },
                                                             onExportBackup = { uri, onDone -> viewModel.exportBackup(context, uri, onDone) },
                                                             onImportBackup = { uri, onDone -> viewModel.importBackup(context, uri, onDone) },
                                                             onOpenPrivacyPolicy = { navController.navigate("privacy") },
@@ -907,7 +911,7 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                                     onSaveSession = {
                                                                         navController.navigate("session_save/$bookId") { launchSingleTop = true }
                                                                     },
-                                                                    onAddNote = { page, text -> viewModel.addNote(bookId, page, text) }
+                                                                    onAddNote = { page, text, type, images -> viewModel.addNote(bookId, page, text, type, images) }
                                                                 )
                                                             }
                                                         }

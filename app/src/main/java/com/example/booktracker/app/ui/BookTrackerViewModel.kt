@@ -15,7 +15,10 @@ import com.example.booktracker.app.data.BookRepository
 import com.example.booktracker.app.data.CsvImportResult
 import com.example.booktracker.app.data.DeletedBook
 import com.example.booktracker.app.data.HomeLayout
+import com.example.booktracker.app.data.bookmory.BookmoryImportSummary
+import com.example.booktracker.app.data.bookmory.BookmoryImporter
 import com.example.booktracker.app.data.LibrarySearchResults
+import com.example.booktracker.app.data.NoteImageStore
 import com.example.booktracker.app.data.ReminderSettings
 import com.example.booktracker.app.data.ServiceLocator
 import com.example.booktracker.app.data.SettingsRepository
@@ -174,6 +177,12 @@ class BookTrackerViewModel(
     private val recentlyDeleted = mutableMapOf<String, DeletedBook>()
 
     init {
+        // Photos from notes deleted (and not undone) in an earlier session, or
+        // picked into a note sheet that was then dismissed.
+        viewModelScope.launch {
+            val notes = repository.observeAllNotes().first()
+            NoteImageStore.sweepOrphans(appContext, notes.flatMap { it.imageUris })
+        }
         viewModelScope.launch {
             combine(
                 repository.observeBooks().map { list ->
@@ -338,6 +347,25 @@ class BookTrackerViewModel(
     fun importCsv(context: Context, uri: android.net.Uri, onComplete: (CsvImportResult?) -> Unit) {
         viewModelScope.launch {
             val result = runCatching { repository.importCsv(context, uri) }.getOrNull()
+            onComplete(result)
+        }
+    }
+
+    /**
+     * Imports a Bookmory backup into the library through the normal backup merge,
+     * so anything already imported is left alone. Fails with
+     * [BookmoryImporter.NotABookmoryBackup] for files that aren't one.
+     */
+    fun importBookmory(context: Context, uri: android.net.Uri, onComplete: (Result<BookmoryImportSummary>) -> Unit) {
+        viewModelScope.launch {
+            val result = runCatching {
+                val import = BookmoryImporter.read(context, uri, repository.snapshotForBackup())
+                repository.restoreFromBackup(import.snapshot.copy(sessions = emptyList()))
+                repository.upsertSessions(import.snapshot.sessions)
+                // Same day boundary as Bookmory, so the imported streak reads the same.
+                import.summary.dayStartHour?.let { settings.setDayStartsAtHour(it) }
+                import.summary
+            }
             onComplete(result)
         }
     }
@@ -765,13 +793,14 @@ class BookTrackerViewModel(
         bookId: String,
         page: Int,
         text: String,
-        type: NoteType = NoteType.BOOK_CONTENT
+        type: NoteType = NoteType.BOOK_CONTENT,
+        images: List<String> = emptyList()
     ) {
-        viewModelScope.launch { repository.addNote(bookId, page, text, type) }
+        viewModelScope.launch { repository.addNote(bookId, page, text, type, images) }
     }
 
-    fun updateNote(noteId: String, page: Int, text: String, type: NoteType) {
-        viewModelScope.launch { repository.updateNote(noteId, page, text, type) }
+    fun updateNote(noteId: String, page: Int, text: String, type: NoteType, images: List<String>) {
+        viewModelScope.launch { repository.updateNote(noteId, page, text, type, images) }
     }
 
     fun toggleNoteFavorite(noteId: String) {

@@ -10,6 +10,9 @@ object StreakEngine {
     const val DEFAULT_DAILY_GOAL_PAGES = 20
     const val DEFAULT_DAY_START_HOUR = 3
 
+    /** A timer run at least this long counts as reading even without a page update. */
+    const val MIN_TIMED_READING_SECONDS = 60
+
     data class StreakInfo(
         val currentStreak: Int,
         val longestStreak: Int,
@@ -75,18 +78,26 @@ object StreakEngine {
     }
 
     /**
-     * The one rule for "the reader read": the session moved the bookmark forward.
-     * Streaks, the heatmap, habit health and monthly totals all count through this,
-     * so a timer stopped after a few seconds with no progress never shows up as a
-     * streak day on one screen and zero pages on another.
+     * The one rule for "the reader read": the session moved the bookmark forward,
+     * or the timer ran for at least [MIN_TIMED_READING_SECONDS]. Streaks, the
+     * heatmap, habit health and monthly totals all count through this, so a timer
+     * stopped after a few seconds never counts on one screen and not another.
      */
-    fun isReading(session: Session): Boolean = session.startTime > 0 && session.pagesRead > 0
+    fun isReading(session: Session): Boolean =
+        session.startTime > 0 && (session.pagesRead > 0 || session.durationSeconds >= MIN_TIMED_READING_SECONDS)
 
-    /** Reading day a session belongs to; every per-day aggregation keys on this. */
+    /**
+     * Reading day a session belongs to; every per-day aggregation keys on this.
+     * Uses the zone the session was recorded in, so reading done abroad keeps its
+     * day after the reader travels home; [zone] covers sessions without one.
+     */
     fun sessionDay(session: Session, zone: ZoneId, dayStartsAtHour: Int = DEFAULT_DAY_START_HOUR): LocalDate =
-        readingDate(session.startTime, zone, dayStartsAtHour)
+        readingDate(session.startTime, recordedZone(session) ?: zone, dayStartsAtHour)
 
-    /** Pages read per reading day, only for days with reading activity. */
+    private fun recordedZone(session: Session): ZoneId? =
+        session.zoneId.takeIf { it.isNotBlank() }?.let { runCatching { ZoneId.of(it) }.getOrNull() }
+
+    /** Pages read per reading day, for every day with reading activity (timer-only days map to 0). */
     fun pagesByDay(
         sessions: List<Session>,
         zone: ZoneId = ZoneId.systemDefault(),

@@ -149,7 +149,13 @@ data class Session(
     val endPage: Int = 0,
     val pagesRead: Int = 0,
     val environmentTag: String = "",
-    val deviceSource: String = "phone"
+    val deviceSource: String = "phone",
+    /**
+     * Time zone the session was recorded in (e.g. "Asia/Kolkata"), so its reading
+     * day stays put after travel. Blank on sessions from before this was stored;
+     * those fall back to the phone's current zone.
+     */
+    val zoneId: String = ""
 )
 
 enum class NoteType {
@@ -164,7 +170,9 @@ data class MarginNote(
     val type: NoteType = NoteType.BOOK_CONTENT,
     val isFavorite: Boolean = false,
     val timestamp: Long = 0L,
-    val markdownContent: String = ""
+    val markdownContent: String = "",
+    /** Attached photos as "file://" URIs, in the order they were added. */
+    val imageUris: List<String> = emptyList()
 )
 
 object RatingAxis {

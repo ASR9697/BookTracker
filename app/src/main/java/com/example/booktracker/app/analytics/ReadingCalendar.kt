@@ -36,7 +36,7 @@ object ReadingCalendar {
         val visible = pagesByDay.filterKeys { !it.isBefore(start) && !it.isAfter(today) }
         return Summary(
             totalPages = visible.values.sum(),
-            activeDays = visible.count { it.value > 0 },
+            activeDays = visible.size,
             bestDayPages = visible.values.maxOrNull() ?: 0
         )
     }

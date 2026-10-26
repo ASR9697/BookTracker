@@ -89,19 +89,44 @@ class StreakEngineTest {
     }
 
     @Test
-    fun `a session with no progress is not a reading day`() {
-        // Timer started and stopped without moving the bookmark.
-        val info = StreakEngine.compute(listOf(sessionOn(today, pages = 0)), zone = zone, now = now)
+    fun `a timer stopped within seconds with no progress is not a reading day`() {
+        val blip = sessionOn(today, pages = 0).copy(durationSeconds = 20)
+        val info = StreakEngine.compute(listOf(blip), zone = zone, now = now)
         assertEquals(0, info.currentStreak)
         assertEquals(false, info.goalMetToday)
         assertEquals(emptySet<LocalDate>(), info.activeDays)
     }
 
     @Test
+    fun `a real timer run counts even without a page update`() {
+        // 30 minutes of reading, page not updated: Bookmory counts this day, so do we.
+        val info = StreakEngine.compute(listOf(sessionOn(today, pages = 0)), zone = zone, now = now)
+        assertEquals(1, info.currentStreak)
+        assertEquals(0, info.pagesToday)
+    }
+
+    @Test
+    fun `a session keeps the day of the zone it was recorded in`() {
+        // 23:30 in India is 14:00 in New York the same day, but 00:30 the next day would not be.
+        val kolkata = ZoneId.of("Asia/Kolkata")
+        val newYork = ZoneId.of("America/New_York")
+        val lateInIndia = LocalDate.of(2026, 9, 10).atTime(23, 30).atZone(kolkata).toInstant().toEpochMilli()
+        val earlyInIndia = LocalDate.of(2026, 9, 11).atTime(0, 30).atZone(kolkata).toInstant().toEpochMilli()
+        fun s(at: Long) = Session(id = "s$at", bookId = "b", startTime = at, endTime = at + 600_000, durationSeconds = 600, pagesRead = 5, zoneId = "Asia/Kolkata")
+        // Evaluated on a phone now set to New York, with days starting at midnight.
+        assertEquals(LocalDate.of(2026, 9, 10), StreakEngine.sessionDay(s(lateInIndia), newYork, 0))
+        assertEquals(LocalDate.of(2026, 9, 11), StreakEngine.sessionDay(s(earlyInIndia), newYork, 0))
+        // Without a recorded zone the phone's zone decides: both land on Sep 10 in New York.
+        assertEquals(LocalDate.of(2026, 9, 10), StreakEngine.sessionDay(s(earlyInIndia).copy(zoneId = ""), newYork, 0))
+        // An unknown zone id falls back rather than crashing.
+        assertEquals(LocalDate.of(2026, 9, 10), StreakEngine.sessionDay(s(earlyInIndia).copy(zoneId = "Mars/Base"), newYork, 0))
+    }
+
+    @Test
     fun `streak, heatmap, habit and monthly totals agree on active days`() {
         val sessions = listOf(
             sessionOn(today, pages = 12),
-            sessionOn(today.minusDays(1), pages = 0),
+            sessionOn(today.minusDays(1), pages = 0).copy(durationSeconds = 20),
             sessionOn(today.minusDays(2), pages = 8)
         )
         val streak = StreakEngine.compute(sessions, zone = zone, now = now)

@@ -136,7 +136,7 @@ fun ReadingHeatmap(
 
     // Summary Headline Stats
     val activeDaysPastYear = remember(dailyPages, startMonday, today) {
-        dailyPages.count { (date, pages) -> !date.isBefore(startMonday) && !date.isAfter(today) && pages > 0 }
+        dailyPages.count { (date, _) -> !date.isBefore(startMonday) && !date.isAfter(today) }
     }
     val totalPagesPastYear = remember(dailyPages, startMonday, today) {
         dailyPages.filter { (date, _) -> !date.isBefore(startMonday) && !date.isAfter(today) }.values.sum()
@@ -263,7 +263,12 @@ fun ReadingHeatmap(
                                     val date = startMonday.plusWeeks(col.toLong()).plusDays(row.toLong())
                                     val isFuture = date.isAfter(today)
                                     val pages = if (isFuture) 0 else (dailyPages[date] ?: 0)
-                                    val intensity = if (isFuture) null else getReadingIntensity(pages)
+                                    // A timer-only day still counts, so it gets the faintest colour rather than none.
+                                    val intensity = when {
+                                        isFuture -> null
+                                        pages == 0 && date in dailyPages -> ReadingIntensityLevel.SOFT_TINT
+                                        else -> getReadingIntensity(pages)
+                                    }
                                     val cellColor = if (isFuture) {
                                         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
                                     } else {

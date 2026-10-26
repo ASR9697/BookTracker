@@ -17,7 +17,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Share
@@ -28,6 +33,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -63,8 +70,14 @@ fun MemorizeScreen(
     notes: List<MarginNote>,
     books: List<Book>,
     onToggleFavorite: (String) -> Unit,
-    onOpenBook: (Book) -> Unit = {}
+    onOpenBook: (Book) -> Unit = {},
+    onUpdateNote: (noteId: String, page: Int, text: String, type: NoteType, images: List<String>) -> Unit = { _, _, _, _, _ -> },
+    onDeleteNote: (noteId: String) -> Unit = {}
 ) {
+    var searching by rememberSaveable { mutableStateOf(false) }
+    var query by rememberSaveable { mutableStateOf("") }
+    var noteToEdit by remember { mutableStateOf<MarginNote?>(null) }
+    var noteToDelete by remember { mutableStateOf<MarginNote?>(null) }
     var view by rememberSaveable { mutableStateOf(NotesView.LIST) }
     var showFavoritesOnly by rememberSaveable { mutableStateOf(false) }
     var typeFilter by rememberSaveable { mutableStateOf<NoteType?>(null) }
@@ -74,8 +87,18 @@ fun MemorizeScreen(
     var noteToShare by remember { mutableStateOf<Pair<MarginNote, Book>?>(null) }
     val booksById = remember(books) { books.associateBy { it.id } }
 
-    val eligibleNotes = remember(notes, showFavoritesOnly, typeFilter) {
-        notes.filter { (!showFavoritesOnly || it.isFavorite) && (typeFilter == null || it.type == typeFilter) }
+    val eligibleNotes = remember(notes, showFavoritesOnly, typeFilter, query, booksById) {
+        val terms = query.trim().lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        notes.filter { note ->
+            (!showFavoritesOnly || note.isFavorite) && (typeFilter == null || note.type == typeFilter) &&
+                // Every word must appear in the note, or in its book's title or author.
+                terms.all { term ->
+                    note.content.lowercase().contains(term) ||
+                        booksById[note.bookId]?.let { b ->
+                            b.title.lowercase().contains(term) || b.authors.any { it.lowercase().contains(term) }
+                        } == true
+                }
+        }
     }
 
     // Keep shuffle order stable against toggling favorites; only re-shuffle when seed or note IDs change
@@ -123,6 +146,15 @@ fun MemorizeScreen(
                     Icon(Icons.Filled.Shuffle, contentDescription = "Shuffle cards")
                 }
             }
+            IconButton(onClick = {
+                searching = !searching
+                if (!searching) query = ""
+            }) {
+                Icon(
+                    if (searching) Icons.Filled.Close else Icons.Filled.Search,
+                    contentDescription = if (searching) "Close search" else "Search notes"
+                )
+            }
             SingleChoiceSegmentedButtonRow {
                 NotesView.entries.forEachIndexed { index, option ->
                     SegmentedButton(
@@ -139,6 +171,25 @@ fun MemorizeScreen(
                     }
                 }
             }
+        }
+
+        if (searching) {
+            val focus = remember { FocusRequester() }
+            LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = { Text("Search quotes, thoughts, books, authors") },
+                singleLine = true,
+                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { query = "" }) { Icon(Icons.Filled.Close, contentDescription = "Clear search") }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).focusRequester(focus),
+                shape = RoundedCornerShape(16.dp)
+            )
         }
 
         if (notes.isNotEmpty()) {
@@ -204,6 +255,7 @@ fun MemorizeScreen(
                 Text(
                     when {
                         notes.isEmpty() -> "Your quotes and thoughts appear here. Add a note from any book's page."
+                        query.isNotBlank() -> "No notes match \"${query.trim()}\"."
                         showFavoritesOnly && typeFilter == null -> "No favourite notes yet. Tap the heart on a note to add it here."
                         else -> "No notes match these filters."
                     },
@@ -224,7 +276,9 @@ fun MemorizeScreen(
                         book = booksById[note.bookId],
                         onOpenBook = onOpenBook,
                         onToggleFavorite = { onToggleFavorite(note.id) },
-                        onShare = { book -> noteToShare = note to book }
+                        onShare = { book -> noteToShare = note to book },
+                        onEdit = { noteToEdit = note },
+                        onDelete = { noteToDelete = note }
                     )
                 }
             }
@@ -359,6 +413,39 @@ fun MemorizeScreen(
         }
     }
 
+    noteToEdit?.let { note ->
+        val book = booksById[note.bookId]
+        NoteSheet(
+            suggestedPage = note.pageNumber,
+            totalPages = book?.totalPages ?: 0,
+            initialText = note.content,
+            initialType = note.type,
+            initialImages = note.imageUris,
+            pageLabel = book?.let { FormatAdaptabilityLayer.getDisplayUnit(it).trimEnd('s') } ?: "Page",
+            isEditing = true,
+            onDismiss = { noteToEdit = null },
+            onConfirm = { page, text, type, images ->
+                onUpdateNote(note.id, page, text, type, images)
+                noteToEdit = null
+            }
+        )
+    }
+
+    noteToDelete?.let { note ->
+        AlertDialog(
+            onDismissRequest = { noteToDelete = null },
+            title = { Text("Delete this note?") },
+            text = { Text(note.content.take(140).ifBlank { "This note has only photos." } + if (note.content.length > 140) "…" else "") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeleteNote(note.id)
+                    noteToDelete = null
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { noteToDelete = null }) { Text("Cancel") } }
+        )
+    }
+
     noteToShare?.let { (note, book) ->
         QuoteCardDialog(
             note = note,
@@ -375,8 +462,11 @@ private fun NoteFeedCard(
     book: Book?,
     onOpenBook: (Book) -> Unit,
     onToggleFavorite: () -> Unit,
-    onShare: (Book) -> Unit
+    onShare: (Book) -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
 ) {
+    var menuOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     Card(
@@ -418,13 +508,19 @@ private fun NoteFeedCard(
             }
 
             Spacer(Modifier.height(12.dp))
-            Text(
-                JournalingEngine.render(note.content),
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 10,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(end = 8.dp)
-            )
+            if (note.content.isNotBlank()) {
+                Text(
+                    JournalingEngine.render(note.content),
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 10,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+            }
+            if (note.imageUris.isNotEmpty()) {
+                if (note.content.isNotBlank()) Spacer(Modifier.height(12.dp))
+                NotePhotos(note.imageUris, modifier = Modifier.padding(end = 8.dp))
+            }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val where = if (note.pageNumber > 0 && book != null) {
@@ -466,6 +562,28 @@ private fun NoteFeedCard(
                             contentDescription = "Share quote",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(
+                            Icons.Filled.MoreVert,
+                            contentDescription = "More note actions",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Edit") },
+                            leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                            onClick = { menuOpen = false; onEdit() }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                            leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                            onClick = { menuOpen = false; onDelete() }
                         )
                     }
                 }

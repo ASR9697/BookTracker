@@ -61,7 +61,8 @@ data class SessionEntity(
     val startPage: Int,
     val endPage: Int,
     val pagesRead: Int,
-    val environmentTag: String
+    val environmentTag: String,
+    val zoneId: String? = null
 )
 
 @Entity(
@@ -83,7 +84,9 @@ data class MarginNoteEntity(
     val content: String,
     val type: String,
     val isFavorite: Boolean,
-    val timestamp: Long
+    val timestamp: Long,
+    /** JSON array of photo URIs; null on notes from before version 11 and on notes without photos. */
+    val images: String? = null
 )
 
 // External-content FTS mirrors

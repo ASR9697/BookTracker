@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -39,6 +40,7 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.ViewWeek
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -71,7 +73,9 @@ import com.example.booktracker.app.analytics.StreakEngine
 import com.example.booktracker.app.data.HomeLayout
 import com.example.booktracker.app.data.HomeSection
 import com.example.booktracker.shared.models.Book
+import com.example.booktracker.app.format.FormatAdaptabilityLayer
 import com.example.booktracker.shared.models.BookStatus
+import com.example.booktracker.shared.models.NoteType
 import com.example.booktracker.shared.models.Ownership
 import com.example.booktracker.shared.models.Session
 import java.time.Instant
@@ -114,12 +118,14 @@ fun HomeDashboard(
     layout: HomeLayout = HomeLayout.DEFAULT,
     onEditHome: () -> Unit = {},
     onOpenOwnership: (Ownership) -> Unit = {},
+    onAddNote: (Book, page: Int, text: String, type: NoteType, images: List<String>) -> Unit = { _, _, _, _, _ -> },
     scrollState: ScrollState = rememberScrollState(),
     banner: @Composable () -> Unit = {}
 ) {
     val zone = remember { ZoneId.systemDefault() }
     val year = streak.today.year
     var bookToLog by remember { mutableStateOf<Book?>(null) }
+    var bookToNote by remember { mutableStateOf<Book?>(null) }
 
     val finishedThisYear = remember(books, year) {
         books.filter {
@@ -196,7 +202,8 @@ fun HomeDashboard(
                         sessionOpen = openSession?.bookId == book.id,
                         onOpen = { onOpenBook(book) },
                         onOpenTimer = { onOpenTimer(book) },
-                        onLogPages = { bookToLog = book }
+                        onLogPages = { bookToLog = book },
+                        onAddNote = { bookToNote = book }
                     )
                 }
                 if (readingBooks.size > 1) {
@@ -442,6 +449,21 @@ fun HomeDashboard(
         }
     }
 
+    bookToNote?.let { book ->
+        NoteSheet(
+            suggestedPage = book.currentPage,
+            totalPages = book.totalPages,
+            pageLabel = FormatAdaptabilityLayer.getDisplayUnit(book).trimEnd('s'),
+            draftKey = book.id,
+            onDismiss = { bookToNote = null },
+            onConfirm = { page, text, type, images ->
+                onAddNote(book, page, text, type, images)
+                bookToNote = null
+            },
+            onConfirmAndAddAnother = { page, text, type, images -> onAddNote(book, page, text, type, images) }
+        )
+    }
+
     bookToLog?.let { book ->
         CustomProgressDialog(
             unitName = if (book.totalPages > 0) "Pages" else "Units",
@@ -462,7 +484,8 @@ private fun CurrentBookCard(
     sessionOpen: Boolean,
     onOpen: () -> Unit,
     onOpenTimer: () -> Unit,
-    onLogPages: () -> Unit
+    onLogPages: () -> Unit,
+    onAddNote: () -> Unit
 ) {
     val zone = remember { ZoneId.systemDefault() }
     val fraction = if (book.totalPages > 0) (book.currentPage.toFloat() / book.totalPages).coerceIn(0f, 1f) else 0f
@@ -589,6 +612,9 @@ private fun CurrentBookCard(
                     Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(4.dp))
                     Text("Pages", fontWeight = FontWeight.SemiBold)
+                }
+                FilledTonalIconButton(onClick = onAddNote, modifier = Modifier.size(48.dp)) {
+                    Icon(Icons.AutoMirrored.Filled.NoteAdd, contentDescription = "Add a note")
                 }
             }
         }

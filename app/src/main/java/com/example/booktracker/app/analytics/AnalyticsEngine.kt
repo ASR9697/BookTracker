@@ -161,17 +161,17 @@ object AnalyticsEngine {
         val last14Days = today.minusDays(13)
         val recentMinutesByDay = timed
             .filter {
-                val date = StreakEngine.readingDate(it.endTime, zone)
+                val date = StreakEngine.sessionDay(it, zone)
                 !date.isBefore(last14Days) && !date.isAfter(today)
             }
-            .groupBy { StreakEngine.readingDate(it.endTime, zone) }
+            .groupBy { StreakEngine.sessionDay(it, zone) }
             .mapValues { (_, sList) -> sList.sumOf { it.endTime - it.startTime } / 60_000L }
 
         val avgDailyMinutes = if (recentMinutesByDay.isNotEmpty()) {
             recentMinutesByDay.values.average().coerceAtLeast(15.0)
         } else if (timed.isNotEmpty()) {
             val totalMins = timed.sumOf { it.endTime - it.startTime } / 60_000L
-            val distinctDays = timed.map { StreakEngine.readingDate(it.endTime, zone) }.distinct().size.coerceAtLeast(1)
+            val distinctDays = timed.map { StreakEngine.sessionDay(it, zone) }.distinct().size.coerceAtLeast(1)
             (totalMins.toDouble() / distinctDays).coerceAtLeast(15.0)
         } else {
             25.0
@@ -213,7 +213,7 @@ object AnalyticsEngine {
         val timed = timedSessions(sessions)
         val weekStart = today.minusDays(6)
         val last7 = timed.filter {
-            val day = StreakEngine.readingDate(it.endTime, zone)
+            val day = StreakEngine.sessionDay(it, zone)
             !day.isBefore(weekStart) && !day.isAfter(today)
         }
         val totalMinutes = { list: List<Session> ->
