@@ -152,7 +152,7 @@ function build() {
 function main() {
     const map = build();
     if (process.argv.includes('--check')) {
-        const current = fs.existsSync(OUTPUT_FILE) ? fs.readFileSync(OUTPUT_FILE, 'utf8') : '';
+        const current = fs.existsSync(OUTPUT_FILE) ? fs.readFileSync(OUTPUT_FILE, 'utf8').replace(/\r\n/g, '\n') : '';
         if (current !== map) {
             console.error(`${OUTPUT_FILE} is stale. Run: npm run update-maps`);
             process.exit(1);
