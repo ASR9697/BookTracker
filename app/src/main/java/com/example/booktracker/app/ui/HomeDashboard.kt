@@ -63,6 +63,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.booktracker.app.analytics.AnalyticsEngine
+import com.example.booktracker.app.analytics.GoalEngine
 import com.example.booktracker.app.analytics.StreakEngine
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
@@ -73,6 +74,8 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 
 private val TileShape = RoundedCornerShape(24.dp)
 
@@ -114,16 +117,16 @@ fun HomeDashboard(
                 Instant.ofEpochMilli(it.completedAt).atZone(zone).year == year
         }
     }
-    val pagesByMonth = remember(sessions, year) {
+    val trackingStart = remember(books, sessions) { GoalEngine.trackingStart(books, sessions, zone) }
+    val pagesByMonth = remember(sessions, year, streak.dayStartsAtHour) {
         IntArray(12).also { months ->
-            sessions.forEach { s ->
-                val date = Instant.ofEpochMilli(s.startTime).atZone(zone).toLocalDate()
-                if (date.year == year && s.pagesRead > 0) months[date.monthValue - 1] += s.pagesRead
+            StreakEngine.pagesByDay(sessions, zone, streak.dayStartsAtHour).forEach { (date, pages) ->
+                if (date.year == year) months[date.monthValue - 1] += pages
             }
         }
     }
-    val minutesToday = remember(sessions, streak.today) {
-        sessions.filter { Instant.ofEpochMilli(it.startTime).atZone(zone).toLocalDate() == streak.today }
+    val minutesToday = remember(sessions, streak.today, streak.dayStartsAtHour) {
+        sessions.filter { StreakEngine.sessionDay(it, zone, streak.dayStartsAtHour) == streak.today }
             .sumOf { it.durationSeconds } / 60
     }
     val upNext = remember(books) {
@@ -229,7 +232,7 @@ fun HomeDashboard(
                     )
                     Text(
                         if (streak.currentStreak == 0) "Read a page today to start one"
-                        else "Best: ${streak.longestStreak} days",
+                        else "Best: ${streak.longestStreak} day${if (streak.longestStreak == 1) "" else "s"}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -278,7 +281,7 @@ fun HomeDashboard(
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    yearPace(finishedThisYear.size, yearlyGoal, streak.today),
+                    yearPace(finishedThisYear.size, yearlyGoal, streak.today, trackingStart),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -729,15 +732,15 @@ private fun greeting(userName: String): String {
 private fun formatMinutes(minutes: Int): String =
     if (minutes >= 60) "${minutes / 60}h ${minutes % 60}m" else "${minutes}m"
 
-/** "On track", "2 ahead" or "3 behind", against an even pace through the year. */
-private fun yearPace(finished: Int, goal: Int, today: LocalDate): String {
+/** "On track", "2 ahead of pace" or "3 behind pace", from the day tracking began. */
+private fun yearPace(finished: Int, goal: Int, today: LocalDate, trackingStart: LocalDate?): String {
     if (goal <= 0) return "Tap to set a goal"
     if (finished >= goal) return "Goal reached"
-    val expected = goal * today.dayOfYear / today.lengthOfYear().toFloat()
-    val diff = finished - expected.toInt()
-    return when {
-        diff > 0 -> "$diff ahead of pace"
-        diff < 0 -> "${-diff} behind pace"
-        else -> "On track"
+    val pace = GoalEngine.calculateYearlyPace(goal, finished, today, trackingStart)
+    val diff = pace.difference.roundToInt().absoluteValue.coerceAtLeast(1)
+    return when (pace.status) {
+        GoalEngine.GoalPaceStatus.AHEAD -> "$diff ahead of pace"
+        GoalEngine.GoalPaceStatus.BEHIND -> "$diff behind pace"
+        GoalEngine.GoalPaceStatus.ON_TRACK -> "On track"
     }
 }

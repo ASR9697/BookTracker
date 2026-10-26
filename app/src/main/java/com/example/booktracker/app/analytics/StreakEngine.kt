@@ -8,6 +8,7 @@ import java.time.ZoneId
 object StreakEngine {
 
     const val DEFAULT_DAILY_GOAL_PAGES = 20
+    const val DEFAULT_DAY_START_HOUR = 3
 
     data class StreakInfo(
         val currentStreak: Int,
@@ -17,7 +18,9 @@ object StreakEngine {
         val goalMetToday: Boolean,
         val activeDays: Set<LocalDate>, // To support the 7-day bubble bar
         /** "Today" under the day-start setting, so UI week bars agree with the streak. */
-        val today: LocalDate = LocalDate.now()
+        val today: LocalDate = LocalDate.now(),
+        /** Hour the reading day rolls over, so other screens bucket days the same way. */
+        val dayStartsAtHour: Int = DEFAULT_DAY_START_HOUR
     )
 
     fun compute(
@@ -25,22 +28,15 @@ object StreakEngine {
         dailyGoal: Int = DEFAULT_DAILY_GOAL_PAGES,
         zone: ZoneId = ZoneId.systemDefault(),
         now: Instant = Instant.now(),
-        dayStartsAtHour: Int = 3
+        dayStartsAtHour: Int = DEFAULT_DAY_START_HOUR
     ): StreakInfo {
         val today = readingDate(now.toEpochMilli(), zone, dayStartsAtHour)
 
-        val pagesPerDay = sessions
-            .filter { it.startTime > 0 }
-            .groupBy { readingDate(it.startTime, zone, dayStartsAtHour) }
-            .mapValues { (_, daySessions) -> daySessions.sumOf { it.pagesRead.coerceAtLeast(0) } }
-
-        val activeDays = sessions
-            .filter { it.startTime > 0 }
-            .map { readingDate(it.startTime, zone, dayStartsAtHour) }
-            .toSet()
+        val pagesPerDay = pagesByDay(sessions, zone, dayStartsAtHour)
+        val activeDays = pagesPerDay.keys
 
         val pagesToday = pagesPerDay[today] ?: 0
-        val goalMetToday = activeDays.contains(today) // "Fill bubble if >= 1 ReadingSession exists"
+        val goalMetToday = activeDays.contains(today)
 
         var streak = 0
         var day = if (goalMetToday) today else today.minusDays(1)
@@ -56,7 +52,8 @@ object StreakEngine {
             dailyGoal = dailyGoal,
             goalMetToday = goalMetToday,
             activeDays = activeDays,
-            today = today
+            today = today,
+            dayStartsAtHour = dayStartsAtHour
         )
     }
 
@@ -77,9 +74,32 @@ object StreakEngine {
         return best
     }
 
+    /**
+     * The one rule for "the reader read": the session moved the bookmark forward.
+     * Streaks, the heatmap, habit health and monthly totals all count through this,
+     * so a timer stopped after a few seconds with no progress never shows up as a
+     * streak day on one screen and zero pages on another.
+     */
+    fun isReading(session: Session): Boolean = session.startTime > 0 && session.pagesRead > 0
+
+    /** Reading day a session belongs to; every per-day aggregation keys on this. */
+    fun sessionDay(session: Session, zone: ZoneId, dayStartsAtHour: Int = DEFAULT_DAY_START_HOUR): LocalDate =
+        readingDate(session.startTime, zone, dayStartsAtHour)
+
+    /** Pages read per reading day, only for days with reading activity. */
+    fun pagesByDay(
+        sessions: List<Session>,
+        zone: ZoneId = ZoneId.systemDefault(),
+        dayStartsAtHour: Int = DEFAULT_DAY_START_HOUR
+    ): Map<LocalDate, Int> =
+        sessions
+            .filter(::isReading)
+            .groupBy { sessionDay(it, zone, dayStartsAtHour) }
+            .mapValues { (_, daySessions) -> daySessions.sumOf { it.pagesRead } }
+
     // Reading day = the local calendar day in the phone's current timezone.
     // By subtracting dayStartsAtHour, a session at 2:00 AM (when dayStartsAtHour is 3)
     // effectively evaluates as 11:00 PM of the previous day, which assigns it to the correct Streak date.
-    fun readingDate(timestamp: Long, zone: ZoneId, dayStartsAtHour: Int = 3): LocalDate =
+    fun readingDate(timestamp: Long, zone: ZoneId, dayStartsAtHour: Int = DEFAULT_DAY_START_HOUR): LocalDate =
         Instant.ofEpochMilli(timestamp).atZone(zone).minusHours(dayStartsAtHour.toLong()).toLocalDate()
 }

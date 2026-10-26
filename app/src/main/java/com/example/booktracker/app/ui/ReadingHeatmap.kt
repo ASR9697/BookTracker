@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.booktracker.app.analytics.StreakEngine
 import com.example.booktracker.app.ui.animations.bounceClick
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
@@ -90,25 +91,19 @@ fun ReadingHeatmap(
     books: List<Book> = emptyList(),
     notes: List<MarginNote> = emptyList(),
     onOpenBook: ((Book) -> Unit)? = null,
+    dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR,
     modifier: Modifier = Modifier
 ) {
     val zone = remember { ZoneId.systemDefault() }
-    val today = remember { LocalDate.now(zone) }
+    val today = remember(dayStartsAtHour) { StreakEngine.readingDate(System.currentTimeMillis(), zone, dayStartsAtHour) }
     val haptic = LocalHapticFeedback.current
 
-    // Aggregate pages by LocalDate
-    val dailyPages = remember(sessions) {
-        val map = mutableMapOf<LocalDate, Int>()
-        for (session in sessions) {
-            val date = Instant.ofEpochMilli(session.startTime).atZone(zone).toLocalDate()
-            map[date] = (map[date] ?: 0) + session.pagesRead
-        }
-        map
-    }
+    // Same per-day rule as the streak, so a day is lit here exactly when it counts there.
+    val dailyPages = remember(sessions, dayStartsAtHour) { StreakEngine.pagesByDay(sessions, zone, dayStartsAtHour) }
 
-    val sessionsByDate = remember(sessions) {
+    val sessionsByDate = remember(sessions, dayStartsAtHour) {
         sessions.filter { it.startTime > 0 }
-            .groupBy { Instant.ofEpochMilli(it.startTime).atZone(zone).toLocalDate() }
+            .groupBy { StreakEngine.sessionDay(it, zone, dayStartsAtHour) }
     }
 
     val booksById = remember(books) { books.associateBy { it.id } }

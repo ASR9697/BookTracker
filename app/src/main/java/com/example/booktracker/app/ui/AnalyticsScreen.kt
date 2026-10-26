@@ -43,6 +43,7 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import com.example.booktracker.app.analytics.AnalyticsEngine
 import com.example.booktracker.app.analytics.ReadingCalendar
+import com.example.booktracker.app.analytics.StreakEngine
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.Session
@@ -50,6 +51,9 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.math.roundToInt
+
+/** Books with genre info needed before the genre split is worth showing. */
+private const val MIN_BOOKS_FOR_GENRES = 3
 
 @Composable
 fun AnalyticsScreen(
@@ -59,13 +63,14 @@ fun AnalyticsScreen(
     yearlyGoal: Int,
     monthlyGoalPages: Int = 500,
     monthlyGoalBooks: Int = 2,
+    dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR,
     onEditGoal: (GoalType) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val zone = remember { ZoneId.systemDefault() }
-    val today = remember { LocalDate.now(zone) }
-    val pagesByDay = remember(sessions) { ReadingCalendar.pagesByDay(sessions) }
-    val minutesByDay = remember(sessions) { AnalyticsEngine.minutesByDay(sessions) }
+    val today = remember(dayStartsAtHour) { StreakEngine.readingDate(System.currentTimeMillis(), zone, dayStartsAtHour) }
+    val pagesByDay = remember(sessions, dayStartsAtHour) { ReadingCalendar.pagesByDay(sessions, zone, dayStartsAtHour) }
+    val minutesByDay = remember(sessions, dayStartsAtHour) { AnalyticsEngine.minutesByDay(sessions, zone, dayStartsAtHour) }
     val timeSummary = remember(sessions) { AnalyticsEngine.summarizeTime(sessions) }
     val velocity = remember(sessions) { AnalyticsEngine.pagesPerHour(sessions) }
     val bestTime = remember(sessions) { AnalyticsEngine.bestTimeOfDay(sessions) }
@@ -94,26 +99,28 @@ fun AnalyticsScreen(
             Instant.ofEpochMilli(it.completedAt).atZone(zone).toLocalDate().year == thisYear
         }
     }
-    val yearlyPace = remember(yearlyGoal, finishedThisYear, today) {
-        GoalEngine.calculateYearlyPace(yearlyGoal, finishedThisYear, today)
+    val trackingStart = remember(books, sessions) { GoalEngine.trackingStart(books, sessions, zone) }
+    val yearlyPace = remember(yearlyGoal, finishedThisYear, today, trackingStart) {
+        GoalEngine.calculateYearlyPace(yearlyGoal, finishedThisYear, today, trackingStart)
     }
 
-    val habitConsistency = remember(sessions, today) {
-        GoalEngine.calculateHabitConsistency(sessions, 30, today, zone)
+    val habitConsistency = remember(sessions, today, dayStartsAtHour) {
+        GoalEngine.calculateHabitConsistency(sessions, 30, today, zone, dayStartsAtHour)
     }
 
     val seasonalSprint = remember(books, today) {
         GoalEngine.calculateSeasonalSprint(books, today, zone, 5)
     }
 
-    val monthlySummary = remember(books, sessions, monthlyGoalPages, monthlyGoalBooks, today) {
+    val monthlySummary = remember(books, sessions, monthlyGoalPages, monthlyGoalBooks, today, dayStartsAtHour) {
         GoalEngine.calculateMonthlySummary(
             books = books,
             sessions = sessions,
             monthlyGoalPages = monthlyGoalPages,
             monthlyGoalBooks = monthlyGoalBooks,
             date = today,
-            zone = zone
+            zone = zone,
+            dayStartsAtHour = dayStartsAtHour
         )
     }
     var monthlyTargetMode by remember { mutableStateOf(GoalType.MONTHLY_PAGES) }
@@ -128,6 +135,7 @@ fun AnalyticsScreen(
         }
         distribution.toList().sortedByDescending { it.second }
     }
+    val booksWithGenres = remember(books) { books.count { it.genres.isNotEmpty() || it.classification.tags.isNotEmpty() } }
     
     val formatDistribution = remember(books) {
         val distribution = mutableMapOf<String, Int>()
@@ -697,51 +705,24 @@ fun AnalyticsScreen(
             }
         }
 
-        // Top genres from the metadata fetched with each book.
+        // Shares of one or two books are noise, so the split waits for a small library.
         item {
-            val genreCounts = remember(books) {
-                books.flatMap { it.genres }
-                    .groupingBy { it }
-                    .eachCount()
-                    .entries
-                    .sortedByDescending { it.value }
-                    .take(3)
-            }
-            Column {
-                Text("Top Genres", style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.height(12.dp))
-                if (genreCounts.isEmpty()) {
-                    Text(
-                        "Add books via search or the ISBN scanner and their genres " +
-                            "will show up here.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        val chipColors = listOf(
-                            MaterialTheme.colorScheme.secondary,
-                            MaterialTheme.colorScheme.tertiary,
-                            MaterialTheme.colorScheme.primary
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Genres", style = MaterialTheme.typography.titleLarge)
+                    Spacer(Modifier.height(16.dp))
+                    if (booksWithGenres < MIN_BOOKS_FOR_GENRES) {
+                        Text(
+                            "Your genre mix appears once $MIN_BOOKS_FOR_GENRES books have genre info. " +
+                                "Books added via search or the ISBN scanner include it.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        genreCounts.forEachIndexed { index, (genre, _) ->
-                            GenreChip(genre, chipColors[index % chipColors.size])
-                        }
-                    }
-                }
-            }
-        }
-        
-        if (genreDistribution.isNotEmpty()) {
-            item {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Genre Distribution", style = MaterialTheme.typography.titleLarge)
-                        Spacer(Modifier.height(16.dp))
+                    } else {
                         PieChart(
                             data = genreDistribution,
                             modifier = Modifier.fillMaxWidth().height(220.dp).padding(16.dp)
@@ -849,22 +830,6 @@ private fun TimeStat(icon: ImageVector, value: String, label: String) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-    }
-}
-
-@Composable
-fun GenreChip(text: String, color: Color) {
-    Surface(
-        shape = CircleShape,
-        color = Color.Transparent,
-        border = androidx.compose.foundation.BorderStroke(1.dp, color)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelLarge)
-        }
     }
 }
 

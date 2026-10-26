@@ -169,10 +169,11 @@ object AnalyticsEngine {
     /** Reading minutes per day (timed sessions only), keyed like pagesByDay. */
     fun minutesByDay(
         sessions: List<Session>,
-        zone: ZoneId = ZoneId.systemDefault()
+        zone: ZoneId = ZoneId.systemDefault(),
+        dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR
     ): Map<LocalDate, Long> =
         timedSessions(sessions)
-            .groupBy { StreakEngine.readingDate(it.endTime, zone) }
+            .groupBy { StreakEngine.sessionDay(it, zone, dayStartsAtHour) }
             .mapValues { (_, day) -> day.sumOf { it.endTime - it.startTime } / 60_000L }
 
     data class TimeSummary(

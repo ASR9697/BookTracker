@@ -502,6 +502,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                         val sessions by viewModel.completedSessions.collectAsState()
                                         val allNotes by viewModel.allNotes.collectAsState()
                                         val currentUserName by viewModel.userName.collectAsState()
+                                        val dayStartsAtHour by viewModel.dayStartsAtHour.collectAsState()
                                         SubScreen(title = "Calendar", onBack = { navController.popBackStack() }) {
                                             ReadingCalendarView(
                                                 books = books,
@@ -514,7 +515,8 @@ androidx.compose.animation.SharedTransitionLayout {
                                                 onEditGoal = {
                                                     initialGoalType = GoalType.MONTHLY_PAGES
                                                     showGoalDialog = true
-                                                }
+                                                },
+                                                dayStartsAtHour = dayStartsAtHour
                                             )
                                         }
                                     }
@@ -591,6 +593,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                         val yearly by viewModel.yearlyGoal.collectAsState()
                                                         val monthlyPages by viewModel.monthlyGoalPages.collectAsState()
                                                         val monthlyBooks by viewModel.monthlyGoalBooks.collectAsState()
+                                                        val dayStartsAtHour by viewModel.dayStartsAtHour.collectAsState()
                                                         AnalyticsScreen(
                                                             books = books,
                                                             sessions = sessions,
@@ -598,6 +601,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             yearlyGoal = yearly,
                                                             monthlyGoalPages = monthlyPages,
                                                             monthlyGoalBooks = monthlyBooks,
+                                                            dayStartsAtHour = dayStartsAtHour,
                                                             onEditGoal = { targetGoalType ->
                                                                 initialGoalType = targetGoalType
                                                                 showGoalDialog = true
@@ -609,7 +613,6 @@ androidx.compose.animation.SharedTransitionLayout {
                                     composable("profile") {
                 
                                         androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {                val goal by viewModel.dailyGoal.collectAsState()
-                                                        val yearly by viewModel.yearlyGoal.collectAsState()
                                                         val sessions by viewModel.completedSessions.collectAsState()
                                                         val unlockedBadges by viewModel.unlockedBadges.collectAsState()
                                                         val streak by viewModel.streak.collectAsState()
@@ -622,7 +625,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             sessions = sessions,
                                                             notes = allNotes,
                                                             streak = streak.currentStreak,
-                                                            yearlyGoal = yearly,
+                                                            dayStartsAtHour = streak.dayStartsAtHour,
                                                             unlockedBadges = unlockedBadges,
                                                             onOpenSettings = { navController.navigate("settings") },
                                                             onOpenHistory = { navController.navigate("history") },
@@ -630,11 +633,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             onOpenPlanner = { navController.navigate("planner") },
                                                             onOpenBook = { navController.navigate("book/${it.id}") },
                                                             onOpenWrapped = { navController.navigate("wrappedAnimated") },
-                                                            onUpdateName = viewModel::setUserName,
-                                                            onEditGoal = {
-                                                                initialGoalType = GoalType.YEARLY_BOOKS
-                                                                showGoalDialog = true
-                                                            }
+                                                            onUpdateName = viewModel::setUserName
                                                         )
             
                                         }

@@ -22,12 +22,9 @@ object ReadingCalendar {
 
     fun pagesByDay(
         sessions: List<Session>,
-        zone: ZoneId = ZoneId.systemDefault()
-    ): Map<LocalDate, Int> =
-        sessions
-            .filter { it.endTime > 0 && it.pagesRead > 0 }
-            .groupBy { StreakEngine.readingDate(it.endTime, zone) }
-            .mapValues { (_, daySessions) -> daySessions.sumOf { it.pagesRead } }
+        zone: ZoneId = ZoneId.systemDefault(),
+        dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR
+    ): Map<LocalDate, Int> = StreakEngine.pagesByDay(sessions.filter { it.endTime > 0 }, zone, dayStartsAtHour)
 
     /** Sunday of the earliest visible week, so the grid is 7 whole rows tall. */
     fun gridStart(today: LocalDate): LocalDate {

@@ -17,27 +17,27 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 ## app/analytics - Pure stats engines (goals, streaks, badges, loans); unit-tested
 `app/src/main/java/com/example/booktracker/app/analytics/`
 
-- **AnalyticsEngine.kt** (252) - Time-based reading analytics over completed sessions.
-  - types: AnalyticsEngine:18, .CompletionPrediction:115, .TimeSummary:178, .EnvironmentStat:223
-  - fun: .timedSessions:23, .pagesPerHour:33, .readingSpeedPpm:43, .sessionSpeedPpm:49, .formatReadingSpeed:55, .formatSessionPpm:66, .estimatedMinutesLeft:72, .bookEstimatedMinutesLeft:84, .bookPagesPerHour:97, .formatEstimatedTime:106, .predictCompletionDate:125, .minutesByDay:170, .summarizeTime:184, .bestTimeOfDay:206, .environmentStats:231, .formatMinutes:246
+- **AnalyticsEngine.kt** (253) - Time-based reading analytics over completed sessions.
+  - types: AnalyticsEngine:18, .CompletionPrediction:115, .TimeSummary:179, .EnvironmentStat:224
+  - fun: .timedSessions:23, .pagesPerHour:33, .readingSpeedPpm:43, .sessionSpeedPpm:49, .formatReadingSpeed:55, .formatSessionPpm:66, .estimatedMinutesLeft:72, .bookEstimatedMinutesLeft:84, .bookPagesPerHour:97, .formatEstimatedTime:106, .predictCompletionDate:125, .minutesByDay:170, .summarizeTime:185, .bestTimeOfDay:207, .environmentStats:232, .formatMinutes:247
 - **BadgeEngine.kt** (161)
   - types: Badge:12, BadgeEngine:21
   - fun: .evaluate:156
-- **GoalEngine.kt** (295) - Pure logic engine for reading targets: yearly goal pacing, monthly page/book targets, and on-track / ahead / behind s...
+- **GoalEngine.kt** (305) - Pure logic engine for reading targets: yearly goal pacing, monthly page/book targets, and on-track / ahead / behind s...
   - types: GoalEngine:15, .GoalPaceStatus:17, .YearlyGoalPace:23, .HabitConsistency:37, .Season:45, .SeasonalSprint:60, .MonthlyGoalSummary:70
-  - fun: .calculateYearlyPace:86, .calculateHabitConsistency:147, .currentSeason:184, .calculateSeasonalSprint:197, .calculateMonthlySummary:250
+  - fun: .trackingStart:85, .calculateYearlyPace:98, .calculateHabitConsistency:167, .currentSeason:201, .calculateSeasonalSprint:214, .calculateMonthlySummary:267
 - **LoanEngine.kt** (148) - Pure logic engine for library return dates, due date countdowns, lending tracking, and urgency evaluation.
   - types: LoanEngine:14, .LoanUrgency:16, .LoanStatusInfo:23
   - fun: .activeLoan:35, .getLoanStatus:42, .allActiveLoans:125, .urgentLoans:135
-- **ReadingCalendar.kt** (59) - Aggregates completed sessions into per-day page counts for the calendar heatmap (blueprint §3A).
+- **ReadingCalendar.kt** (56) - Aggregates completed sessions into per-day page counts for the calendar heatmap (blueprint §3A).
   - types: ReadingCalendar:12, .Summary:17
-  - fun: .pagesByDay:23, .gridStart:33, .summarize:38, .level:51
+  - fun: .pagesByDay:23, .gridStart:30, .summarize:35, .level:48
 - **ReadingGenome.kt** (88) - A purely local, on-device recommendation engine that heuristically matches backlog/shortlist books to the genres and ...
   - types: Recommendation:6, ReadingGenome:13
   - fun: .getRecommendations:15
-- **StreakEngine.kt** (86)
-  - types: StreakEngine:8, .StreakInfo:12
-  - fun: .compute:23, .longestStreak:68, .readingDate:83
+- **StreakEngine.kt** (106)
+  - types: StreakEngine:8, .StreakInfo:13
+  - fun: .compute:26, .longestStreak:65, .isReading:83, .sessionDay:86, .pagesByDay:90, .readingDate:103
 
 ## app/camera - ML Kit barcode + OCR analyzers
 `app/src/main/java/com/example/booktracker/app/camera/`
@@ -149,17 +149,17 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 
 - **AddBookScreen.kt** (853)
   - fun: AddBookScreen:55, BookSuggestionCard:259, BookFormat.displayName:306, FormatChips:315, StatusOptions:334, BookPreviewDialog:363, ManualAddBookDialog:499
-- **AnalyticsScreen.kt** (1095)
-  - fun: AnalyticsScreen:55, TimeStat:837, GenreChip:856, SmoothLineChart:872, PieChart:1012
+- **AnalyticsScreen.kt** (1060)
+  - fun: AnalyticsScreen:59, TimeStat:818, SmoothLineChart:837, PieChart:977
 - **BookDetailScreen.kt** (2686)
   - types: BookDetailTab:163, NoteSort:1840
   - fun: SectionItem:174, BookDetailTabRow:187, BookDetailScreen:253, DetailHeader:1263, ActionPill:1349, StatusPill:1392, statusLabel:1419, StatusPickerDialog:1432, AboutCard:1476, FormatCard:1521, PlannerCard:1567, BookStatsCard:1605, StatCell:1692, ReadingStreakCard:1715, dayCount:1788, RatingCard:1791, ReviewCard:1830, NoteSortToggle:1847, NoteType.label:1886, NoteType.shortLabel:1892, NoteCard:1899, MetadataChips:2039, MetaChip:2060, ProgressAndDaysRow:2083, CollectionsCard:2199, CollectionPickerDialog:2253, SessionRow:2329, EditSessionDialog:2415, LedgerCard:2465, DetailCard:2568, AddNoteBottomSheet:2588
 - **BookEditDialogs.kt** (443) - Edits a book's details after it has been added — fixing a wrong page count or a missing cover is otherwise impossible.
   - fun: EditBookDialog:75, LogSessionDialog:302, PastDatePickerDialog:410, Book.isEnded:441
-- **BookTrackerScreen.kt** (1771)
+- **BookTrackerScreen.kt** (1770)
   - types: LibraryViewMode:159, LibrarySort:161
-  - fun: BookTrackerApp:172, WeekBubbles:1038, LibraryScreen:1101, LibraryGridCard:1455, BookCover:1647, formatElapsed:1672, SubScreen:1687, TimerMiniPlayer:1702
-  - nav routes: home:448, calendar:501, bookshelf:521, epubReader/{uri}:531, library:538, memorize:556, scanner:567, privacy:584, stats:587, profile:609, wrappedAnimated:642, wrapped:654, planner:666, book/{bookId}:675, history:751, settings:764, finished:808, journey_map:822, search:831, focus/{bookId}:841, session_save/{bookId}:862, session_result/{bookId}:911, tbr_swipe:933
+  - fun: BookTrackerApp:172, WeekBubbles:1037, LibraryScreen:1100, LibraryGridCard:1454, BookCover:1646, formatElapsed:1671, SubScreen:1686, TimerMiniPlayer:1701
+  - nav routes: home:448, calendar:501, bookshelf:523, epubReader/{uri}:533, library:540, memorize:558, scanner:569, privacy:586, stats:589, profile:613, wrappedAnimated:641, wrapped:653, planner:665, book/{bookId}:674, history:750, settings:763, finished:807, journey_map:821, search:830, focus/{bookId}:840, session_save/{bookId}:861, session_result/{bookId}:910, tbr_swipe:932
 - **BookTrackerViewModel.kt** (838)
   - types: BookTrackerViewModel:54, .SessionResult:472
   - fun: .shareNote:302, .addScannedBook:306, .importCsv:333, .promote:340, .promoteToReading:350, .pauseBook:356, .changeStatus:366, .toggleFavorite:376, .addProgress:380, .recordLoan:384, .markLoanReturned:393, .updateBookDetails:404, .setFormat:416, .finishBook:420, .readAgain:424, .setProgress:428, .setCollections:432, .markDnf:436, .startSession:440, .startFocus:450, .saveSession:488, .clearSessionResult:525, .discardOpenSession:530, .leaveUnstartedFocus:546, .logManualSession:561, .delete:567, .deleteSession:574, .updateSession:578, .restore:583, .setUserName:590, .setDailyGoal:594, .setYearlyGoal:598, .setMonthlyGoalPages:602, .setMonthlyGoalBooks:606, .setDndDuringSession:610, .setThemeMode:614, .setUseDynamicColor:618, .setAppPalette:622, .setReminder:626, .planBook:630, .setTimerBook:640, .setTimerPhase:653, .setTimerMode:661, .setCustomWorkMinutes:673, .countdownTotalSeconds:683, .setTimerRunning:692, .setWorkMinutes:710, .setBreakMinutes:718, .setDayStartsAtHour:725, .setUseAppLock:729, .setNoiseType:733, .setTimerVolume:741, .sessionsFor:746, .notesFor:749, .addNote:751, .updateNote:760, .toggleNoteFavorite:764, .deleteNote:768, .searchLibrary:772, .exportBackup:775, .importBackup:798
@@ -187,8 +187,8 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: GoalEditDialog:30
 - **HistoryScreen.kt** (281)
   - fun: HistoryScreen:63, EditSessionDialog:194, HistorySessionRow:242
-- **HomeDashboard.kt** (744) - Home: everything about your reading on one scroll.
-  - fun: HomeDashboard:85, CurrentBookCard:403, NothingInProgressCard:537, Tile:576, ShortcutTile:603, RingHeader:633, MonthBars:670, greeting:717, formatMinutes:729, yearPace:733
+- **HomeDashboard.kt** (747) - Home: everything about your reading on one scroll.
+  - fun: HomeDashboard:88, CurrentBookCard:406, NothingInProgressCard:540, Tile:579, ShortcutTile:606, RingHeader:636, MonthBars:673, greeting:720, formatMinutes:732, yearPace:736
 - **LibrarySearchScreen.kt** (270) - Universal library search over the local FTS index: every book field the user would remember (title, author, descripti...
   - fun: LibrarySearchScreen:60, SearchSectionHeader:168, BookHitRow:178, NoteHitRow:210, StatusChip:252
 - **LoanComponents.kt** (535) - Reusable visual badge displaying loan status and due date countdown.
@@ -206,8 +206,8 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: PlannerScreen:36, CalendarView:130, PlannedBookItem:222, PlanBookDialog:250
 - **PrivacyPolicyScreen.kt** (96) - Shows the bundled privacy policy (res/raw/privacy_policy.md) so it's readable offline.
   - fun: PrivacyPolicyScreen:37
-- **ProfileScreen.kt** (899)
-  - fun: ProfileScreen:46, AchievementCard:735, SettingsRow:766, getBadgeTierColor:785, BadgeDetailDialog:795
+- **ProfileScreen.kt** (712)
+  - fun: ProfileScreen:45, AchievementCard:548, SettingsRow:579, getBadgeTierColor:598, BadgeDetailDialog:608
 - **ProgressPickerSheet.kt** (314) - "How much did you read?" — the single progress entry point used by the save screen and the book detail header.
   - fun: ProgressPickerSheet:63, PageWheel:159, KeyboardEntry:271, percentLabel:312
 - **ProgressRingCover.kt** (92) - A book cover cropped to a circle with a completion arc sweeping around it.
@@ -217,12 +217,12 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **QuoteShareHelper.kt** (246)
   - types: QuoteCardFormat:22, QuoteCardTheme:32, QuoteShareHelper:98
   - fun: .shareQuote:100
-- **ReadingCalendarView.kt** (934) - Bookmory-style Interactive Monthly Reading Calendar.
-  - types: CalendarViewMode:54
-  - fun: ReadingCalendarView:69, CalendarDayCell:622, MonthStatItem:809, SessionHistoryCard:834
-- **ReadingHeatmap.kt** (605) - 52-Week Annual Reading Heatmap ("Year in Pixels").
-  - types: ReadingIntensityLevel:47
-  - fun: getReadingIntensity:59, getIntensityColor:70, ReadingHeatmap:88
+- **ReadingCalendarView.kt** (937) - Bookmory-style Interactive Monthly Reading Calendar.
+  - types: CalendarViewMode:55
+  - fun: ReadingCalendarView:70, CalendarDayCell:625, MonthStatItem:812, SessionHistoryCard:837
+- **ReadingHeatmap.kt** (600) - 52-Week Annual Reading Heatmap ("Year in Pixels").
+  - types: ReadingIntensityLevel:48
+  - fun: getReadingIntensity:60, getIntensityColor:71, ReadingHeatmap:89
 - **ReadingJourneyMap.kt** (137)
   - fun: ReadingJourneyMap:24
 - **ScannerScreen.kt** (246)

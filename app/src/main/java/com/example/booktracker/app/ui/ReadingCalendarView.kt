@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.booktracker.app.analytics.StreakEngine
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.Session
@@ -75,10 +76,11 @@ fun ReadingCalendarView(
     onOpenBook: (Book) -> Unit,
     onStartTimer: (Book) -> Unit,
     onEditGoal: () -> Unit = {},
+    dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR,
     modifier: Modifier = Modifier
 ) {
     val zone = remember { ZoneId.systemDefault() }
-    val today = remember { LocalDate.now(zone) }
+    val today = remember(dayStartsAtHour) { StreakEngine.readingDate(System.currentTimeMillis(), zone, dayStartsAtHour) }
     val haptic = LocalHapticFeedback.current
     var selectedMonth by remember { mutableStateOf(YearMonth.now(zone)) }
     var selectedDate by remember { mutableStateOf(today) }
@@ -88,9 +90,9 @@ fun ReadingCalendarView(
     val booksById = remember(books) { books.associateBy { it.id } }
 
     // Map sessions by LocalDate
-    val sessionsByDate = remember(sessions) {
+    val sessionsByDate = remember(sessions, dayStartsAtHour) {
         sessions.filter { it.endTime > 0 }
-            .groupBy { Instant.ofEpochMilli(it.endTime).atZone(zone).toLocalDate() }
+            .groupBy { StreakEngine.sessionDay(it, zone, dayStartsAtHour) }
     }
 
     // Map notes by LocalDate
@@ -117,16 +119,16 @@ fun ReadingCalendarView(
     }
 
     // Monthly summary stats
-    val monthSessions = remember(sessions, selectedMonth) {
+    val monthSessions = remember(sessions, selectedMonth, dayStartsAtHour) {
         sessions.filter {
-            val date = Instant.ofEpochMilli(it.endTime).atZone(zone).toLocalDate()
-            YearMonth.from(date) == selectedMonth && it.endTime > 0
+            it.endTime > 0 && YearMonth.from(StreakEngine.sessionDay(it, zone, dayStartsAtHour)) == selectedMonth
         }
     }
     val monthTotalPages = remember(monthSessions) { monthSessions.sumOf { it.pagesRead } }
     val monthTotalMinutes = remember(monthSessions) { monthSessions.sumOf { it.durationSeconds } / 60 }
     val monthActiveDays = remember(monthSessions) {
-        monthSessions.map { Instant.ofEpochMilli(it.endTime).atZone(zone).toLocalDate() }.distinct().size
+        monthSessions.filter(StreakEngine::isReading)
+            .map { StreakEngine.sessionDay(it, zone, dayStartsAtHour) }.distinct().size
     }
     val monthFinishedBooks = remember(finishedDates, selectedMonth) {
         finishedDates.count { YearMonth.from(it) == selectedMonth }
@@ -368,6 +370,7 @@ fun ReadingCalendarView(
                         books = books,
                         notes = notes,
                         onOpenBook = onOpenBook,
+                        dayStartsAtHour = dayStartsAtHour,
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
                     )
                 } else {
