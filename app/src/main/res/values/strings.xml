@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Book Tracker</string>
+    <string name="app_name">Nocturnal Reader</string>
+    <!-- Public support address shown in the privacy policy. Leave empty to point readers at the Play listing. -->
+    <string name="support_email" translatable="false"></string>
+    <string name="widget_label">Current book</string>
+    <string name="widget_description">Your current book with quick +1 / +10 page logging</string>
 </resources>

@@ -295,7 +295,7 @@ fun WearApp(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                books.firstOrNull()?.title ?: "Book Tracker",
+                books.firstOrNull()?.title ?: "Nocturnal Reader",
                 color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -468,7 +468,7 @@ private fun ActiveBookContent(
                 val mins = (localTimeLeft % 3600) / 60
                 val secs = localTimeLeft % 60
                 val phaseName = if (timerState.mode == "STOPWATCH") "READING" else if (timerState.phase == 0) "FOCUS" else "BREAK"
-                val timeString = if (hours > 0) String.format("%02d:%02d:%02d", hours, mins, secs) else String.format("%02d:%02d", mins, secs)
+                val timeString = if (hours > 0) String.format(java.util.Locale.US, "%02d:%02d:%02d", hours, mins, secs) else String.format(java.util.Locale.US, "%02d:%02d", mins, secs)
                 Text(
                     text = timeString,
                     style = MaterialTheme.typography.displayMedium,

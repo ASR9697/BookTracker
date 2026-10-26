@@ -1,8 +1,8 @@
-# Book Tracker 📚
+# Nocturnal Reader 📚
 
 An elegant, privacy-first, zero-dependency local Android app for power readers.
 
-![Book Tracker](/app/src/main/res/mipmap-hdpi/ic_launcher.png)
+![Nocturnal Reader](docs/store/feature-graphic-1024x500.png)
 
 ## Features 🚀
 
@@ -25,13 +25,15 @@ An elegant, privacy-first, zero-dependency local Android app for power readers.
 
 ## Building 🔧
 
-This app is built with modern Android development practices (AGP 8.3+).
+Requires JDK 17+ and the Android SDK (compile SDK 36).
 
 ```bash
-git clone https://github.com/yourusername/BookTracker.git
-cd BookTracker
-./gradlew assembleDebug
+./gradlew assembleDebug        # debug build
+./gradlew :app:bundleRelease   # Play Store bundle — see RELEASE.md first
 ```
+
+Publishing (app ID, signing key, privacy policy, Play Console answers) is
+documented step by step in [RELEASE.md](RELEASE.md).
 
 ## Contributing 🤝
 

@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -5,24 +7,49 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+// Release signing comes from keystore.properties (never committed). See RELEASE.md.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) keystorePropertiesFile.inputStream().use { load(it) }
+}
+
 android {
     namespace = "com.example.booktracker.app"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.booktracker"
+        // Set once in gradle.properties; the Wear app must share it for watch sync.
+        applicationId = providers.gradleProperty("APP_ID").get()
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "2.0.0"
+        versionCode = providers.gradleProperty("APP_VERSION_CODE").get().toInt()
+        versionName = providers.gradleProperty("APP_VERSION_NAME").get()
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            // Without keystore.properties the release build is left unsigned
+            // (never debug-signed — Play rejects debug certificates).
+            signingConfig = if (keystorePropertiesFile.exists()) signingConfigs.getByName("release") else null
         }
     }
     buildFeatures {
@@ -33,6 +60,18 @@ android {
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+
+// Google Play rejects com.example.* package names; fail release packaging early
+// with a clear message instead of at upload time.
+tasks.matching { it.name == "bundleRelease" || it.name == "assembleRelease" }.configureEach {
+    doFirst {
+        val appId = providers.gradleProperty("APP_ID").get()
+        check(!appId.startsWith("com.example")) {
+            "APP_ID in gradle.properties is still '$appId'. Google Play does not accept com.example.* — " +
+                "set your own permanent application ID before building a release."
+        }
     }
 }
 
@@ -52,8 +91,7 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.7")
     implementation("androidx.compose.material3:material3-window-size-class")
     implementation("androidx.palette:palette-ktx:1.0.0")
-    
-    implementation("androidx.compose.ui:ui-text-google-fonts")
+
     implementation("androidx.core:core-splashscreen:1.0.1")
 
     implementation("io.coil-kt.coil3:coil-compose:3.4.0")
@@ -63,25 +101,25 @@ dependencies {
     implementation("androidx.room:room-runtime:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
 
+    // CameraX and ML Kit for ISBN barcode scanning and the "scan a passage into a
+    // margin note" flow. Free + keyless, models bundled in the APK.
     val cameraxVersion = "1.4.2"
     implementation("androidx.camera:camera-camera2:$cameraxVersion")
     implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
     implementation("androidx.camera:camera-view:$cameraxVersion")
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
-    // Security
-    implementation("androidx.biometric:biometric:1.2.0-alpha05")
-
-    // CameraX and ML Kit for Barcode / OCR for the "scan a passage into a margin note"
-    // flow. Free + keyless, model bundled in the APK (no download at runtime).
     implementation("com.google.mlkit:text-recognition:16.0.1")
     // On-device handwriting recognition for the stylus scratchpad. Free + keyless;
-    // downloads a small per-language model at first use.
-    implementation("com.google.mlkit:digital-ink-recognition:18.1.0")
+    // downloads a small per-language model at first use. 19.x ships native code
+    // aligned for 16 KB page sizes, which Google Play requires.
+    implementation("com.google.mlkit:digital-ink-recognition:19.0.0")
+
+    // App lock (fingerprint / face / screen lock)
+    implementation("androidx.biometric:biometric:1.2.0-alpha05")
 
     implementation("androidx.glance:glance-appwidget:1.1.1")
     implementation("androidx.glance:glance-material3:1.1.1")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
-    
 
     implementation("com.google.code.gson:gson:2.10.1")
 
