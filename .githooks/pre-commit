@@ -1,0 +1,7 @@
+#!/bin/sh
+# Block commits that leave .agents/maps/code_map.md out of date.
+# Enable once per clone with: npm run install-hooks
+if ! node scripts/update-maps.js --check; then
+    echo "Run 'npm run update-maps', stage .agents/maps/code_map.md, and commit again." >&2
+    exit 1
+fi
