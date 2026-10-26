@@ -114,8 +114,8 @@ fun ReadingHeatmap(
     val booksById = remember(books) { books.associateBy { it.id } }
 
     val finishedBooksByDate = remember(books) {
-        books.filter { it.status == BookStatus.FINISHED.name && it.lastUpdated > 0 }
-            .groupBy { Instant.ofEpochMilli(it.lastUpdated).atZone(zone).toLocalDate() }
+        books.filter { it.status == BookStatus.FINISHED.name && it.completedAt > 0 }
+            .groupBy { Instant.ofEpochMilli(it.completedAt).atZone(zone).toLocalDate() }
     }
 
     val notesByDate = remember(notes) {

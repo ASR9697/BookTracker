@@ -336,7 +336,7 @@ private fun BookSpineItem(
         label = "spineRotationZ"
     )
 
-    val isReading = book.status == BookStatus.READING.name
+    val isReading = book.status.equals(BookStatus.READING.name, ignoreCase = true)
 
     Box(
         contentAlignment = Alignment.BottomCenter,

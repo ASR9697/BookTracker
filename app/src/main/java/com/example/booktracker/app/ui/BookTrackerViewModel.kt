@@ -1,6 +1,7 @@
 package com.example.booktracker.app.ui
 
 import android.content.Context
+import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -8,38 +9,47 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.booktracker.app.analytics.BadgeEngine
 import com.example.booktracker.app.analytics.StreakEngine
+import com.example.booktracker.app.data.AppPalette
 import com.example.booktracker.app.data.BackupEngine
 import com.example.booktracker.app.data.BookRepository
+import com.example.booktracker.app.data.CsvImportResult
+import com.example.booktracker.app.data.DeletedBook
 import com.example.booktracker.app.data.LibrarySearchResults
+import com.example.booktracker.app.data.ReminderSettings
 import com.example.booktracker.app.data.ServiceLocator
 import com.example.booktracker.app.data.SettingsRepository
-import kotlinx.coroutines.flow.firstOrNull
-import com.example.booktracker.app.data.LibrarySnapshot
+import com.example.booktracker.app.data.ThemeMode
 import com.example.booktracker.app.data.remote.BookMetadata
-import com.example.booktracker.app.sync.WearBridge
 import com.example.booktracker.app.journal.NoiseType
 import com.example.booktracker.app.journal.SoundscapeEngine
-import com.example.booktracker.app.ui.TimerPhase
+import com.example.booktracker.app.service.TimerPersistence
+import com.example.booktracker.app.sync.WearBridge
+import com.example.booktracker.app.widget.ReadingWidget
 import com.example.booktracker.shared.models.Book
+import com.example.booktracker.shared.models.BookFormat
 import com.example.booktracker.shared.models.BookStatus
+import com.example.booktracker.shared.models.LoanRecord
 import com.example.booktracker.shared.models.MarginNote
+import com.example.booktracker.shared.models.NoteType
 import com.example.booktracker.shared.models.Session
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.channels.Channel
 
 class BookTrackerViewModel(
     private val appContext: Context,
@@ -58,74 +68,45 @@ class BookTrackerViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val dailyGoal: StateFlow<Int> = settings.dailyGoal
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            StreakEngine.DEFAULT_DAILY_GOAL_PAGES
-        )
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StreakEngine.DEFAULT_DAILY_GOAL_PAGES)
 
     val yearlyGoal: StateFlow<Int> = settings.yearlyGoal
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            SettingsRepository.DEFAULT_YEARLY_GOAL_BOOKS
-        )
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsRepository.DEFAULT_YEARLY_GOAL_BOOKS)
 
     val monthlyGoalPages: StateFlow<Int> = settings.monthlyGoalPages
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            500
-        )
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 500)
 
     val monthlyGoalBooks: StateFlow<Int> = settings.monthlyGoalBooks
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            2
-        )
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 2)
 
     val dndDuringSession: StateFlow<Boolean> = settings.dndDuringSession
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            false
-        )
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
-    val themeMode: StateFlow<com.example.booktracker.app.data.ThemeMode> = settings.themeMode
-        .map { com.example.booktracker.app.data.ThemeMode.entries[it] }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), com.example.booktracker.app.data.ThemeMode.SYSTEM)
+    val themeMode: StateFlow<ThemeMode> = settings.themeMode
+        .map { ThemeMode.entries.getOrElse(it) { ThemeMode.SYSTEM } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemeMode.SYSTEM)
 
     val useDynamicColor: StateFlow<Boolean> = settings.useDynamicColor
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            false
-        )
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
-    val appPalette: StateFlow<com.example.booktracker.app.data.AppPalette> = settings.appPalette
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            com.example.booktracker.app.data.AppPalette.BOOKMORY_AMBER
-        )
+    val appPalette: StateFlow<AppPalette> = settings.appPalette
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppPalette.BOOKMORY_AMBER)
 
     val useAppLock: StateFlow<Boolean> = settings.useAppLock
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    /** Null until settings load — the activity keeps its splash up until then. */
+    val appLockSetting: StateFlow<Boolean?> = settings.useAppLock
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val reminder: StateFlow<ReminderSettings> = settings.reminder
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ReminderSettings(false, 20, 0))
+
     val userName: StateFlow<String> = settings.userName
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            "Reader"
-        )
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "Reader")
 
     val dayStartsAtHour: StateFlow<Int> = settings.dayStartsAtHour
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            3
-        )
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 3)
 
     val streak: StateFlow<StreakEngine.StreakInfo> =
         combine(completedSessions, settings.dailyGoal, settings.dayStartsAtHour) { sessions, goal, dayStart ->
@@ -135,29 +116,6 @@ class BookTrackerViewModel(
             SharingStarted.WhileSubscribed(5_000),
             StreakEngine.compute(emptyList())
         )
-
-    val estimatedTimeRemainingMap: StateFlow<Map<String, String>> = combine(
-        books, completedSessions
-    ) { bks, sessions ->
-        bks.associate { book ->
-            val bookSessions = sessions.filter { it.bookId == book.id && it.durationSeconds > 0 && it.pagesRead > 0 }
-            val totalPagesRead = bookSessions.sumOf { it.pagesRead }
-            val totalDuration = bookSessions.sumOf { it.durationSeconds }
-            
-            val remainingStr = if (totalPagesRead > 0 && totalDuration > 0) {
-                val avgSpeed = totalPagesRead.toDouble() / totalDuration // pages per sec
-                val remainingPages = book.totalPages - book.currentPage
-                if (remainingPages > 0) {
-                    val remainingSeconds = (remainingPages / avgSpeed).toLong()
-                    val hours = remainingSeconds / 3600
-                    val minutes = (remainingSeconds % 3600) / 60
-                    if (hours > 0) "${hours}h ${minutes}m remaining" else "${minutes}m remaining"
-                } else null
-            } else null
-            
-            book.id to remainingStr
-        }.mapNotNull { (id, str) -> if (str != null) id to str else null }.toMap()
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     val allNotes: StateFlow<List<MarginNote>> = repository.observeAllNotes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -176,35 +134,39 @@ class BookTrackerViewModel(
 
     private val _newUnlockEvents = Channel<Set<String>>(Channel.BUFFERED)
     val newUnlockEvents = _newUnlockEvents.receiveAsFlow()
-    
+
     val tbrCurationBooks: StateFlow<List<Book>> = books.map { list ->
-        list.filter { it.status == BookStatus.TO_READ.name }
+        list.filter { it.status.equals(BookStatus.TO_READ.name, ignoreCase = true) || it.status.equals("BACKLOG", ignoreCase = true) }
             .sortedByDescending { it.lastUpdated }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val activeTimerBook: StateFlow<Book?> = combine(books, com.example.booktracker.app.data.ServiceLocator.timerBookId) { bookList, id ->
+    val activeTimerBook: StateFlow<Book?> = combine(books, ServiceLocator.timerBookId) { bookList, id ->
         bookList.find { it.id == id }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    val timerPhase: StateFlow<TimerPhase> = com.example.booktracker.app.data.ServiceLocator.timerPhase.asStateFlow()
-    val timerMode: StateFlow<TimerMode> = com.example.booktracker.app.data.ServiceLocator.timerMode.asStateFlow()
-    val timerIsRunning: StateFlow<Boolean> = com.example.booktracker.app.data.ServiceLocator.timerIsRunning.asStateFlow()
-    val timeLeftSeconds: StateFlow<Int> = com.example.booktracker.app.data.ServiceLocator.timeLeftSeconds.asStateFlow()
-    val elapsedSeconds: StateFlow<Int> = com.example.booktracker.app.data.ServiceLocator.elapsedSeconds.asStateFlow()
-    
+    val timerPhase: StateFlow<TimerPhase> = ServiceLocator.timerPhase.asStateFlow()
+    val timerMode: StateFlow<TimerMode> = ServiceLocator.timerMode.asStateFlow()
+    val timerIsRunning: StateFlow<Boolean> = ServiceLocator.timerIsRunning.asStateFlow()
+    val timeLeftSeconds: StateFlow<Int> = ServiceLocator.timeLeftSeconds.asStateFlow()
+    val elapsedSeconds: StateFlow<Int> = ServiceLocator.elapsedSeconds.asStateFlow()
+
     val workMinutes: StateFlow<Int> = settings.workMinutes
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 25)
-    
+
     val breakMinutes: StateFlow<Int> = settings.breakMinutes
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 5)
 
-    private val _noiseType = kotlinx.coroutines.flow.MutableStateFlow(NoiseType.NONE)
+    private val _noiseType = MutableStateFlow(NoiseType.NONE)
     val noiseType: StateFlow<NoiseType> = _noiseType
-    
-    private val _timerVolume = kotlinx.coroutines.flow.MutableStateFlow(0.5f)
+
+    private val _timerVolume = MutableStateFlow(0.5f)
     val timerVolume: StateFlow<Float> = _timerVolume
-    
+
     val soundscapeEngine = SoundscapeEngine()
+
+    // Books removed in this session, kept so the Undo snackbar can restore their
+    // sessions and notes too (the delete cascades to both).
+    private val recentlyDeleted = mutableMapOf<String, DeletedBook>()
 
     init {
         viewModelScope.launch {
@@ -234,6 +196,20 @@ class BookTrackerViewModel(
                 }
         }
 
+        // The home-screen widget only re-renders when asked, so refresh it whenever
+        // progress or the streak changes (debounced so +1 taps don't thrash it).
+        viewModelScope.launch {
+            @OptIn(FlowPreview::class)
+            combine(repository.observeBooks(), streak) { books, streakInfo ->
+                books.filter { it.status == BookStatus.READING.name }
+                    .map { Triple(it.id, it.currentPage, it.totalPages) } to streakInfo.currentStreak
+            }
+                .distinctUntilChanged()
+                .drop(1)
+                .debounce(1_000)
+                .collect { runCatching { ReadingWidget().updateAll(appContext) } }
+        }
+
         viewModelScope.launch {
             combine(unlockedBadges, settings.seenBadges) { unlocked, seen ->
                 val newBadges = unlocked - seen
@@ -243,86 +219,95 @@ class BookTrackerViewModel(
                 }
             }.collect()
         }
-        
+
         // Timer Sync to WearOS
         viewModelScope.launch {
             combine(
                 combine(timerIsRunning, timeLeftSeconds, elapsedSeconds) { run, left, elap -> Triple(run, left, elap) },
                 timerPhase,
                 timerMode,
-                com.example.booktracker.app.data.ServiceLocator.timerBookId
+                ServiceLocator.timerBookId
             ) { (isRunning, timeLeft, elapsed), phase, mode, bookId ->
                 val timeValue = if (mode == TimerMode.STOPWATCH) elapsed else timeLeft
                 wearBridge.publishTimerState(isRunning, timeValue, phase.ordinal, bookId, mode.name)
             }.collect()
         }
-        
+
         viewModelScope.launch {
-            com.example.booktracker.app.data.ServiceLocator.timerControlEvents.collect { action ->
+            ServiceLocator.timerControlEvents.collect { action ->
                 if (action == "PAUSE" && timerIsRunning.value) {
                     setTimerRunning(false)
-                } else if (action == "RESUME" && !timerIsRunning.value && com.example.booktracker.app.data.ServiceLocator.timerBookId.value != null) {
+                } else if (action == "RESUME" && !timerIsRunning.value && ServiceLocator.timerBookId.value != null) {
                     setTimerRunning(true)
                 }
             }
         }
 
-        // Timer Recovery
+        // Timer recovery after process death. Skipped when the timer is already
+        // live in this process (e.g. the activity was recreated while the
+        // foreground service kept running) — the in-memory state is newer.
         viewModelScope.launch {
-            val savedBookId = settings.activeTimerBookId.firstOrNull()
-            if (savedBookId != null) {
-                com.example.booktracker.app.data.ServiceLocator.timerBookId.value = savedBookId
-                val savedMode = settings.activeTimerMode.firstOrNull()
-                if (savedMode == TimerMode.STOPWATCH.name) {
-                    com.example.booktracker.app.data.ServiceLocator.timerMode.value = TimerMode.STOPWATCH
-                    com.example.booktracker.app.data.ServiceLocator.elapsedSeconds.value = settings.activeTimerElapsed.firstOrNull() ?: 0
-                } else {
-                    com.example.booktracker.app.data.ServiceLocator.timerMode.value = TimerMode.COUNTDOWN
-                    com.example.booktracker.app.data.ServiceLocator.timeLeftSeconds.value = settings.activeTimerTimeLeft.firstOrNull() ?: 0
-                    val savedPhase = settings.activeTimerPhase.firstOrNull()
-                    if (savedPhase == TimerPhase.BREAK.name) {
-                        com.example.booktracker.app.data.ServiceLocator.timerPhase.value = TimerPhase.BREAK
-                    }
+            if (ServiceLocator.timerBookId.value != null) return@launch
+            val savedBookId = settings.activeTimerBookId.firstOrNull() ?: return@launch
+            // A timer left "running" for half a day (or restored from a device
+            // backup) isn't a real session any more; drop it rather than resume it.
+            val savedTick = settings.activeTimerLastTickTime.firstOrNull()
+            val bookExists = repository.observeBooks().first().any { it.id == savedBookId }
+            if (!bookExists || (savedTick != null && System.currentTimeMillis() - savedTick > STALE_TIMER_MS)) {
+                settings.clearTimerState()
+                return@launch
+            }
+            ServiceLocator.timerBookId.value = savedBookId
+            ServiceLocator.timerBookTitle.value = repository.observeBooks().first().find { it.id == savedBookId }?.title
+            val savedMode = settings.activeTimerMode.firstOrNull()
+            if (savedMode == TimerMode.STOPWATCH.name) {
+                ServiceLocator.timerMode.value = TimerMode.STOPWATCH
+                ServiceLocator.elapsedSeconds.value = settings.activeTimerElapsed.firstOrNull() ?: 0
+            } else {
+                ServiceLocator.timerMode.value = TimerMode.COUNTDOWN
+                ServiceLocator.timeLeftSeconds.value = settings.activeTimerTimeLeft.firstOrNull() ?: 0
+                if (settings.activeTimerPhase.firstOrNull() == TimerPhase.BREAK.name) {
+                    ServiceLocator.timerPhase.value = TimerPhase.BREAK
                 }
-                com.example.booktracker.app.data.ServiceLocator.activeReadingSeconds.value = settings.activeTimerActiveReading.firstOrNull() ?: 0
-                
-                // Background State Fix: Calculate elapsed time using current_timestamp - start_timestamp
-                val wasRunning = settings.activeTimerIsRunning.firstOrNull() ?: false
-                if (wasRunning) {
-                    val lastTick = settings.activeTimerLastTickTime.firstOrNull() ?: System.currentTimeMillis()
-                    val now = System.currentTimeMillis()
-                    val missedSeconds = ((now - lastTick) / 1000).toInt().coerceAtLeast(0)
-                    
-                    if (savedMode == TimerMode.STOPWATCH.name) {
-                        com.example.booktracker.app.data.ServiceLocator.elapsedSeconds.value += missedSeconds
-                        setTimerRunning(true)
+            }
+            ServiceLocator.activeReadingSeconds.value = settings.activeTimerActiveReading.firstOrNull() ?: 0
+
+            // Background State Fix: elapsed = now - last persisted tick
+            val wasRunning = settings.activeTimerIsRunning.firstOrNull() ?: false
+            if (wasRunning) {
+                val lastTick = settings.activeTimerLastTickTime.firstOrNull() ?: System.currentTimeMillis()
+                val missedSeconds = ((System.currentTimeMillis() - lastTick) / 1000).toInt().coerceAtLeast(0)
+
+                if (savedMode == TimerMode.STOPWATCH.name) {
+                    ServiceLocator.elapsedSeconds.value += missedSeconds
+                    ServiceLocator.activeReadingSeconds.value += missedSeconds
+                    setTimerRunning(true)
+                } else {
+                    val timeLeft = ServiceLocator.timeLeftSeconds.value
+                    // Only the time up to expiry was actually spent reading.
+                    ServiceLocator.activeReadingSeconds.value += missedSeconds.coerceAtMost(timeLeft)
+                    if (timeLeft - missedSeconds <= 0) {
+                        ServiceLocator.timeLeftSeconds.value = 0
+                        setTimerRunning(false)
+                        ServiceLocator.notifyTimerExpired()
                     } else {
-                        val newTime = com.example.booktracker.app.data.ServiceLocator.timeLeftSeconds.value - missedSeconds
-                        if (newTime <= 0) {
-                            com.example.booktracker.app.data.ServiceLocator.timeLeftSeconds.value = 0
-                            setTimerRunning(false)
-                            com.example.booktracker.app.data.ServiceLocator.notifyTimerExpired()
-                        } else {
-                            com.example.booktracker.app.data.ServiceLocator.timeLeftSeconds.value = newTime
-                            setTimerRunning(true)
-                        }
+                        ServiceLocator.timeLeftSeconds.value = timeLeft - missedSeconds
+                        setTimerRunning(true)
                     }
-                    com.example.booktracker.app.data.ServiceLocator.activeReadingSeconds.value += missedSeconds
                 }
             }
         }
     }
 
-    fun addBook(title: String, authorsInput: String, totalPages: Int) {
-        val authors = authorsInput.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-        viewModelScope.launch { repository.addBook(title.trim(), authors, totalPages) }
-    }
-
-    fun shareNote(context: android.content.Context, note: MarginNote, book: Book) {
+    fun shareNote(context: Context, note: MarginNote, book: Book) {
         QuoteShareHelper.shareQuote(context, note, book)
     }
 
-    fun addScannedBook(scanned: BookMetadata, status: BookStatus = BookStatus.SHORTLIST, format: com.example.booktracker.shared.models.BookFormat = com.example.booktracker.shared.models.BookFormat.Paperback) {
+    fun addScannedBook(
+        scanned: BookMetadata,
+        status: BookStatus = BookStatus.TO_READ,
+        format: BookFormat = BookFormat.Paperback
+    ) {
         viewModelScope.launch {
             repository.addBook(
                 title = scanned.title,
@@ -337,24 +322,26 @@ class BookTrackerViewModel(
                 format = format,
                 creators = scanned.creators,
                 purchaseLog = scanned.purchaseLog,
-                loanRecord = scanned.loanRecord
+                loanRecord = scanned.loanRecord,
+                isbn = scanned.isbn,
+                publisher = scanned.publisher
             )
         }
     }
 
-    fun importCsv(context: Context, uri: android.net.Uri, onComplete: (Int) -> Unit) {
+    /** onComplete receives the result, or null when the file couldn't be read. */
+    fun importCsv(context: Context, uri: android.net.Uri, onComplete: (CsvImportResult?) -> Unit) {
         viewModelScope.launch {
-            val count = repository.importCsv(context, uri)
-            onComplete(count)
+            val result = runCatching { repository.importCsv(context, uri) }.getOrNull()
+            onComplete(result)
         }
     }
 
-
-
     fun promote(book: Book) {
-        val next = when (book.status) {
+        val next = when (book.status.uppercase()) {
+            BookStatus.TO_READ.name, "BACKLOG" -> BookStatus.SHORTLIST
             BookStatus.SHORTLIST.name -> BookStatus.UP_NEXT
-            BookStatus.UP_NEXT.name -> BookStatus.READING
+            BookStatus.UP_NEXT.name, BookStatus.PAUSED.name -> BookStatus.READING
             else -> return
         }
         viewModelScope.launch { repository.updateStatus(book.id, next) }
@@ -372,6 +359,20 @@ class BookTrackerViewModel(
         }
     }
 
+    /**
+     * Moves a book to any pipeline status. Finishing and abandoning carry their own
+     * payloads (rating, reason), so callers route those through [finishBook]/[markDnf].
+     */
+    fun changeStatus(book: Book, status: BookStatus) {
+        viewModelScope.launch {
+            when {
+                status == BookStatus.READING && (book.status == BookStatus.FINISHED.name || book.status == BookStatus.DNF.name) ->
+                    repository.restartReading(book.id)
+                else -> repository.updateStatus(book.id, status)
+            }
+        }
+    }
+
     fun toggleFavorite(book: Book) {
         viewModelScope.launch { repository.toggleFavorite(book.id) }
     }
@@ -380,8 +381,10 @@ class BookTrackerViewModel(
         viewModelScope.launch { repository.addProgress(book.id, delta) }
     }
 
-    fun recordLoan(book: Book, loan: com.example.booktracker.shared.models.LoanRecord) {
-        val updatedLoans = book.loanRecord + loan
+    fun recordLoan(book: Book, loan: LoanRecord) {
+        // One active loan at a time: saving over an open loan replaces it rather
+        // than stacking a second "active" record.
+        val updatedLoans = book.loanRecord.filterNot { it.isActive } + loan
         viewModelScope.launch {
             repository.updateBook(book.copy(loanRecord = updatedLoans, lastUpdated = System.currentTimeMillis()))
         }
@@ -394,6 +397,19 @@ class BookTrackerViewModel(
         }
         viewModelScope.launch {
             repository.updateBook(book.copy(loanRecord = updatedLoans, lastUpdated = System.currentTimeMillis()))
+        }
+    }
+
+    /** Saves edited book details. Progress is clamped to the (possibly new) page count. */
+    fun updateBookDetails(book: Book) {
+        val ceiling = if (book.totalPages > 0) book.totalPages else Int.MAX_VALUE
+        viewModelScope.launch {
+            repository.updateBook(
+                book.copy(
+                    currentPage = book.currentPage.coerceIn(0, ceiling),
+                    lastUpdated = System.currentTimeMillis()
+                )
+            )
         }
     }
 
@@ -422,20 +438,33 @@ class BookTrackerViewModel(
     }
 
     fun startSession(book: Book, startPage: Int? = null) {
-        viewModelScope.launch { 
-            repository.startSession(book.id, startPage) 
+        viewModelScope.launch {
+            repository.startSession(book.id, startPage)
         }
     }
 
-    fun endSession(book: Book, endPage: Int, environmentTag: String) {
+    /**
+     * Opens the focus timer on [book]. Switching from another book's timer starts a
+     * fresh clock — the old book's elapsed time must not carry over to this one.
+     */
+    fun startFocus(book: Book) {
+        val switching = ServiceLocator.timerBookId.value != book.id
+        if (switching) ServiceLocator.timerIsRunning.value = false
         viewModelScope.launch {
-            if (endPage != book.currentPage) {
-                repository.addProgress(book.id, endPage - book.currentPage)
+            // Starting this book's session closes any other open one; that runs while
+            // the timer still points at the old book so its measured time is kept.
+            repository.startSession(book.id, null)
+            if (switching) {
+                soundscapeEngine.stop()
+                ServiceLocator.activeReadingSeconds.value = 0
+                ServiceLocator.elapsedSeconds.value = 0
+                ServiceLocator.timerPhase.value = TimerPhase.WORK
+                val workMins = ServiceLocator.customWorkMinutes.value ?: workMinutes.value
+                ServiceLocator.timeLeftSeconds.value = workMins * 60
+                ServiceLocator.consumeTimerExpired()
             }
-            repository.endSession(book.id, environmentTag)
-            if (book.status != BookStatus.FINISHED.name) {
-                repository.updateStatus(book.id, BookStatus.READING)
-            }
+            setTimerBook(book.id, book.title)
+            TimerPersistence.save(appContext)
         }
     }
 
@@ -448,7 +477,7 @@ class BookTrackerViewModel(
         val endPage: Int
     )
 
-    private val _lastSessionResult = kotlinx.coroutines.flow.MutableStateFlow<SessionResult?>(null)
+    private val _lastSessionResult = MutableStateFlow<SessionResult?>(null)
     val lastSessionResult: StateFlow<SessionResult?> = _lastSessionResult
 
     /**
@@ -488,7 +517,7 @@ class BookTrackerViewModel(
                 startPage = saved?.startPage ?: book.currentPage,
                 endPage = saved?.endPage ?: endPage
             )
-            setTimerBook(null)
+            if (ServiceLocator.timerBookId.value == book.id) setTimerBook(null)
             onSaved()
         }
     }
@@ -503,19 +532,43 @@ class BookTrackerViewModel(
             repository.observeOpenSession().firstOrNull()?.takeIf { it.bookId == bookId }?.let {
                 repository.deleteSession(it.id)
             }
-            ServiceLocator.activeReadingSeconds.value = 0
-            setTimerBook(null)
+            if (ServiceLocator.timerBookId.value == bookId || ServiceLocator.timerBookId.value == null) {
+                ServiceLocator.activeReadingSeconds.value = 0
+                setTimerBook(null)
+            }
         }
     }
 
-    fun logManualSession(bookId: String, startPage: Int, endPage: Int, durationMinutes: Int) {
+    /**
+     * Leaving the timer without ever pressing Start: drop the empty session, the
+     * idle mini player, and the Reading status the open session gave the book.
+     */
+    fun leaveUnstartedFocus(book: Book, previousStatus: String) {
         viewModelScope.launch {
-            repository.addManualSession(bookId, startPage, endPage, durationMinutes * 60_000L)
+            repository.observeOpenSession().firstOrNull()?.takeIf { it.bookId == book.id }?.let {
+                repository.deleteSession(it.id)
+            }
+            if (ServiceLocator.timerBookId.value == book.id) {
+                ServiceLocator.activeReadingSeconds.value = 0
+                setTimerBook(null)
+            }
+            val restore = if (previousStatus == "BACKLOG") BookStatus.TO_READ
+            else BookStatus.entries.find { it.name == previousStatus }
+            if (restore != null && restore != BookStatus.READING) repository.updateStatus(book.id, restore)
+        }
+    }
+
+    fun logManualSession(bookId: String, startPage: Int, endPage: Int, durationMinutes: Int, endTime: Long = System.currentTimeMillis()) {
+        viewModelScope.launch {
+            repository.addManualSession(bookId, startPage, endPage, durationMinutes * 60_000L, endTime)
         }
     }
 
     fun delete(book: Book) {
-        viewModelScope.launch { repository.deleteBook(book.id) }
+        viewModelScope.launch {
+            repository.deleteBook(book.id)?.let { recentlyDeleted[book.id] = it }
+            if (ServiceLocator.timerBookId.value == book.id) setTimerBook(null)
+        }
     }
 
     fun deleteSession(session: Session) {
@@ -526,12 +579,16 @@ class BookTrackerViewModel(
         viewModelScope.launch { repository.updateSession(session) }
     }
 
+    /** Undo for [delete]: brings back the book with its sessions and notes. */
     fun restore(book: Book) {
-        viewModelScope.launch { repository.restore(book) }
+        viewModelScope.launch {
+            val deleted = recentlyDeleted.remove(book.id) ?: DeletedBook(book, emptyList(), emptyList())
+            repository.restoreDeleted(deleted)
+        }
     }
 
     fun setUserName(name: String) {
-        viewModelScope.launch { settings.setUserName(name) }
+        viewModelScope.launch { settings.setUserName(name.trim().ifBlank { "Reader" }) }
     }
 
     fun setDailyGoal(pages: Int) {
@@ -554,7 +611,7 @@ class BookTrackerViewModel(
         viewModelScope.launch { settings.setDndDuringSession(enabled) }
     }
 
-    fun setThemeMode(mode: com.example.booktracker.app.data.ThemeMode) {
+    fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { settings.setThemeMode(mode.ordinal) }
     }
 
@@ -562,11 +619,13 @@ class BookTrackerViewModel(
         viewModelScope.launch { settings.setUseDynamicColor(enabled) }
     }
 
-    fun setAppPalette(palette: com.example.booktracker.app.data.AppPalette) {
+    fun setAppPalette(palette: AppPalette) {
         viewModelScope.launch { settings.setAppPalette(palette) }
     }
 
-
+    fun setReminder(enabled: Boolean, hour: Int, minute: Int) {
+        viewModelScope.launch { settings.setReminder(enabled, hour, minute) }
+    }
 
     fun planBook(bookId: String, timestamp: Long?) {
         viewModelScope.launch {
@@ -579,10 +638,11 @@ class BookTrackerViewModel(
 
     // Timer Controls
     fun setTimerBook(bookId: String?, bookTitle: String? = null) {
-        com.example.booktracker.app.data.ServiceLocator.timerBookId.value = bookId
-        com.example.booktracker.app.data.ServiceLocator.timerBookTitle.value = bookTitle
+        ServiceLocator.timerBookId.value = bookId
+        ServiceLocator.timerBookTitle.value = bookTitle
         if (bookId == null) {
-            com.example.booktracker.app.data.ServiceLocator.timerIsRunning.value = false
+            ServiceLocator.timerIsRunning.value = false
+            ServiceLocator.consumeTimerExpired()
             soundscapeEngine.stop()
             viewModelScope.launch {
                 settings.clearTimerState()
@@ -591,95 +651,93 @@ class BookTrackerViewModel(
     }
 
     fun setTimerPhase(phase: TimerPhase) {
-        com.example.booktracker.app.data.ServiceLocator.timerPhase.value = phase
-        if (com.example.booktracker.app.data.ServiceLocator.timerMode.value == TimerMode.COUNTDOWN) {
-            val workMins = com.example.booktracker.app.data.ServiceLocator.customWorkMinutes.value ?: workMinutes.value
-            com.example.booktracker.app.data.ServiceLocator.timeLeftSeconds.value = if (phase == TimerPhase.WORK) workMins * 60 else breakMinutes.value * 60
+        ServiceLocator.timerPhase.value = phase
+        if (ServiceLocator.timerMode.value == TimerMode.COUNTDOWN) {
+            val workMins = ServiceLocator.customWorkMinutes.value ?: workMinutes.value
+            ServiceLocator.timeLeftSeconds.value = if (phase == TimerPhase.WORK) workMins * 60 else breakMinutes.value * 60
         }
     }
 
     fun setTimerMode(mode: TimerMode) {
-        com.example.booktracker.app.data.ServiceLocator.timerMode.value = mode
+        if (ServiceLocator.timerMode.value == mode) return
+        ServiceLocator.timerMode.value = mode
         if (mode == TimerMode.STOPWATCH) {
-            com.example.booktracker.app.data.ServiceLocator.elapsedSeconds.value = 0
+            ServiceLocator.elapsedSeconds.value = 0
         } else {
-            val workMins = com.example.booktracker.app.data.ServiceLocator.customWorkMinutes.value ?: workMinutes.value
-            com.example.booktracker.app.data.ServiceLocator.timeLeftSeconds.value = workMins * 60
+            val workMins = ServiceLocator.customWorkMinutes.value ?: workMinutes.value
+            ServiceLocator.timeLeftSeconds.value = workMins * 60
         }
+        persistTimer()
     }
 
     fun setCustomWorkMinutes(mins: Int?) {
-        com.example.booktracker.app.data.ServiceLocator.customWorkMinutes.value = mins
-        if (com.example.booktracker.app.data.ServiceLocator.timerMode.value == TimerMode.COUNTDOWN && 
-            com.example.booktracker.app.data.ServiceLocator.timerPhase.value == TimerPhase.WORK && 
-            !com.example.booktracker.app.data.ServiceLocator.timerIsRunning.value) {
-            com.example.booktracker.app.data.ServiceLocator.timeLeftSeconds.value = (mins ?: workMinutes.value) * 60
+        ServiceLocator.customWorkMinutes.value = mins
+        if (ServiceLocator.timerMode.value == TimerMode.COUNTDOWN &&
+            ServiceLocator.timerPhase.value == TimerPhase.WORK &&
+            !ServiceLocator.timerIsRunning.value) {
+            ServiceLocator.timeLeftSeconds.value = (mins ?: workMinutes.value) * 60
         }
     }
 
+    /** Length of the current countdown phase in seconds, for progress rings. */
+    fun countdownTotalSeconds(): Int {
+        val minutes = if (ServiceLocator.timerPhase.value == TimerPhase.BREAK) {
+            breakMinutes.value
+        } else {
+            ServiceLocator.customWorkMinutes.value ?: workMinutes.value
+        }
+        return (minutes * 60).coerceAtLeast(1)
+    }
+
     fun setTimerRunning(isRunning: Boolean) {
-        com.example.booktracker.app.data.ServiceLocator.timerIsRunning.value = isRunning
+        // A finished countdown can't resume from 00:00; the reader saves it instead.
+        if (isRunning && ServiceLocator.timerMode.value == TimerMode.COUNTDOWN && ServiceLocator.timeLeftSeconds.value <= 0) {
+            return
+        }
+        ServiceLocator.timerIsRunning.value = isRunning
         if (isRunning) {
-            viewModelScope.launch {
-                settings.saveTimerState(
-                    mode = com.example.booktracker.app.data.ServiceLocator.timerMode.value.name,
-                    bookId = com.example.booktracker.app.data.ServiceLocator.timerBookId.value,
-                    phase = com.example.booktracker.app.data.ServiceLocator.timerPhase.value.name,
-                    isRunning = true,
-                    timeLeft = com.example.booktracker.app.data.ServiceLocator.timeLeftSeconds.value,
-                    elapsed = com.example.booktracker.app.data.ServiceLocator.elapsedSeconds.value,
-                    activeReading = com.example.booktracker.app.data.ServiceLocator.activeReadingSeconds.value,
-                    lastTickTime = System.currentTimeMillis()
-                )
-            }
             if (_noiseType.value != NoiseType.NONE) soundscapeEngine.play(_noiseType.value)
         } else {
             soundscapeEngine.stop()
-            viewModelScope.launch {
-                settings.saveTimerState(
-                    mode = com.example.booktracker.app.data.ServiceLocator.timerMode.value.name,
-                    bookId = com.example.booktracker.app.data.ServiceLocator.timerBookId.value,
-                    phase = com.example.booktracker.app.data.ServiceLocator.timerPhase.value.name,
-                    isRunning = false,
-                    timeLeft = com.example.booktracker.app.data.ServiceLocator.timeLeftSeconds.value,
-                    elapsed = com.example.booktracker.app.data.ServiceLocator.elapsedSeconds.value,
-                    activeReading = com.example.booktracker.app.data.ServiceLocator.activeReadingSeconds.value,
-                    lastTickTime = null
-                )
-            }
         }
+        persistTimer()
+    }
+
+    private fun persistTimer() {
+        viewModelScope.launch { TimerPersistence.save(appContext) }
     }
 
     fun setWorkMinutes(mins: Int) {
         viewModelScope.launch { settings.setWorkMinutes(mins) }
-        if (com.example.booktracker.app.data.ServiceLocator.timerPhase.value == TimerPhase.WORK && !com.example.booktracker.app.data.ServiceLocator.timerIsRunning.value) {
-            com.example.booktracker.app.data.ServiceLocator.timeLeftSeconds.value = mins * 60
+        ServiceLocator.customWorkMinutes.value = null
+        if (ServiceLocator.timerPhase.value == TimerPhase.WORK && !ServiceLocator.timerIsRunning.value) {
+            ServiceLocator.timeLeftSeconds.value = mins * 60
         }
     }
-    
+
     fun setBreakMinutes(mins: Int) {
         viewModelScope.launch { settings.setBreakMinutes(mins) }
-        if (com.example.booktracker.app.data.ServiceLocator.timerPhase.value == TimerPhase.BREAK && !com.example.booktracker.app.data.ServiceLocator.timerIsRunning.value) {
-            com.example.booktracker.app.data.ServiceLocator.timeLeftSeconds.value = mins * 60
+        if (ServiceLocator.timerPhase.value == TimerPhase.BREAK && !ServiceLocator.timerIsRunning.value) {
+            ServiceLocator.timeLeftSeconds.value = mins * 60
         }
     }
 
     fun setDayStartsAtHour(hour: Int) {
         viewModelScope.launch { settings.setDayStartsAtHour(hour) }
     }
-    
+
     fun setUseAppLock(enabled: Boolean) {
         viewModelScope.launch { settings.setUseAppLock(enabled) }
     }
 
     fun setNoiseType(type: NoiseType) {
         _noiseType.value = type
-        if (com.example.booktracker.app.data.ServiceLocator.timerIsRunning.value) {
+        if (ServiceLocator.timerIsRunning.value) {
             if (type == NoiseType.NONE) soundscapeEngine.stop()
             else soundscapeEngine.play(type)
         }
     }
-    
+
     fun setTimerVolume(vol: Float) {
         _timerVolume.value = vol
         soundscapeEngine.setVolume(vol)
@@ -694,10 +752,13 @@ class BookTrackerViewModel(
         bookId: String,
         page: Int,
         text: String,
-        type: com.example.booktracker.shared.models.NoteType =
-            com.example.booktracker.shared.models.NoteType.BOOK_CONTENT
+        type: NoteType = NoteType.BOOK_CONTENT
     ) {
         viewModelScope.launch { repository.addNote(bookId, page, text, type) }
+    }
+
+    fun updateNote(noteId: String, page: Int, text: String, type: NoteType) {
+        viewModelScope.launch { repository.updateNote(noteId, page, text, type) }
     }
 
     fun toggleNoteFavorite(noteId: String) {
@@ -718,8 +779,13 @@ class BookTrackerViewModel(
                     context = context,
                     uri = uri,
                     snapshot = repository.snapshotForBackup(),
-                    dailyGoal = settings.dailyGoal.first(),
-                    yearlyGoal = settings.yearlyGoal.first()
+                    settings = BackupEngine.BackupSettings(
+                        dailyGoal = settings.dailyGoal.first(),
+                        yearlyGoal = settings.yearlyGoal.first(),
+                        monthlyGoalPages = settings.monthlyGoalPages.first(),
+                        monthlyGoalBooks = settings.monthlyGoalBooks.first(),
+                        dayStartsAtHour = settings.dayStartsAtHour.first()
+                    )
                 )
                 onDone(true)
             } catch (e: Exception) {
@@ -734,8 +800,11 @@ class BookTrackerViewModel(
             try {
                 val parsed = BackupEngine.importFromUri(context, uri)
                 repository.restoreFromBackup(parsed.snapshot)
-                parsed.dailyGoal?.let { settings.setDailyGoal(it) }
-                parsed.yearlyGoal?.let { settings.setYearlyGoal(it) }
+                parsed.settings.dailyGoal?.let { settings.setDailyGoal(it) }
+                parsed.settings.yearlyGoal?.let { settings.setYearlyGoal(it) }
+                parsed.settings.monthlyGoalPages?.let { settings.setMonthlyGoalPages(it) }
+                parsed.settings.monthlyGoalBooks?.let { settings.setMonthlyGoalBooks(it) }
+                parsed.settings.dayStartsAtHour?.let { settings.setDayStartsAtHour(it) }
                 onDone(parsed.snapshot.books.size)
             } catch (e: Exception) {
                 onDone(-1)
@@ -743,7 +812,14 @@ class BookTrackerViewModel(
         }
     }
 
+    override fun onCleared() {
+        soundscapeEngine.stop()
+        super.onCleared()
+    }
+
     companion object {
+        private const val STALE_TIMER_MS = 12 * 60 * 60 * 1000L
+
         fun factory(context: Context): ViewModelProvider.Factory {
             val appContext = context.applicationContext
             return viewModelFactory {

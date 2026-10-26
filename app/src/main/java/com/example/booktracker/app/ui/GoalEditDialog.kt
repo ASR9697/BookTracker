@@ -25,7 +25,7 @@ enum class GoalType(val label: String) {
     DAILY_PAGES("Daily Pages")
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun GoalEditDialog(
     initialType: GoalType = GoalType.YEARLY_BOOKS,
@@ -177,7 +177,7 @@ fun GoalEditDialog(
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.height(8.dp))
-                Row(
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {

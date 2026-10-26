@@ -72,7 +72,7 @@ fun LibrarySearchScreen(
             results = LibrarySearchResults()
         } else {
             delay(300)
-            results = onSearch(query)
+            results = runCatching { onSearch(query) }.getOrDefault(LibrarySearchResults())
         }
     }
 

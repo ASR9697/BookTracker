@@ -101,9 +101,9 @@ fun ReadingCalendarView(
     // Map of dates when a book was finished
     val finishedDates = remember(books, sessions) {
         val dates = mutableSetOf<LocalDate>()
-        books.filter { it.status == BookStatus.FINISHED.name && it.lastUpdated > 0 }
+        books.filter { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) && it.completedAt > 0 }
             .forEach { book ->
-                val date = Instant.ofEpochMilli(book.lastUpdated).atZone(zone).toLocalDate()
+                val date = Instant.ofEpochMilli(book.completedAt).atZone(zone).toLocalDate()
                 dates.add(date)
             }
         sessions.filter { it.endTime > 0 }.forEach { session ->
@@ -539,7 +539,7 @@ fun ReadingCalendarView(
                     .fillMaxWidth()
                     .weight(1f),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(bottom = 24.dp)
+                contentPadding = PaddingValues(bottom = 88.dp)
             ) {
                 items(selectedDaySessions, key = { it.id }) { session ->
                     val book = booksById[session.bookId]

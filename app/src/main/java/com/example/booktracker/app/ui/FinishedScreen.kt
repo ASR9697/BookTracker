@@ -42,11 +42,11 @@ fun FinishedScreen(
 ) {
     var bookForVictoryCard by remember { mutableStateOf<Book?>(null) }
     val finished = books
-        .filter { it.status == BookStatus.FINISHED.name }
-        .sortedByDescending { it.lastUpdated }
+        .filter { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) }
+        .sortedByDescending { it.completedAt }
     val dnf = books
-        .filter { it.status == BookStatus.DNF.name }
-        .sortedByDescending { it.lastUpdated }
+        .filter { it.status.equals(BookStatus.DNF.name, ignoreCase = true) || it.status.equals(BookStatus.ABANDONED.name, ignoreCase = true) }
+        .sortedByDescending { it.completedAt }
 
     Scaffold(
         topBar = {

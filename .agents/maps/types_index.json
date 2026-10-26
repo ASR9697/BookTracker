@@ -77,7 +77,7 @@
   "BookTrackerApplication": {
     "type": "class",
     "file": "app/src/main/java/com/example/booktracker/app/BookTrackerApplication.kt",
-    "line": 16
+    "line": 22
   },
   "BarcodeAnalyzer": {
     "type": "class",
@@ -92,7 +92,12 @@
   "Parsed": {
     "type": "data class",
     "file": "app/src/main/java/com/example/booktracker/app/data/BackupEngine.kt",
-    "line": 30
+    "line": 45
+  },
+  "BackupSettings": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/BackupEngine.kt",
+    "line": 51
   },
   "BookRepository": {
     "type": "interface",
@@ -102,17 +107,27 @@
   "LibrarySearchResults": {
     "type": "data class",
     "file": "app/src/main/java/com/example/booktracker/app/data/BookRepository.kt",
-    "line": 98
+    "line": 113
   },
   "LibrarySnapshot": {
     "type": "data class",
     "file": "app/src/main/java/com/example/booktracker/app/data/BookRepository.kt",
-    "line": 105
+    "line": 120
+  },
+  "DeletedBook": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/BookRepository.kt",
+    "line": 127
   },
   "RoomBookRepository": {
     "type": "class",
     "file": "app/src/main/java/com/example/booktracker/app/data/BookRepository.kt",
-    "line": 111
+    "line": 133
+  },
+  "CsvImportResult": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/CsvImportEngine.kt",
+    "line": 24
   },
   "DndManager": {
     "type": "class",
@@ -137,7 +152,7 @@
   "MarginNoteDao": {
     "type": "interface",
     "file": "app/src/main/java/com/example/booktracker/app/data/local/Daos.kt",
-    "line": 77
+    "line": 80
   },
   "BookEntity": {
     "type": "data class",
@@ -147,22 +162,22 @@
   "SessionEntity": {
     "type": "data class",
     "file": "app/src/main/java/com/example/booktracker/app/data/local/Entities.kt",
-    "line": 52
+    "line": 53
   },
   "MarginNoteEntity": {
     "type": "data class",
     "file": "app/src/main/java/com/example/booktracker/app/data/local/Entities.kt",
-    "line": 76
+    "line": 77
   },
   "BookFtsEntity": {
     "type": "data class",
     "file": "app/src/main/java/com/example/booktracker/app/data/local/Entities.kt",
-    "line": 89
+    "line": 90
   },
   "NoteFtsEntity": {
     "type": "data class",
     "file": "app/src/main/java/com/example/booktracker/app/data/local/Entities.kt",
-    "line": 98
+    "line": 99
   },
   "BookMetadata": {
     "type": "data class",
@@ -172,12 +187,12 @@
   "BookSearchException": {
     "type": "class",
     "file": "app/src/main/java/com/example/booktracker/app/data/remote/GoogleBooksClient.kt",
-    "line": 29
+    "line": 30
   },
   "Kind": {
     "type": "enum class",
     "file": "app/src/main/java/com/example/booktracker/app/data/remote/GoogleBooksClient.kt",
-    "line": 34
+    "line": 35
   },
   "ThemeMode": {
     "type": "enum class",
@@ -187,12 +202,17 @@
   "AppPalette": {
     "type": "enum class",
     "file": "app/src/main/java/com/example/booktracker/app/data/SettingsRepository.kt",
-    "line": 22
+    "line": 23
+  },
+  "ReminderSettings": {
+    "type": "data class",
+    "file": "app/src/main/java/com/example/booktracker/app/data/SettingsRepository.kt",
+    "line": 31
   },
   "SettingsRepository": {
     "type": "class",
     "file": "app/src/main/java/com/example/booktracker/app/data/SettingsRepository.kt",
-    "line": 31
+    "line": 34
   },
   "ReadAloudController": {
     "type": "class",
@@ -227,12 +247,12 @@
   "MainActivity": {
     "type": "class",
     "file": "app/src/main/java/com/example/booktracker/app/MainActivity.kt",
-    "line": 33
+    "line": 45
   },
   "TimerService": {
     "type": "class",
     "file": "app/src/main/java/com/example/booktracker/app/service/TimerService.kt",
-    "line": 25
+    "line": 28
   },
   "WearBridge": {
     "type": "class",
@@ -252,32 +272,32 @@
   "BookDetailTab": {
     "type": "enum class",
     "file": "app/src/main/java/com/example/booktracker/app/ui/BookDetailScreen.kt",
-    "line": 158
+    "line": 163
   },
   "NoteSort": {
     "type": "enum class",
     "file": "app/src/main/java/com/example/booktracker/app/ui/BookDetailScreen.kt",
-    "line": 1640
-  },
-  "HomeTabMode": {
-    "type": "enum class",
-    "file": "app/src/main/java/com/example/booktracker/app/ui/BookTrackerScreen.kt",
-    "line": 154
+    "line": 1840
   },
   "LibraryViewMode": {
     "type": "enum class",
     "file": "app/src/main/java/com/example/booktracker/app/ui/BookTrackerScreen.kt",
-    "line": 155
+    "line": 159
+  },
+  "LibrarySort": {
+    "type": "enum class",
+    "file": "app/src/main/java/com/example/booktracker/app/ui/BookTrackerScreen.kt",
+    "line": 161
   },
   "BookTrackerViewModel": {
     "type": "class",
     "file": "app/src/main/java/com/example/booktracker/app/ui/BookTrackerViewModel.kt",
-    "line": 44
+    "line": 54
   },
   "SessionResult": {
     "type": "data class",
     "file": "app/src/main/java/com/example/booktracker/app/ui/BookTrackerViewModel.kt",
-    "line": 443
+    "line": 472
   },
   "VictoryCardTheme": {
     "type": "enum class",
@@ -287,17 +307,17 @@
   "CoverAccent": {
     "type": "data class",
     "file": "app/src/main/java/com/example/booktracker/app/ui/CoverPalette.kt",
-    "line": 20
+    "line": 22
   },
   "TimerPhase": {
     "type": "enum class",
     "file": "app/src/main/java/com/example/booktracker/app/ui/FocusTimerScreen.kt",
-    "line": 55
+    "line": 46
   },
   "TimerMode": {
     "type": "enum class",
     "file": "app/src/main/java/com/example/booktracker/app/ui/FocusTimerScreen.kt",
-    "line": 56
+    "line": 47
   },
   "GoalType": {
     "type": "enum class",
@@ -377,17 +397,17 @@
   "AddProgressAction": {
     "type": "class",
     "file": "app/src/main/java/com/example/booktracker/app/widget/ReadingWidget.kt",
-    "line": 143
+    "line": 159
   },
   "ReadingWidgetReceiver": {
     "type": "class",
     "file": "app/src/main/java/com/example/booktracker/app/widget/ReadingWidget.kt",
-    "line": 168
+    "line": 184
   },
   "ReminderWorker": {
     "type": "class",
     "file": "app/src/main/java/com/example/booktracker/app/worker/ReminderWorker.kt",
-    "line": 19
+    "line": 24
   },
   "EpubManifestItem": {
     "type": "data class",
@@ -423,6 +443,16 @@
     "type": "class",
     "file": "app/src/test/java/com/example/booktracker/app/analytics/StreakEngineTest.kt",
     "line": 10
+  },
+  "BookModelTest": {
+    "type": "class",
+    "file": "app/src/test/java/com/example/booktracker/app/data/BookModelTest.kt",
+    "line": 9
+  },
+  "CsvImportEngineTest": {
+    "type": "class",
+    "file": "app/src/test/java/com/example/booktracker/app/data/CsvImportEngineTest.kt",
+    "line": 7
   },
   "CreatorRole": {
     "type": "enum class",
@@ -482,22 +512,22 @@
   "Session": {
     "type": "data class",
     "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
-    "line": 110
+    "line": 127
   },
   "NoteType": {
     "type": "enum class",
     "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
-    "line": 123
+    "line": 140
   },
   "MarginNote": {
     "type": "data class",
     "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
-    "line": 127
+    "line": 144
   },
   "DnfData": {
     "type": "data class",
     "file": "shared/src/main/java/com/example/booktracker/shared/models/Models.kt",
-    "line": 146
+    "line": 165
   },
   "DataLayerListenerService": {
     "type": "class",

@@ -31,6 +31,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -157,7 +158,18 @@ fun OcrCaptureScreen(
                         textAlign = TextAlign.Center
                     )
                     Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                        Text("Grant permission")
+                        Text("Allow camera")
+                    }
+                    // If the prompt no longer appears (denied twice), settings is the way back in.
+                    TextButton(onClick = {
+                        context.safeStartActivity(
+                            android.content.Intent(
+                                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                android.net.Uri.fromParts("package", context.packageName, null)
+                            )
+                        )
+                    }) {
+                        Text("Open app settings", color = Color.White)
                     }
                 }
             }

@@ -193,7 +193,7 @@ object BookVictoryShareHelper {
         val totalPagesRead = if (book.totalPages > 0) book.totalPages else bookSessions.sumOf { it.pagesRead }
         val sessionCount = bookSessions.size.coerceAtLeast(1)
 
-        val finishTimestamp = if (book.lastUpdated > 0L) book.lastUpdated else System.currentTimeMillis()
+        val finishTimestamp = if (book.completedAt > 0L) book.completedAt else System.currentTimeMillis()
         val finishedDateStr = "Finished on ${Instant.ofEpochMilli(finishTimestamp).atZone(ZoneId.systemDefault()).toLocalDate().format(dateFormatter)}"
 
         // 5. Draw Victory Badge & Header
@@ -253,7 +253,7 @@ object BookVictoryShareHelper {
             textAlign = Paint.Align.CENTER
         }
         val watermarkY = if (format == QuoteCardFormat.STORY) height - 75f else height - 32f
-        canvas.drawText("BookTracker • Nocturnal Reading Journal", width / 2f, watermarkY, watermarkPaint)
+        canvas.drawText("Nocturnal Reader", width / 2f, watermarkY, watermarkPaint)
 
         // 8. Save PNG to cache and fire share intent
         val cachePath = File(context.cacheDir, "images")
@@ -270,7 +270,7 @@ object BookVictoryShareHelper {
             type = "image/png"
             putExtra(Intent.EXTRA_STREAM, contentUri)
             putExtra(Intent.EXTRA_SUBJECT, "I just finished “${book.title}”!")
-            putExtra(Intent.EXTRA_TEXT, "I just finished reading “${book.title}” with BookTracker!")
+            putExtra(Intent.EXTRA_TEXT, "I just finished reading “${book.title}” with Nocturnal Reader!")
         }
 
         withContext(Dispatchers.Main) {
@@ -339,7 +339,7 @@ object BookVictoryShareHelper {
         }
 
         // Stars & Rating
-        val avgRating = if (book.rating.isNotEmpty()) book.rating.values.average().toFloat() else 0f
+        val avgRating = book.overallRating ?: 0f
         if (avgRating > 0f) {
             val starsPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = theme.goldColor
@@ -444,7 +444,7 @@ object BookVictoryShareHelper {
         }
 
         // Stars & Rating
-        val avgRating = if (book.rating.isNotEmpty()) book.rating.values.average().toFloat() else 0f
+        val avgRating = book.overallRating ?: 0f
         if (avgRating > 0f) {
             val starsPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = theme.goldColor

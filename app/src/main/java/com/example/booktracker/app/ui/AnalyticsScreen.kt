@@ -85,13 +85,13 @@ fun AnalyticsScreen(
     val maxIn7Days = last7Days.maxOfOrNull { it.second }?.coerceAtLeast(1L) ?: 1L
 
     val finishedBooks = books
-        .filter { it.status == BookStatus.FINISHED.name }
-        .sortedByDescending { it.lastUpdated }
+        .filter { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) }
+        .sortedByDescending { it.completedAt }
 
     val thisYear = remember(today) { today.year }
     val finishedThisYear = remember(finishedBooks, thisYear) {
         finishedBooks.count {
-            Instant.ofEpochMilli(it.lastUpdated).atZone(zone).toLocalDate().year == thisYear
+            Instant.ofEpochMilli(it.completedAt).atZone(zone).toLocalDate().year == thisYear
         }
     }
     val yearlyPace = remember(yearlyGoal, finishedThisYear, today) {
@@ -814,7 +814,7 @@ fun AnalyticsScreen(
                             Spacer(Modifier.width(8.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    "%.1f".format(book.rating.values.average()),
+                                    "%.1f".format(book.overallRating ?: 0f),
                                     style = MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.secondary
                                 )
@@ -1025,7 +1025,7 @@ fun PieChart(
         MaterialTheme.colorScheme.tertiaryContainer,
     )
     
-    val total = data.sumOf { it.second }.toFloat()
+    val total = data.sumOf { it.second }.toFloat().coerceAtLeast(1f) // never NaN slices
     val proportions = data.map { it.second.toFloat() / total }
     val onSurface = MaterialTheme.colorScheme.onSurface
     

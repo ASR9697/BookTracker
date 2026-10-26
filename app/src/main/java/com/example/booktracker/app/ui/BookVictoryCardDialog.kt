@@ -109,7 +109,7 @@ fun BookVictoryCardDialog(
     }
 
     val dateFormatter = remember { DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.getDefault()) }
-    val finishTimestamp = if (book.lastUpdated > 0L) book.lastUpdated else System.currentTimeMillis()
+    val finishTimestamp = if (book.completedAt > 0L) book.completedAt else System.currentTimeMillis()
     val finishedDateStr = remember(finishTimestamp) {
         "Finished on ${Instant.ofEpochMilli(finishTimestamp).atZone(ZoneId.systemDefault()).toLocalDate().format(dateFormatter)}"
     }
@@ -522,7 +522,7 @@ private fun VictoryCardFrontContent(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    val avgRating = if (book.rating.isNotEmpty()) book.rating.values.average().toFloat() else 0f
+                    val avgRating = book.overallRating ?: 0f
                     if (avgRating > 0f) {
                         Spacer(Modifier.height(4.dp))
                         val stars = (avgRating).roundToInt().coerceIn(1, 5)
@@ -564,7 +564,7 @@ private fun VictoryCardFrontContent(
                         maxLines = 1
                     )
                 }
-                val avgRating = if (book.rating.isNotEmpty()) book.rating.values.average().toFloat() else 0f
+                val avgRating = book.overallRating ?: 0f
                 if (avgRating > 0f) {
                     Spacer(Modifier.height(4.dp))
                     val stars = (avgRating).roundToInt().coerceIn(1, 5)
@@ -617,7 +617,7 @@ private fun VictoryCardFrontContent(
 
         // Card Footer Watermark
         Text(
-            "BookTracker • Tap to flip card",
+            "Nocturnal Reader • Tap to flip card",
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
             color = textColor.copy(alpha = 0.50f)
         )
@@ -801,7 +801,7 @@ private fun VictoryCardBackContent(
                         color = goldColor
                     )
                     Text(
-                        "Verified by Nocturnal Journal",
+                        "Logged with Nocturnal Reader",
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
                         color = textColor.copy(alpha = 0.7f)
                     )

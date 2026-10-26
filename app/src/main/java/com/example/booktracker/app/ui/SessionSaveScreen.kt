@@ -77,8 +77,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val saveDateFormat = DateTimeFormatter.ofPattern("M/d/yyyy")
-private val saveTimeFormat = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
+private val saveDateFormat = DateTimeFormatter.ofPattern("MMM d, yyyy")
 
 /**
  * The one review step every finished session passes through, whether it came from
@@ -93,12 +92,20 @@ fun SessionSaveScreen(
     initialStartTime: Long,
     initialDurationSeconds: Int,
     initialPage: Int,
+    /** Where this session began; the focus timer moves the bookmark live, so book.currentPage isn't it. */
+    sessionStartPage: Int,
     onDiscard: () -> Unit,
     onBack: () -> Unit,
     onSave: (endPage: Int, tag: String, startTime: Long, endTime: Long, status: BookStatus?) -> Unit
 ) {
     val zone = remember { ZoneId.systemDefault() }
     val haptic = LocalHapticFeedback.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val is24Hour = remember { android.text.format.DateFormat.is24HourFormat(context) }
+    val saveTimeFormat = remember(is24Hour) {
+        DateTimeFormatter.ofPattern(if (is24Hour) "HH:mm" else "h:mm a", Locale.getDefault())
+    }
+    var showStatusPicker by remember { mutableStateOf(false) }
 
     var endPage by remember { mutableIntStateOf(initialPage.coerceAtMost(if (book.totalPages > 0) book.totalPages else initialPage)) }
     var durationSeconds by remember { mutableIntStateOf(initialDurationSeconds) }
@@ -247,49 +254,15 @@ fun SessionSaveScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            Box(modifier = Modifier.fillMaxWidth()) {
-                SaveRow(
-                    icon = { Icon(Icons.Filled.Bookmark, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp)) },
-                    label = "Reading progress",
-                    value = "$unit $endPage",
-                    trailing = if (book.totalPages > 0) " / ${book.totalPages}" else null,
-                    onClick = { showPagePicker = true }
-                )
+            SaveRow(
+                icon = { Icon(Icons.Filled.Bookmark, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp)) },
+                label = "Reading progress",
+                value = "$unit $endPage",
+                trailing = if (book.totalPages > 0) " / ${book.totalPages}" else null,
+                onClick = { showPagePicker = true }
+            )
 
-                // Outcome shortcuts, anchored to the progress row and revealed
-                // while it is being edited — the same coupling as the reference.
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = showPagePicker,
-                    enter = androidx.compose.animation.fadeIn() +
-                        androidx.compose.animation.expandVertically(expandFrom = Alignment.Top),
-                    exit = androidx.compose.animation.fadeOut() +
-                        androidx.compose.animation.shrinkVertically(shrinkTowards = Alignment.Top),
-                    modifier = Modifier.align(Alignment.TopEnd)
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.offset(y = (-56).dp)
-                    ) {
-                        OutcomeButton("Give up", Icons.Filled.Flag, status == BookStatus.DNF) {
-                            status = if (status == BookStatus.DNF) null else BookStatus.DNF
-                        }
-                        OutcomeButton("Pause", Icons.Filled.Pause, status == BookStatus.PAUSED) {
-                            status = if (status == BookStatus.PAUSED) null else BookStatus.PAUSED
-                        }
-                        OutcomeButton("I've read it all!", Icons.Filled.MenuBook, status == BookStatus.FINISHED) {
-                            if (status == BookStatus.FINISHED) {
-                                status = null
-                            } else {
-                                status = BookStatus.FINISHED
-                                if (book.totalPages > 0) endPage = book.totalPages
-                            }
-                        }
-                    }
-                }
-            }
-
-            val deltaPages = (endPage - book.currentPage).coerceAtLeast(0)
+            val deltaPages = (endPage - sessionStartPage).coerceAtLeast(0)
             val sessionPpm = remember(deltaPages, durationSeconds) {
                 AnalyticsEngine.sessionSpeedPpm(deltaPages, durationSeconds)
             }
@@ -344,7 +317,7 @@ fun SessionSaveScreen(
                 icon = { Icon(Icons.Filled.MenuBook, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp)) },
                 label = "Status",
                 value = effectiveStatus.label,
-                onClick = null
+                onClick = { showStatusPicker = true }
             )
 
             Spacer(Modifier.height(12.dp))
@@ -399,7 +372,7 @@ fun SessionSaveScreen(
         val state = rememberTimePickerState(
             initialHour = endDateTime.hour,
             initialMinute = endDateTime.minute,
-            is24Hour = false
+            is24Hour = is24Hour
         )
         AlertDialog(
             onDismissRequest = { showTimePicker = false },
@@ -455,6 +428,37 @@ fun SessionSaveScreen(
             onConfirm = {
                 tag = it
                 showTagPicker = false
+            }
+        )
+    }
+
+    if (showStatusPicker) {
+        AlertDialog(
+            onDismissRequest = { showStatusPicker = false },
+            title = { Text("After this session") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutcomeButton("Keep reading", Icons.Filled.Bookmark, effectiveStatus == BookStatus.READING) {
+                        status = BookStatus.READING
+                        showStatusPicker = false
+                    }
+                    OutcomeButton("Pause this book", Icons.Filled.Pause, effectiveStatus == BookStatus.PAUSED) {
+                        status = BookStatus.PAUSED
+                        showStatusPicker = false
+                    }
+                    OutcomeButton("I've finished it", Icons.Filled.Check, effectiveStatus == BookStatus.FINISHED) {
+                        status = BookStatus.FINISHED
+                        if (book.totalPages > 0) endPage = book.totalPages
+                        showStatusPicker = false
+                    }
+                    OutcomeButton("Give up on it", Icons.Filled.Flag, effectiveStatus == BookStatus.DNF) {
+                        status = BookStatus.DNF
+                        showStatusPicker = false
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showStatusPicker = false }) { Text("Close") }
             }
         )
     }
@@ -550,16 +554,16 @@ private fun OutcomeButton(
         else MaterialTheme.colorScheme.surfaceContainerHighest,
         contentColor = if (selected) MaterialTheme.colorScheme.onPrimary
         else MaterialTheme.colorScheme.primary,
-        shadowElevation = 4.dp,
-        onClick = onClick
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)
         ) {
-            Text(label, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-            Spacer(Modifier.width(10.dp))
             Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(12.dp))
+            Text(label, style = MaterialTheme.typography.titleSmall, maxLines = 1)
         }
     }
 }

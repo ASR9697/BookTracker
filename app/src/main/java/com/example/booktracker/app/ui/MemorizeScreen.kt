@@ -85,11 +85,21 @@ fun MemorizeScreen(
         }
 
         if (displayNotes.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    "No notes found. Take some notes while reading!",
+                    if (showFavoritesOnly && notes.isNotEmpty()) {
+                        "No favourite notes yet. Tap the heart on a note to add it here."
+                    } else {
+                        "Your quotes and thoughts appear here as flashcards. Add a note from any book's page."
+                    },
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
                 )
             }
         } else {

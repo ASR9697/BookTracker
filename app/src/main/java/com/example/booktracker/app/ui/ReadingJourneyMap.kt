@@ -27,7 +27,7 @@ fun ReadingJourneyMap(
     onOpenBook: (Book) -> Unit
 ) {
     val finishedBooks = books.filter { it.status == BookStatus.FINISHED.name }
-        .sortedByDescending { it.lastUpdated }
+        .sortedByDescending { it.completedAt }
 
     Scaffold(
         topBar = {

@@ -64,7 +64,7 @@ private sealed interface ScanState {
 @Composable
 fun ScannerScreen(
     onClose: () -> Unit,
-    onBookConfirmed: (BookMetadata) -> Unit,
+    onBookConfirmed: (BookMetadata, com.example.booktracker.shared.models.BookStatus, com.example.booktracker.shared.models.BookFormat) -> Unit,
     onAddManually: () -> Unit
 ) {
     val context = LocalContext.current
@@ -74,9 +74,13 @@ fun ScannerScreen(
                 PackageManager.PERMISSION_GRANTED
         )
     }
+    var permissionAsked by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { hasPermission = it }
+    ) {
+        hasPermission = it
+        permissionAsked = true
+    }
 
     val haptic = LocalHapticFeedback.current
 
@@ -148,8 +152,30 @@ fun ScannerScreen(
                         color = Color.White,
                         textAlign = TextAlign.Center
                     )
-                    Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                        Text("Grant permission")
+                    // After a denial Android may stop showing the prompt, so offer
+                    // the system settings page as the way back in.
+                    val activity = context as? android.app.Activity
+                    val canAskAgain = !permissionAsked || activity?.let {
+                        androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.CAMERA)
+                    } == true
+                    if (canAskAgain) {
+                        Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
+                            Text("Allow camera")
+                        }
+                    } else {
+                        Button(onClick = {
+                            context.safeStartActivity(
+                                android.content.Intent(
+                                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                    android.net.Uri.fromParts("package", context.packageName, null)
+                                )
+                            )
+                        }) {
+                            Text("Open app settings")
+                        }
+                    }
+                    TextButton(onClick = onAddManually) {
+                        Text("Add the book manually instead", color = Color.White)
                     }
                 }
             }
@@ -177,27 +203,12 @@ fun ScannerScreen(
     when (val current = state) {
         is ScanState.Found -> {
             val book = current.book
-            AlertDialog(
-                onDismissRequest = { state = ScanState.Scanning },
-                title = { Text(book.title) },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        if (book.authors.isNotEmpty()) {
-                            Text(book.authors.joinToString(", "))
-                        }
-                        Text(
-                            if (book.pageCount > 0) "${book.pageCount} pages"
-                            else "Page count unknown",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        Text("ISBN ${book.isbn}", style = MaterialTheme.typography.bodySmall)
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { onBookConfirmed(book) }) { Text("Add to Backlog") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { state = ScanState.Scanning }) { Text("Rescan") }
+            BookPreviewDialog(
+                book = book,
+                onDismiss = { state = ScanState.Scanning },
+                dismissLabel = "Rescan",
+                onConfirmAdd = { status, startPage, format ->
+                    onBookConfirmed(book.copy(currentPage = startPage), status, format)
                 }
             )
         }
@@ -205,7 +216,7 @@ fun ScannerScreen(
             AlertDialog(
                 onDismissRequest = { state = ScanState.Scanning },
                 title = { Text("No match found") },
-                text = { Text("Google Books has no entry for ISBN ${current.isbn}. You can add the book manually from the main screen.") },
+                text = { Text("We couldn't find ISBN ${current.isbn} in Google Books or Open Library. You can add this book manually.") },
                 confirmButton = {
                     TextButton(onClick = { state = ScanState.Scanning }) { Text("Rescan") }
                 },
@@ -218,7 +229,7 @@ fun ScannerScreen(
             AlertDialog(
                 onDismissRequest = { state = ScanState.Scanning },
                 title = { Text("Lookup failed") },
-                text = { Text("Couldn't reach Google Books. Check your internet connection and try again.") },
+                text = { Text("Couldn't look up this book. Check your internet connection and try again.") },
                 confirmButton = {
                     TextButton(onClick = { state = ScanState.LookingUp(current.isbn) }) { Text("Retry") }
                 },

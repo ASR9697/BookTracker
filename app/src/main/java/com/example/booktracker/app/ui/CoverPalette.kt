@@ -8,6 +8,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.palette.graphics.Palette
 import coil3.BitmapImage
@@ -30,7 +32,14 @@ data class CoverAccent(
      */
     fun immersiveBackground(fallback: Color): Color {
         val base = dominant ?: vibrant ?: return fallback
-        return base.copy(alpha = 0.55f).compositeOver(Color(0xFF1B2430))
+        val blended = base.copy(alpha = 0.55f).compositeOver(NightBase)
+        // Pale covers (white, cream) would still leave white text unreadable;
+        // pull them further toward the night base to keep roughly 4.5:1 contrast.
+        return if (blended.luminance() > 0.17f) lerp(blended, NightBase, 0.5f) else blended
+    }
+
+    private companion object {
+        val NightBase = Color(0xFF1B2430)
     }
 }
 

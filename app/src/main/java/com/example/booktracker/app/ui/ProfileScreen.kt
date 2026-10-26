@@ -63,19 +63,19 @@ fun ProfileScreen(
 ) {
     val context = LocalContext.current
     val zone = remember { ZoneId.systemDefault() }
-    val completedBooks = books.filter { it.status == BookStatus.FINISHED.name }
+    val completedBooks = books.filter { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) }
     val pagesRead = completedBooks.sumOf { it.totalPages }
-    val currentBook = books.firstOrNull { it.status == BookStatus.READING.name }
+    val currentBook = books.firstOrNull { it.status.equals(BookStatus.READING.name, ignoreCase = true) }
     val velocity = remember(sessions) { AnalyticsEngine.pagesPerHour(sessions) }
     val totalMinutes = remember(sessions) {
         AnalyticsEngine.timedSessions(sessions).sumOf { it.endTime - it.startTime } / 60_000L
     }
     val thisYear = remember { LocalDate.now(zone).year }
     val finishedThisYear = completedBooks.count {
-        Instant.ofEpochMilli(it.lastUpdated).atZone(zone).toLocalDate().year == thisYear
+        Instant.ofEpochMilli(it.completedAt).atZone(zone).toLocalDate().year == thisYear
     }
     val trackingSince = remember(books, sessions) {
-        val earliest = (books.map { it.lastUpdated } + sessions.map { it.startTime })
+        val earliest = (books.map { it.dateAdded.takeIf { d -> d > 0 } ?: it.lastUpdated } + sessions.map { it.startTime })
             .filter { it > 0 }
             .minOrNull()
         earliest?.let {

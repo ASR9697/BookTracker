@@ -222,7 +222,7 @@ object QuoteShareHelper {
             textAlign = Paint.Align.CENTER
         }
         val brandY = if (format == QuoteCardFormat.STORY) height - 120f else height - 40f
-        canvas.drawText("BookTracker", width / 2f, brandY, brandPaint)
+        canvas.drawText("Nocturnal Reader", width / 2f, brandY, brandPaint)
 
         // Save to cache dir and share
         val cachePath = File(context.cacheDir, "images")

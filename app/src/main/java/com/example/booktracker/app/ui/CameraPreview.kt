@@ -49,12 +49,19 @@ fun CameraPreview(
                     .also { it.setAnalyzer(analyzerExecutor, analyzer) }
 
                 provider.unbindAll()
-                provider.bindToLifecycle(
-                    lifecycleOwner,
-                    CameraSelector.DEFAULT_BACK_CAMERA,
-                    preview,
-                    analysis
-                )
+                // Devices without a usable back camera (some tablets, Chromebooks)
+                // throw here; fall back to any camera rather than crashing.
+                fun has(selector: CameraSelector) = runCatching { provider.hasCamera(selector) }.getOrDefault(false)
+                val selector = when {
+                    has(CameraSelector.DEFAULT_BACK_CAMERA) -> CameraSelector.DEFAULT_BACK_CAMERA
+                    has(CameraSelector.DEFAULT_FRONT_CAMERA) -> CameraSelector.DEFAULT_FRONT_CAMERA
+                    else -> null
+                }
+                if (selector != null) {
+                    runCatching {
+                        provider.bindToLifecycle(lifecycleOwner, selector, preview, analysis)
+                    }.onFailure { android.util.Log.e("CameraPreview", "Camera bind failed", it) }
+                }
             }, ContextCompat.getMainExecutor(ctx))
             previewView
         }

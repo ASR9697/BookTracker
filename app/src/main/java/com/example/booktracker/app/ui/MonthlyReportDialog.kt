@@ -71,8 +71,8 @@ fun MonthlyReportDialog(
     }
     val finishedThisMonth = remember(books, yearMonth) {
         books.filter { b ->
-            b.status == BookStatus.FINISHED.name && b.lastUpdated > 0L &&
-                    YearMonth.from(Instant.ofEpochMilli(b.lastUpdated).atZone(zone).toLocalDate()) == yearMonth
+            b.status == BookStatus.FINISHED.name && b.completedAt > 0L &&
+                    YearMonth.from(Instant.ofEpochMilli(b.completedAt).atZone(zone).toLocalDate()) == yearMonth
         }
     }
 
@@ -292,7 +292,7 @@ fun MonthlyReportDialog(
 
                             Spacer(Modifier.weight(1f))
                             Text(
-                                "BookTracker • Nocturnal Reading Journal",
+                                "Nocturnal Reader",
                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
                                 color = textColor.copy(alpha = 0.6f)
                             )

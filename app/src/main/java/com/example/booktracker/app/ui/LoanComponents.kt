@@ -1,5 +1,8 @@
 package com.example.booktracker.app.ui
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -394,6 +397,7 @@ fun LoanDetailCard(
 /**
  * Interactive Dialog to create or edit a LoanRecord.
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun LoanRecordDialog(
     existingLoan: LoanRecord? = null,
@@ -422,11 +426,13 @@ fun LoanRecordDialog(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
-                modifier = Modifier.padding(24.dp),
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = if (existingLoan != null) "Edit Loan Record" else "Record Loan / Borrow",
+                    text = if (existingLoan != null) "Edit loan" else "Borrowed or lent",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -439,13 +445,13 @@ fun LoanRecordDialog(
                     FilterChip(
                         selected = !isLentOut,
                         onClick = { isLentOut = false },
-                        label = { Text("Borrowed from Library/Friend") },
+                        label = { Text("I borrowed it", maxLines = 1) },
                         modifier = Modifier.weight(1f)
                     )
                     FilterChip(
                         selected = isLentOut,
                         onClick = { isLentOut = true },
-                        label = { Text("Lent to Someone") },
+                        label = { Text("I lent it", maxLines = 1) },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -453,7 +459,7 @@ fun LoanRecordDialog(
                 OutlinedTextField(
                     value = lenderName,
                     onValueChange = { lenderName = it },
-                    label = { Text(if (isLentOut) "Borrower Name (e.g. Alice)" else "Library / Lender Name") },
+                    label = { Text(if (isLentOut) "Who has it?" else "From (library or person)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
@@ -462,16 +468,16 @@ fun LoanRecordDialog(
                 // Due date duration presets
                 Column {
                     Text(
-                        "Loan Duration / Due Date",
+                        "Due back in",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(8.dp))
-                    Row(
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        listOf(7 to "7d", 14 to "14d", 21 to "21d", 30 to "30d", 0 to "None").forEach { (days, label) ->
+                        listOf(7 to "1 week", 14 to "2 weeks", 21 to "3 weeks", 30 to "30 days", 0 to "No due date").forEach { (days, label) ->
                             FilterChip(
                                 selected = daysSelected == days,
                                 onClick = { daysSelected = days },
@@ -485,7 +491,7 @@ fun LoanRecordDialog(
                 OutlinedTextField(
                     value = memo,
                     onValueChange = { memo = it },
-                    label = { Text("Notes / Memo (optional)") },
+                    label = { Text("Note (optional)") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     minLines = 2,
@@ -519,7 +525,7 @@ fun LoanRecordDialog(
                         },
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Save Loan")
+                        Text("Save")
                     }
                 }
             }

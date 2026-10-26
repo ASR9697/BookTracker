@@ -105,8 +105,8 @@ object MonthlyShareHelper {
         }.distinct().size
 
         val finishedThisMonth = books.filter { b ->
-            b.status == BookStatus.FINISHED.name && b.lastUpdated > 0L &&
-                    YearMonth.from(Instant.ofEpochMilli(b.lastUpdated).atZone(zone).toLocalDate()) == yearMonth
+            b.status == BookStatus.FINISHED.name && b.completedAt > 0L &&
+                    YearMonth.from(Instant.ofEpochMilli(b.completedAt).atZone(zone).toLocalDate()) == yearMonth
         }
 
         // Draw gradient background
@@ -280,7 +280,7 @@ object MonthlyShareHelper {
                 canvas.drawText("$bullet$titleTruncated", cardRect.left + 40f, currentBookY, bookTitlePaint)
                 val authorStr = if (book.authors.isNotEmpty()) "by ${book.authors.first()}" else ""
                 val ratingStr = if (book.rating != null && book.rating.isNotEmpty()) {
-                    val stars = " ★ " + String.format(Locale.getDefault(), "%.1f", book.rating.values.average())
+                    val stars = " ★ " + String.format(Locale.getDefault(), "%.1f", book.overallRating ?: 0f)
                     stars
                 } else ""
                 canvas.drawText("$authorStr$ratingStr", cardRect.left + 65f, currentBookY + 32f, bookAuthorPaint)
@@ -306,7 +306,7 @@ object MonthlyShareHelper {
             textAlign = Paint.Align.CENTER
         }
         val watermarkY = if (format == QuoteCardFormat.STORY) height - 100f else height - 35f
-        canvas.drawText("BookTracker • Nocturnal Reading Journal", width / 2f, watermarkY, watermarkPaint)
+        canvas.drawText("Nocturnal Reader", width / 2f, watermarkY, watermarkPaint)
 
         // Save to cache dir and launch share intent
         val cachePath = File(context.cacheDir, "images")

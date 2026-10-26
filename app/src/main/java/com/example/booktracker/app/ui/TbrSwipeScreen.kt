@@ -68,11 +68,11 @@ fun TbrSwipeScreen(
                 title = {
                     Column {
                         Text(
-                            "TBR Discovery Curation",
+                            "Sort your to-read pile",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                         )
                         Text(
-                            if (remainingBooks.isNotEmpty()) "${remainingBooks.size} books waiting" else "Zero backlogs",
+                            if (remainingBooks.isNotEmpty()) "${remainingBooks.size} to go" else "All sorted",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -122,13 +122,13 @@ fun TbrSwipeScreen(
                         }
                         Spacer(Modifier.height(24.dp))
                         Text(
-                            "All Caught Up!",
+                            "All caught up",
                             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                             textAlign = TextAlign.Center
                         )
                         Spacer(Modifier.height(10.dp))
                         Text(
-                            "You have reviewed your entire backlog. All shortlisted titles are ready in your To-Read shelf!",
+                            "You've sorted your whole to-read pile. Books you swiped right are waiting in your Shortlist.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
@@ -140,7 +140,7 @@ fun TbrSwipeScreen(
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier.height(48.dp)
                         ) {
-                            Text("Return to Library", fontWeight = FontWeight.Bold)
+                            Text("Back to library", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -465,7 +465,7 @@ fun TbrActionControls(
         ) {
             Icon(
                 Icons.Default.Close,
-                contentDescription = "Pass / Later",
+                contentDescription = "Skip for now",
                 modifier = Modifier.size(26.dp)
             )
         }
@@ -503,7 +503,7 @@ fun TbrActionControls(
         ) {
             Icon(
                 Icons.Default.BookmarkAdded,
-                contentDescription = "Shortlist for TBR",
+                contentDescription = "Add to shortlist",
                 modifier = Modifier.size(26.dp)
             )
         }
@@ -595,7 +595,7 @@ fun SwipeCard(book: Book, modifier: Modifier = Modifier) {
                     border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
                 ) {
                     Text(
-                        text = if (book.totalPages > 0) "${book.totalPages} pages" else "Uncounted",
+                        text = if (book.totalPages > 0) "${book.totalPages} pages" else "Page count unknown",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                         color = Color.White,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
@@ -658,7 +658,7 @@ fun SwipeCard(book: Book, modifier: Modifier = Modifier) {
                 )
 
                 // Rating stars if present
-                val avgRating = if (book.rating.isNotEmpty()) book.rating.values.average().toFloat() else 0f
+                val avgRating = book.overallRating ?: 0f
                 if (avgRating > 0f) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {

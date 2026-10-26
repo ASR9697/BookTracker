@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -293,16 +294,84 @@ fun BookSuggestionCard(book: BookMetadata, onAdd: (BookMetadata) -> Unit) {
     }
 }
 
+/** Statuses offered when adding a book, in pipeline order. */
+private val ADD_STATUS_OPTIONS = listOf(
+    BookStatus.TO_READ to "Want to read",
+    BookStatus.SHORTLIST to "Shortlist",
+    BookStatus.UP_NEXT to "Up next",
+    BookStatus.READING to "Reading now",
+    BookStatus.FINISHED to "Already read"
+)
+
+private fun com.example.booktracker.shared.models.BookFormat.displayName(): String = when (this) {
+    com.example.booktracker.shared.models.BookFormat.Paperback -> "Paperback"
+    com.example.booktracker.shared.models.BookFormat.Hardcover -> "Hardcover"
+    com.example.booktracker.shared.models.BookFormat.`E-book` -> "E-book"
+    com.example.booktracker.shared.models.BookFormat.Audiobook -> "Audiobook"
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FormatChips(
+    selected: com.example.booktracker.shared.models.BookFormat,
+    onSelect: (com.example.booktracker.shared.models.BookFormat) -> Unit
+) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        com.example.booktracker.shared.models.BookFormat.entries.forEach { format ->
+            FilterChip(
+                selected = selected == format,
+                onClick = { onSelect(format) },
+                label = { Text(format.displayName()) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatusOptions(selected: BookStatus, onSelect: (BookStatus) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        ADD_STATUS_OPTIONS.forEach { (status, label) ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        if (selected == status) MaterialTheme.colorScheme.primaryContainer
+                        else Color.Transparent
+                    )
+                    .clickable { onSelect(status) }
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
+            ) {
+                RadioButton(selected = selected == status, onClick = { onSelect(status) })
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (selected == status) MaterialTheme.colorScheme.onPrimaryContainer
+                    else MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun BookPreviewDialog(
     book: BookMetadata,
     onDismiss: () -> Unit,
+    dismissLabel: String = "Cancel",
     onConfirmAdd: (BookStatus, Int, com.example.booktracker.shared.models.BookFormat) -> Unit
 ) {
-    var selectedStatus by remember { mutableStateOf(BookStatus.SHORTLIST) }
+    var selectedStatus by remember { mutableStateOf(BookStatus.TO_READ) }
     var selectedFormat by remember { mutableStateOf(com.example.booktracker.shared.models.BookFormat.Paperback) }
     var startPage by remember { mutableStateOf("") }
-    
+    val startPageInt = startPage.toIntOrNull()
+    val startPageError = startPageInt != null && book.pageCount > 0 && startPageInt > book.pageCount
+
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(24.dp),
@@ -330,12 +399,18 @@ fun BookPreviewDialog(
                     textAlign = TextAlign.Center
                 )
                 
-                if (book.pageCount > 0) {
+                val facts = listOfNotNull(
+                    book.pageCount.takeIf { it > 0 }?.let { "$it pages" },
+                    book.publishedDate.take(4).takeIf { it.isNotBlank() },
+                    book.publisher.takeIf { it.isNotBlank() }
+                )
+                if (facts.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "${book.pageCount} pages",
+                        text = facts.joinToString(" · "),
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.secondary
+                        color = MaterialTheme.colorScheme.secondary,
+                        textAlign = TextAlign.Center
                     )
                 }
 
@@ -357,19 +432,35 @@ fun BookPreviewDialog(
                     }
                 }
                 
-                Spacer(Modifier.height(16.dp))
-                
-                androidx.compose.material3.OutlinedTextField(
-                    value = startPage,
-                    onValueChange = { startPage = it },
-                    label = { Text("Start Page (optional)") },
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
                 Spacer(Modifier.height(24.dp))
-                
+
+                Text(
+                    text = "Add to",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+                Spacer(Modifier.height(8.dp))
+                StatusOptions(selectedStatus) { selectedStatus = it }
+
+                if (selectedStatus == BookStatus.READING) {
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = startPage,
+                        onValueChange = { startPage = it.filter(Char::isDigit).take(5) },
+                        label = { Text("Current page (optional)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        isError = startPageError,
+                        supportingText = if (startPageError) {
+                            { Text("This edition has ${book.pageCount} pages") }
+                        } else null,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Spacer(Modifier.height(20.dp))
+
                 Text(
                     text = "Format",
                     style = MaterialTheme.typography.titleSmall,
@@ -377,76 +468,26 @@ fun BookPreviewDialog(
                     modifier = Modifier.align(Alignment.Start)
                 )
                 Spacer(Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    com.example.booktracker.shared.models.BookFormat.values().forEach { format ->
-                        FilterChip(
-                            selected = selectedFormat == format,
-                            onClick = { selectedFormat = format },
-                            label = { Text(format.name) }
-                        )
-                    }
-                }
-                
-                Spacer(Modifier.height(24.dp))
-                
-                Text(
-                    text = "Add to...",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.align(Alignment.Start)
-                )
-                Spacer(Modifier.height(8.dp))
-                
-                val options = listOf(
-                    BookStatus.SHORTLIST,
-                    BookStatus.UP_NEXT,
-                    BookStatus.READING
-                ).map { it to it.label }
+                FormatChips(selectedFormat) { selectedFormat = it }
 
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    options.forEach { (status, label) ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .clickable { selectedStatus = status }
-                                .background(
-                                    if (selectedStatus == status) MaterialTheme.colorScheme.primaryContainer 
-                                    else Color.Transparent
-                                )
-                                .padding(12.dp)
-                        ) {
-                            androidx.compose.material3.RadioButton(
-                                selected = selectedStatus == status,
-                                onClick = { selectedStatus = status }
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = if (selectedStatus == status) MaterialTheme.colorScheme.onPrimaryContainer
-                                       else MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-                }
-                
-                Spacer(Modifier.height(32.dp))
-                
+                Spacer(Modifier.height(24.dp))
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                        Text(dismissLabel)
                     }
                     Spacer(Modifier.width(8.dp))
-                    Button(onClick = { onConfirmAdd(selectedStatus, startPage.toIntOrNull() ?: 0, selectedFormat) }) {
-                        Text("Save Book")
+                    Button(
+                        onClick = {
+                            val page = if (selectedStatus == BookStatus.READING) startPageInt ?: 0 else 0
+                            onConfirmAdd(selectedStatus, page, selectedFormat)
+                        },
+                        enabled = !startPageError
+                    ) {
+                        Text("Add book")
                     }
                 }
             }
@@ -467,7 +508,9 @@ fun ManualAddBookDialog(
     var publishedDate by remember { mutableStateOf("") }
     var genres by remember { mutableStateOf("") }
     var startPage by remember { mutableStateOf("") }
-    var selectedStatus by remember { mutableStateOf(BookStatus.SHORTLIST) }
+    var publisher by remember { mutableStateOf("") }
+    var isbn by remember { mutableStateOf("") }
+    var selectedStatus by remember { mutableStateOf(BookStatus.TO_READ) }
     var selectedFormat by remember { mutableStateOf(com.example.booktracker.shared.models.BookFormat.Paperback) }
     
     var purchaseLogs by remember { mutableStateOf(emptyList<com.example.booktracker.shared.models.PurchaseLog>()) }
@@ -481,7 +524,7 @@ fun ManualAddBookDialog(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { bitmap ->
         bitmap?.let {
-            val file = File(context.filesDir, "cover_${UUID.randomUUID()}.jpg")
+            val file = File(File(context.filesDir, "covers").apply { mkdirs() }, "cover_${UUID.randomUUID()}.jpg")
             FileOutputStream(file).use { out ->
                 it.compress(Bitmap.CompressFormat.JPEG, 90, out)
             }
@@ -600,37 +643,38 @@ fun ManualAddBookDialog(
 
                 val startPageInt = startPage.toIntOrNull()
                 val isStartPageError = startPageInt != null && (startPageInt < 0 || (pagesInt != null && pagesInt > 0 && startPageInt > pagesInt))
-                OutlinedTextField(
-                    value = startPage,
-                    onValueChange = { startPage = it.filter { char -> char.isDigit() } },
-                    label = { Text("Start Page (optional)") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth(),
-                    isError = isStartPageError
-                )
-                if (isStartPageError) {
-                    Text(
-                        if (startPageInt != null && startPageInt < 0) "Start page cannot be negative"
-                        else "Cannot exceed total pages ($pagesInt)",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(start = 16.dp, top = 4.dp).align(Alignment.Start)
+                if (selectedStatus == BookStatus.READING) {
+                    OutlinedTextField(
+                        value = startPage,
+                        onValueChange = { startPage = it.filter { char -> char.isDigit() } },
+                        label = { Text("Current page (optional)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = isStartPageError
                     )
+                    if (isStartPageError) {
+                        Text(
+                            "Cannot exceed total pages ($pagesInt)",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(start = 16.dp, top = 4.dp).align(Alignment.Start)
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
                 }
-                Spacer(Modifier.height(8.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = coverUrl,
                         onValueChange = { coverUrl = it },
-                        label = { Text("Cover Image URL") },
+                        label = { Text("Cover image URL") },
                         singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
                     Spacer(Modifier.width(8.dp))
                     IconButton(onClick = { takePictureLauncher.launch() }) {
-                        Icon(androidx.compose.material.icons.Icons.Filled.Add, contentDescription = "Take Photo")
+                        Icon(androidx.compose.material.icons.Icons.Filled.PhotoCamera, contentDescription = "Take a cover photo")
                     }
                 }
                 if (coverUrl.isNotBlank()) {
@@ -639,11 +683,30 @@ fun ManualAddBookDialog(
                 }
                 Spacer(Modifier.height(8.dp))
 
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = publisher,
+                        onValueChange = { publisher = it },
+                        label = { Text("Publisher") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1.4f)
+                    )
+                    OutlinedTextField(
+                        value = publishedDate,
+                        onValueChange = { publishedDate = it.take(10) },
+                        label = { Text("Year") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+
                 OutlinedTextField(
-                    value = publishedDate,
-                    onValueChange = { publishedDate = it },
-                    label = { Text("Published Date (e.g. 2023)") },
+                    value = isbn,
+                    onValueChange = { isbn = it.filter { c -> c.isDigit() || c == 'X' || c == 'x' }.take(13) },
+                    label = { Text("ISBN (optional)") },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(8.dp))
@@ -734,62 +797,17 @@ fun ManualAddBookDialog(
                     modifier = Modifier.align(Alignment.Start)
                 )
                 Spacer(Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    com.example.booktracker.shared.models.BookFormat.values().forEach { format ->
-                        FilterChip(
-                            selected = selectedFormat == format,
-                            onClick = { selectedFormat = format },
-                            label = { Text(format.name) }
-                        )
-                    }
-                }
+                FormatChips(selectedFormat) { selectedFormat = it }
                 Spacer(Modifier.height(24.dp))
 
                 Text(
-                    text = "Add to...",
+                    text = "Add to",
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.align(Alignment.Start)
                 )
                 Spacer(Modifier.height(8.dp))
-
-                val options = listOf(
-                    BookStatus.SHORTLIST,
-                    BookStatus.UP_NEXT,
-                    BookStatus.READING
-                ).map { it to it.label }
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    options.forEach { (status, label) ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .clickable { selectedStatus = status }
-                                .background(
-                                    if (selectedStatus == status) MaterialTheme.colorScheme.primaryContainer 
-                                    else Color.Transparent
-                                )
-                                .padding(12.dp)
-                        ) {
-                            androidx.compose.material3.RadioButton(
-                                selected = selectedStatus == status,
-                                onClick = { selectedStatus = status }
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = if (selectedStatus == status) MaterialTheme.colorScheme.onPrimaryContainer
-                                       else MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-                }
+                StatusOptions(selectedStatus) { selectedStatus = it }
 
                 Spacer(Modifier.height(32.dp))
 
@@ -803,18 +821,21 @@ fun ManualAddBookDialog(
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            val finalCreators = creators.filter { it.name.isNotBlank() }.ifEmpty { listOf(com.example.booktracker.shared.models.Creator(com.example.booktracker.shared.models.CreatorRole.Author, "Unknown Author")) }
+                            val finalCreators = creators
+                                .map { it.copy(name = it.name.trim()) }
+                                .filter { it.name.isNotBlank() }
                             val metadata = BookMetadata(
-                                title = title.takeIf { it.isNotBlank() } ?: "Unknown Title",
-                                authors = finalCreators.map { it.name },
+                                title = title.trim(),
+                                authors = finalCreators.filter { it.role == com.example.booktracker.shared.models.CreatorRole.Author }.map { it.name },
                                 creators = finalCreators,
-                                isbn = "manual_${System.currentTimeMillis()}", // Fake ISBN
+                                isbn = isbn.trim(),
                                 coverUrl = coverUrl.trim(),
                                 pageCount = pages.toIntOrNull() ?: 0,
                                 publishedDate = publishedDate.trim(),
+                                publisher = publisher.trim(),
                                 genres = genres.split(",").map { it.trim() }.filter { it.isNotBlank() },
                                 description = description.trim(),
-                                currentPage = startPage.toIntOrNull() ?: 0,
+                                currentPage = if (selectedStatus == BookStatus.READING) startPage.toIntOrNull() ?: 0 else 0,
                                 purchaseLog = purchaseLogs,
                                 loanRecord = loanRecords
                             )

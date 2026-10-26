@@ -81,6 +81,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.material.icons.filled.TabletAndroid
+import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -252,15 +257,19 @@ fun BookDetailScreen(
     streak: StreakEngine.StreakInfo,
     notes: List<MarginNote>,
     onAddNote: (page: Int, text: String, type: NoteType) -> Unit,
+    onUpdateNote: (noteId: String, page: Int, text: String, type: NoteType) -> Unit,
     onDeleteNote: (String) -> Unit,
     onToggleNoteFavorite: (String) -> Unit,
+    onSaveDetails: (Book) -> Unit,
+    onChangeStatus: (BookStatus) -> Unit,
+    onMarkDnf: (Float, String) -> Unit,
+    onLogSession: (startPage: Int, endPage: Int, minutes: Int, endTime: Long) -> Unit,
     onSetProgress: (Int) -> Unit,
     onSetCollections: (List<String>) -> Unit,
     allCollections: List<String>,
     onSetFormat: (String) -> Unit,
     onDelete: () -> Unit,
     onStartReading: () -> Unit,
-    onPauseReading: () -> Unit,
     onReadAgain: () -> Unit,
     onEditSession: (Session, Int) -> Unit,
     onDeleteSession: (Session) -> Unit,
@@ -284,6 +293,14 @@ fun BookDetailScreen(
     var noteToShare by remember { mutableStateOf<MarginNote?>(null) }
     var showVictoryCard by remember { mutableStateOf(false) }
     var showLoanDialog by remember { mutableStateOf(false) }
+    var showEditDetails by remember { mutableStateOf(false) }
+    var showStatusPicker by remember { mutableStateOf(false) }
+    var showDnfDialog by remember { mutableStateOf(false) }
+    var showLogSession by remember { mutableStateOf(false) }
+    var noteToEdit by remember { mutableStateOf<MarginNote?>(null) }
+    var noteToDelete by remember { mutableStateOf<MarginNote?>(null) }
+    // Offer the finish prompt once per arrival at the last page, not on every recomposition.
+    var finishPromptHandled by remember { mutableStateOf(false) }
     val activeLoan = remember(book?.loanRecord) { book?.let { LoanEngine.activeLoan(it) } }
     val loanStatus = remember(activeLoan) { activeLoan?.let { LoanEngine.getLoanStatus(it) } }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
@@ -299,9 +316,14 @@ fun BookDetailScreen(
         )
     }
 
-    LaunchedEffect(book) {
-        if (book != null && book.currentPage == book.totalPages && book.totalPages > 0 && book.status == BookStatus.READING.name) {
+    val atLastPage = book != null && book.totalPages > 0 && book.currentPage >= book.totalPages &&
+        book.status == BookStatus.READING.name
+    LaunchedEffect(atLastPage) {
+        if (atLastPage && !finishPromptHandled) {
+            finishPromptHandled = true
             showFinishDialog = true
+        } else if (!atLastPage) {
+            finishPromptHandled = false
         }
     }
 
@@ -339,28 +361,20 @@ fun BookDetailScreen(
 
     val accent = rememberCoverAccent(book.coverUrl)
 
-    val currentColorScheme = MaterialTheme.colorScheme
-    val dynamicColorScheme = remember(currentColorScheme, accent) {
-        if (accent.hasColor) {
-            currentColorScheme.copy(
-                primary = accent.vibrant!!,
-                primaryContainer = accent.vibrant.copy(alpha = 0.3f),
-                secondary = accent.dominant!!,
-                secondaryContainer = accent.dominant.copy(alpha = 0.3f),
-            )
-        } else {
-            currentColorScheme
-        }
-    }
-
     val completed = sessions.filter { it.endTime > 0 }
     val completionPrediction = remember(book, completed, allSessions) {
         AnalyticsEngine.predictCompletionDate(book, completed, allSessions)
     }
 
-    val headerColor = accent.immersiveBackground(MaterialTheme.colorScheme.surfaceContainerHighest)
+    // The header always carries white text, so its fallback (no cover / not loaded
+    // yet) must be dark too — the light theme's surface colours are not.
+    val headerColor = accent.immersiveBackground(
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.35f).compositeOver(Color(0xFF1B2430))
+    )
 
-    MaterialTheme(colorScheme = dynamicColorScheme) {
+    // The cover tints the header only; tabs, buttons and highlights keep the app's
+    // one accent so every screen reads as the same app.
+    MaterialTheme(colorScheme = MaterialTheme.colorScheme) {
         Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
 
         LazyColumn(
@@ -374,12 +388,10 @@ fun BookDetailScreen(
                 DetailHeader(
                     book = book,
                     headerColor = headerColor,
-                    onStartReading = {
-                        if (book.status != BookStatus.READING.name) onStartReading()
-                    },
-                    onPauseReading = onPauseReading,
+                    onStartReading = onStartReading,
                     onReadAgain = onReadAgain,
-                    onAddNote = { showAddNote = true }
+                    onAddNote = { showAddNote = true },
+                    onStatusClick = { showStatusPicker = true }
                 )
             }
 
@@ -578,7 +590,21 @@ fun BookDetailScreen(
                     }
 
                     if (book.status == BookStatus.FINISHED.name && book.rating.isNotEmpty()) {
-                        item { SectionItem { RatingCard(book) } }
+                        item { SectionItem { RatingCard(book, onEdit = { showFinishDialog = true }) } }
+                    } else if (book.status == BookStatus.FINISHED.name) {
+                        item {
+                            SectionItem {
+                                DetailCard(title = "Your rating") {
+                                    Text(
+                                        "You haven't rated this book yet.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    FilledTonalButton(onClick = { showFinishDialog = true }) { Text("Rate & review") }
+                                }
+                            }
+                        }
                     }
                     if (book.status == BookStatus.FINISHED.name && !book.review.isNullOrBlank()) {
                         item { SectionItem { ReviewCard(book) } }
@@ -665,11 +691,19 @@ fun BookDetailScreen(
                                     .fillMaxWidth()
                                     .padding(horizontal = 24.dp)
                             ) {
-                                Text(
-                                    "Session History",
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        "Session History",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    FilledTonalButton(onClick = { showLogSession = true }) {
+                                        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(6.dp))
+                                        Text("Log")
+                                    }
+                                }
                                 if (completed.isNotEmpty()) {
                                     val totalMinutes = AnalyticsEngine.timedSessions(completed).sumOf { it.endTime - it.startTime } / 60_000L
                                     val totalPages = completed.sumOf { it.pagesRead }
@@ -709,7 +743,7 @@ fun BookDetailScreen(
                                         )
                                         Spacer(Modifier.height(8.dp))
                                         Text(
-                                            "Start reading with the timer above to log your sessions and pace automatically.",
+                                            "Start the reading timer to track sessions and pace automatically, or tap Log to add one you've already read.",
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -860,7 +894,8 @@ fun BookDetailScreen(
                                 NoteCard(
                                     note = note,
                                     book = book,
-                                    onDelete = { onDeleteNote(note.id) },
+                                    onEdit = { noteToEdit = note },
+                                    onDelete = { noteToDelete = note },
                                     onToggleFavorite = { onToggleNoteFavorite(note.id) },
                                     onShare = { noteToShare = note }
                                 )
@@ -925,6 +960,30 @@ fun BookDetailScreen(
                         expanded = showOverflow,
                         onDismissRequest = { showOverflow = false }
                     ) {
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text("Edit details") },
+                            leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                            onClick = {
+                                showOverflow = false
+                                showEditDetails = true
+                            }
+                        )
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text("Change status") },
+                            leadingIcon = { Icon(Icons.Filled.Bookmark, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                            onClick = {
+                                showOverflow = false
+                                showStatusPicker = true
+                            }
+                        )
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text("Log a reading session") },
+                            leadingIcon = { Icon(Icons.Filled.History, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                            onClick = {
+                                showOverflow = false
+                                showLogSession = true
+                            }
+                        )
                         if (book.status == BookStatus.FINISHED.name) {
                             androidx.compose.material3.DropdownMenuItem(
                                 text = { Text("Victory Card") },
@@ -989,7 +1048,9 @@ fun BookDetailScreen(
                 .padding(24.dp)
         ) {
             ActionPill(
-                onTimer = { if (book.status != BookStatus.READING.name) onStartReading() else onStartReading() },
+                book = book,
+                onStartReading = onStartReading,
+                onReadAgain = onReadAgain,
                 onAddNote = { showAddNote = true },
                 container = MaterialTheme.colorScheme.surfaceContainerHighest
             )
@@ -1010,6 +1071,84 @@ fun BookDetailScreen(
                 onAddNote(page, text, type)
                 showAddNote = false
                 ocrDraft = null
+            }
+        )
+    }
+
+    noteToEdit?.let { note ->
+        AddNoteBottomSheet(
+            suggestedPage = note.pageNumber,
+            totalPages = book.totalPages,
+            initialText = note.content,
+            initialType = note.type,
+            isEditing = true,
+            onDismiss = { noteToEdit = null },
+            onConfirm = { page, text, type ->
+                onUpdateNote(note.id, page, text, type)
+                noteToEdit = null
+            }
+        )
+    }
+
+    noteToDelete?.let { note ->
+        AlertDialog(
+            onDismissRequest = { noteToDelete = null },
+            title = { Text("Delete this note?") },
+            text = { Text(note.content.take(140) + if (note.content.length > 140) "…" else "") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeleteNote(note.id)
+                    noteToDelete = null
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { noteToDelete = null }) { Text("Cancel") } }
+        )
+    }
+
+    if (showEditDetails) {
+        EditBookDialog(
+            book = book,
+            onDismiss = { showEditDetails = false },
+            onSave = {
+                onSaveDetails(it)
+                showEditDetails = false
+            }
+        )
+    }
+
+    if (showStatusPicker) {
+        StatusPickerDialog(
+            current = book.status,
+            onDismiss = { showStatusPicker = false },
+            onSelect = { status ->
+                showStatusPicker = false
+                when (status) {
+                    BookStatus.FINISHED -> showFinishDialog = true
+                    BookStatus.DNF -> showDnfDialog = true
+                    else -> if (!book.status.equals(status.name, ignoreCase = true)) onChangeStatus(status)
+                }
+            }
+        )
+    }
+
+    if (showDnfDialog) {
+        DnfDialog(
+            book = book,
+            onDismiss = { showDnfDialog = false },
+            onConfirm = { percent, reason ->
+                onMarkDnf(percent, reason)
+                showDnfDialog = false
+            }
+        )
+    }
+
+    if (showLogSession) {
+        LogSessionDialog(
+            book = book,
+            onDismiss = { showLogSession = false },
+            onConfirm = { start, end, minutes, endTime ->
+                onLogSession(start, end, minutes, endTime)
+                showLogSession = false
             }
         )
     }
@@ -1073,9 +1212,11 @@ fun BookDetailScreen(
             book = book,
             onDismiss = { showFinishDialog = false },
             onConfirm = { rating, review ->
+                val wasFinished = book.status == BookStatus.FINISHED.name
                 onFinish(rating, review)
                 showFinishDialog = false
-                showVictoryCard = true
+                // Celebrate a newly finished book; re-rating an old one just saves.
+                if (!wasFinished) showVictoryCard = true
             }
         )
     }
@@ -1123,13 +1264,15 @@ private fun DetailHeader(
     book: Book,
     headerColor: Color,
     onStartReading: () -> Unit,
-    onPauseReading: () -> Unit,
     onReadAgain: () -> Unit,
-    onAddNote: () -> Unit
+    onAddNote: () -> Unit,
+    onStatusClick: () -> Unit
 ) {
     val onHeader = Color.White
 
-    Box(modifier = Modifier.fillMaxWidth()) {
+    // The bottom padding reserves room for the half of the pill that hangs below
+    // the header; without it the next list item paints over the pill.
+    Box(modifier = Modifier.fillMaxWidth().padding(bottom = 28.dp)) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1173,25 +1316,22 @@ private fun DetailHeader(
                         style = MaterialTheme.typography.bodyLarge,
                         color = onHeader.copy(alpha = 0.75f)
                     )
+                    book.overallRating?.let { stars ->
+                        Spacer(Modifier.height(8.dp))
+                        StarRatingDisplay(stars, starSize = 16.dp)
+                    }
                     Spacer(Modifier.height(12.dp))
-                    StatusPill(book.status)
+                    StatusPill(book.status, onClick = onStatusClick)
                 }
             }
         }
 
         // Straddles the header/content boundary, as in the reference.
         ActionPill(
-            onTimer = when (book.status) {
-                BookStatus.READING.name -> onPauseReading
-                BookStatus.FINISHED.name, BookStatus.DNF.name -> onReadAgain
-                else -> onStartReading
-            },
+            book = book,
+            onStartReading = onStartReading,
+            onReadAgain = onReadAgain,
             onAddNote = onAddNote,
-            timerIcon = when (book.status) {
-                BookStatus.READING.name -> Icons.Filled.Pause
-                BookStatus.FINISHED.name, BookStatus.DNF.name -> Icons.Filled.Replay
-                else -> Icons.Filled.PlayCircleOutline
-            },
             container = MaterialTheme.colorScheme.surfaceContainerHighest,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -1201,15 +1341,20 @@ private fun DetailHeader(
     }
 }
 
-/** The two-action pill: start/pause the timer, or capture a note. */
+/**
+ * The two-action pill: open the reading timer (or start a re-read of an ended
+ * book), or capture a note.
+ */
 @Composable
 private fun ActionPill(
-    onTimer: () -> Unit,
+    book: Book,
+    onStartReading: () -> Unit,
+    onReadAgain: () -> Unit,
     onAddNote: () -> Unit,
     container: Color,
-    modifier: Modifier = Modifier,
-    timerIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.PlayCircleOutline
+    modifier: Modifier = Modifier
 ) {
+    val ended = book.status == BookStatus.FINISHED.name || book.status == BookStatus.DNF.name
     Surface(
         shape = RoundedCornerShape(50),
         color = container,
@@ -1217,10 +1362,10 @@ private fun ActionPill(
         modifier = modifier
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onTimer, modifier = Modifier.size(56.dp)) {
+            IconButton(onClick = if (ended) onReadAgain else onStartReading, modifier = Modifier.size(56.dp)) {
                 Icon(
-                    timerIcon,
-                    contentDescription = "Reading timer",
+                    if (ended) Icons.Filled.Replay else Icons.Filled.PlayCircleOutline,
+                    contentDescription = if (ended) "Read again" else "Start reading timer",
                     modifier = Modifier.size(26.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -1244,31 +1389,87 @@ private fun ActionPill(
 }
 
 @Composable
-private fun StatusPill(status: String) {
-    val label = when (status) {
-        BookStatus.TO_READ.name -> "Backlog"
-        BookStatus.SHORTLIST.name -> "Shortlist"
-        BookStatus.UP_NEXT.name -> "Up Next"
-        BookStatus.READING.name -> "Reading"
-        BookStatus.PAUSED.name -> "Paused"
-        BookStatus.FINISHED.name -> "Finished"
-        BookStatus.DNF.name -> "Did not finish"
-        else -> status
-    }
+private fun StatusPill(status: String, onClick: () -> Unit) {
+    val label = statusLabel(status)
     Surface(
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        modifier = Modifier.height(28.dp)
+        color = Color.White.copy(alpha = 0.18f),
+        contentColor = Color.White,
+        onClick = onClick,
+        modifier = Modifier.height(32.dp)
     ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 12.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 12.dp, end = 6.dp)
+        ) {
             Text(
                 label,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold
+            )
+            Icon(
+                androidx.compose.material.icons.Icons.Filled.ArrowDropDown,
+                contentDescription = "Change status",
+                modifier = Modifier.size(18.dp)
             )
         }
     }
+}
+
+private fun statusLabel(status: String): String = when (status) {
+    BookStatus.TO_READ.name, "BACKLOG" -> "Want to read"
+    BookStatus.SHORTLIST.name -> "Shortlist"
+    BookStatus.UP_NEXT.name -> "Up next"
+    BookStatus.READING.name -> "Reading"
+    BookStatus.PAUSED.name -> "Paused"
+    BookStatus.FINISHED.name -> "Finished"
+    BookStatus.DNF.name, BookStatus.ABANDONED.name -> "Did not finish"
+    else -> status
+}
+
+/** Every pipeline status the reader can move a book to, with a one-line explanation. */
+@Composable
+private fun StatusPickerDialog(
+    current: String,
+    onDismiss: () -> Unit,
+    onSelect: (BookStatus) -> Unit
+) {
+    val options = listOf(
+        BookStatus.TO_READ to "On your someday pile",
+        BookStatus.SHORTLIST to "Candidates for your next read",
+        BookStatus.UP_NEXT to "Starting soon",
+        BookStatus.READING to "Currently reading",
+        BookStatus.PAUSED to "On hold for now",
+        BookStatus.FINISHED to "Read to the end",
+        BookStatus.DNF to "Stopped partway"
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Book status") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                options.forEach { (status, hint) ->
+                    val selected = current.equals(status.name, ignoreCase = true)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onSelect(status) }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        androidx.compose.material3.RadioButton(selected = selected, onClick = { onSelect(status) })
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(statusLabel(status.name), style = MaterialTheme.typography.bodyLarge)
+                            Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } }
+    )
 }
 
 @Composable
@@ -1325,54 +1526,36 @@ private fun FormatCard(book: Book, onSetFormat: (String) -> Unit) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
-            Text("Tracking format", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("Format", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(4.dp))
-            Text("Track this book in ${FormatAdaptabilityLayer.getDisplayUnit(book).lowercase()}.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(20.dp))
-            
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(12.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
-                    .height(48.dp)
-            ) {
-                FormatAdaptabilityLayer.FORMATS.forEachIndexed { index, format ->
-                    val isSelected = book.format.name.equals(format, ignoreCase = true)
-                    val bg = if (isSelected) MaterialTheme.colorScheme.surfaceContainerHighest else Color.Transparent
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxSize()
-                            .background(bg, if (index == 0) RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp) else if (index == FormatAdaptabilityLayer.FORMATS.size - 1) RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp) else RoundedCornerShape(0.dp))
-                            .clickable { onSetFormat(format) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (isSelected) {
-                                Icon(androidx.compose.material.icons.Icons.Filled.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(6.dp))
-                            }
-                            val icon = when(format) {
-                                "PAGES" -> androidx.compose.material.icons.Icons.Filled.CheckCircle
-                                "CHAPTERS" -> Icons.Filled.FormatListNumbered
-                                "VOLUMES" -> Icons.AutoMirrored.Filled.LibraryBooks
-                                else -> Icons.Filled.Timer
-                            }
-                            if (!isSelected) {
-                                Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp).graphicsLayer { alpha = 0.6f }, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Spacer(Modifier.width(6.dp))
-                            }
-                            Text(
-                                format,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                                color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+            Text(
+                "Which edition you're reading. Progress is tracked in ${FormatAdaptabilityLayer.getDisplayUnit(book).lowercase()}.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(16.dp))
+
+            // Two rows of two: four labelled options in one row don't fit a phone.
+            FormatAdaptabilityLayer.FORMATS.chunked(2).forEach { rowFormats ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    rowFormats.forEach { format ->
+                        val isSelected = book.format.name.equals(format, ignoreCase = true)
+                        val icon = when (format) {
+                            "Paperback" -> Icons.AutoMirrored.Filled.MenuBook
+                            "Hardcover" -> Icons.AutoMirrored.Filled.LibraryBooks
+                            "E-book" -> Icons.Filled.TabletAndroid
+                            else -> Icons.Filled.Headphones
                         }
-                    }
-                    if (index < FormatAdaptabilityLayer.FORMATS.size - 1) {
-                        Box(modifier = Modifier.width(1.dp).fillMaxHeight().background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)))
+                        androidx.compose.material3.FilterChip(
+                            selected = isSelected,
+                            onClick = { onSetFormat(format) },
+                            label = { Text(format, maxLines = 1) },
+                            leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
             }
@@ -1605,8 +1788,25 @@ private fun ReadingStreakCard(
 private fun dayCount(days: Int): String = if (days == 1) "1 Day" else "$days Days"
 
 @Composable
-private fun RatingCard(book: Book) {
+private fun RatingCard(book: Book, onEdit: () -> Unit) {
     DetailCard(title = "Your rating") {
+        book.overallRating?.let { stars ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onEdit)
+                    .padding(bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                StarRatingDisplay(stars, starSize = 24.dp)
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    "${formatRating(stars)} / 5",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
         RatingAxis.ALL.forEach { axis ->
             val value = book.rating[axis] ?: return@forEach
             Row(
@@ -1684,15 +1884,22 @@ private fun NoteSortToggle(current: NoteSort, onChange: (NoteSort) -> Unit) {
 }
 
 private fun NoteType.label(): String = when (this) {
-    NoteType.BOOK_CONTENT -> "Book Content"
-    NoteType.PERSONAL_THOUGHT -> "Personal Thought"
-    NoteType.RANDOM -> "Random"
+    NoteType.BOOK_CONTENT -> "Quote"
+    NoteType.PERSONAL_THOUGHT -> "Personal thought"
+    NoteType.RANDOM -> "Other"
+}
+
+private fun NoteType.shortLabel(): String = when (this) {
+    NoteType.BOOK_CONTENT -> "Quote"
+    NoteType.PERSONAL_THOUGHT -> "Thought"
+    NoteType.RANDOM -> "Other"
 }
 
 @Composable
 private fun NoteCard(
     note: MarginNote,
     book: Book,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
     onToggleFavorite: () -> Unit,
     onShare: (MarginNote) -> Unit
@@ -1701,6 +1908,7 @@ private fun NoteCard(
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     Card(
+        onClick = onEdit,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
         shape = RoundedCornerShape(24.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
@@ -2381,13 +2589,15 @@ private fun AddNoteBottomSheet(
     suggestedPage: Int,
     totalPages: Int,
     initialText: String = "",
+    initialType: NoteType = NoteType.BOOK_CONTENT,
+    isEditing: Boolean = false,
     onDismiss: () -> Unit,
     onConfirm: (page: Int, text: String, type: NoteType) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var pageText by remember { mutableStateOf(if (suggestedPage > 0) "$suggestedPage" else "") }
     var noteText by remember { mutableStateOf(initialText) }
-    var noteType by remember { mutableStateOf(NoteType.BOOK_CONTENT) }
+    var noteType by remember { mutableStateOf(initialType) }
     
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -2403,16 +2613,22 @@ private fun AddNoteBottomSheet(
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Text("Add margin note", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(
+                if (isEditing) "Edit note" else "Add a note",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
 
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 NoteType.entries.forEachIndexed { index, type ->
                     SegmentedButton(
                         shape = SegmentedButtonDefaults.itemShape(index = index, count = NoteType.entries.size),
                         onClick = { noteType = type },
-                        selected = noteType == type
+                        selected = noteType == type,
+                        icon = {}
                     ) {
-                        Text(type.label(), style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                        // Short labels: the full names don't fit three segments on a phone.
+                        Text(type.shortLabel(), style = MaterialTheme.typography.labelLarge, maxLines = 1)
                     }
                 }
             }
@@ -2462,7 +2678,7 @@ private fun AddNoteBottomSheet(
                 modifier = Modifier.fillMaxWidth().height(64.dp),
                 shape = RoundedCornerShape(20.dp)
             ) {
-                Text("Save Note", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(if (isEditing) "Save changes" else "Save note", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
         }
     }

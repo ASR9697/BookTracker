@@ -89,6 +89,8 @@ import androidx.compose.material3.Card
     import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -104,12 +106,9 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -137,6 +136,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.border
 import coil3.compose.AsyncImage
 import com.example.booktracker.app.ui.animations.bounceClick
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.ViewColumn
+import com.example.booktracker.app.ui.animations.bounceOnPress
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.example.booktracker.app.analytics.AnalyticsEngine
@@ -151,8 +156,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-private enum class HomeTabMode { CALENDAR, BOOKSHELF }
 enum class LibraryViewMode { GRID, BOOKSHELF }
+
+enum class LibrarySort(val label: String) {
+    RECENT("Recently updated"),
+    TITLE("Title"),
+    AUTHOR("Author"),
+    ADDED("Date added"),
+    PROGRESS("Progress"),
+    RATING("Rating")
+}
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 @Composable
@@ -160,11 +173,9 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeC
     val books by viewModel.books.collectAsState()
     val streak by viewModel.streak.collectAsState()
     val readingBooks = books
-        .filter { it.status == BookStatus.READING.name }
+        .filter { it.status.equals(BookStatus.READING.name, ignoreCase = true) }
         .sortedByDescending { it.lastUpdated }
     var showAddDialog by remember { mutableStateOf(false) }
-    var showScanner by remember { mutableStateOf(false) }
-    var showStartTimerDialog by remember { mutableStateOf(false) }
     var pendingOutcome by remember { mutableStateOf<Pair<String, BookStatus>?>(null) }
     var showGoalDialog by remember { mutableStateOf(false) }
     var initialGoalType by remember { mutableStateOf(GoalType.YEARLY_BOOKS) }
@@ -173,22 +184,6 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeC
     val dailyGoal by viewModel.dailyGoal.collectAsState()
     val yearlyGoal by viewModel.yearlyGoal.collectAsState()
 
-
-    if (showScanner) {
-        BackHandler { showScanner = false }
-        ScannerScreen(
-            onClose = { showScanner = false },
-            onBookConfirmed = { scanned ->
-                viewModel.addScannedBook(scanned)
-                showScanner = false
-            },
-            onAddManually = {
-                showScanner = false
-                showAddDialog = true
-            }
-        )
-        return
-    }
 
     if (showGoalDialog) {
         GoalEditDialog(
@@ -209,7 +204,8 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeC
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: "home"
     
-    val isTopLevelRoute = currentRoute in listOf("home", "library", "memorize", "timer", "stats", "profile")
+    val isTopLevelRoute = currentRoute in listOf("home", "library", "memorize", "stats", "profile")
+    val openScanner: () -> Unit = { navController.navigate("scanner") { launchSingleTop = true } }
     val navigateTopLevel: (String) -> Unit = { route ->
         navController.navigate(route) {
             popUpTo(navController.graph.startDestinationId) { saveState = true }
@@ -218,8 +214,21 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeC
         }
     }
 
+    // A finished countdown opens the save screen wherever the reader is. The event
+    // is replayed until consumed, so it also fires on returning to the app.
+    LaunchedEffect(navController) {
+        com.example.booktracker.app.data.ServiceLocator.timerExpiredEvents.collect {
+            val bookId = com.example.booktracker.app.data.ServiceLocator.timerBookId.value
+            com.example.booktracker.app.data.ServiceLocator.consumeTimerExpired()
+            if (bookId != null && navController.currentDestination?.route != "session_save/{bookId}") {
+                navController.navigate("session_save/$bookId") { launchSingleTop = true }
+            }
+        }
+    }
+
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    var showEndTimerDialog by remember { mutableStateOf(false) }
     val onDeleteWithUndo: (Book) -> Unit = { book ->
         viewModel.delete(book)
         scope.launch {
@@ -239,14 +248,19 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeC
         topBar = {
             if (isTopLevelRoute) {
                 CenterAlignedTopAppBar(
-                    title = { Text("Nocturnal Reader", style = MaterialTheme.typography.titleLarge) },
+                    title = {
+                        Text(
+                            androidx.compose.ui.res.stringResource(com.example.booktracker.app.R.string.app_name),
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                    },
                     navigationIcon = {
                         IconButton(onClick = { navController.navigate("search") }) {
                             Icon(Icons.Filled.Search, contentDescription = "Search library")
                         }
                     },
                     actions = {
-                        IconButton(onClick = { showScanner = true }) {
+                        IconButton(onClick = openScanner) {
                             Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan ISBN")
                         }
                     },
@@ -262,11 +276,15 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeC
                 val activeTimerBook by viewModel.activeTimerBook.collectAsState()
                 val timerIsRunning by viewModel.timerIsRunning.collectAsState()
                 val timeLeftSeconds by viewModel.timeLeftSeconds.collectAsState()
+                val elapsedSeconds by viewModel.elapsedSeconds.collectAsState()
+                val timerMode by viewModel.timerMode.collectAsState()
                 val timerPhase by viewModel.timerPhase.collectAsState()
                 val bottomNavHaptic = LocalHapticFeedback.current
 
                 androidx.compose.animation.AnimatedVisibility(
-                    visible = activeTimerBook != null && currentRoute?.startsWith("focus/") != true,
+                    visible = activeTimerBook != null &&
+                        currentRoute.startsWith("focus/") != true &&
+                        currentRoute.startsWith("session_") != true,
                     enter = androidx.compose.animation.slideInVertically(initialOffsetY = { it }) + fadeIn(tween(250)),
                     exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { it }) + fadeOut(tween(200))
                 ) {
@@ -274,16 +292,23 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeC
                         TimerMiniPlayer(
                             book = book,
                             isRunning = timerIsRunning,
-                            timeLeftSeconds = timeLeftSeconds,
-                            phase = timerPhase,
-                            onPlayPause = { viewModel.setTimerRunning(!timerIsRunning) },
-                            onStop = { navController.navigate("focus/${book.id}") },
-                            onDismiss = { 
-                                viewModel.setTimerRunning(false)
-                                viewModel.setTimerBook(null)
+                            displaySeconds = if (timerMode == TimerMode.STOPWATCH) elapsedSeconds else timeLeftSeconds,
+                            isCountdownDone = timerMode == TimerMode.COUNTDOWN && timeLeftSeconds <= 0,
+                            label = when {
+                                !timerIsRunning && (
+                                    if (timerMode == TimerMode.STOPWATCH) elapsedSeconds == 0
+                                    else timeLeftSeconds >= viewModel.countdownTotalSeconds()
+                                ) -> "READY"
+                                !timerIsRunning -> "PAUSED"
+                                timerMode == TimerMode.STOPWATCH -> "READING"
+                                timerPhase == TimerPhase.BREAK -> "BREAK"
+                                else -> "DEEP FOCUS"
                             },
-                            onOpenFullTimer = { navController.navigate("focus/${book.id}") },
-                            modifier = Modifier.padding(16.dp)
+                            onPlayPause = { viewModel.setTimerRunning(!timerIsRunning) },
+                            onSave = { navController.navigate("session_save/${book.id}") { launchSingleTop = true } },
+                            onEnd = { showEndTimerDialog = true },
+                            onOpenFullTimer = { navController.navigate("focus/${book.id}") { launchSingleTop = true } },
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
                 }
@@ -301,13 +326,23 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeC
                             unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
                         )
                         NavigationBarItem(
-                            selected = currentRoute == "home" || currentRoute == "library",
+                            selected = currentRoute == "home",
                             onClick = { 
                                 bottomNavHaptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 navigateTopLevel("home") 
                             },
                             icon = { Icon(Icons.Filled.AutoStories, contentDescription = "Home") },
                             label = { Text("Home") },
+                            colors = navColors
+                        )
+                        NavigationBarItem(
+                            selected = currentRoute == "library",
+                            onClick = { 
+                                bottomNavHaptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                navigateTopLevel("library") 
+                            },
+                            icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Library") },
+                            label = { Text("Library") },
                             colors = navColors
                         )
                         NavigationBarItem(
@@ -364,10 +399,16 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeC
                 ) {
                     Spacer(Modifier.weight(1f))
                     NavigationRailItem(
-                        selected = currentRoute == "home" || currentRoute == "library",
+                        selected = currentRoute == "home",
                         onClick = { navigateTopLevel("home") },
                         icon = { Icon(Icons.Filled.AutoStories, contentDescription = "Home") },
                         label = { Text("Home") }
+                    )
+                    NavigationRailItem(
+                        selected = currentRoute == "library",
+                        onClick = { navigateTopLevel("library") },
+                        icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Library") },
+                        label = { Text("Library") }
                     )
                     NavigationRailItem(
                         selected = currentRoute == "memorize",
@@ -405,179 +446,86 @@ androidx.compose.animation.SharedTransitionLayout {
                                         }
                                     ) {
                                     composable("home") {
-                
                                         androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
-                                            var homeTabMode by remember { mutableStateOf(HomeTabMode.CALENDAR) }
                                             val openSession by viewModel.openSession.collectAsState()
                                             val sessions by viewModel.completedSessions.collectAsState()
-                                            val allNotes by viewModel.allNotes.collectAsState()
                                             val currentUserName by viewModel.userName.collectAsState()
-
-                                            Column(
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                                    .padding(bottom = 88.dp)
-                                            ) {
-                                                // Segmented Switcher (Bookmory Calendar vs Bookshelf)
-                                                Row(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .padding(horizontal = 20.dp, vertical = 6.dp),
-                                                    horizontalArrangement = Arrangement.Center
-                                                ) {
-                                                    SingleChoiceSegmentedButtonRow(
-                                                        modifier = Modifier.fillMaxWidth()
-                                                    ) {
-                                                        SegmentedButton(
-                                                            selected = homeTabMode == HomeTabMode.CALENDAR,
-                                                            onClick = { homeTabMode = HomeTabMode.CALENDAR },
-                                                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                                                            icon = {
-                                                                Icon(
-                                                                    Icons.Filled.CalendarMonth,
-                                                                    contentDescription = null,
-                                                                    modifier = Modifier.size(16.dp)
-                                                                )
-                                                            }
-                                                        ) {
-                                                            Text("Calendar")
-                                                        }
-                                                        SegmentedButton(
-                                                            selected = homeTabMode == HomeTabMode.BOOKSHELF,
-                                                            onClick = { homeTabMode = HomeTabMode.BOOKSHELF },
-                                                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                                                            icon = {
-                                                                Icon(
-                                                                    Icons.AutoMirrored.Filled.MenuBook,
-                                                                    contentDescription = null,
-                                                                    modifier = Modifier.size(16.dp)
-                                                                )
-                                                            }
-                                                        ) {
-                                                            Text("Bookshelf")
+                                            HomeDashboard(
+                                                books = books,
+                                                readingBooks = readingBooks,
+                                                sessions = sessions,
+                                                openSession = openSession,
+                                                streak = streak,
+                                                userName = currentUserName,
+                                                yearlyGoal = yearlyGoal,
+                                                onOpenBook = { navController.navigate("book/${it.id}") },
+                                                onOpenTimer = { navController.navigate("focus/${it.id}") },
+                                                onLogPages = { b, delta ->
+                                                    viewModel.addProgress(b, delta)
+                                                    scope.launch {
+                                                        snackbarHostState.currentSnackbarData?.dismiss()
+                                                        val result = snackbarHostState.showSnackbar(
+                                                            message = "Added $delta pages",
+                                                            actionLabel = "Undo",
+                                                            duration = SnackbarDuration.Short
+                                                        )
+                                                        if (result == SnackbarResult.ActionPerformed) {
+                                                            viewModel.addProgress(b, -delta)
                                                         }
                                                     }
-                                                }
-
-                                                if (homeTabMode == HomeTabMode.CALENDAR) {
-                                                    ReadingCalendarView(
-                                                        books = books,
-                                                        sessions = sessions,
-                                                        notes = allNotes,
-                                                        monthlyGoalPages = monthlyGoalPages,
-                                                        userName = currentUserName,
-                                                        onOpenBook = { navController.navigate("book/${it.id}") },
-                                                        onStartTimer = { navController.navigate("focus/${it.id}") },
-                                                        onEditGoal = {
-                                                            initialGoalType = GoalType.MONTHLY_PAGES
-                                                            showGoalDialog = true
-                                                        }
-                                                    )
-                                                } else {
-                                                    Column(
-                                                        modifier = Modifier
-                                                            .fillMaxSize()
-                                                            .verticalScroll(rememberScrollState())
-                                                    ) {
-                                                        val urgentLoans = remember(books) { LoanEngine.urgentLoans(books) }
-                                                        if (urgentLoans.isNotEmpty()) {
-                                                            UrgentLoanBanner(
-                                                                urgentLoans = urgentLoans,
-                                                                onOpenBook = { navController.navigate("book/${it.id}") },
-                                                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                                                            )
-                                                        }
-
-                                                        if (openSession == null && books.isNotEmpty()) {
-                                                            ElevatedCard(
-                                                                onClick = { 
-                                                                    if (readingBooks.size == 1) {
-                                                                        navController.navigate("focus/${readingBooks.first().id}")
-                                                                    } else {
-                                                                        showStartTimerDialog = true 
-                                                                    }
-                                                                },
-                                                                modifier = Modifier
-                                                                    .fillMaxWidth()
-                                                                    .padding(16.dp)
-                                                                    .height(84.dp),
-                                                                shape = RoundedCornerShape(16.dp),
-                                                                colors = CardDefaults.elevatedCardColors(
-                                                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                                                )
-                                                            ) {
-                                                                Row(
-                                                                    modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
-                                                                    verticalAlignment = Alignment.CenterVertically
-                                                                ) {
-                                                                    Box(
-                                                                        modifier = Modifier
-                                                                            .size(44.dp)
-                                                                            .clip(CircleShape)
-                                                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-                                                                        contentAlignment = Alignment.Center
-                                                                    ) {
-                                                                        Icon(
-                                                                            Icons.Filled.PlayArrow,
-                                                                            contentDescription = "Start Timer",
-                                                                            modifier = Modifier.size(26.dp),
-                                                                            tint = MaterialTheme.colorScheme.primary
-                                                                        )
-                                                                    }
-                                                                    Spacer(Modifier.width(16.dp))
-                                                                    Column {
-                                                                        Text(
-                                                                            "Start Focus Session",
-                                                                            style = MaterialTheme.typography.titleMedium,
-                                                                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                                                                        )
-                                                                        Text(
-                                                                            if (readingBooks.size == 1) "Resume ${readingBooks.first().title}"
-                                                                            else "Pick a book to start tracking",
-                                                                            style = MaterialTheme.typography.bodyMedium,
-                                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                                            maxLines = 1,
-                                                                            overflow = TextOverflow.Ellipsis
-                                                                        )
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-
-                                                        ReadingHero(
-                                                            books = readingBooks,
-                                                            openSession = openSession,
-                                                            sessions = sessions,
-                                                            streak = streak,
-                                                            onProgress = { b, delta ->
-                                                                viewModel.addProgress(b, delta)
-                                                                scope.launch {
-                                                                    snackbarHostState.currentSnackbarData?.dismiss()
-                                                                    val result = snackbarHostState.showSnackbar(
-                                                                        message = "Added $delta pages",
-                                                                        actionLabel = "Undo",
-                                                                        duration = SnackbarDuration.Short
-                                                                    )
-                                                                    if (result == SnackbarResult.ActionPerformed) {
-                                                                        viewModel.addProgress(b, -delta)
-                                                                    }
-                                                                }
-                                                            },
-                                                            onFinish = viewModel::finishBook,
-                                                            onDnf = viewModel::markDnf,
-                                                            onStartSession = viewModel::startSession,
-                                                            onEndSession = { b -> navController.navigate("session_save/${b.id}") },
-                                                            onDeleteSession = { id: String -> 
-                                                                viewModel.completedSessions.value.find { it.id == id }?.let { viewModel.deleteSession(it) } 
-                                                            },
+                                                },
+                                                onAddBook = { showAddDialog = true },
+                                                onOpenLibrary = { navigateTopLevel("library") },
+                                                onOpenCalendar = { navController.navigate("calendar") },
+                                                onOpenBookshelf = { navController.navigate("bookshelf") },
+                                                onOpenStats = { navigateTopLevel("stats") },
+                                                onOpenFinished = { navController.navigate("finished") },
+                                                onOpenWrapped = { navController.navigate("wrapped") },
+                                                onEditGoal = { type ->
+                                                    initialGoalType = type
+                                                    showGoalDialog = true
+                                                },
+                                                banner = {
+                                                    val urgentLoans = remember(books) { LoanEngine.urgentLoans(books) }
+                                                    if (urgentLoans.isNotEmpty()) {
+                                                        UrgentLoanBanner(
+                                                            urgentLoans = urgentLoans,
                                                             onOpenBook = { navController.navigate("book/${it.id}") },
-                                                            onGoToLibrary = { navigateTopLevel("library") }
+                                                            modifier = Modifier.padding(horizontal = 16.dp)
                                                         )
                                                     }
                                                 }
-                                            }
-            
+                                            )
+                                        }
+                                    }
+                                    composable("calendar") {
+                                        val sessions by viewModel.completedSessions.collectAsState()
+                                        val allNotes by viewModel.allNotes.collectAsState()
+                                        val currentUserName by viewModel.userName.collectAsState()
+                                        SubScreen(title = "Calendar", onBack = { navController.popBackStack() }) {
+                                            ReadingCalendarView(
+                                                books = books,
+                                                sessions = sessions,
+                                                notes = allNotes,
+                                                monthlyGoalPages = monthlyGoalPages,
+                                                userName = currentUserName,
+                                                onOpenBook = { navController.navigate("book/${it.id}") },
+                                                onStartTimer = { navController.navigate("focus/${it.id}") },
+                                                onEditGoal = {
+                                                    initialGoalType = GoalType.MONTHLY_PAGES
+                                                    showGoalDialog = true
+                                                }
+                                            )
+                                        }
+                                    }
+                                    composable("bookshelf") {
+                                        SubScreen(title = "Bookshelf", onBack = { navController.popBackStack() }) {
+                                            VirtualBookshelfView(
+                                                books = books,
+                                                onOpenBook = { navController.navigate("book/${it.id}") },
+                                                onStartReading = { navController.navigate("focus/${it.id}") },
+                                                modifier = Modifier.fillMaxSize()
+                                            )
                                         }
                                     }
                                     composable("epubReader/{uri}") { backStackEntry ->
@@ -600,7 +548,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                                 navController.navigate("epubReader/${Uri.encode(uri.toString())}") 
                                                             },
                                                             onSearch = { navController.navigate("search") },
-                                                            onScan = { showScanner = true }
+                                                            onScan = openScanner
                                                         )
             
                                         }
@@ -616,25 +564,25 @@ androidx.compose.animation.SharedTransitionLayout {
             
                                         }
                                     }
-                                    composable("timer") {
-                
-                                        androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {                TimerSetupScreen(
-                                                            viewModel = viewModel,
-                                                            books = books,
-                                                            onStartTimer = { book, startPage ->
-                                                                navController.navigate("focus/${book.id}")
-                                                            },
-                                                            onManualSessionSaved = {
-                                                                scope.launch {
-                                                                    snackbarHostState.showSnackbar(
-                                                                        message = "Manual session saved",
-                                                                        duration = SnackbarDuration.Short
-                                                                    )
-                                                                }
-                                                            }
-                                                        )
-            
-                                        }
+                                    composable("scanner") {
+                                        ScannerScreen(
+                                            onClose = { navController.popBackStack() },
+                                            onBookConfirmed = { scanned, status, format ->
+                                                viewModel.addScannedBook(scanned, status, format)
+                                                navController.popBackStack()
+                                                scope.launch {
+                                                    snackbarHostState.currentSnackbarData?.dismiss()
+                                                    snackbarHostState.showSnackbar("Added “${scanned.title}”")
+                                                }
+                                            },
+                                            onAddManually = {
+                                                navController.popBackStack()
+                                                showAddDialog = true
+                                            }
+                                        )
+                                    }
+                                    composable("privacy") {
+                                        PrivacyPolicyScreen(onBack = { navController.popBackStack() })
                                     }
                                     composable("stats") {
                 
@@ -740,8 +688,23 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                             streak = streak,
                                                             notes = notes,
                                                             onAddNote = { page, text, type -> viewModel.addNote(bookId, page, text, type) },
+                                                            onUpdateNote = viewModel::updateNote,
                                                             onDeleteNote = viewModel::deleteNote,
                                                             onToggleNoteFavorite = viewModel::toggleNoteFavorite,
+                                                            onSaveDetails = viewModel::updateBookDetails,
+                                                            onChangeStatus = { status ->
+                                                                books.find { it.id == bookId }?.let { viewModel.changeStatus(it, status) }
+                                                            },
+                                                            onMarkDnf = { percent, reason ->
+                                                                books.find { it.id == bookId }?.let { viewModel.markDnf(it, percent, reason) }
+                                                            },
+                                                            onLogSession = { startPage, endPage, minutes, endTime ->
+                                                                viewModel.logManualSession(bookId, startPage, endPage, minutes, endTime)
+                                                                scope.launch {
+                                                                    snackbarHostState.currentSnackbarData?.dismiss()
+                                                                    snackbarHostState.showSnackbar("Reading session logged")
+                                                                }
+                                                            },
                                                             onSetProgress = { page ->
                                                                 books.find { it.id == bookId }?.let { viewModel.setProgress(it, page) }
                                                             },
@@ -760,9 +723,6 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                             },
                                                             onStartReading = {
                                                                 navController.navigate("focus/$bookId")
-                                                            },
-                                                            onPauseReading = {
-                                                                books.find { it.id == bookId }?.let { viewModel.pauseBook(it.id) }
                                                             },
                                                             onReadAgain = {
                                                                 books.find { it.id == bookId }?.let { viewModel.readAgain(it) }
@@ -813,7 +773,8 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                         val userName by viewModel.userName.collectAsState()
                                                         val dayStartsAtHour by viewModel.dayStartsAtHour.collectAsState()
                                                         val useAppLock by viewModel.useAppLock.collectAsState()
-                
+                                                        val reminder by viewModel.reminder.collectAsState()
+
                                                         SettingsScreen(
                                                             userName = userName,
                                                             dailyGoal = goal,
@@ -833,9 +794,12 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                             onThemeModeChange = viewModel::setThemeMode,
                                                             onUseDynamicColorChange = viewModel::setUseDynamicColor,
                                                             onAppLockChange = viewModel::setUseAppLock,
+                                                            reminder = reminder,
+                                                            onReminderChange = viewModel::setReminder,
                                                             onImportCsv = { uri, onDone -> viewModel.importCsv(context, uri, onDone) },
                                                             onExportBackup = { uri, onDone -> viewModel.exportBackup(context, uri, onDone) },
                                                             onImportBackup = { uri, onDone -> viewModel.importBackup(context, uri, onDone) },
+                                                            onOpenPrivacyPolicy = { navController.navigate("privacy") },
                                                             onBack = { navController.popBackStack() }
                                                         )
             
@@ -885,9 +849,8 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                                     viewModel = viewModel,
                                                                     book = book,
                                                                     onBack = { navController.popBackStack() },
-                                                                    onStartSession = viewModel::startSession,
                                                                     onSaveSession = {
-                                                                        navController.navigate("session_save/$bookId")
+                                                                        navController.navigate("session_save/$bookId") { launchSingleTop = true }
                                                                     },
                                                                     onAddNote = { page, text -> viewModel.addNote(bookId, page, text) }
                                                                 )
@@ -917,6 +880,7 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                                 initialStartTime = start,
                                                                 initialDurationSeconds = duration,
                                                                 initialPage = book.currentPage,
+                                                                sessionStartPage = session?.startPage ?: book.currentPage,
                                                                 onBack = { navController.popBackStack() },
                                                                 onDiscard = {
                                                                     viewModel.discardOpenSession(bookId)
@@ -1029,571 +993,110 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                 },
                 onScanBarcode = {
                     showAddDialog = false
-                    showScanner = true
+                    openScanner()
                 }
             )
         }
     }
 
 
-    if (showStartTimerDialog) {
-        SelectTimerBookDialog(
-            books = books,
-            onDismiss = { showStartTimerDialog = false },
-            onConfirm = { book ->
-                showStartTimerDialog = false
-                navController.navigate("focus/${book.id}")
-            },
-            onGoToLibrary = {
-                showStartTimerDialog = false
-                navigateTopLevel("library")
-            }
-        )
+    if (showEndTimerDialog) {
+        val timerBook by viewModel.activeTimerBook.collectAsState()
+        val endingBook = timerBook
+        if (endingBook == null) {
+            showEndTimerDialog = false
+        } else {
+            AlertDialog(
+                onDismissRequest = { showEndTimerDialog = false },
+                title = { Text("End this reading session?") },
+                text = { Text("Save it to keep the time and pages in your stats, or discard it.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showEndTimerDialog = false
+                        viewModel.setTimerRunning(false)
+                        navController.navigate("session_save/${endingBook.id}") { launchSingleTop = true }
+                    }) { Text("Save") }
+                },
+                dismissButton = {
+                    Row {
+                        TextButton(onClick = { showEndTimerDialog = false }) { Text("Keep reading") }
+                        TextButton(onClick = {
+                            showEndTimerDialog = false
+                            viewModel.discardOpenSession(endingBook.id)
+                        }) { Text("Discard", color = MaterialTheme.colorScheme.error) }
+                    }
+                }
+            )
+        }
     }
 }
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
+/** This week (Mon–Sun) as bubbles, filled on days with any reading. */
 @Composable
-fun ReadingHero(
-    books: List<Book>,
-    openSession: Session?,
-    sessions: List<Session>,
-    streak: StreakEngine.StreakInfo,
-    onProgress: (Book, Int) -> Unit,
-    onFinish: (Book, Map<String, Float>, String?) -> Unit,
-    onDnf: (Book, Float, String) -> Unit,
-    onStartSession: (Book, Int?) -> Unit,
-    onEndSession: (Book) -> Unit,
-    onDeleteSession: (String) -> Unit,
-    onOpenBook: (Book) -> Unit = {},
-    onGoToLibrary: () -> Unit = {}
-) {
-    var bookToFinish by remember { mutableStateOf<Book?>(null) }
-    var bookToDnf by remember { mutableStateOf<Book?>(null) }
-    var bookToStartSession by remember { mutableStateOf<Book?>(null) }
-    var bookToAddCustomProgress by remember { mutableStateOf<Book?>(null) }
-    val haptic = LocalHapticFeedback.current
-    var showConfetti by remember { androidx.compose.runtime.mutableStateOf(false) }
-    
-    // Track previous state to only fire on transition
-    var previousGoalMet by remember { androidx.compose.runtime.mutableStateOf(streak.goalMetToday) }
-    
-    LaunchedEffect(streak.goalMetToday) {
-        if (streak.goalMetToday && !previousGoalMet) {
-            showConfetti = true
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        }
-        previousGoalMet = streak.goalMetToday
-    }
-
-    if (showConfetti) {
-        ConfettiExplosion(onFinished = { showConfetti = false })
-    }
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "Currently Reading",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f)
-            )
-            StreakBadge(streak)
-        }
-
-        if (books.isEmpty()) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 12.dp)
-                    .animateContentSize(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Nothing in progress", style = MaterialTheme.typography.titleLarge)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "Promote a book through the pipeline to start reading.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    FilledTonalButton(onClick = onGoToLibrary) {
-                        Text("Go to Library")
-                    }
-                }
-            }
-        } else {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                books.forEach { book ->
-                    val progressVal = if (book.totalPages > 0) book.currentPage.toFloat() / book.totalPages else 0f
-                    val progress by androidx.compose.animation.core.animateFloatAsState(targetValue = progressVal, label = "progress")
-                    
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .animateContentSize(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(modifier = Modifier.clickable { onOpenBook(book) }) {
-                                BookCover(book.coverUrl, Modifier.heroSharedElement("cover-${book.id}").size(width = 96.dp, height = 144.dp))
-                                Spacer(Modifier.width(16.dp))
-                                Column(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(144.dp)
-                                ) {
-                                    Text(
-                                        book.title,
-                                        style = MaterialTheme.typography.titleLarge,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    if (book.authors.isNotEmpty()) {
-                                        Spacer(Modifier.height(4.dp))
-                                        Text(
-                                            book.authors.joinToString(", "),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                    
-                                    val bookSessions = sessions.filter { it.bookId == book.id && it.durationSeconds > 0 && it.pagesRead > 0 }
-                                    val totalTimeSecs = bookSessions.sumOf { it.durationSeconds }
-                                    val totalPagesRead = bookSessions.sumOf { it.pagesRead }
-                                    val avgSpeed = if (totalTimeSecs > 0) totalPagesRead.toFloat() / totalTimeSecs else 0f
-                                    val remainingPages = (book.totalPages - book.currentPage).coerceAtLeast(0)
-                                    val remainingTimeText = if (avgSpeed > 0 && remainingPages > 0) {
-                                        val remainingSecs = (remainingPages / avgSpeed).toInt()
-                                        val h = remainingSecs / 3600
-                                        val m = (remainingSecs % 3600) / 60
-                                        if (h > 0) "${h}h ${m}m remaining" else "${m}m remaining"
-                                    } else null
-
-                                    if (remainingTimeText != null) {
-                                        Spacer(Modifier.height(4.dp))
-                                        Text(
-                                            remainingTimeText,
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.tertiary
-                                        )
-                                    }
-                                    Spacer(Modifier.weight(1f))
-                                    
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            "Progress",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Text(
-                                            "${(progress * 100).roundToInt()}%",
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-                                    com.example.booktracker.app.ui.animations.LiquidWaveProgressBar(
-                                        progress = progressVal,
-                                        modifier = Modifier.fillMaxWidth(),
-                                        height = 10.dp,
-                                        waveColor = MaterialTheme.colorScheme.primary,
-                                        secondaryWaveColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f),
-                                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                                    )
-                                    Spacer(Modifier.height(12.dp))
-                                    if (openSession != null && openSession.bookId == book.id) {
-                                        var nowMillis by remember(openSession.id) {
-                                            mutableLongStateOf(System.currentTimeMillis())
-                                        }
-                                        LaunchedEffect(openSession.id) {
-                                            while (true) {
-                                                nowMillis = System.currentTimeMillis()
-                                                delay(1_000)
-                                            }
-                                        }
-                                        Row(
-                                            modifier = Modifier.align(Alignment.End),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(
-                                                formatElapsed(nowMillis - openSession.startTime),
-                                                style = MaterialTheme.typography.titleMedium,
-                                                color = MaterialTheme.colorScheme.primary
-                                            )
-                                            Spacer(Modifier.width(10.dp))
-                                            val endInteractionSource = remember { MutableInteractionSource() }
-                                            Button(
-                                                onClick = { },
-                                                modifier = Modifier.bounceClick(endInteractionSource) {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    onEndSession(book)
-                                                },
-                                                interactionSource = endInteractionSource,
-                                                colors = ButtonDefaults.buttonColors(
-                                                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                                )
-                                            ) {
-                                                Icon(Icons.Filled.Stop, contentDescription = null, modifier = Modifier.size(18.dp))
-                                                Spacer(Modifier.width(8.dp))
-                                                Text("End")
-                                            }
-                                        }
-                                    } else {
-                                        val resumeInteractionSource = remember { MutableInteractionSource() }
-                                        Button(
-                                            onClick = { },
-                                            modifier = Modifier
-                                                .align(Alignment.End)
-                                                .bounceClick(resumeInteractionSource) {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    bookToStartSession = book
-                                                },
-                                            interactionSource = resumeInteractionSource,
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                            )
-                                        ) {
-                                            Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                                            Spacer(Modifier.width(8.dp))
-                                            Text("Resume")
-                                        }
-                                    }
-                                }
-                            }
-
-                            Spacer(Modifier.height(16.dp))
-                            androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                            Spacer(Modifier.height(12.dp))
-                            val bookSessions = remember(book, sessions) { sessions.filter { it.bookId == book.id } }
-                            val velocity = remember(bookSessions, sessions) { AnalyticsEngine.bookPagesPerHour(bookSessions, sessions) }
-                            val speedText = remember(velocity) { AnalyticsEngine.formatReadingSpeed(velocity) }
-                            val minutesLeft = remember(book, bookSessions, sessions) {
-                                AnalyticsEngine.bookEstimatedMinutesLeft(book, bookSessions, sessions)
-                            }
-                            val etaText = remember(minutesLeft) { AnalyticsEngine.formatEstimatedTime(minutesLeft) }
-
-                            if (speedText != null || etaText != null) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    if (speedText != null) {
-                                        Surface(
-                                            shape = RoundedCornerShape(8.dp),
-                                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Icon(
-                                                    Icons.Filled.Speed,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(13.dp),
-                                                    tint = MaterialTheme.colorScheme.primary
-                                                )
-                                                Spacer(Modifier.width(4.dp))
-                                                Text(
-                                                    speedText,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    fontWeight = FontWeight.SemiBold
-                                                )
-                                            }
-                                        }
-                                    }
-                                    if (etaText != null) {
-                                        Surface(
-                                            shape = RoundedCornerShape(8.dp),
-                                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Icon(
-                                                    Icons.Filled.Schedule,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(13.dp),
-                                                    tint = MaterialTheme.colorScheme.secondary
-                                                )
-                                                Spacer(Modifier.width(4.dp))
-                                                Text(
-                                                    etaText,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    fontWeight = FontWeight.SemiBold
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                                Spacer(Modifier.height(10.dp))
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    HeroPillButton("+1") {
-                                        if (streak.pagesToday < streak.dailyGoal && streak.pagesToday + 1 >= streak.dailyGoal) {
-                                            showConfetti = true
-                                        }
-                                        onProgress(book, 1)
-                                    }
-                                    HeroPillButton("+10") {
-                                        if (streak.pagesToday < streak.dailyGoal && streak.pagesToday + 10 >= streak.dailyGoal) {
-                                            showConfetti = true
-                                        }
-                                        onProgress(book, 10)
-                                    }
-                                    HeroPillButton("+ Custom") {
-                                        bookToAddCustomProgress = book
-                                    }
-                                }
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    androidx.compose.material3.TextButton(
-                                        onClick = { 
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            bookToDnf = book 
-                                        },
-                                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    ) { Text("Give up") }
-                                    androidx.compose.material3.TextButton(
-                                        onClick = { 
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            bookToFinish = book 
-                                        },
-                                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
-                                    ) { Text("Finish") }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    bookToStartSession?.let { startBook ->
-        StartSessionDialog(
-            currentPage = startBook.currentPage,
-            totalPages = startBook.totalPages,
-            unitName = if (startBook.totalPages > 0) "Page" else "Unit",
-            onDismiss = { bookToStartSession = null },
-            onConfirm = { startPage ->
-                onStartSession(startBook, startPage)
-                bookToStartSession = null
-            }
-        )
-    }
-
-    bookToAddCustomProgress?.let { customProgressBook ->
-        CustomProgressDialog(
-            unitName = if (customProgressBook.totalPages > 0) "Pages" else "Units",
-            onDismiss = { bookToAddCustomProgress = null },
-            onConfirm = { delta ->
-                onProgress(customProgressBook, delta)
-                if (streak.pagesToday < streak.dailyGoal && streak.pagesToday + delta >= streak.dailyGoal) {
-                    showConfetti = true
-                }
-                bookToAddCustomProgress = null
-            }
-        )
-    }
-
-    bookToFinish?.let { finishBook ->
-        FinishDialog(
-            book = finishBook,
-            onDismiss = { bookToFinish = null },
-            onConfirm = { rating, review ->
-                onFinish(finishBook, rating, review)
-                bookToFinish = null
-            }
-        )
-    }
-    
-    bookToDnf?.let { dnfBook ->
-        DnfDialog(
-            book = dnfBook,
-            onDismiss = { bookToDnf = null },
-            onConfirm = { percent, reason ->
-                onDnf(dnfBook, percent, reason)
-                bookToDnf = null
-            }
-        )
-    }
-    
-    val activeReadingSeconds by com.example.booktracker.app.data.ServiceLocator.activeReadingSeconds.collectAsState()
-    var summaryStartPage by remember { mutableStateOf(0) }
-}
-
-private fun formatElapsed(millis: Long): String {
-    val totalSeconds = millis.coerceAtLeast(0) / 1_000
-    val hours = totalSeconds / 3_600
-    val minutes = (totalSeconds % 3_600) / 60
-    val seconds = totalSeconds % 60
-    return if (hours > 0) {
-        "%d:%02d:%02d".format(hours, minutes, seconds)
-    } else {
-        "%02d:%02d".format(minutes, seconds)
-    }
-}
-
-@Composable
-fun StreakBadge(streak: StreakEngine.StreakInfo) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        val hasStreak = streak.currentStreak > 0
-        Surface(
-            shape = CircleShape,
-            color = if (streak.goalMetToday) {
-                Color(0xFFFF6D00).copy(alpha = 0.15f)
-            } else if (hasStreak) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerHigh
-            },
-            border = androidx.compose.foundation.BorderStroke(
-                width = 1.dp,
-                color = if (streak.goalMetToday) Color(0xFFFF9800).copy(alpha = 0.6f)
-                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-            )
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Filled.LocalFireDepartment,
-                    contentDescription = null,
-                    tint = if (streak.goalMetToday) StreakFlame
-                    else if (hasStreak) Color(0xFFFFB74D)
-                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    "${streak.currentStreak}-day streak",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = if (streak.goalMetToday) Color(0xFFFF9800)
-                    else MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
-        
-        Spacer(Modifier.height(8.dp))
-        
-        // 7-day horizontal bubble bar (Mon-Sun)
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val today = java.time.LocalDate.now()
-            val currentDayOfWeek = today.dayOfWeek.value // 1 (Mon) to 7 (Sun)
-            val monday = today.minusDays(currentDayOfWeek - 1L)
-            
-            for (i in 0..6) {
-                val day = monday.plusDays(i.toLong())
-                val isActive = streak.activeDays.contains(day)
-                val isToday = day == today
-                
+fun WeekBubbles(streak: StreakEngine.StreakInfo, modifier: Modifier = Modifier) {
+    val today = streak.today
+    val monday = today.minusDays(today.dayOfWeek.value - 1L)
+    val locale = java.util.Locale.getDefault()
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        for (i in 0..6) {
+            val day = monday.plusDays(i.toLong())
+            val isActive = streak.activeDays.contains(day)
+            val isToday = day == today
+            val isFuture = day.isAfter(today)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(
                     modifier = Modifier
-                        .size(24.dp)
+                        .size(30.dp)
                         .then(
                             if (isActive) {
                                 Modifier.background(
-                                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                    brush = Brush.linearGradient(
                                         listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
                                     ),
                                     shape = CircleShape
                                 )
                             } else {
                                 Modifier.background(
-                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = if (isFuture) 0.5f else 1f),
                                     shape = CircleShape
                                 )
                             }
                         )
                         .then(
-                            if (isToday) {
-                                Modifier.border(
-                                    width = 1.5.dp,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    shape = CircleShape
-                                )
-                            } else Modifier
+                            if (isToday) Modifier.border(1.5.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                            else Modifier
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = day.dayOfWeek.name.take(1),
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontSize = 10.sp,
-                            fontWeight = if (isActive || isToday) FontWeight.Bold else FontWeight.Normal
-                        ),
-                        color = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (isActive) {
+                        Icon(
+                            Icons.Filled.LocalFireDepartment,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = day.dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, locale),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
+                    ),
+                    color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
 }
 
-@Composable
-fun HeroPillButton(label: String, onClick: () -> Unit) {
-    val haptic = LocalHapticFeedback.current
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    
-    // Animate alpha based on press state
-    val backgroundAlpha by animateFloatAsState(
-        targetValue = if (isPressed) 0.35f else 0.2f,
-        animationSpec = spring(stiffness = Spring.StiffnessLow),
-        label = "pillAlpha"
-    )
 
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = backgroundAlpha),
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        modifier = Modifier
-            .background(androidx.compose.ui.graphics.Color.Transparent)
-            .bounceClick(interactionSource = interactionSource) {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onClick()
-            }
-    ) {
-        Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
-            Text(label, style = MaterialTheme.typography.labelLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold))
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
     books: List<Book>,
@@ -1606,10 +1109,14 @@ fun LibraryScreen(
     onSearch: () -> Unit,
     onScan: () -> Unit
 ) {
-    var selectedFilter by remember { mutableStateOf<BookStatus?>(null) }
-    var showFavoritesOnly by remember { mutableStateOf(false) }
-    var showLoansOnly by remember { mutableStateOf(false) }
-    var viewMode by remember { mutableStateOf(LibraryViewMode.GRID) }
+    var selectedFilter by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<BookStatus?>(null) }
+    var showFavoritesOnly by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    var showLoansOnly by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    var selectedCollection by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
+    var sortOrder by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(LibrarySort.RECENT) }
+    var viewMode by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(LibraryViewMode.GRID) }
+    var showSortMenu by remember { mutableStateOf(false) }
+    var showCollectionMenu by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
 
     val epubPickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -1619,20 +1126,40 @@ fun LibraryScreen(
             onReadEpub(uri)
         }
     }
-    
-    val displayBooks = books.filter { 
-        if (showLoansOnly) {
-            val hasLoan = LoanEngine.activeLoan(it) != null
-            val favoriteMatches = if (showFavoritesOnly) it.isFavorite else true
-            return@filter hasLoan && favoriteMatches
+
+    val collections = remember(books) {
+        books.flatMap { it.classification.collections }.filter { it.isNotBlank() }.distinct().sorted()
+    }
+    if (selectedCollection != null && selectedCollection !in collections) selectedCollection = null
+
+    val displayBooks = remember(books, selectedFilter, showFavoritesOnly, showLoansOnly, selectedCollection, sortOrder) {
+        books.filter { book ->
+            val statusMatches = when (selectedFilter) {
+                null -> true
+                BookStatus.TO_READ -> book.status.equals(BookStatus.TO_READ.name, ignoreCase = true) || book.status.equals("BACKLOG", ignoreCase = true)
+                BookStatus.DNF -> book.status.equals(BookStatus.DNF.name, ignoreCase = true) || book.status.equals(BookStatus.ABANDONED.name, ignoreCase = true)
+                else -> book.status.equals(selectedFilter?.name, ignoreCase = true)
+            }
+            val favoriteMatches = !showFavoritesOnly || book.isFavorite
+            val loanMatches = !showLoansOnly || LoanEngine.activeLoan(book) != null
+            val collectionMatches = selectedCollection == null || selectedCollection in book.classification.collections
+            statusMatches && favoriteMatches && loanMatches && collectionMatches
+        }.let { list ->
+            when (sortOrder) {
+                LibrarySort.RECENT -> list.sortedByDescending { it.lastUpdated }
+                LibrarySort.TITLE -> list.sortedBy { it.title.lowercase() }
+                // Surname order; books without an author sort last.
+                LibrarySort.AUTHOR -> list.sortedWith(
+                    compareBy<Book> { it.authors.firstOrNull()?.trim()?.substringAfterLast(" ")?.lowercase() ?: "￿" }
+                        .thenBy { it.title.lowercase() }
+                )
+                LibrarySort.ADDED -> list.sortedByDescending { it.dateAdded }
+                LibrarySort.PROGRESS -> list.sortedByDescending {
+                    if (it.totalPages > 0) it.currentPage.toFloat() / it.totalPages else 0f
+                }
+                LibrarySort.RATING -> list.sortedByDescending { it.overallRating ?: -1f }
+            }
         }
-        val statusMatches = if (selectedFilter == null) {
-            it.status != BookStatus.READING.name && it.status != BookStatus.FINISHED.name && it.status != BookStatus.DNF.name
-        } else {
-            it.status == selectedFilter!!.name
-        }
-        val favoriteMatches = if (showFavoritesOnly) it.isFavorite else true
-        statusMatches && favoriteMatches
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -1640,44 +1167,21 @@ fun LibraryScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .horizontalScroll(rememberScrollState()),
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             val filters = listOf(
-                null to "Backlog",
-                BookStatus.READING to BookStatus.READING.label,
-                BookStatus.SHORTLIST to BookStatus.SHORTLIST.label,
-                BookStatus.UP_NEXT to BookStatus.UP_NEXT.label,
-                BookStatus.PAUSED to BookStatus.PAUSED.label,
-                BookStatus.FINISHED to BookStatus.FINISHED.label
-            )
-            
-            androidx.compose.material3.FilterChip(
-                selected = showFavoritesOnly,
-                onClick = { showFavoritesOnly = !showFavoritesOnly },
-                label = { Text("⭐ Favorites") },
-                colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    selectedLabelColor = MaterialTheme.colorScheme.onTertiaryContainer
-                ),
-                shape = CircleShape
+                null to "All (${books.size})",
+                BookStatus.READING to "${BookStatus.READING.label} (${books.count { it.status.equals(BookStatus.READING.name, ignoreCase = true) }})",
+                BookStatus.TO_READ to "${BookStatus.TO_READ.label} (${books.count { it.status.equals(BookStatus.TO_READ.name, ignoreCase = true) || it.status.equals("BACKLOG", ignoreCase = true) }})",
+                BookStatus.SHORTLIST to "${BookStatus.SHORTLIST.label} (${books.count { it.status.equals(BookStatus.SHORTLIST.name, ignoreCase = true) }})",
+                BookStatus.UP_NEXT to "${BookStatus.UP_NEXT.label} (${books.count { it.status.equals(BookStatus.UP_NEXT.name, ignoreCase = true) }})",
+                BookStatus.PAUSED to "${BookStatus.PAUSED.label} (${books.count { it.status.equals(BookStatus.PAUSED.name, ignoreCase = true) }})",
+                BookStatus.FINISHED to "${BookStatus.FINISHED.label} (${books.count { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) }})",
+                BookStatus.DNF to "${BookStatus.DNF.label} (${books.count { it.status.equals(BookStatus.DNF.name, ignoreCase = true) || it.status.equals(BookStatus.ABANDONED.name, ignoreCase = true) }})"
             )
 
-            androidx.compose.material3.FilterChip(
-                selected = showLoansOnly,
-                onClick = {
-                    showLoansOnly = !showLoansOnly
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                },
-                label = { Text("🏛️ On Loan") },
-                colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
-                ),
-                shape = CircleShape
-            )
-            
             filters.forEach { (status, label) ->
                 val isSelected = selectedFilter == status
                 androidx.compose.material3.FilterChip(
@@ -1692,137 +1196,253 @@ fun LibraryScreen(
                     border = null
                 )
             }
+
+            androidx.compose.material3.FilterChip(
+                selected = showFavoritesOnly,
+                onClick = { showFavoritesOnly = !showFavoritesOnly },
+                label = { Text("Favorites") },
+                leadingIcon = { Icon(Icons.Filled.Favorite, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onTertiaryContainer
+                ),
+                shape = CircleShape
+            )
+
+            androidx.compose.material3.FilterChip(
+                selected = showLoansOnly,
+                onClick = {
+                    showLoansOnly = !showLoansOnly
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                },
+                label = { Text("On loan") },
+                colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ),
+                shape = CircleShape
+            )
         }
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(start = 16.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedButton(
-                onClick = onCurationClick,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(Icons.Filled.Favorite, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Curate TBR", maxLines = 1)
+            Box {
+                androidx.compose.material3.AssistChip(
+                    onClick = { showSortMenu = true },
+                    label = { Text(sortOrder.label, maxLines = 1) },
+                    leadingIcon = {
+                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, modifier = Modifier.size(16.dp))
+                    },
+                    shape = CircleShape
+                )
+                DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+                    LibrarySort.entries.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.label) },
+                            onClick = {
+                                sortOrder = option
+                                showSortMenu = false
+                            },
+                            trailingIcon = {
+                                if (option == sortOrder) Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                            }
+                        )
+                    }
+                }
             }
-            OutlinedButton(
-                onClick = { epubPickerLauncher.launch("application/epub+zip") },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Read EPUB", maxLines = 1)
-            }
-            androidx.compose.material3.FilterChip(
-                selected = viewMode == LibraryViewMode.BOOKSHELF,
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    viewMode = if (viewMode == LibraryViewMode.GRID) LibraryViewMode.BOOKSHELF else LibraryViewMode.GRID
-                },
-                label = { Text(if (viewMode == LibraryViewMode.BOOKSHELF) "3D Shelf" else "Grid") },
-                leadingIcon = {
-                    Icon(
-                        Icons.AutoMirrored.Filled.MenuBook,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
+            if (collections.isNotEmpty()) {
+                Spacer(Modifier.width(8.dp))
+                Box(modifier = Modifier.weight(1f, fill = false)) {
+                    androidx.compose.material3.FilterChip(
+                        selected = selectedCollection != null,
+                        onClick = { showCollectionMenu = true },
+                        label = {
+                            Text(
+                                selectedCollection ?: "Collections",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Filled.Folder, contentDescription = null, modifier = Modifier.size(16.dp))
+                        },
+                        shape = CircleShape
                     )
-                },
-                colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                ),
-                shape = RoundedCornerShape(12.dp)
-            )
-        }
-        
-        if (displayBooks.isEmpty()) {
-            // Polished Empty State
-            Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                androidx.compose.material3.Surface(
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(32.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.animateContentSize()
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(32.dp)
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.MenuBook,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(Modifier.height(24.dp))
-                        Text(
-                            "Your Library is Empty", 
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            "Scan a barcode or search for a book to start tracking your reading journey.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(Modifier.height(24.dp))
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Button(
-                                onClick = onScan,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(Icons.Filled.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("Scan")
+                    DropdownMenu(expanded = showCollectionMenu, onDismissRequest = { showCollectionMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("All collections") },
+                            onClick = {
+                                selectedCollection = null
+                                showCollectionMenu = false
                             }
-                            FilledTonalButton(
-                                onClick = onSearch,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("Search")
-                            }
+                        )
+                        collections.forEach { name ->
+                            DropdownMenuItem(
+                                text = { Text(name) },
+                                onClick = {
+                                    selectedCollection = name
+                                    showCollectionMenu = false
+                                },
+                                trailingIcon = {
+                                    if (name == selectedCollection) Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                                }
+                            )
                         }
                     }
                 }
             }
-        } else {
-            // Grid of Books
-            val displayBooksWithStatus = if (selectedFilter == BookStatus.FINISHED) {
-                books.filter { it.status == BookStatus.FINISHED.name }
-            } else displayBooks
-
-            if (viewMode == LibraryViewMode.BOOKSHELF) {
-                VirtualBookshelfView(
-                    books = displayBooksWithStatus,
-                    onOpenBook = onOpenBook,
-                    onStartReading = onStartReading
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick = onCurationClick) {
+                Icon(Icons.Filled.Style, contentDescription = "Sort your to-read pile")
+            }
+            IconButton(onClick = { epubPickerLauncher.launch("application/epub+zip") }) {
+                Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Open an EPUB file")
+            }
+            IconButton(onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                viewMode = if (viewMode == LibraryViewMode.GRID) LibraryViewMode.BOOKSHELF else LibraryViewMode.GRID
+            }) {
+                Icon(
+                    if (viewMode == LibraryViewMode.GRID) Icons.Filled.ViewColumn else Icons.Filled.GridView,
+                    contentDescription = if (viewMode == LibraryViewMode.GRID) "Show as bookshelf" else "Show as grid"
                 )
+            }
+        }
+
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            if (displayBooks.isEmpty()) {
+                if (books.isEmpty()) {
+                    // Library is completely empty
+                    Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                        androidx.compose.material3.Surface(
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(32.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.animateContentSize()
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.MenuBook,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(64.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(Modifier.height(24.dp))
+                                Text(
+                                    "Your Library is Empty", 
+                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                                )
+                                Spacer(Modifier.height(12.dp))
+                                Text(
+                                    "Scan a barcode or search for a book to start tracking your reading journey.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(Modifier.height(24.dp))
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Button(
+                                        onClick = onScan,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(Icons.Filled.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("Scan")
+                                    }
+                                    FilledTonalButton(
+                                        onClick = onSearch,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("Search")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Filter resulted in no books matching
+                    Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                        androidx.compose.material3.Surface(
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(32.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.animateContentSize()
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.MenuBook,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(56.dp),
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                )
+                                Spacer(Modifier.height(20.dp))
+                                Text(
+                                    "No Matching Books", 
+                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                                )
+                                Spacer(Modifier.height(10.dp))
+                                Text(
+                                    "No books match the selected filter criteria. Clear filters to view your entire collection.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(Modifier.height(24.dp))
+                                Button(
+                                    onClick = {
+                                        selectedFilter = null
+                                        showFavoritesOnly = false
+                                        showLoansOnly = false
+                                    }
+                                ) {
+                                    Icon(Icons.Filled.Close, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Reset Filters")
+                                }
+                            }
+                        }
+                    }
+                }
             } else {
-                androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-                    columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(minSize = 140.dp),
-                    contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 120.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(displayBooksWithStatus, key = { it.id }) { book ->
-                        LibraryGridCard(
-                            book = book,
-                            modifier = Modifier.animateItem(),
-                            onClick = { onOpenBook(book) },
-                            onPromote = { onPromote(book) },
-                            onStartReading = { onStartReading(book) },
-                            onDelete = { onDelete(book) }
-                        )
+                // Grid or Shelf of Books
+                if (viewMode == LibraryViewMode.BOOKSHELF) {
+                    VirtualBookshelfView(
+                        books = displayBooks,
+                        onOpenBook = onOpenBook,
+                        onStartReading = onStartReading,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                        columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(minSize = 140.dp),
+                        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(displayBooks, key = { it.id }) { book ->
+                            LibraryGridCard(
+                                book = book,
+                                modifier = Modifier.animateItem(),
+                                onClick = { onOpenBook(book) },
+                                onPromote = { onPromote(book) },
+                                onStartReading = { onStartReading(book) },
+                                onDelete = { onDelete(book) }
+                            )
+                        }
                     }
                 }
             }
@@ -1866,10 +1486,13 @@ fun LibraryGridCard(
             }
 
             var expanded by remember { androidx.compose.runtime.mutableStateOf(false) }
-            val statusText = try {
-                BookStatus.valueOf(book.status).label
-            } catch (e: Exception) {
-                ""
+            val statusText = when (book.status) {
+                "BACKLOG" -> BookStatus.TO_READ.label
+                else -> try {
+                    BookStatus.valueOf(book.status).label
+                } catch (e: Exception) {
+                    book.status
+                }
             }
             if (statusText.isNotEmpty()) {
                 val badgeColor = when (book.status) {
@@ -2016,141 +1639,6 @@ fun LibraryGridCard(
     }
 }
 
-@Composable
-private fun CountPill(count: Int) {
-    Surface(
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-    ) {
-        Text(
-            count.toString(),
-            style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
-        )
-    }
-}
-
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SwipeableBookCard(
-    book: Book,
-    onPromote: (Book) -> Unit,
-    onDelete: (Book) -> Unit
-) {
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { target ->
-            if (target != SwipeToDismissBoxValue.Settled) {
-                onDelete(book)
-                true
-            } else {
-                false
-            }
-        }
-    )
-
-    SwipeToDismissBox(
-        state = dismissState,
-        backgroundContent = {
-            val active = dismissState.targetValue != SwipeToDismissBoxValue.Settled
-            val alignment =
-                if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) {
-                    Alignment.CenterEnd
-                } else {
-                    Alignment.CenterStart
-                }
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(
-                        if (active) MaterialTheme.colorScheme.errorContainer
-                        else Color.Transparent
-                    )
-                    .padding(horizontal = 20.dp),
-                contentAlignment = alignment
-            ) {
-                if (active) {
-                    Icon(
-                        Icons.Filled.Delete,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }
-            }
-        },
-        content = { BookCard(book = book, onPromote = onPromote) }
-    )
-}
-
-@Composable
-fun BookCard(
-    book: Book,
-    onPromote: (Book) -> Unit
-) {
-    val promoteLabel = when (book.status) {
-        BookStatus.SHORTLIST.name -> "Up Next"
-        BookStatus.UP_NEXT.name -> "Start Reading"
-        else -> null
-    }
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth().fillMaxHeight(),
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp).fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            BookCover(
-                book.coverUrl, 
-                Modifier
-                    .heroSharedElement("cover-${book.id}")
-                    .size(width = 96.dp, height = 144.dp)
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                book.title,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center
-            )
-            if (book.authors.isNotEmpty()) {
-                Text(
-                    book.authors.joinToString(", "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center
-                )
-            }
-            if (book.totalPages > 0) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "${book.totalPages} pages",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-            }
-            if (promoteLabel != null) {
-                Spacer(Modifier.height(12.dp))
-                FilledTonalButton(
-                    onClick = { onPromote(book) },
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
-                ) {
-                    Text(promoteLabel, style = MaterialTheme.typography.labelMedium)
-                }
-            }
-        }
-    }
-}
-
 /**
  * Book cover from a URL, with a neutral book-glyph placeholder for missing or
  * still-loading covers (manually added books have no cover URL).
@@ -2181,154 +1669,100 @@ fun BookCover(url: String, modifier: Modifier = Modifier) {
     }
 }
 
+private fun formatElapsed(millis: Long): String {
+    val totalSeconds = millis.coerceAtLeast(0) / 1_000
+    val hours = totalSeconds / 3_600
+    val minutes = (totalSeconds % 3_600) / 60
+    val seconds = totalSeconds % 60
+    return if (hours > 0) {
+        "%d:%02d:%02d".format(hours, minutes, seconds)
+    } else {
+        "%02d:%02d".format(minutes, seconds)
+    }
+}
+
+/** A plain back-arrow screen for views reached from a Home tile. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SelectTimerBookDialog(
-    books: List<Book>,
-    onDismiss: () -> Unit,
-    onConfirm: (Book) -> Unit,
-    onGoToLibrary: () -> Unit = {}
-) {
-    val options = books.filter { it.status == BookStatus.READING.name || it.status == BookStatus.PAUSED.name || it.status == BookStatus.UP_NEXT.name || it.status == BookStatus.SHORTLIST.name }
-        .sortedByDescending { it.lastUpdated }
-    
-    if (options.isEmpty()) {
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text("No Books") },
-            text = { Text("Add a book to your library first to start a session.") },
-            confirmButton = { 
-                TextButton(onClick = onGoToLibrary) { Text("Go to Library") } 
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) { Text("Cancel") }
-            }
-        )
-        return
-    }
-
-    var selectedBook by remember { mutableStateOf<Book?>(options.firstOrNull()) }
-    var expanded by remember { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Start Session") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Which book are you reading?", style = MaterialTheme.typography.bodyMedium)
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = it }
-                ) {
-                    androidx.compose.material3.OutlinedTextField(
-                        value = selectedBook?.title ?: "",
-                        onValueChange = {},
-                        readOnly = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(androidx.compose.material3.MenuAnchorType.PrimaryNotEditable),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
-                    )
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        options.take(15).forEach { book ->
-                            DropdownMenuItem(
-                                text = { Text(book.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                                onClick = {
-                                    selectedBook = book
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
+private fun SubScreen(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text(title) },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
-                enabled = selectedBook != null,
-                onClick = { selectedBook?.let { onConfirm(it) } }
-            ) { Text("Continue") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    )
+        )
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) { content() }
+    }
 }
 
 @Composable
 fun TimerMiniPlayer(
     book: Book,
     isRunning: Boolean,
-    timeLeftSeconds: Int,
-    phase: TimerPhase,
+    displaySeconds: Int,
+    isCountdownDone: Boolean,
+    label: String,
     onPlayPause: () -> Unit,
-    onStop: () -> Unit,
-    onDismiss: () -> Unit,
+    onSave: () -> Unit,
+    onEnd: () -> Unit,
     onOpenFullTimer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(88.dp)
-            .border(
-                1.dp,
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                RoundedCornerShape(24.dp)
-            ),
+            .height(76.dp),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.9f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         onClick = onOpenFullTimer
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(start = 12.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            BookCover(book.coverUrl, Modifier.size(width = 36.dp, height = 52.dp))
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (phase == TimerPhase.WORK) "DEEP FOCUS" else "BREAK",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
+                    text = if (isCountdownDone) "TIME'S UP" else label,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
                     color = MaterialTheme.colorScheme.primary
                 )
-                val mins = timeLeftSeconds / 60
-                val secs = timeLeftSeconds % 60
                 Text(
-                    text = String.format("%02d:%02d", mins, secs),
-                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 32.sp, fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onBackground
+                    text = formatElapsed(displaySeconds * 1000L),
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1
+                )
+                Text(
+                    book.title,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Filled.Close, contentDescription = "Dismiss", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                IconButton(onClick = onStop) {
-                    Icon(Icons.Filled.Stop, contentDescription = "Stop", tint = MaterialTheme.colorScheme.error)
-                }
-                Spacer(Modifier.width(8.dp))
-                Button(
-                    onClick = { onPlayPause() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    shape = RoundedCornerShape(24.dp)
+            IconButton(onClick = onEnd) {
+                Icon(Icons.Filled.Close, contentDescription = "End session", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (isCountdownDone) {
+                FilledTonalButton(onClick = onSave) { Text("Save") }
+            } else {
+                androidx.compose.material3.FilledIconButton(
+                    onClick = onPlayPause,
+                    modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
-                        imageVector = if (isRunning) androidx.compose.material.icons.Icons.Filled.Pause else androidx.compose.material.icons.Icons.Filled.PlayArrow,
-                        contentDescription = if (isRunning) "Pause" else "Play",
-                        modifier = Modifier.size(20.dp)
+                        imageVector = if (isRunning) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = if (isRunning) "Pause timer" else "Resume timer"
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (isRunning) "Pause" else "Resume")
                 }
             }
         }

@@ -20,6 +20,19 @@ import com.example.booktracker.data.epub.HtmlToComposeParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/** Splits at blank lines, keeping each paragraph's styling. */
+private fun AnnotatedString.paragraphs(): List<AnnotatedString> {
+    val result = mutableListOf<AnnotatedString>()
+    var start = 0
+    while (start < length) {
+        val breakAt = text.indexOf("\n\n", start).let { if (it == -1) length else it }
+        val piece = subSequence(start, breakAt)
+        if (piece.isNotBlank()) result += piece
+        start = breakAt + 2
+    }
+    return result
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EpubReaderScreen(
@@ -35,26 +48,22 @@ fun EpubReaderScreen(
     LaunchedEffect(uriString) {
         try {
             withContext(Dispatchers.IO) {
-                val uri = Uri.parse(Uri.decode(uriString))
+                // Navigation already decoded the argument; decoding again would
+                // corrupt content URIs that legitimately contain %-escapes.
+                val uri = Uri.parse(uriString)
                 val parser = EpubParser()
                 val parsedBook = parser.parse(context, uri)
                 book = parsedBook
-                
-                val loadedChapters = mutableListOf<AnnotatedString>()
-                for (idref in parsedBook.spine) {
-                    val item = parsedBook.manifest[idref]
-                    if (item != null) {
-                        val html = parser.readChapterHtml(context, uri, parsedBook.opfDir, item.href)
-                        val text = HtmlToComposeParser.parse(html)
-                        if (text.isNotBlank()) {
-                            loadedChapters.add(text)
-                        }
-                    }
-                }
-                chapters = loadedChapters
+
+                // Paragraph-sized items keep the list smooth; a whole chapter in
+                // one Text is an enormous layout for a single lazy item.
+                chapters = parser.readSpineHtml(context, uri, parsedBook)
+                    .map { HtmlToComposeParser.parse(it) }
+                    .filter { it.isNotBlank() }
+                    .flatMap { it.paragraphs() }
             }
         } catch (e: Exception) {
-            error = e.localizedMessage
+            error = "This file couldn't be opened as an EPUB."
         } finally {
             loading = false
         }
@@ -86,9 +95,9 @@ fun EpubReaderScreen(
                 loading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
-                error != null -> {
+                error != null || chapters.isEmpty() -> {
                     Text(
-                        text = "Failed to load EPUB: $error",
+                        text = error ?: "This book has no readable text.",
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.Center).padding(24.dp)
                     )
@@ -96,7 +105,7 @@ fun EpubReaderScreen(
                 else -> {
                     LazyColumn(
                         contentPadding = PaddingValues(24.dp),
-                        verticalArrangement = Arrangement.spacedBy(32.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(chapters) { chapterText ->

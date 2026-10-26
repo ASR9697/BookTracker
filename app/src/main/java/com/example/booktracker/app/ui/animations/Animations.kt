@@ -65,6 +65,27 @@ fun Modifier.bounceClick(
 }
 
 /**
+ * The same squish as [bounceClick] for components that already handle clicks
+ * (Button, Card): pass the component's own interactionSource so there is a single
+ * click target, which keeps TalkBack activation and the visual press in sync.
+ */
+fun Modifier.bounceOnPress(interactionSource: MutableInteractionSource) = composed {
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.94f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "pressScale"
+    )
+    this.graphicsLayer {
+        scaleX = scale
+        scaleY = scale
+    }
+}
+
+/**
  * A sweeping gradient animation to indicate a loading state (skeleton).
  */
 fun Modifier.shimmer(): Modifier = composed {

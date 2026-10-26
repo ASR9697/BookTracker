@@ -55,7 +55,7 @@ fun WrappedScreen(
     val periodSessions = sessions.filter { it.startTime >= periodStart }
     
     val finishedBooks = books.filter { 
-        it.status == BookStatus.FINISHED.name && it.lastUpdated >= periodStart
+        it.status == BookStatus.FINISHED.name && it.completedAt >= periodStart
     }
     
     val totalPages = periodSessions.sumOf { it.pagesRead }
@@ -95,7 +95,7 @@ fun WrappedScreen(
                         
                         val uri = FileProvider.getUriForFile(
                             context,
-                            "com.example.booktracker.fileprovider",
+                            "${context.packageName}.fileprovider",
                             imageFile
                         )
                         
