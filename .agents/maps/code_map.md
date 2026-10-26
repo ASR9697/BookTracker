@@ -159,10 +159,10 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: SectionItem:174, BookDetailTabRow:187, BookDetailScreen:253, DetailHeader:1263, ActionPill:1349, StatusPill:1392, statusLabel:1419, StatusPickerDialog:1432, AboutCard:1476, FormatCard:1521, PlannerCard:1567, BookStatsCard:1605, StatCell:1692, ReadingStreakCard:1715, dayCount:1788, RatingCard:1791, ReviewCard:1830, NoteSortToggle:1847, NoteType.label:1886, NoteType.shortLabel:1892, NoteCard:1899, MetadataChips:2039, MetaChip:2060, ProgressAndDaysRow:2083, CollectionsCard:2199, CollectionPickerDialog:2253, SessionRow:2329, EditSessionDialog:2415, LedgerCard:2465, DetailCard:2568, AddNoteBottomSheet:2588
 - **BookEditDialogs.kt** (443) - Edits a book's details after it has been added — fixing a wrong page count or a missing cover is otherwise impossible.
   - fun: EditBookDialog:75, LogSessionDialog:302, PastDatePickerDialog:410, Book.isEnded:441
-- **BookTrackerScreen.kt** (1805)
-  - types: LibraryViewMode:160, LibrarySort:162
-  - fun: BookTrackerApp:173, WeekBubbles:1053, LibraryScreen:1116, LibraryGridCard:1489, BookCover:1681, formatElapsed:1706, SubScreen:1721, TimerMiniPlayer:1736
-  - nav routes: home:453, editHome:510, calendar:516, bookshelf:538, epubReader/{uri}:548, library:555, memorize:573, scanner:584, privacy:601, stats:604, profile:628, wrappedAnimated:656, wrapped:668, planner:680, book/{bookId}:689, history:765, settings:778, finished:823, journey_map:837, search:846, focus/{bookId}:856, session_save/{bookId}:877, session_result/{bookId}:926, tbr_swipe:948
+- **BookTrackerScreen.kt** (1653)
+  - types: LibraryViewMode:159, LibrarySort:161
+  - fun: BookTrackerApp:172, WeekBubbles:1051, LibraryScreen:1114, BookCover:1529, formatElapsed:1554, SubScreen:1569, TimerMiniPlayer:1584
+  - nav routes: home:452, editHome:509, calendar:515, bookshelf:537, epubReader/{uri}:547, library:554, memorize:571, scanner:582, privacy:599, stats:602, profile:626, wrappedAnimated:654, wrapped:666, planner:678, book/{bookId}:687, history:763, settings:776, finished:821, journey_map:835, search:844, focus/{bookId}:854, session_save/{bookId}:875, session_result/{bookId}:924, tbr_swipe:946
 - **BookTrackerViewModel.kt** (848)
   - types: BookTrackerViewModel:55, .SessionResult:476
   - fun: .shareNote:306, .addScannedBook:310, .importCsv:337, .promote:344, .promoteToReading:354, .pauseBook:360, .changeStatus:370, .toggleFavorite:380, .addProgress:384, .recordLoan:388, .markLoanReturned:397, .updateBookDetails:408, .setFormat:420, .finishBook:424, .readAgain:428, .setProgress:432, .setCollections:436, .markDnf:440, .startSession:444, .startFocus:454, .saveSession:492, .clearSessionResult:529, .discardOpenSession:534, .leaveUnstartedFocus:550, .logManualSession:565, .delete:571, .deleteSession:578, .updateSession:582, .restore:587, .setHomeLayout:594, .setUserName:598, .setDailyGoal:602, .setYearlyGoal:606, .setMonthlyGoalPages:610, .setMonthlyGoalBooks:614, .setDndDuringSession:618, .setThemeMode:622, .setUseDynamicColor:626, .setAppPalette:630, .setReminder:634, .planBook:638, .setTimerBook:648, .setTimerPhase:661, .setTimerMode:669, .setCustomWorkMinutes:681, .countdownTotalSeconds:691, .setTimerRunning:700, .setWorkMinutes:718, .setBreakMinutes:726, .setDayStartsAtHour:733, .setUseAppLock:737, .setNoiseType:741, .setTimerVolume:749, .sessionsFor:754, .notesFor:757, .addNote:759, .updateNote:768, .toggleNoteFavorite:772, .deleteNote:776, .searchLibrary:780, .exportBackup:783, .importBackup:807
@@ -194,6 +194,8 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: HistoryScreen:63, EditSessionDialog:194, HistorySessionRow:242
 - **HomeDashboard.kt** (789) - Home: everything about your reading on one scroll.
   - fun: HomeDashboard:93, CurrentBookCard:439, NothingInProgressCard:580, Tile:619, ShortcutTile:646, RingHeader:678, MonthBars:715, greeting:762, formatMinutes:774, yearPace:778
+- **LibraryGridCard.kt** (212) - Compact library tile sized for three across on a phone: cover with status, rating and loan marks, title and author un...
+  - fun: LibraryGridCard:62, CoverPill:185, libraryStatus:197, statusIcon:204
 - **LibrarySearchScreen.kt** (270) - Universal library search over the local FTS index: every book field the user would remember (title, author, descripti...
   - fun: LibrarySearchScreen:60, SearchSectionHeader:168, BookHitRow:178, NoteHitRow:210, StatusChip:252
 - **LoanComponents.kt** (535) - Reusable visual badge displaying loan status and due date countdown.
