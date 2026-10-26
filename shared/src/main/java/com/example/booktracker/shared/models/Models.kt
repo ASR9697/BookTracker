@@ -20,6 +20,20 @@ enum class BookFormat {
     Paperback, Hardcover, `E-book`, Audiobook
 }
 
+/** How the reader has (or wants) the book. Borrowing is tracked by [LoanRecord]. */
+enum class Ownership(val label: String) {
+    NONE("Not set"),
+    OWNED("Owned"),
+    GIFT("Gift"),
+    WISHLIST("Wishlist");
+
+    companion object {
+        /** Stored name, or Owned for records from before this field that log a purchase. */
+        fun fromStored(raw: String?, hasPurchase: Boolean): Ownership =
+            entries.firstOrNull { it.name == raw } ?: if (hasPurchase) OWNED else NONE
+    }
+}
+
 enum class ProgressUnit {
     Page, Percentage, Chapter, Minute
 }
@@ -94,7 +108,8 @@ data class Book(
     val plannedDate: Long? = null,
     val review: String? = null,
     /** When the current read ended (finished or abandoned); null while unfinished. */
-    val finishedAt: Long? = null
+    val finishedAt: Long? = null,
+    val ownership: Ownership = Ownership.NONE
 ) {
     val authors: List<String> get() = creators.map { it.name }
     val genres: List<String> get() = classification.tags

@@ -72,6 +72,7 @@ import com.example.booktracker.app.data.HomeLayout
 import com.example.booktracker.app.data.HomeSection
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
+import com.example.booktracker.shared.models.Ownership
 import com.example.booktracker.shared.models.Session
 import java.time.Instant
 import java.time.LocalDate
@@ -112,6 +113,7 @@ fun HomeDashboard(
     modifier: Modifier = Modifier,
     layout: HomeLayout = HomeLayout.DEFAULT,
     onEditHome: () -> Unit = {},
+    onOpenOwnership: (Ownership) -> Unit = {},
     scrollState: ScrollState = rememberScrollState(),
     banner: @Composable () -> Unit = {}
 ) {
@@ -363,6 +365,23 @@ fun HomeDashboard(
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+                HomeSection.OWNERSHIP -> {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        listOf(Ownership.WISHLIST, Ownership.OWNED, Ownership.GIFT).forEach { ownership ->
+                            val count = books.count { it.ownership == ownership }
+                            ShortcutTile(
+                                icon = ownership.icon,
+                                title = if (ownership == Ownership.GIFT) "Gifts" else ownership.label,
+                                subtitle = "$count ${if (count == 1) "book" else "books"}",
+                                onClick = { onOpenOwnership(ownership) },
+                                modifier = Modifier.weight(1f)
+                            )
                         }
                     }
                 }

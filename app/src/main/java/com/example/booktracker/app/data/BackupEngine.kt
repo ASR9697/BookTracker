@@ -11,6 +11,7 @@ import com.example.booktracker.shared.models.DnfData
 import com.example.booktracker.shared.models.LoanRecord
 import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.NoteType
+import com.example.booktracker.shared.models.Ownership
 import com.example.booktracker.shared.models.ProgressUnit
 import com.example.booktracker.shared.models.Publication
 import com.example.booktracker.shared.models.PurchaseLog
@@ -199,6 +200,7 @@ object BackupEngine {
         }
         put("isFavorite", isFavorite)
         put("readCount", readCount)
+        put("ownership", ownership.name)
         plannedDate?.let { put("plannedDate", it) }
         review?.let { put("review", it) }
         if (purchaseLog.isNotEmpty()) {
@@ -299,7 +301,12 @@ object BackupEngine {
             plannedDate = if (has("plannedDate")) optLong("plannedDate") else null,
             review = if (has("review")) optString("review") else null,
             purchaseLog = optJSONArray("purchaseLog").mapObjects { it.toPurchaseLog() },
-            loanRecord = optJSONArray("loanRecord").mapObjects { it.toLoanRecord() }
+            loanRecord = optJSONArray("loanRecord").mapObjects { it.toLoanRecord() },
+            // Backups from before ownership existed: a logged purchase means Owned.
+            ownership = Ownership.fromStored(
+                optString("ownership").takeIf { it.isNotBlank() },
+                hasPurchase = optJSONArray("purchaseLog")?.length()?.let { it > 0 } == true
+            )
         )
     }
 

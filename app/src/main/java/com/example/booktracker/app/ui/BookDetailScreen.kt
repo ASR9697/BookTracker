@@ -100,6 +100,7 @@ import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.NoteType
+import com.example.booktracker.shared.models.Ownership
 import com.example.booktracker.shared.models.RatingAxis
 import com.example.booktracker.shared.models.Session
 import com.example.booktracker.shared.models.LoanRecord
@@ -268,6 +269,7 @@ fun BookDetailScreen(
     onSetCollections: (List<String>) -> Unit,
     allCollections: List<String>,
     onSetFormat: (String) -> Unit,
+    onSetOwnership: (Ownership) -> Unit = {},
     onDelete: () -> Unit,
     onStartReading: () -> Unit,
     onReadAgain: () -> Unit,
@@ -584,6 +586,7 @@ fun BookDetailScreen(
                     }
 
                     item { SectionItem { FormatCard(book, onSetFormat) } }
+                    item { SectionItem { OwnershipCard(book, onSetOwnership) } }
 
                     if (book.status == BookStatus.READING.name) {
                         item { SectionItem { PlannerCard(book, completed) } }
@@ -1557,6 +1560,43 @@ private fun FormatCard(book: Book, onSetFormat: (String) -> Unit) {
                             modifier = Modifier.weight(1f)
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OwnershipCard(book: Book, onSetOwnership: (Ownership) -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        shape = RoundedCornerShape(24.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text("Ownership", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                if (book.ownership == Ownership.NONE) "Do you own this book, was it a gift, or is it on your wishlist?"
+                else "Tap again to clear. Borrowed books are tracked under loans.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SelectableOwnerships.forEach { option ->
+                    val isSelected = book.ownership == option
+                    androidx.compose.material3.FilterChip(
+                        selected = isSelected,
+                        onClick = { onSetOwnership(if (isSelected) Ownership.NONE else option) },
+                        label = { Text(option.label, maxLines = 1) },
+                        leadingIcon = { Icon(option.icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         }

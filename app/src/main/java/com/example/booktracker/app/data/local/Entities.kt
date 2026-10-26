@@ -35,7 +35,9 @@ data class BookEntity(
     val readCount: Int = 0,
     val plannedDate: Long? = null,
     val review: String? = null,
-    val finishedAt: Long? = null
+    val finishedAt: Long? = null,
+    /** [Ownership] name; null on rows from before version 10 that had no purchase. */
+    val ownership: String? = null
 )
 
 @Entity(

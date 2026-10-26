@@ -56,7 +56,9 @@ fun BookEntity.toModel(): Book = Book(
     readCount = readCount,
     plannedDate = plannedDate,
     review = review,
-    finishedAt = finishedAt
+    finishedAt = finishedAt,
+    // MIGRATION_9_10 already marked purchased books Owned, so null here means unset.
+    ownership = Ownership.fromStored(ownership, hasPurchase = false)
 )
 
 fun Book.toEntity(): BookEntity = BookEntity(
@@ -85,7 +87,8 @@ fun Book.toEntity(): BookEntity = BookEntity(
     readCount = readCount,
     plannedDate = plannedDate,
     review = review,
-    finishedAt = finishedAt
+    finishedAt = finishedAt,
+    ownership = ownership.name
 )
 
 fun MarginNoteEntity.toModel(): MarginNote = MarginNote(

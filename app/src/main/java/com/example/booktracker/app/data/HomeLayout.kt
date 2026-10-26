@@ -9,6 +9,7 @@ enum class HomeSection(val title: String, val description: String) {
     GOALS("Today & year goals", "Pages today and books this year"),
     MONTHLY_PAGES("Pages per month", "This year's reading, month by month"),
     UP_NEXT("Up next", "Books waiting to be read"),
+    OWNERSHIP("Wishlist & owned", "Books you want, own or were given"),
     SHORTCUTS("Shortcuts", "Calendar, bookshelf, finished, year in review")
 }
 

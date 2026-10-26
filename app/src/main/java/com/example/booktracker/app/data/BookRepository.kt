@@ -43,6 +43,7 @@ interface BookRepository {
     suspend fun updateBook(book: Book)
     suspend fun updateStatus(id: String, status: BookStatus)
     suspend fun updateFormat(id: String, format: String)
+    suspend fun updateOwnership(id: String, ownership: com.example.booktracker.shared.models.Ownership)
     suspend fun finishBook(id: String, rating: Map<String, Float>, review: String? = null)
     suspend fun markDnf(id: String, abandonedPercentage: Float, reason: String)
     suspend fun addProgress(id: String, delta: Int)
@@ -183,7 +184,10 @@ class RoomBookRepository(
             purchaseLog = purchaseLog,
             loanRecord = loanRecord,
             isbn = isbn?.takeIf { it.isNotBlank() && !it.startsWith("manual_") },
-            finishedAt = if (finished) now else null
+            finishedAt = if (finished) now else null,
+            // Logging a purchase while adding the book says the reader owns it.
+            ownership = if (purchaseLog.isNotEmpty()) com.example.booktracker.shared.models.Ownership.OWNED
+            else com.example.booktracker.shared.models.Ownership.NONE
         )
         bookDao.upsert(book.toEntity())
         return book
@@ -220,6 +224,11 @@ class RoomBookRepository(
     override suspend fun updateFormat(id: String, format: String) {
         val entity = bookDao.getById(id) ?: return
         bookDao.upsert(entity.copy(format = format, lastUpdated = System.currentTimeMillis()))
+    }
+
+    override suspend fun updateOwnership(id: String, ownership: com.example.booktracker.shared.models.Ownership) {
+        val entity = bookDao.getById(id) ?: return
+        bookDao.upsert(entity.copy(ownership = ownership.name, lastUpdated = System.currentTimeMillis()))
     }
 
     override suspend fun finishBook(id: String, rating: Map<String, Float>, review: String?) {

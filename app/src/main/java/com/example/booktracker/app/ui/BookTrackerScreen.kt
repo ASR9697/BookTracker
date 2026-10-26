@@ -150,6 +150,7 @@ import com.example.booktracker.app.ui.animations.ConfettiExplosion
 import com.example.booktracker.app.ui.theme.StreakFlame
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookFormat
+import com.example.booktracker.shared.models.Ownership
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.Session
 import kotlinx.coroutines.delay
@@ -459,6 +460,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                 scrollState = homeScroll,
                                                 layout = homeLayout,
                                                 onEditHome = { navController.navigate("editHome") },
+                                                onOpenOwnership = { navController.navigate("owned/${it.name}") },
                                                 books = books,
                                                 readingBooks = readingBooks,
                                                 sessions = sessions,
@@ -510,6 +512,42 @@ androidx.compose.animation.SharedTransitionLayout {
                                         val homeLayout by viewModel.homeLayout.collectAsState()
                                         SubScreen(title = "Edit home screen", onBack = { navController.popBackStack() }) {
                                             EditHomeScreen(layout = homeLayout, onLayoutChange = viewModel::setHomeLayout)
+                                        }
+                                    }
+                                    composable("owned/{ownership}") { entry ->
+                                        val ownership = Ownership.fromStored(entry.arguments?.getString("ownership"), hasPurchase = false)
+                                        val title = if (ownership == Ownership.GIFT) "Gifts" else ownership.label
+                                        SubScreen(title = title, onBack = { navController.popBackStack() }) {
+                                            val shelf = remember(books, ownership) {
+                                                books.filter { it.ownership == ownership }.sortedByDescending { it.lastUpdated }
+                                            }
+                                            if (shelf.isEmpty()) {
+                                                Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                                                    Text(
+                                                        "No books here yet. Open any book and set its ownership to add it.",
+                                                        style = MaterialTheme.typography.bodyLarge,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                                    )
+                                                }
+                                            } else {
+                                                androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                                                    columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(minSize = 100.dp),
+                                                    contentPadding = PaddingValues(16.dp),
+                                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                                                    modifier = Modifier.fillMaxSize()
+                                                ) {
+                                                    items(shelf, key = { it.id }) { book ->
+                                                        LibraryGridCard(
+                                                            book = book,
+                                                            onClick = { navController.navigate("book/${book.id}") },
+                                                            onStartReading = { navController.navigate("focus/${book.id}") },
+                                                            onDelete = { onDeleteWithUndo(book) }
+                                                        )
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                     composable("calendar") {
@@ -728,6 +766,9 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                             },
                                                             onSetFormat = { format ->
                                                                 books.find { it.id == bookId }?.let { viewModel.setFormat(it, format) }
+                                                            },
+                                                            onSetOwnership = { ownership ->
+                                                                books.find { it.id == bookId }?.let { viewModel.setOwnership(it, ownership) }
                                                             },
                                                             onDelete = {
                                                                 books.find { it.id == bookId }?.let { onDeleteWithUndo(it) }
@@ -1129,6 +1170,8 @@ fun LibraryScreen(
     var viewMode by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(LibraryViewMode.GRID) }
     var selectedFormat by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<BookFormat?>(null) }
     var showFormatMenu by remember { mutableStateOf(false) }
+    var selectedOwnership by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<Ownership?>(null) }
+    var showOwnershipMenu by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
     var showMoreMenu by remember { mutableStateOf(false) }
     var showCollectionMenu by remember { mutableStateOf(false) }
@@ -1148,8 +1191,12 @@ fun LibraryScreen(
     if (selectedCollection != null && selectedCollection !in collections) selectedCollection = null
     val formats = remember(books) { BookFormat.entries.filter { f -> books.any { it.format == f } } }
     if (selectedFormat != null && selectedFormat !in formats) selectedFormat = null
+    val ownershipCounts = remember(books) {
+        SelectableOwnerships.associateWith { o -> books.count { it.ownership == o } }.filterValues { it > 0 }
+    }
+    if (selectedOwnership != null && selectedOwnership !in ownershipCounts) selectedOwnership = null
 
-    val displayBooks = remember(books, selectedFilter, showFavoritesOnly, showLoansOnly, selectedCollection, selectedFormat, sortOrder) {
+    val displayBooks = remember(books, selectedFilter, showFavoritesOnly, showLoansOnly, selectedCollection, selectedFormat, selectedOwnership, sortOrder) {
         books.filter { book ->
             val statusMatches = when (selectedFilter) {
                 null -> true
@@ -1161,7 +1208,8 @@ fun LibraryScreen(
             val loanMatches = !showLoansOnly || LoanEngine.activeLoan(book) != null
             val collectionMatches = selectedCollection == null || selectedCollection in book.classification.collections
             val formatMatches = selectedFormat == null || book.format == selectedFormat
-            statusMatches && favoriteMatches && loanMatches && collectionMatches && formatMatches
+            val ownershipMatches = selectedOwnership == null || book.ownership == selectedOwnership
+            statusMatches && favoriteMatches && loanMatches && collectionMatches && formatMatches && ownershipMatches
         }.let { list ->
             when (sortOrder) {
                 LibrarySort.RECENT -> list.sortedByDescending { it.lastUpdated }
@@ -1240,6 +1288,44 @@ fun LibraryScreen(
                 ),
                 shape = CircleShape
             )
+
+            // Appears once the reader has marked any book owned, gifted or wishlisted.
+            if (ownershipCounts.isNotEmpty()) {
+                Box {
+                    androidx.compose.material3.FilterChip(
+                        selected = selectedOwnership != null,
+                        onClick = { showOwnershipMenu = true },
+                        label = { Text(selectedOwnership?.label ?: "Ownership") },
+                        leadingIcon = selectedOwnership?.let { o ->
+                            { Icon(o.icon, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                        },
+                        trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        shape = CircleShape
+                    )
+                    DropdownMenu(expanded = showOwnershipMenu, onDismissRequest = { showOwnershipMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Any ownership") },
+                            onClick = {
+                                selectedOwnership = null
+                                showOwnershipMenu = false
+                            }
+                        )
+                        ownershipCounts.forEach { (ownership, count) ->
+                            DropdownMenuItem(
+                                text = { Text("${ownership.label} ($count)") },
+                                leadingIcon = { Icon(ownership.icon, contentDescription = null) },
+                                onClick = {
+                                    selectedOwnership = ownership
+                                    showOwnershipMenu = false
+                                },
+                                trailingIcon = {
+                                    if (ownership == selectedOwnership) Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                                }
+                            )
+                        }
+                    }
+                }
+            }
 
             // Only worth offering once the library mixes formats.
             if (formats.size > 1) {

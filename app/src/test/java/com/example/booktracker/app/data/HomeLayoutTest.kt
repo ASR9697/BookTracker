@@ -13,7 +13,7 @@ class HomeLayoutTest {
 
     @Test
     fun `encode and decode round-trip order and hidden sections`() {
-        val layout = HomeLayout.DEFAULT.move(4, 0).toggle(HomeSection.GOALS)
+        val layout = HomeLayout.DEFAULT.move(HomeLayout.DEFAULT.order.lastIndex, 0).toggle(HomeSection.GOALS)
         assertEquals(layout, HomeLayout.decode(layout.encode()))
         assertEquals(HomeSection.SHORTCUTS, layout.order.first())
         assertEquals(false, HomeSection.GOALS in layout.visible)
@@ -26,7 +26,7 @@ class HomeLayoutTest {
         assertEquals(
             listOf(
                 HomeSection.MONTHLY_PAGES, HomeSection.STREAK, HomeSection.GOALS,
-                HomeSection.UP_NEXT, HomeSection.SHORTCUTS
+                HomeSection.UP_NEXT, HomeSection.OWNERSHIP, HomeSection.SHORTCUTS
             ),
             layout.order
         )

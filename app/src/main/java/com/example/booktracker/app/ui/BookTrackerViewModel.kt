@@ -32,6 +32,7 @@ import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.LoanRecord
 import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.NoteType
+import com.example.booktracker.shared.models.Ownership
 import com.example.booktracker.shared.models.Session
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
@@ -419,6 +420,10 @@ class BookTrackerViewModel(
 
     fun setFormat(book: Book, format: String) {
         viewModelScope.launch { repository.updateFormat(book.id, format) }
+    }
+
+    fun setOwnership(book: Book, ownership: Ownership) {
+        viewModelScope.launch { repository.updateOwnership(book.id, ownership) }
     }
 
     fun finishBook(book: Book, rating: Map<String, Float>, review: String? = null) {
