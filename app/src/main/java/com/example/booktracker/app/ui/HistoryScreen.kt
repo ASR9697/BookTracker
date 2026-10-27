@@ -1,5 +1,6 @@
 package com.example.booktracker.app.ui
 
+import androidx.compose.material.icons.filled.History
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -65,7 +66,10 @@ fun HistoryScreen(
     sessions: List<Session>,
     onDeleteSession: (Session) -> Unit,
     onUpdateSession: (Session) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    title: String = "Reading history",
+    /** Optional content above the sessions, e.g. the streak overview. */
+    header: (@Composable () -> Unit)? = null
 ) {
     val titlesById = remember(books) { books.associate { it.id to it.title } }
     val zone = remember { ZoneId.systemDefault() }
@@ -80,7 +84,7 @@ fun HistoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Reading history") },
+                title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -104,19 +108,13 @@ fun HistoryScreen(
             )
         }
 
-        if (byDay.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(24.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "Your reading sessions will appear here.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+        if (byDay.isEmpty() && header == null) {
+            EmptyState(
+                icon = androidx.compose.material.icons.Icons.Filled.History,
+                title = "No sessions yet",
+                message = "Start the timer or log pages from Home, and every session will be kept here.",
+                modifier = Modifier.padding(innerPadding)
+            )
             return@Scaffold
         }
 
@@ -127,6 +125,7 @@ fun HistoryScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            if (header != null) item(key = "overview") { header() }
             byDay.forEach { (day, daySessions) ->
                 item(key = "header-$day") {
                     val pages = daySessions.sumOf { it.pagesRead }

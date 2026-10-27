@@ -1,5 +1,33 @@
 package com.example.booktracker.app.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.graphics.graphicsLayer
+import com.example.booktracker.app.ui.animations.BurstStyle
+import com.example.booktracker.app.ui.animations.ConfettiExplosion
+import com.example.booktracker.app.ui.animations.EmberColors
+import com.example.booktracker.app.ui.animations.LivingFlame
+import com.example.booktracker.app.ui.animations.Motion
+import com.example.booktracker.app.ui.animations.TimeOfDaySky
+import com.example.booktracker.app.ui.animations.animateCountUp
+import com.example.booktracker.app.ui.animations.bounceOnPress
+import com.example.booktracker.app.ui.animations.rememberEntranceState
+import com.example.booktracker.app.ui.animations.rememberHaptics
+import com.example.booktracker.app.ui.animations.rememberReduceMotion
+import com.example.booktracker.app.ui.animations.staggeredEntrance
+import com.example.booktracker.app.ui.animations.swipeToAct
+import kotlin.math.abs
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -89,11 +117,15 @@ import kotlin.math.roundToInt
 
 private val TileShape = RoundedCornerShape(24.dp)
 
+/** How recent the reading must be for reaching today's goal to get a celebration. */
+private const val FRESH_LOG_WINDOW_MS = 5 * 60_000L
+
 /**
  * Home: everything about your reading on one scroll. The books in progress sit
  * on top as a swipeable carousel; streak, today, the year and the to-read queue
  * follow as tiles, each opening the screen with the detail.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeDashboard(
     books: List<Book>,
@@ -119,6 +151,11 @@ fun HomeDashboard(
     onEditHome: () -> Unit = {},
     onOpenOwnership: (Ownership) -> Unit = {},
     onAddNote: (Book, page: Int, text: String, type: NoteType, images: List<String>) -> Unit = { _, _, _, _, _ -> },
+    onChangeStatus: (Book, BookStatus) -> Unit = { _, _ -> },
+    onOpenStreak: () -> Unit = {},
+    reviewDue: Int = 0,
+    reviewStarted: Boolean = false,
+    onOpenReview: () -> Unit = {},
     scrollState: ScrollState = rememberScrollState(),
     banner: @Composable () -> Unit = {}
 ) {
@@ -126,6 +163,25 @@ fun HomeDashboard(
     val year = streak.today.year
     var bookToLog by remember { mutableStateOf<Book?>(null) }
     var bookToNote by remember { mutableStateOf<Book?>(null) }
+    var bookForActions by remember { mutableStateOf<Book?>(null) }
+    val haptics = rememberHaptics()
+    val entrance = rememberEntranceState()
+
+    // Celebrate the moment today's goal is met, not every time Home opens after it.
+    // Data streams in after launch (empty first), so a crossing only counts when
+    // the reading behind it was logged in the last few minutes.
+    val goalReached = streak.dailyGoal > 0 && streak.pagesToday >= streak.dailyGoal
+    var goalWasReached by rememberSaveable { mutableStateOf(goalReached) }
+    var celebrating by remember { mutableStateOf(false) }
+    LaunchedEffect(goalReached) {
+        val lastLogged = sessions.maxOfOrNull { maxOf(it.startTime, it.endTime) } ?: 0L
+        val fresh = System.currentTimeMillis() - lastLogged < FRESH_LOG_WINDOW_MS
+        if (goalReached && !goalWasReached && fresh) {
+            celebrating = true
+            haptics.celebrate()
+        }
+        goalWasReached = goalReached
+    }
 
     val finishedThisYear = remember(books, year) {
         books.filter {
@@ -156,24 +212,28 @@ fun HomeDashboard(
             .take(12)
     }
 
+    Box(modifier = modifier.fillMaxSize()) {
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
             .padding(bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp)) {
-            Text(
-                greeting(userName),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                if (readingBooks.isEmpty()) "What will you read next?" else "What will you read today?",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            TimeOfDaySky(modifier = Modifier.matchParentSize())
+            Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 8.dp)) {
+                Text(
+                    greeting(userName),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    subtitle(readingBooks.isEmpty()),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
         banner()
@@ -200,6 +260,9 @@ fun HomeDashboard(
                         sessions = remember(book.id, sessions) { sessions.filter { it.bookId == book.id } },
                         allSessions = sessions,
                         sessionOpen = openSession?.bookId == book.id,
+                        today = streak.today,
+                        dayStartsAtHour = streak.dayStartsAtHour,
+                        modifier = Modifier.staggeredEntrance(entrance, 0),
                         onOpen = { onOpenBook(book) },
                         onOpenTimer = { onOpenTimer(book) },
                         onLogPages = { bookToLog = book },
@@ -231,25 +294,22 @@ fun HomeDashboard(
         }
 
         // Reader-ordered sections; the greeting and current book above stay fixed.
-        for (section in layout.visible) key(section) {
+        for ((sectionIndex, section) in layout.visible.withIndex()) key(section) {
+            Box(modifier = Modifier.staggeredEntrance(entrance, sectionIndex + 1)) {
             when (section) {
                 HomeSection.STREAK -> {
-                    // Streak and this week.
-                    Tile(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    // Streak and this week; tap for the full history.
+                    Tile(onClick = onOpenStreak, modifier = Modifier.padding(horizontal = 16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Filled.LocalFireDepartment,
-                                contentDescription = null,
-                                tint = if (streak.currentStreak > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                                modifier = Modifier.size(28.dp)
-                            )
-                            Spacer(Modifier.width(10.dp))
+                            LivingFlame(streak = streak.currentStreak)
+                            Spacer(Modifier.width(6.dp))
                             Column(modifier = Modifier.weight(1f)) {
+                                val shownStreak by animateCountUp(streak.currentStreak)
                                 Text(
                                     when (streak.currentStreak) {
                                         0 -> "No streak yet"
                                         1 -> "1-day streak"
-                                        else -> "${streak.currentStreak}-day streak"
+                                        else -> "$shownStreak-day streak"
                                     },
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold
@@ -282,8 +342,9 @@ fun HomeDashboard(
                         ) {
                             RingHeader(title = "Today", fraction = dailyFraction)
                             Spacer(Modifier.height(10.dp))
+                            val shownToday by animateCountUp(streak.pagesToday)
                             Text(
-                                "${streak.pagesToday} of ${streak.dailyGoal} pages",
+                                "$shownToday of ${streak.dailyGoal} pages",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -300,8 +361,9 @@ fun HomeDashboard(
                         ) {
                             RingHeader(title = "$year", fraction = yearFraction)
                             Spacer(Modifier.height(10.dp))
+                            val shownFinished by animateCountUp(finishedThisYear.size)
                             Text(
-                                "${finishedThisYear.size} of $yearlyGoal books",
+                                "$shownFinished of $yearlyGoal books",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -310,6 +372,35 @@ fun HomeDashboard(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                        }
+                    }
+                }
+                HomeSection.REVIEW -> {
+                    // Hidden until there is something to review; afterwards it says when you're caught up.
+                    if (reviewDue > 0 || reviewStarted) {
+                        Tile(onClick = onOpenReview, modifier = Modifier.padding(horizontal = 16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Filled.AutoAwesome,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Daily review", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        if (reviewDue > 0) "$reviewDue ${if (reviewDue == 1) "card" else "cards"} to keep your highlights and words fresh"
+                                        else "All caught up. More tomorrow.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                if (reviewDue > 0) {
+                                    Spacer(Modifier.width(8.dp))
+                                    FilledTonalButton(onClick = onOpenReview) { Text("Start") }
+                                }
+                            }
                         }
                     }
                 }
@@ -355,13 +446,27 @@ fun HomeDashboard(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 items(upNext, key = { it.id }) { book ->
+                                    val press = remember { MutableInteractionSource() }
                                     Column(
                                         modifier = Modifier
                                             .width(84.dp)
+                                            .bounceOnPress(press)
                                             .clip(RoundedCornerShape(12.dp))
-                                            .clickable { onOpenBook(book) }
+                                            .combinedClickable(
+                                                interactionSource = press,
+                                                indication = null,
+                                                onClick = { onOpenBook(book) },
+                                                onLongClickLabel = "Book actions",
+                                                onLongClick = {
+                                                    haptics.longPress()
+                                                    bookForActions = book
+                                                }
+                                            )
                                     ) {
-                                        BookCover(book.coverUrl, Modifier.size(width = 84.dp, height = 126.dp))
+                                        BookCover(
+                                            book.coverUrl,
+                                            Modifier.heroSharedElement("cover-${book.id}").size(width = 84.dp, height = 126.dp)
+                                        )
                                         Spacer(Modifier.height(6.dp))
                                         Text(
                                             book.title,
@@ -437,6 +542,7 @@ fun HomeDashboard(
                     }
                 }
             }
+            }
         }
 
         TextButton(
@@ -447,6 +553,50 @@ fun HomeDashboard(
             Spacer(Modifier.width(6.dp))
             Text("Edit home screen")
         }
+    }
+
+        if (celebrating) {
+            ConfettiExplosion(
+                colors = EmberColors,
+                origin = Offset(0.5f, 0.55f),
+                particleCount = 60,
+                style = BurstStyle.EMBERS,
+                onFinished = { celebrating = false }
+            )
+        }
+        AnimatedVisibility(
+            visible = celebrating,
+            enter = slideInVertically(tween(Motion.MEDIUM, easing = Motion.EmphasizedDecelerate)) { -it } + fadeIn(),
+            exit = fadeOut(tween(Motion.MEDIUM)),
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                shadowElevation = 6.dp
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                ) {
+                    Icon(Icons.Filled.LocalFireDepartment, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Daily goal reached!", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+
+    bookForActions?.let { book ->
+        BookQuickActionsSheet(
+            book = book,
+            onDismiss = { bookForActions = null },
+            onOpen = { onOpenBook(book) },
+            onStartReading = { onOpenTimer(book) },
+            onAddNote = { bookToNote = book },
+            onChangeStatus = { status -> onChangeStatus(book, status) }
+        )
     }
 
     bookToNote?.let { book ->
@@ -485,7 +635,10 @@ private fun CurrentBookCard(
     onOpen: () -> Unit,
     onOpenTimer: () -> Unit,
     onLogPages: () -> Unit,
-    onAddNote: () -> Unit
+    onAddNote: () -> Unit,
+    modifier: Modifier = Modifier,
+    today: LocalDate = LocalDate.now(),
+    dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR
 ) {
     val zone = remember { ZoneId.systemDefault() }
     val fraction = if (book.totalPages > 0) (book.currentPage.toFloat() / book.totalPages).coerceIn(0f, 1f) else 0f
@@ -501,11 +654,14 @@ private fun CurrentBookCard(
         AnalyticsEngine.formatEstimatedTime(AnalyticsEngine.bookEstimatedMinutesLeft(book, sessions, allSessions))
     }
 
+    val press = remember { MutableInteractionSource() }
+    val rail by animateFloatAsState(fraction, Motion.settle(), label = "rail")
     Surface(
         onClick = onOpen,
         shape = TileShape,
         color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.fillMaxWidth()
+        interactionSource = press,
+        modifier = modifier.fillMaxWidth().bounceOnPress(press)
     ) {
         Column {
             // A thin progress rail along the top edge of every in-progress card.
@@ -517,18 +673,47 @@ private fun CurrentBookCard(
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(fraction)
+                        .fillMaxWidth(rail)
                         .fillMaxHeight()
                         .background(MaterialTheme.colorScheme.primary)
                 )
             }
             Row(modifier = Modifier.padding(16.dp)) {
-                BookCover(
-                    book.coverUrl,
-                    Modifier
-                        .heroSharedElement("cover-${book.id}")
-                        .size(width = 88.dp, height = 132.dp)
-                )
+                // Grab the cover and fling it: right logs pages, left starts the timer.
+                // Only the cover takes the drag, so swiping the card itself still pages between books.
+                var drag by remember { mutableFloatStateOf(0f) }
+                Box(modifier = Modifier.size(width = 88.dp, height = 132.dp)) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clip(MaterialTheme.shapes.small)
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = (abs(drag) / 200f).coerceIn(0f, 1f)))
+                    ) {
+                        if (drag != 0f) {
+                            Icon(
+                                if (drag > 0) Icons.Filled.Add else Icons.Filled.PlayArrow,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier
+                                    .align(if (drag > 0) Alignment.CenterStart else Alignment.CenterEnd)
+                                    .padding(horizontal = 8.dp)
+                                    .alpha((abs(drag) / 150f).coerceIn(0f, 1f))
+                            )
+                        }
+                    }
+                    BookCover(
+                        book.coverUrl,
+                        Modifier
+                            .heroSharedElement("cover-${book.id}")
+                            .matchParentSize()
+                            .swipeToAct(
+                                onOffset = { drag = it },
+                                onSwipeRight = onLogPages,
+                                onSwipeLeft = onOpenTimer
+                            )
+                    )
+                }
                 Spacer(Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f).height(132.dp)) {
                     Text(
@@ -575,9 +760,21 @@ private fun CurrentBookCard(
                             )
                         }
                     }
-                    etaText?.let {
+                    // A finish-by deadline says what today needs; otherwise the time left.
+                    val planLine = remember(book, sessions, today, dayStartsAtHour) {
+                        finishByLine(com.example.booktracker.app.analytics.FinishByPlanner.plan(book, sessions, today, zone, dayStartsAtHour))
+                    }
+                    if (planLine != null) {
                         Text(
-                            "About $it left",
+                            planLine.first,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (planLine.second) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    } else etaText?.let {
+                        Text(
+                            "About $it",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -670,11 +867,13 @@ private fun Tile(
         Column(modifier = Modifier.padding(18.dp)) { content() }
     }
     if (onClick != null) {
+        val press = remember { MutableInteractionSource() }
         Surface(
             onClick = onClick,
             shape = TileShape,
             color = MaterialTheme.colorScheme.surfaceContainer,
-            modifier = modifier.fillMaxWidth(),
+            interactionSource = press,
+            modifier = modifier.fillMaxWidth().bounceOnPress(press),
             content = body
         )
     } else {
@@ -696,12 +895,14 @@ private fun ShortcutTile(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
+    val press = remember { MutableInteractionSource() }
     Surface(
         onClick = onClick,
         enabled = enabled,
         shape = TileShape,
         color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = modifier.alpha(if (enabled) 1f else 0.6f)
+        interactionSource = press,
+        modifier = modifier.alpha(if (enabled) 1f else 0.6f).bounceOnPress(press)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
@@ -723,6 +924,19 @@ private fun ShortcutTile(
 private fun RingHeader(title: String, fraction: Float) {
     val track = MaterialTheme.colorScheme.surfaceContainerHighest
     val fill = MaterialTheme.colorScheme.primary
+    // Fills from empty on first sight, then springs to each new value with a little overshoot.
+    val reduce = rememberReduceMotion()
+    val ring = remember { Animatable(if (reduce) fraction else 0f) }
+    LaunchedEffect(fraction) { ring.animateTo(fraction, Motion.settle()) }
+    // A one-time pop when the ring closes.
+    val pop = remember { Animatable(1f) }
+    LaunchedEffect(fraction >= 1f) {
+        if (fraction >= 1f && !reduce) {
+            pop.animateTo(1.15f, tween(Motion.SHORT))
+            pop.animateTo(1f, Motion.press())
+        }
+    }
+    val shownPercent by animateCountUp((fraction * 100).toInt())
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             title,
@@ -730,21 +944,24 @@ private fun RingHeader(title: String, fraction: Float) {
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.weight(1f)
         )
-        Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier.size(48.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value },
+            contentAlignment = Alignment.Center
+        ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val stroke = 4.dp.toPx()
                 val arcSize = Size(size.width - stroke, size.height - stroke)
                 val topLeft = Offset(stroke / 2, stroke / 2)
                 drawArc(track, -90f, 360f, false, topLeft, arcSize, style = Stroke(stroke))
-                if (fraction > 0f) {
+                if (ring.value > 0f) {
                     drawArc(
-                        fill, -90f, 360f * fraction.coerceAtMost(1f), false, topLeft, arcSize,
+                        fill, -90f, 360f * ring.value.coerceIn(0f, 1f), false, topLeft, arcSize,
                         style = Stroke(stroke, cap = StrokeCap.Round)
                     )
                 }
             }
             Text(
-                "${(fraction * 100).toInt()}%",
+                "$shownPercent%",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -813,6 +1030,18 @@ private fun greeting(userName: String): String {
         hour < 12 -> "Good morning"
         hour < 18 -> "Good afternoon"
         else -> "Good evening"
+    }
+}
+
+/** A line under the greeting that knows what time it is. */
+private fun subtitle(nothingInProgress: Boolean): String {
+    val hour = LocalTime.now().hour
+    return when {
+        nothingInProgress -> "What will you read next?"
+        hour >= 22 || hour < 5 -> "The best pages are read after dark."
+        hour < 9 -> "A few pages before the day begins?"
+        hour >= 18 -> "Time to unwind with a chapter?"
+        else -> "What will you read today?"
     }
 }
 

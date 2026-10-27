@@ -185,7 +185,8 @@ fun NotePhotoEditor(
             val blocks = stored?.let { extractBlocks(context, it) }
             stored?.let { NoteImageStore.localFile(it)?.delete() }
             busy = false
-            deliver(blocks, "No text found. Try again with the page flat and well lit.")
+            if (stored == null) message = "Couldn't read that photo. Try taking it again."
+            else deliver(blocks, "No text found. Try again with the page flat and well lit.")
         }
     }
 

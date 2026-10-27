@@ -1,5 +1,8 @@
 package com.example.booktracker.app.ui
 
+import androidx.compose.foundation.lazy.itemsIndexed
+import com.example.booktracker.app.ui.animations.rememberEntranceState
+import com.example.booktracker.app.ui.animations.staggeredEntrance
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -66,20 +69,14 @@ fun FinishedScreen(
         }
     ) { innerPadding ->
         if (finished.isEmpty() && dnf.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(24.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "Finish or give up on a book and it will show here.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            EmptyState(
+                icon = androidx.compose.material.icons.Icons.Filled.EmojiEvents,
+                title = "Your trophy shelf is waiting",
+                message = "Finish or set aside a book and it will show here.",
+                modifier = Modifier.padding(innerPadding)
+            )
         } else {
+            val listEntrance = rememberEntranceState()
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -89,13 +86,13 @@ fun FinishedScreen(
             ) {
                 if (finished.isNotEmpty()) {
                     item { SectionHeader("Finished (${finished.size})") }
-                    items(finished, key = { it.id }) { 
+                    itemsIndexed(finished, key = { _, book -> book.id }) { index, book ->
                         CompletedBookCard(
-                            book = it, 
-                            onClick = { onOpenBook(it) }, 
-                            onShareVictory = { bookForVictoryCard = it },
-                            modifier = Modifier.animateItem()
-                        ) 
+                            book = book,
+                            onClick = { onOpenBook(book) },
+                            onShareVictory = { bookForVictoryCard = book },
+                            modifier = Modifier.animateItem().staggeredEntrance(listEntrance, index + 1)
+                        )
                     }
                 }
                 if (dnf.isNotEmpty()) {

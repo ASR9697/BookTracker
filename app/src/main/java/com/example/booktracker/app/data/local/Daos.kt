@@ -69,6 +69,9 @@ interface SessionDao {
     @Query("SELECT * FROM sessions WHERE bookId = :bookId")
     suspend fun getForBook(bookId: String): List<SessionEntity>
 
+    @Query("SELECT * FROM sessions WHERE bookId = :bookId AND endTime != 0 ORDER BY endTime DESC LIMIT 1")
+    suspend fun getLatestCompletedForBook(bookId: String): SessionEntity?
+
     @Query("DELETE FROM sessions WHERE id = :id")
     suspend fun deleteById(id: String)
 
@@ -118,4 +121,40 @@ interface MarginNoteDao {
 
     @Query("DELETE FROM margin_notes WHERE bookId = :bookId")
     suspend fun deleteByBookId(bookId: String)
+}
+
+@Dao
+interface ReviewDao {
+    @Query("SELECT * FROM review_states")
+    fun observeAll(): Flow<List<ReviewStateEntity>>
+
+    @Query("SELECT * FROM review_states")
+    suspend fun getAll(): List<ReviewStateEntity>
+
+    @Upsert
+    suspend fun upsert(state: ReviewStateEntity)
+
+    @Upsert
+    suspend fun upsert(states: List<ReviewStateEntity>)
+
+    @Query("DELETE FROM review_states WHERE itemId = :itemId")
+    suspend fun deleteById(itemId: String)
+}
+
+@Dao
+interface VocabDao {
+    @Query("SELECT * FROM vocab_words ORDER BY addedAt DESC")
+    fun observeAll(): Flow<List<VocabWordEntity>>
+
+    @Query("SELECT * FROM vocab_words")
+    suspend fun getAll(): List<VocabWordEntity>
+
+    @Upsert
+    suspend fun upsert(word: VocabWordEntity)
+
+    @Upsert
+    suspend fun upsert(words: List<VocabWordEntity>)
+
+    @Query("DELETE FROM vocab_words WHERE id = :id")
+    suspend fun deleteById(id: String)
 }

@@ -28,6 +28,24 @@ class StreakEngineTest {
     }
 
     @Test
+    fun `runs split on gaps and come back most recent first`() {
+        val days = setOf(
+            today.minusDays(9), today.minusDays(8), today.minusDays(7),
+            today.minusDays(4),
+            today.minusDays(1), today
+        )
+        val runs = StreakEngine.runs(days)
+        assertEquals(listOf(2, 1, 3), runs.map { it.length })
+        assertEquals(today, runs.first().end)
+        assertEquals(today.minusDays(9), runs.last().start)
+    }
+
+    @Test
+    fun `runs are empty with no reading days`() {
+        assertEquals(emptyList<StreakEngine.StreakRun>(), StreakEngine.runs(emptySet()))
+    }
+
+    @Test
     fun `longest streak is zero with no reading days`() {
         assertEquals(0, StreakEngine.longestStreak(emptySet()))
     }

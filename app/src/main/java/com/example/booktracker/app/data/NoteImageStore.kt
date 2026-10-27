@@ -37,24 +37,32 @@ object NoteImageStore {
      * image could not be read. Deletes [source] when it is one of our capture files.
      */
     suspend fun import(context: Context, source: Uri): String? = withContext(Dispatchers.IO) {
+        val target = File(dir(context), "note_${UUID.randomUUID()}.jpg")
+        if (!writeUpright(context, source, target, MAX_EDGE_PX)) return@withContext null
+        localFile(source.toString())?.takeIf { it.name.startsWith(CAPTURE_PREFIX) }?.delete()
+        "file://${target.absolutePath}"
+    }
+
+    /** Decodes [source], rotates it upright, downscales to [maxEdge] and writes it to [target] as a JPEG. */
+    internal fun writeUpright(context: Context, source: Uri, target: File, maxEdge: Int): Boolean {
         val resolver = context.contentResolver
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        resolver.openInputStream(source)?.use { BitmapFactory.decodeStream(it, null, bounds) } ?: return@withContext null
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@withContext null
+        // A bounds-only decode always returns null by design; only a missing stream means unreadable.
+        // (Treating that null as failure is what made every photo import, scan and avatar fail.)
+        val boundsStream = resolver.openInputStream(source) ?: return false
+        boundsStream.use { BitmapFactory.decodeStream(it, null, bounds) }
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return false
 
-        val options = BitmapFactory.Options().apply { inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight, MAX_EDGE_PX) }
+        val options = BitmapFactory.Options().apply { inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight, maxEdge) }
         val decoded = resolver.openInputStream(source)?.use { BitmapFactory.decodeStream(it, null, options) }
-            ?: return@withContext null
+            ?: return false
         val rotation = resolver.openInputStream(source)?.use { exifRotation(it) } ?: 0
-        val upright = scaleAndRotate(decoded, MAX_EDGE_PX, rotation)
+        val upright = scaleAndRotate(decoded, maxEdge, rotation)
 
-        val target = File(dir(context), "note_${UUID.randomUUID()}.jpg")
         FileOutputStream(target).use { upright.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }
         if (upright !== decoded) upright.recycle()
         decoded.recycle()
-
-        localFile(source.toString())?.takeIf { it.name.startsWith(CAPTURE_PREFIX) }?.delete()
-        "file://${target.absolutePath}"
+        return true
     }
 
     /** Writes an already-processed bitmap (for example a highlighted copy) into the store as a JPEG. */

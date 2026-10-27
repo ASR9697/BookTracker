@@ -3,15 +3,19 @@ package com.example.booktracker.app.data
 import com.example.booktracker.app.data.local.BookDao
 import com.example.booktracker.app.data.local.MarginNoteDao
 import com.example.booktracker.app.data.local.MarginNoteEntity
+import com.example.booktracker.app.data.local.ReviewDao
 import com.example.booktracker.app.data.local.SessionDao
 import com.example.booktracker.app.data.local.SessionEntity
+import com.example.booktracker.app.data.local.VocabDao
 import com.example.booktracker.app.data.local.toEntity
 import com.example.booktracker.app.data.local.toModel
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.DnfData
 import com.example.booktracker.shared.models.MarginNote
+import com.example.booktracker.shared.models.ReviewState
 import com.example.booktracker.shared.models.Session
+import com.example.booktracker.shared.models.VocabWord
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -112,6 +116,14 @@ interface BookRepository {
     suspend fun restoreFromBackup(snapshot: LibrarySnapshot)
     /** Writes sessions as given, replacing any with the same id. */
     suspend fun upsertSessions(sessions: List<Session>)
+
+    fun observeReviewStates(): Flow<List<ReviewState>>
+    suspend fun saveReviewState(state: ReviewState)
+    fun observeWords(): Flow<List<VocabWord>>
+    suspend fun saveWord(word: VocabWord)
+    suspend fun deleteWord(id: String)
+    /** Sets or clears the day the reader wants to be done with the book by. */
+    suspend fun setFinishBy(bookId: String, finishBy: Long?)
 }
 
 /** A margin-note hit carries its book so the UI can label and link it. */
@@ -125,7 +137,9 @@ data class LibrarySearchResults(
 data class LibrarySnapshot(
     val books: List<Book> = emptyList(),
     val sessions: List<Session> = emptyList(),
-    val notes: List<MarginNote> = emptyList()
+    val notes: List<MarginNote> = emptyList(),
+    val words: List<VocabWord> = emptyList(),
+    val reviews: List<ReviewState> = emptyList()
 )
 
 /** Everything a book delete removes, held so the Undo snackbar can restore it whole. */
@@ -138,7 +152,9 @@ data class DeletedBook(
 class RoomBookRepository(
     private val bookDao: BookDao,
     private val sessionDao: SessionDao,
-    private val marginNoteDao: MarginNoteDao
+    private val marginNoteDao: MarginNoteDao,
+    private val reviewDao: ReviewDao,
+    private val vocabDao: VocabDao
 ) : BookRepository {
 
     override suspend fun importCsv(context: android.content.Context, uri: android.net.Uri): CsvImportResult {
@@ -374,6 +390,7 @@ class RoomBookRepository(
      */
     override suspend fun restartReading(bookId: String) {
         val entity = bookDao.getById(bookId) ?: return
+        val now = System.currentTimeMillis()
         bookDao.upsert(
             entity.copy(
                 status = BookStatus.READING.name,
@@ -381,7 +398,10 @@ class RoomBookRepository(
                 readCount = entity.readCount + 1,
                 finishedAt = null,
                 dnfData = null,
-                lastUpdated = System.currentTimeMillis()
+                // A deadline belonged to the last read; the start lets old notes resurface.
+                finishBy = null,
+                readStartedAt = now,
+                lastUpdated = now
             )
         )
     }
@@ -415,6 +435,7 @@ class RoomBookRepository(
 
     override suspend fun deleteNote(id: String) {
         marginNoteDao.deleteById(id)
+        reviewDao.deleteById(id)
     }
 
     override suspend fun updateNote(
@@ -461,6 +482,8 @@ class RoomBookRepository(
 
     private companion object {
         val FTS_OPERATORS = setOf("AND", "OR", "NOT", "NEAR")
+        /** Quick page taps this close to the first one are folded into one record. */
+        const val QUICK_LOG_MERGE_MS = 10 * 60_000L
         val PIPELINE_STATUSES = setOf(
             BookStatus.TO_READ.name, BookStatus.SHORTLIST.name,
             BookStatus.UP_NEXT.name, BookStatus.PAUSED.name, "BACKLOG"
@@ -470,11 +493,37 @@ class RoomBookRepository(
     override suspend fun snapshotForBackup(): LibrarySnapshot = LibrarySnapshot(
         books = bookDao.getAll().map { it.toModel() },
         sessions = sessionDao.getAll().map { it.toModel() },
-        notes = marginNoteDao.getAll().map { it.toModel() }
+        notes = marginNoteDao.getAll().map { it.toModel() },
+        words = vocabDao.getAll().map { it.toModel() },
+        reviews = reviewDao.getAll().map { it.toModel() }
     )
 
     override suspend fun upsertSessions(sessions: List<Session>) {
         if (sessions.isNotEmpty()) sessionDao.upsert(sessions.map { it.toEntity() })
+    }
+
+    override fun observeReviewStates(): Flow<List<ReviewState>> =
+        reviewDao.observeAll().map { entities -> entities.map { it.toModel() } }
+
+    override suspend fun saveReviewState(state: ReviewState) {
+        reviewDao.upsert(state.toEntity())
+    }
+
+    override fun observeWords(): Flow<List<VocabWord>> =
+        vocabDao.observeAll().map { entities -> entities.map { it.toModel() } }
+
+    override suspend fun saveWord(word: VocabWord) {
+        vocabDao.upsert(word.toEntity())
+    }
+
+    override suspend fun deleteWord(id: String) {
+        vocabDao.deleteById(id)
+        reviewDao.deleteById(id)
+    }
+
+    override suspend fun setFinishBy(bookId: String, finishBy: Long?) {
+        val entity = bookDao.getById(bookId) ?: return
+        bookDao.upsert(entity.copy(finishBy = finishBy, lastUpdated = System.currentTimeMillis()))
     }
 
     /** Zone a new session is recorded in; see [Session.zoneId]. */
@@ -511,6 +560,21 @@ class RoomBookRepository(
             if (notesToUpsert.isNotEmpty()) {
                 marginNoteDao.upsert(notesToUpsert)
             }
+        }
+
+        if (snapshot.words.isNotEmpty()) {
+            val existingWords = vocabDao.getAll().map { it.id }.toSet()
+            val wordsToUpsert = snapshot.words.filter { it.id !in existingWords }.map { it.toEntity() }
+            if (wordsToUpsert.isNotEmpty()) vocabDao.upsert(wordsToUpsert)
+        }
+
+        if (snapshot.reviews.isNotEmpty()) {
+            val existingReviews = reviewDao.getAll().associateBy { it.itemId }
+            val reviewsToUpsert = snapshot.reviews.filter { backup ->
+                val existing = existingReviews[backup.itemId]
+                existing == null || backup.lastReviewedAt > existing.lastReviewedAt
+            }.map { it.toEntity() }
+            if (reviewsToUpsert.isNotEmpty()) reviewDao.upsert(reviewsToUpsert)
         }
     }
 
@@ -699,8 +763,27 @@ class RoomBookRepository(
         source: String
     ) {
         val gained = newUnit - oldUnit
-        if (gained <= 0) return
+        if (gained == 0) return
         if (sessionDao.getOpenSessionForBook(bookId) != null) return
+        // The quick log this change continues: an untimed record ending where this one starts.
+        val quickLog = sessionDao.getLatestCompletedForBook(bookId)?.takeIf {
+            it.durationSeconds == 0 && it.startTime == it.endTime && it.environmentTag.isEmpty() &&
+                it.endPage == oldUnit && at - it.endTime in 0..QUICK_LOG_MERGE_MS
+        }
+        if (gained < 0) {
+            // Taking pages back (Undo, a mistaken +5 on the widget) trims the record they went into.
+            if (quickLog != null) {
+                val end = newUnit.coerceAtLeast(quickLog.startPage)
+                if (end == quickLog.startPage) sessionDao.deleteById(quickLog.id)
+                else sessionDao.upsert(quickLog.copy(endPage = end, pagesRead = end - quickLog.startPage))
+            }
+            return
+        }
+        // Several taps a moment apart are one bit of reading, not a pile of one-page sessions.
+        if (quickLog != null) {
+            sessionDao.upsert(quickLog.copy(endPage = newUnit, pagesRead = quickLog.pagesRead + gained))
+            return
+        }
         sessionDao.insert(
             SessionEntity(
                 id = UUID.randomUUID().toString(),

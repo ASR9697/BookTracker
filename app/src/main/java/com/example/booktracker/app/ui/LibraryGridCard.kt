@@ -1,5 +1,9 @@
 package com.example.booktracker.app.ui
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import com.example.booktracker.app.ui.animations.bounceOnPress
+import com.example.booktracker.app.ui.animations.rememberHaptics
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -64,22 +68,40 @@ fun LibraryGridCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
     onStartReading: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onChangeStatus: ((BookStatus) -> Unit)? = null,
+    onAddNote: (() -> Unit)? = null
 ) {
-    val haptic = LocalHapticFeedback.current
+    val haptics = rememberHaptics()
     var menuOpen by remember { mutableStateOf(false) }
     val status = remember(book.status) { libraryStatus(book.status) }
     val rating = book.overallRating?.takeIf { it > 0f }
-    val canStart = status != BookStatus.READING && status != BookStatus.FINISHED
+    val canStart = status != BookStatus.FINISHED
+    val press = remember { MutableInteractionSource() }
+
+    if (menuOpen) {
+        BookQuickActionsSheet(
+            book = book,
+            onDismiss = { menuOpen = false },
+            onOpen = onClick,
+            onStartReading = onStartReading.takeIf { canStart },
+            onAddNote = onAddNote,
+            onChangeStatus = onChangeStatus,
+            onDelete = onDelete
+        )
+    }
 
     Column(
         modifier = modifier
+            .bounceOnPress(press)
             .clip(CoverShape)
             .combinedClickable(
+                interactionSource = press,
+                indication = null,
                 onClick = onClick,
                 onLongClickLabel = "Book actions",
                 onLongClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    haptics.longPress()
                     menuOpen = true
                 }
             )
@@ -140,26 +162,6 @@ fun LibraryGridCard(
                 )
             }
 
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                if (canStart) {
-                    DropdownMenuItem(
-                        text = { Text("Start reading") },
-                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null) },
-                        onClick = {
-                            menuOpen = false
-                            onStartReading()
-                        }
-                    )
-                }
-                DropdownMenuItem(
-                    text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
-                    leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-                    onClick = {
-                        menuOpen = false
-                        onDelete()
-                    }
-                )
-            }
         }
 
         Spacer(Modifier.height(6.dp))

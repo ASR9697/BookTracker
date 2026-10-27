@@ -166,6 +166,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Badge
 
@@ -204,10 +205,13 @@ private fun BookDetailTabRow(
         color = MaterialTheme.colorScheme.surface,
         modifier = modifier.fillMaxWidth()
     ) {
-        PrimaryTabRow(
+        // Scrollable so each tab takes the width its label and count need; fixed equal
+        // widths squeezed "Sessions" plus its badge until the count wrapped onto two lines.
+        PrimaryScrollableTabRow(
             selectedTabIndex = selectedTab.ordinal,
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.primary,
+            edgePadding = 8.dp,
             divider = {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
             }
@@ -224,7 +228,9 @@ private fun BookDetailTabRow(
                             Text(
                                 tab.label,
                                 style = MaterialTheme.typography.titleSmall,
-                                fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Medium
+                                fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Medium,
+                                maxLines = 1,
+                                softWrap = false
                             )
                             when (tab) {
                                 BookDetailTab.NOTES -> if (noteCount > 0) {
@@ -234,7 +240,7 @@ private fun BookDetailTabRow(
                                         else
                                             MaterialTheme.colorScheme.surfaceContainerHighest
                                     ) {
-                                        Text("$noteCount")
+                                        Text("$noteCount", maxLines = 1, softWrap = false)
                                     }
                                 }
                                 BookDetailTab.SESSIONS -> if (sessionCount > 0) {
@@ -244,7 +250,7 @@ private fun BookDetailTabRow(
                                         else
                                             MaterialTheme.colorScheme.surfaceContainerHighest
                                     ) {
-                                        Text("$sessionCount")
+                                        Text("$sessionCount", maxLines = 1, softWrap = false)
                                     }
                                 }
                                 else -> {}
@@ -278,6 +284,8 @@ fun BookDetailScreen(
     allCollections: List<String>,
     onSetFormat: (String) -> Unit,
     onSetOwnership: (Ownership) -> Unit = {},
+    onSetPurchases: (List<com.example.booktracker.shared.models.PurchaseLog>) -> Unit = {},
+    onSetFinishBy: (Long?) -> Unit = {},
     onDelete: () -> Unit,
     onStartReading: () -> Unit,
     onReadAgain: () -> Unit,
@@ -314,6 +322,9 @@ fun BookDetailScreen(
     val activeLoan = remember(book?.loanRecord) { book?.let { LoanEngine.activeLoan(it) } }
     val loanStatus = remember(activeLoan) { activeLoan?.let { LoanEngine.getLoanStatus(it) } }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // On a re-read, notes written before it began are memories to bring back.
+    val readStart = remember(book, sessions) { book?.let { com.example.booktracker.app.analytics.RereadMemories.currentReadStart(it, sessions) } }
+    val earlierNotes = remember(notes, readStart) { readStart?.let { start -> notes.filter { it.timestamp < start } }.orEmpty() }
 
     if (showLoanDialog && book != null) {
         LoanRecordDialog(
@@ -488,6 +499,13 @@ fun BookDetailScreen(
                         }
                     }
 
+                    if (book.totalPages > 0 && book.status != BookStatus.FINISHED.name && book.status != BookStatus.DNF.name) {
+                        item { SectionItem { FinishByCard(book, sessions, streak, onSetFinishBy) } }
+                    }
+                    if (readStart != null && earlierNotes.isNotEmpty()) {
+                        item { SectionItem { RereadMemoriesCard(book, readStart, earlierNotes) } }
+                    }
+
                     item { SectionItem { MetadataChips(book) } }
 
                     item { SectionItem { AboutCard(book) } }
@@ -525,7 +543,7 @@ fun BookDetailScreen(
                                             contentColor = MaterialTheme.colorScheme.onSurface
                                         ) {
                                             Text(
-                                                "#$genre",
+                                                "#${genre.trimStart('#')}",
                                                 style = MaterialTheme.typography.labelLarge,
                                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                                             )
@@ -585,11 +603,9 @@ fun BookDetailScreen(
                         }
                     }
 
-                    if (book.purchaseLog.isNotEmpty()) {
-                        item {
-                            SectionItem {
-                                LedgerCard(book)
-                            }
+                    item {
+                        SectionItem {
+                            LedgerCard(book, onSetPurchases = onSetPurchases)
                         }
                     }
 
@@ -2521,8 +2537,31 @@ private fun EditSessionDialog(
 }
 
 @Composable
-private fun LedgerCard(book: Book) {
+private fun LedgerCard(book: Book, onSetPurchases: (List<com.example.booktracker.shared.models.PurchaseLog>) -> Unit) {
+    // Index of the purchase being edited, -1 for a new one.
+    var editing by remember { mutableStateOf<Int?>(null) }
+    editing?.let { index ->
+        PurchaseEditorDialog(
+            initial = book.purchaseLog.getOrNull(index),
+            onDismiss = { editing = null },
+            onSave = { log ->
+                val logs = book.purchaseLog
+                onSetPurchases(if (index in logs.indices) logs.toMutableList().also { it[index] = log } else logs + log)
+                editing = null
+            },
+            onDelete = if (index in book.purchaseLog.indices) {
+                { onSetPurchases(book.purchaseLog.filterIndexed { i, _ -> i != index }); editing = null }
+            } else null
+        )
+    }
     DetailCard(title = "Ledger") {
+        if (book.purchaseLog.isEmpty()) {
+            Text(
+                "Where did you get this book? Add the store and price to keep your spending in one place.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         if (book.purchaseLog.isNotEmpty()) {
             Text(
                 "Purchases",
@@ -2531,11 +2570,14 @@ private fun LedgerCard(book: Book) {
                 color = MaterialTheme.colorScheme.primary
             )
             Spacer(Modifier.height(8.dp))
-            book.purchaseLog.forEach { log ->
+            book.purchaseLog.forEachIndexed { index, log ->
                 val date = Instant.ofEpochMilli(log.date).atZone(ZoneId.systemDefault()).toLocalDate()
                 val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClickLabel = "Edit purchase") { editing = index }
+                        .padding(vertical = 6.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -2569,6 +2611,12 @@ private fun LedgerCard(book: Book) {
             }
         }
         
+        TextButton(onClick = { editing = -1 }, contentPadding = PaddingValues(horizontal = 0.dp)) {
+            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(if (book.purchaseLog.isEmpty()) "Add purchase" else "Add another purchase")
+        }
+
         if (book.purchaseLog.isNotEmpty() && book.loanRecord.isNotEmpty()) {
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
         }

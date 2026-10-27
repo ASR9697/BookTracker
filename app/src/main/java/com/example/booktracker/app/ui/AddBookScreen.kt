@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.ViewWeek
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.*
@@ -56,7 +57,8 @@ fun AddBookScreen(
     onDismiss: () -> Unit,
     onAddBook: (BookMetadata, BookStatus, com.example.booktracker.shared.models.BookFormat) -> Unit,
     onScanBarcode: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onScanShelf: () -> Unit = {}
 ) {
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<BookMetadata>>(emptyList()) }
@@ -183,6 +185,11 @@ fun AddBookScreen(
                     Text("Manual", style = MaterialTheme.typography.titleMedium)
                 }
             }
+            TextButton(onClick = onScanShelf, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                Icon(Icons.Filled.ViewWeek, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Add a whole shelf from a photo")
+            }
             
             Spacer(Modifier.height(24.dp))
             
@@ -237,8 +244,8 @@ fun AddBookScreen(
         BookPreviewDialog(
             book = book,
             onDismiss = { previewBook = null },
-            onConfirmAdd = { status, startPage, format ->
-                onAddBook(book.copy(currentPage = startPage), status, format)
+            onConfirmAdd = { status, startPage, format, purchases ->
+                onAddBook(book.copy(currentPage = startPage, purchaseLog = purchases), status, format)
                 previewBook = null
             }
         )
@@ -364,8 +371,9 @@ fun BookPreviewDialog(
     book: BookMetadata,
     onDismiss: () -> Unit,
     dismissLabel: String = "Cancel",
-    onConfirmAdd: (BookStatus, Int, com.example.booktracker.shared.models.BookFormat) -> Unit
+    onConfirmAdd: (BookStatus, Int, com.example.booktracker.shared.models.BookFormat, List<com.example.booktracker.shared.models.PurchaseLog>) -> Unit
 ) {
+    var purchases by remember { mutableStateOf(emptyList<com.example.booktracker.shared.models.PurchaseLog>()) }
     var selectedStatus by remember { mutableStateOf(BookStatus.TO_READ) }
     var selectedFormat by remember { mutableStateOf(com.example.booktracker.shared.models.BookFormat.Paperback) }
     var startPage by remember { mutableStateOf("") }
@@ -470,7 +478,10 @@ fun BookPreviewDialog(
                 Spacer(Modifier.height(8.dp))
                 FormatChips(selectedFormat) { selectedFormat = it }
 
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(16.dp))
+                PurchaseSection(purchases = purchases, onChange = { purchases = it }, modifier = Modifier.fillMaxWidth())
+
+                Spacer(Modifier.height(16.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -483,7 +494,7 @@ fun BookPreviewDialog(
                     Button(
                         onClick = {
                             val page = if (selectedStatus == BookStatus.READING) startPageInt ?: 0 else 0
-                            onConfirmAdd(selectedStatus, page, selectedFormat)
+                            onConfirmAdd(selectedStatus, page, selectedFormat, purchases)
                         },
                         enabled = !startPageError
                     ) {
@@ -741,22 +752,7 @@ fun ManualAddBookDialog(
                         }
                         if (showPurchaseLogForm) {
                             Spacer(Modifier.height(8.dp))
-                            purchaseLogs.forEachIndexed { idx, log ->
-                                Text("• ${log.vendor} - ${log.price} ${log.currency}")
-                            }
-                            var vendor by remember { mutableStateOf("") }
-                            var price by remember { mutableStateOf("") }
-                            Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedTextField(value = vendor, onValueChange = { vendor = it }, label = { Text("Vendor") }, modifier = Modifier.weight(1f), singleLine = true)
-                                OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Price") }, modifier = Modifier.weight(1f), singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                            }
-                            Button(onClick = {
-                                if (vendor.isNotBlank() && price.toDoubleOrNull() != null) {
-                                    purchaseLogs = purchaseLogs + com.example.booktracker.shared.models.PurchaseLog(System.currentTimeMillis(), vendor, price.toDouble(), "USD", "")
-                                    vendor = ""
-                                    price = ""
-                                }
-                            }, modifier = Modifier.padding(top = 8.dp)) { Text("Add Log") }
+                            PurchaseSection(purchases = purchaseLogs, onChange = { purchaseLogs = it })
                         }
                     }
                 }

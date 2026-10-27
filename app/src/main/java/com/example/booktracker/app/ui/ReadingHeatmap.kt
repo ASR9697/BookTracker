@@ -80,6 +80,12 @@ fun getIntensityColor(level: ReadingIntensityLevel): Color {
     }
 }
 
+private const val MIN_WEEKS = 12
+private const val MAX_WEEKS = 52
+private val CELL_GAP = 3.dp
+private val MIN_CELL = 12.dp
+private val MAX_CELL = 20.dp
+
 /**
  * 52-Week Annual Reading Heatmap ("Year in Pixels").
  * A GitHub-style horizontal matrix visualizing reading consistency and intensity across 365 days,
@@ -119,10 +125,18 @@ fun ReadingHeatmap(
             .groupBy { Instant.ofEpochMilli(it.timestamp).atZone(zone).toLocalDate() }
     }
 
-    // 52-week horizontal calendar geometry (aligned to Monday)
-    val totalWeeks = 52
+    // Up to 52 weeks, aligned to Monday, starting at the first reading week so a
+    // new reader isn't shown months of empty cells before they began.
     val currentMonday = remember(today) { today.minusDays((today.dayOfWeek.value - 1).toLong()) }
-    val startMonday = remember(currentMonday) { currentMonday.minusWeeks((totalWeeks - 1).toLong()) }
+    val totalWeeks = remember(dailyPages, currentMonday) {
+        val first = dailyPages.keys.minOrNull()
+        val weeks = first?.let {
+            val firstMonday = it.minusDays((it.dayOfWeek.value - 1).toLong())
+            java.time.temporal.ChronoUnit.WEEKS.between(firstMonday, currentMonday).toInt() + 1
+        } ?: MAX_WEEKS
+        weeks.coerceIn(MIN_WEEKS, MAX_WEEKS)
+    }
+    val startMonday = remember(currentMonday, totalWeeks) { currentMonday.minusWeeks((totalWeeks - 1).toLong()) }
 
     val scrollState = rememberScrollState()
     LaunchedEffect(scrollState) {
@@ -190,7 +204,11 @@ fun ReadingHeatmap(
 
         Spacer(Modifier.height(14.dp))
 
-        // 52-Week Horizontal Matrix Container
+        // Week matrix: cells stretch to fill the card when there are few weeks,
+        // and scroll at the minimum size once a full year no longer fits.
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val gridWidth = maxWidth - 20.dp // day-label column
+        val cell = ((gridWidth - CELL_GAP * (totalWeeks - 1)) / totalWeeks).coerceIn(MIN_CELL, MAX_CELL)
         Row(
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -199,11 +217,11 @@ fun ReadingHeatmap(
                 modifier = Modifier
                     .padding(top = 18.dp, end = 6.dp)
                     .width(14.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(CELL_GAP)
             ) {
                 val dayLabels = listOf("M", "", "W", "", "F", "", "")
                 dayLabels.forEach { label ->
-                    Box(modifier = Modifier.size(12.dp), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.height(cell).fillMaxWidth(), contentAlignment = Alignment.Center) {
                         if (label.isNotEmpty()) {
                             Text(
                                 label,
@@ -224,7 +242,7 @@ fun ReadingHeatmap(
                     // Month Label Row
                     Row(
                         modifier = Modifier.padding(bottom = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        horizontalArrangement = Arrangement.spacedBy(CELL_GAP)
                     ) {
                         var lastMonth = -1
                         for (col in 0 until totalWeeks) {
@@ -236,7 +254,7 @@ fun ReadingHeatmap(
                             val showMonth = newMonth && (col > 0 || startMonday.plusWeeks(2).monthValue == month)
 
                             Box(
-                                modifier = Modifier.width(12.dp),
+                                modifier = Modifier.width(cell),
                                 contentAlignment = Alignment.CenterStart
                             ) {
                                 if (showMonth) {
@@ -247,7 +265,7 @@ fun ReadingHeatmap(
                                         color = MaterialTheme.colorScheme.primary,
                                         maxLines = 1,
                                         softWrap = false,
-                                        // The cell is 12dp wide; let "Sep" run into the empty cells after it.
+                                        // The cell is narrow; let "Sep" run into the empty cells after it.
                                         modifier = Modifier.wrapContentWidth(Alignment.Start, unbounded = true)
                                     )
                                 }
@@ -256,9 +274,9 @@ fun ReadingHeatmap(
                     }
 
                     // 7 Rows of Weeks
-                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(CELL_GAP)) {
                         for (col in 0 until totalWeeks) {
-                            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(CELL_GAP)) {
                                 for (row in 0 until 7) {
                                     val date = startMonday.plusWeeks(col.toLong()).plusDays(row.toLong())
                                     val isFuture = date.isAfter(today)
@@ -279,7 +297,7 @@ fun ReadingHeatmap(
 
                                     Box(
                                         modifier = Modifier
-                                            .size(12.dp)
+                                            .size(cell)
                                             .clip(RoundedCornerShape(2.5.dp))
                                             .background(cellColor)
                                             .then(
@@ -302,6 +320,7 @@ fun ReadingHeatmap(
                     }
                 }
             }
+        }
         }
 
         Spacer(Modifier.height(12.dp))

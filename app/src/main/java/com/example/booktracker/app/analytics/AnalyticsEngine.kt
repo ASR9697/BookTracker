@@ -1,6 +1,7 @@
 package com.example.booktracker.app.analytics
 
 import com.example.booktracker.shared.models.Book
+import com.example.booktracker.shared.models.BookFormat
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.Session
 import java.time.Instant
@@ -265,6 +266,48 @@ object AnalyticsEngine {
                 )
             }
             .sortedByDescending { it.totalPages }
+
+    private val FORMAT_TAGS = BookFormat.entries.map { it.name.lowercase() }.toSet() + "ebook"
+
+    /**
+     * Most common tag across [books], read as a genre. Tags double as genres, so a
+     * format tag like "#Audiobook" is skipped: it says how, not what, you read.
+     */
+    fun topGenre(books: List<Book>): String? =
+        books.flatMap { it.genres }
+            .map { it.trim().removePrefix("#").trim() }
+            .filter { it.isNotEmpty() && it.lowercase() !in FORMAT_TAGS }
+            .groupingBy { it }.eachCount()
+            .maxByOrNull { it.value }?.key
+
+    /**
+     * Short traits for the profile header, e.g. ["Night reader", "32-min sessions",
+     * "loves Fantasy"]. Each trait is left out until there is data behind it.
+     */
+    fun readerPersonality(
+        books: List<Book>,
+        sessions: List<Session>,
+        zone: ZoneId = ZoneId.systemDefault()
+    ): List<String> {
+        val traits = mutableListOf<String>()
+        bestTimeOfDay(sessions, zone)?.let { traits += "$it reader" }
+        summarizeTime(sessions, zone).avgSessionMinutes.takeIf { it > 0 }?.let { traits += "$it-min sessions" }
+
+        val shelf = books.filter {
+            it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) ||
+                it.status.equals(BookStatus.READING.name, ignoreCase = true)
+        }
+        // Paperback is the default format, so only a deliberate majority says anything.
+        val topFormat = shelf.groupingBy { it.format }.eachCount().maxByOrNull { it.value }
+        val genre = topGenre(shelf)
+        when {
+            topFormat != null && topFormat.key != BookFormat.Paperback &&
+                shelf.size >= 3 && topFormat.value * 10 >= shelf.size * 6 ->
+                traits += "mostly ${topFormat.key.name.lowercase()}s"
+            genre != null -> traits += "loves $genre"
+        }
+        return traits
+    }
 
     /** "2h 15m", "45m", "<1m" — for durations shown in stats and recaps. */
     fun formatMinutes(minutes: Long): String = when {

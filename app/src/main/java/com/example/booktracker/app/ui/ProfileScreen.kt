@@ -1,10 +1,22 @@
 package com.example.booktracker.app.ui
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
+import com.example.booktracker.app.data.AvatarStore
+import java.time.Instant
+import java.time.format.TextStyle
+import java.util.Locale
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -22,18 +34,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.booktracker.app.analytics.AnalyticsEngine
-import com.example.booktracker.app.analytics.Badge
 import com.example.booktracker.app.analytics.BadgeEngine
+import com.example.booktracker.app.analytics.BadgeStatus
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.MarginNote
+import com.example.booktracker.shared.models.ProgressUnit
 import com.example.booktracker.shared.models.Session
 import com.example.booktracker.app.ui.animations.bounceClick
+import com.example.booktracker.app.ui.animations.LivingFlame
+import com.example.booktracker.app.ui.animations.animateCountUp
+import com.example.booktracker.app.ui.animations.rememberEntranceState
+import com.example.booktracker.app.ui.animations.staggeredEntrance
 import com.example.booktracker.app.analytics.GoalEngine
 import com.example.booktracker.app.analytics.StreakEngine
 import com.example.booktracker.app.util.MarkdownExporter
@@ -42,6 +59,9 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
+private const val MAX_READING_ROWS = 3
+private const val MAX_TEASER_MEDALS = 5
+
 @Composable
 fun ProfileScreen(
     userName: String,
@@ -49,6 +69,7 @@ fun ProfileScreen(
     sessions: List<Session>,
     notes: List<MarginNote> = emptyList(),
     streak: Int,
+    longestStreak: Int = streak,
     dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR,
     onOpenSettings: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
@@ -56,8 +77,16 @@ fun ProfileScreen(
     onOpenPlanner: () -> Unit = {},
     onOpenBook: (Book) -> Unit = {},
     onOpenWrapped: () -> Unit = {},
+    onOpenAchievements: () -> Unit = {},
+    onOpenStreak: () -> Unit = {},
     onUpdateName: (String) -> Unit = {},
-    unlockedBadges: Set<String> = emptySet(),
+    badgeStatuses: List<BadgeStatus> = emptyList(),
+    monthlyChallenge: BadgeStatus? = null,
+    yearlyGoal: Int = 0,
+    avatar: String = "",
+    onSetAvatarPhoto: (Uri) -> Unit = {},
+    onSetAvatarCover: (Book) -> Unit = {},
+    onClearAvatar: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -69,36 +98,49 @@ fun ProfileScreen(
         StreakEngine.pagesByDay(sessions).values.sum() +
             completedBooks.filter { it.id !in trackedBookIds }.sumOf { it.totalPages }
     }
-    val currentBook = books.firstOrNull { it.status.equals(BookStatus.READING.name, ignoreCase = true) }
+    val readingBooks = remember(books) {
+        books.filter { it.status.equals(BookStatus.READING.name, ignoreCase = true) }
+            .sortedByDescending { it.lastUpdated }
+    }
     val velocity = remember(sessions) { AnalyticsEngine.pagesPerHour(sessions) }
+    val personality = remember(books, sessions) {
+        listOfNotNull(velocity?.let { "≈ ${it.roundToInt()} pages/hour" }) +
+            AnalyticsEngine.readerPersonality(books, sessions, zone)
+    }
+    val today = LocalDate.now(zone)
+    val finishedThisYear = completedBooks.count {
+        it.completedAt > 0 && Instant.ofEpochMilli(it.completedAt).atZone(zone).year == today.year
+    }
     val totalMinutes = remember(sessions) {
         AnalyticsEngine.timedSessions(sessions).sumOf { it.endTime - it.startTime } / 60_000L
     }
     val trackingStart = remember(books, sessions) { GoalEngine.trackingStart(books, sessions, zone) }
     val trackingSince = trackingStart?.format(DateTimeFormatter.ofPattern("MMM yyyy"))
+    val goalPace = when {
+        yearlyGoal <= 0 -> null
+        finishedThisYear >= yearlyGoal -> "goal reached"
+        else -> when (GoalEngine.calculateYearlyPace(yearlyGoal, finishedThisYear, today, trackingStart).status) {
+            GoalEngine.GoalPaceStatus.AHEAD -> "ahead"
+            GoalEngine.GoalPaceStatus.ON_TRACK -> "on track"
+            GoalEngine.GoalPaceStatus.BEHIND -> "behind"
+        }
+    }
     val hasYearToReview = remember(books, sessions, dayStartsAtHour) {
         AnalyticsEngine.hasYearToReview(books, sessions, LocalDate.now(zone).year, zone, dayStartsAtHour)
     }
 
-    var selectedBadge by remember { mutableStateOf<Badge?>(null) }
-    selectedBadge?.let { badge ->
-        BadgeDetailDialog(
-            badge = badge,
-            isUnlocked = unlockedBadges.contains(badge.id),
-            onDismiss = { selectedBadge = null }
-        )
-    }
-
+    val entrance = rememberEntranceState()
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Top Section: User Info
+        // Top Section: avatar inside the yearly-goal ring, name, personality
         item {
-            var showNameDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
+            var showNameDialog by remember { mutableStateOf(false) }
+            var showAvatarSheet by remember { mutableStateOf(false) }
             if (showNameDialog) {
-                var newName by remember { androidx.compose.runtime.mutableStateOf(userName) }
+                var newName by remember { mutableStateOf(userName) }
                 AlertDialog(
                     onDismissRequest = { showNameDialog = false },
                     title = { Text("Edit Profile") },
@@ -121,56 +163,149 @@ fun ProfileScreen(
                     }
                 )
             }
-            
+            if (showAvatarSheet) {
+                AvatarPickerSheet(
+                    avatar = avatar,
+                    books = books,
+                    onPickPhoto = { onSetAvatarPhoto(it); showAvatarSheet = false },
+                    onPickCover = { onSetAvatarCover(it); showAvatarSheet = false },
+                    onUseInitial = { onClearAvatar(); showAvatarSheet = false },
+                    onDismiss = { showAvatarSheet = false }
+                )
+            }
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { showNameDialog = true }
-                    .padding(vertical = 8.dp)
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).staggeredEntrance(entrance, 0)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        userName.firstOrNull()?.toString()?.uppercase() ?: "R",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(96.dp)) {
+                    if (yearlyGoal > 0) {
+                        CircularProgressIndicator(
+                            progress = { (finishedThisYear.toFloat() / yearlyGoal).coerceIn(0f, 1f) },
+                            modifier = Modifier.fillMaxSize(),
+                            strokeWidth = 4.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                            gapSize = 0.dp
+                        )
+                    }
+                    ProfileAvatar(
+                        avatar = avatar,
+                        userName = userName,
+                        books = books,
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clickable { showAvatarSheet = true }
                     )
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 6.dp, bottom = 6.dp)
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                            .clickable { showAvatarSheet = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Filled.PhotoCamera,
+                            contentDescription = "Change profile picture",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                 }
                 Spacer(Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { showNameDialog = true }
+                    ) {
+                        Text(
+                            userName,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Icon(
+                            Icons.Filled.Edit,
+                            contentDescription = "Edit name",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                     Text(
-                        userName,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        velocity?.let { "≈ ${it.roundToInt()} pages/hour reader" }
+                        personality.takeIf { it.isNotEmpty() }?.joinToString(" · ")
                             ?: "Building your reading profile",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    if (trackingSince != null) {
+                    if (yearlyGoal > 0) {
                         Spacer(Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Filled.CalendarToday,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                "Tracking since $trackingSince",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        HeaderLine(
+                            icon = Icons.Filled.Flag,
+                            text = "$finishedThisYear / $yearlyGoal books in ${today.year}" +
+                                (goalPace?.let { " · $it" } ?: "")
+                        )
+                    }
+                    if (trackingSince != null) {
+                        Spacer(Modifier.height(2.dp))
+                        HeaderLine(icon = Icons.Filled.CalendarToday, text = "Tracking since $trackingSince")
+                    }
+                }
+            }
+        }
+
+        // Lifetime numbers, one compact card instead of four big tiles.
+        item {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                modifier = Modifier.fillMaxWidth().staggeredEntrance(entrance, 1)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Row {
+                        StatTile(
+                            icon = Icons.Filled.LocalFireDepartment,
+                            tint = MaterialTheme.colorScheme.tertiary,
+                            count = streak,
+                            flameStreak = streak,
+                            label = "day streak · best $longestStreak",
+                            modifier = Modifier.weight(1f).bounceClick { onOpenStreak() }
+                        )
+                        StatTile(
+                            icon = Icons.AutoMirrored.Filled.MenuBook,
+                            tint = MaterialTheme.colorScheme.secondary,
+                            count = completedBooks.size,
+                            label = if (completedBooks.size == 1) "book finished" else "books finished",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Row {
+                        StatTile(
+                            icon = Icons.Filled.Layers,
+                            tint = MaterialTheme.colorScheme.primary,
+                            count = pagesRead,
+                            format = { "%,d".format(it) },
+                            label = "pages read",
+                            modifier = Modifier.weight(1f)
+                        )
+                        StatTile(
+                            icon = Icons.Filled.Schedule,
+                            tint = MaterialTheme.colorScheme.primary,
+                            count = totalMinutes.toInt(),
+                            format = { AnalyticsEngine.formatMinutes(it.toLong()) },
+                            label = "time reading",
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
             }
@@ -186,6 +321,7 @@ fun ProfileScreen(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
+                    .staggeredEntrance(entrance, 2)
                     .bounceClick { onOpenWrapped() }
             ) {
                 Row(
@@ -208,12 +344,12 @@ fun ProfileScreen(
                     Spacer(Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            "Your Wrapped",
+                            "Your ${LocalDate.now(zone).year} Wrapped",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            "See your reading summary",
+                            "Your year in books, ready to share",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -222,11 +358,17 @@ fun ProfileScreen(
             }
         }
 
+        if (badgeStatuses.isNotEmpty()) item {
+            Box(Modifier.staggeredEntrance(entrance, 3)) {
+                AchievementsTeaser(statuses = badgeStatuses, challenge = monthlyChallenge, onClick = onOpenAchievements)
+            }
+        }
+
         item {
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                modifier = Modifier.fillMaxWidth().staggeredEntrance(entrance, 4)
             ) {
                 ReadingHeatmap(
                     sessions = sessions,
@@ -239,271 +381,39 @@ fun ProfileScreen(
             }
         }
 
-        // Current Book Card (if any)
-        if (currentBook != null) {
-            item {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .bounceClick { onOpenBook(currentBook) }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                "CURRENT BOOK",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                currentBook.title,
-                                style = MaterialTheme.typography.titleMedium,
-                                maxLines = 1,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            val targetProgress = if (currentBook.totalPages > 0) currentBook.currentPage.toFloat() / currentBook.totalPages else 0f
-                            val progress by androidx.compose.animation.core.animateFloatAsState(targetValue = targetProgress, label = "progress")
-                            LinearProgressIndicator(
-                                progress = { progress },
-                                modifier = Modifier
-                                    .fillMaxWidth(0.8f)
-                                    .height(6.dp)
-                                    .clip(CircleShape),
-                                color = MaterialTheme.colorScheme.secondary,
-                                trackColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        }
-                        Spacer(Modifier.width(16.dp))
-                        BookCover(currentBook.coverUrl, Modifier.size(width = 48.dp, height = 72.dp))
+        if (readingBooks.isNotEmpty()) item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                modifier = Modifier.fillMaxWidth().staggeredEntrance(entrance, 5)
+            ) {
+                Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                    Text(
+                        "CURRENTLY READING",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                    readingBooks.take(MAX_READING_ROWS).forEach { book ->
+                        ReadingRow(book, sessions, onClick = { onOpenBook(book) })
                     }
-                }
-            }
-        }
-
-        // Achievements Grid
-        item {
-            Column {
-                Text(
-                    "Achievements",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    AchievementCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Filled.LocalFireDepartment,
-                        iconTint = MaterialTheme.colorScheme.tertiary,
-                        iconBackground = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f),
-                        value = streak.toString(),
-                        label = if (streak == 1) "Day Streak" else "Days Streak"
-                    )
-                    AchievementCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.AutoMirrored.Filled.MenuBook,
-                        iconTint = MaterialTheme.colorScheme.secondary,
-                        iconBackground = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f),
-                        value = completedBooks.size.toString(),
-                        label = "Completed"
-                    )
-                }
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    AchievementCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Filled.Layers,
-                        iconTint = MaterialTheme.colorScheme.primary,
-                        iconBackground = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                        value = pagesRead.toString(),
-                        label = "Pages Read"
-                    )
-                    AchievementCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Filled.Schedule,
-                        iconTint = MaterialTheme.colorScheme.primary,
-                        iconBackground = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                        value = AnalyticsEngine.formatMinutes(totalMinutes),
-                        label = "Time Read"
-                    )
-                }
-            }
-        }
-
-        // Reading Achievements & Badges Gallery
-        item {
-            var badgeFilter by remember { mutableStateOf("ALL") }
-            val allBadges = BadgeEngine.BADGES
-            val unlockedCount = allBadges.count { unlockedBadges.contains(it.id) }
-            val displayedBadges = remember(badgeFilter, unlockedBadges) {
-                when (badgeFilter) {
-                    "UNLOCKED" -> allBadges.filter { unlockedBadges.contains(it.id) }
-                    "LOCKED" -> allBadges.filter { !unlockedBadges.contains(it.id) }
-                    else -> allBadges
-                }
-            }
-
-            Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
+                    if (readingBooks.size > MAX_READING_ROWS) {
                         Text(
-                            "Reading Achievements",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            "$unlockedCount of ${allBadges.size} Unlocked",
+                            "+${readingBooks.size - MAX_READING_ROWS} more in your library",
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.SemiBold
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
-
-                    // Filter toggle chips
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("ALL" to "All", "UNLOCKED" to "Earned", "LOCKED" to "Locked").forEach { (key, label) ->
-                            val selected = badgeFilter == key
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
-                                border = if (selected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)) else null,
-                                modifier = Modifier.bounceClick { badgeFilter = key }
-                            ) {
-                                Text(
-                                    label,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                val rows = displayedBadges.chunked(2)
-                rows.forEach { rowBadges ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        rowBadges.forEach { badge ->
-                            val isUnlocked = unlockedBadges.contains(badge.id)
-                            val tierColor = getBadgeTierColor(badge.tier)
-                            Card(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .bounceClick { selectedBadge = badge },
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (isUnlocked) tierColor.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                                ),
-                                border = if (isUnlocked) BorderStroke(1.5.dp, tierColor.copy(alpha = 0.45f)) else null,
-                                shape = RoundedCornerShape(18.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(14.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    // Tier tag
-                                    Surface(
-                                        shape = RoundedCornerShape(6.dp),
-                                        color = if (isUnlocked) tierColor.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.7f)
-                                    ) {
-                                        Text(
-                                            badge.tier,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isUnlocked) tierColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                        )
-                                    }
-
-                                    Spacer(Modifier.height(10.dp))
-
-                                    Box(
-                                        modifier = Modifier
-                                            .size(52.dp)
-                                            .clip(CircleShape)
-                                            .background(if (isUnlocked) tierColor.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surface)
-                                            .border(
-                                                1.5.dp,
-                                                if (isUnlocked) tierColor.copy(alpha = 0.8f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                                                CircleShape
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        if (isUnlocked) {
-                                            Icon(
-                                                badge.icon,
-                                                contentDescription = null,
-                                                tint = tierColor,
-                                                modifier = Modifier.size(26.dp)
-                                            )
-                                        } else {
-                                            Icon(
-                                                Icons.Filled.Lock,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                        }
-                                    }
-
-                                    Spacer(Modifier.height(10.dp))
-
-                                    Text(
-                                        badge.title,
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        textAlign = TextAlign.Center,
-                                        maxLines = 1,
-                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                    )
-
-                                    Spacer(Modifier.height(4.dp))
-
-                                    Text(
-                                        if (isUnlocked) badge.description else "Tap to view challenge",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        textAlign = TextAlign.Center,
-                                        maxLines = 2,
-                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-                        }
-                        if (rowBadges.size == 1) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-                    }
-                    Spacer(Modifier.height(12.dp))
                 }
             }
         }
 
         // Settings & Activity
         item {
-            Column {
+            Column(modifier = Modifier.staggeredEntrance(entrance, 6)) {
                 Text(
-                    "Settings & Activity",
+                    "Your reading",
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
@@ -527,7 +437,7 @@ fun ProfileScreen(
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         SettingsRow(
                             icon = Icons.Filled.Flag,
-                            label = "Goals & Settings",
+                            label = "Reading goals",
                             onClick = onOpenSettings
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -550,39 +460,312 @@ fun ProfileScreen(
 }
 
 @Composable
-private fun AchievementCard(
+private fun StatTile(
+    icon: ImageVector,
+    tint: Color,
+    count: Int,
+    label: String,
     modifier: Modifier = Modifier,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    iconTint: androidx.compose.ui.graphics.Color,
-    iconBackground: androidx.compose.ui.graphics.Color,
-    value: String,
-    label: String
+    format: (Int) -> String = { it.toString() },
+    /** When set, the icon is the living streak flame instead. */
+    flameStreak: Int? = null
 ) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+    val shown by animateCountUp(count)
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier.size(40.dp).clip(CircleShape).background(tint.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier.size(56.dp).clip(CircleShape).background(iconBackground),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(32.dp))
+            if (flameStreak != null) {
+                LivingFlame(streak = flameStreak, baseSize = 20.dp, tint = tint)
+            } else {
+                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
             }
-            Spacer(Modifier.height(12.dp))
-            Text(value, style = MaterialTheme.typography.headlineMedium)
-            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(format(shown), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+/** Closed summary of the badge gallery; the full grid lives on the Achievements screen. */
+@Composable
+private fun AchievementsTeaser(statuses: List<BadgeStatus>, challenge: BadgeStatus?, onClick: () -> Unit) {
+    val earned = statuses.filter { it.unlocked }
+        .sortedByDescending { BadgeEngine.TIERS.indexOf(it.badge.tier) }
+    val nextUp = remember(statuses) { BadgeEngine.nextUp(statuses) }
+
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        modifier = Modifier.fillMaxWidth().bounceClick(onClick = onClick)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.EmojiEvents, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Achievements",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    "${earned.size} / ${statuses.size}",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
+            if (earned.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    earned.take(MAX_TEASER_MEDALS).forEach { BadgeMedallion(it, size = 40.dp) }
+                    if (earned.size > MAX_TEASER_MEDALS) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "+${earned.size - MAX_TEASER_MEDALS}",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (nextUp != null) {
+                Spacer(Modifier.height(16.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Next up",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        nextUp.badge.title,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = getBadgeTierColor(nextUp.badge.tier)
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                BadgeProgressBar(nextUp)
+            }
+
+            if (challenge != null) {
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        challenge.badge.icon,
+                        contentDescription = null,
+                        tint = getBadgeTierColor(challenge.badge.tier),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "${LocalDate.now().month.getDisplayName(TextStyle.FULL, Locale.getDefault())} challenge",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        if (challenge.unlocked) "Done ✓" else challenge.progressLabel,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = getBadgeTierColor(challenge.badge.tier)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeaderLine(icon: ImageVector, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(4.dp))
+        Text(text, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** Photo, chosen book cover, or the name's initial, in that order of preference. */
+@Composable
+private fun ProfileAvatar(avatar: String, userName: String, books: List<Book>, modifier: Modifier = Modifier) {
+    val coverUrl = remember(avatar, books) {
+        avatar.takeIf { it.startsWith(AvatarStore.COVER_PREFIX) }
+            ?.removePrefix(AvatarStore.COVER_PREFIX)
+            ?.let { id -> books.firstOrNull { it.id == id }?.coverUrl?.takeIf { url -> url.isNotBlank() } }
+    }
+    val photo = avatar.takeIf { it.startsWith(AvatarStore.PHOTO_PREFIX) }?.removePrefix(AvatarStore.PHOTO_PREFIX)
+    Box(
+        modifier = modifier.clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+        contentAlignment = Alignment.Center
+    ) {
+        val image = photo ?: coverUrl
+        if (image != null) {
+            AsyncImage(
+                model = image,
+                contentDescription = "Profile picture",
+                contentScale = ContentScale.Crop,
+                // Covers carry the title at the top, which reads best in a circle.
+                alignment = if (photo != null) Alignment.Center else Alignment.TopCenter,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Text(
+                userName.firstOrNull()?.toString()?.uppercase() ?: "R",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AvatarPickerSheet(
+    avatar: String,
+    books: List<Book>,
+    onPickPhoto: (Uri) -> Unit,
+    onPickCover: (Book) -> Unit,
+    onUseInitial: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) onPickPhoto(uri)
+    }
+    // Books the reader has lived with come first: finished, then in progress, then the rest.
+    val covers = remember(books) {
+        books.filter { it.coverUrl.isNotBlank() }.sortedBy {
+            when (it.status) {
+                BookStatus.FINISHED.name -> 0
+                BookStatus.READING.name -> 1
+                else -> 2
+            }
+        }
+    }
+    val chosenCover = avatar.takeIf { it.startsWith(AvatarStore.COVER_PREFIX) }?.removePrefix(AvatarStore.COVER_PREFIX)
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.padding(bottom = 24.dp)) {
+            Text(
+                "Profile picture",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+            )
+            SettingsRow(
+                icon = Icons.Filled.PhotoLibrary,
+                label = "Choose a photo",
+                onClick = {
+                    photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }
+            )
+            if (avatar.isNotBlank()) {
+                SettingsRow(icon = Icons.Filled.TextFields, label = "Use my initial", onClick = onUseInitial)
+            }
+            if (covers.isNotEmpty()) {
+                Text(
+                    "Or a cover from your shelf",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 8.dp)
+                )
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(covers, key = { it.id }) { book ->
+                        val selected = book.id == chosenCover
+                        BookCover(
+                            book.coverUrl,
+                            Modifier
+                                .size(width = 64.dp, height = 96.dp)
+                                .then(
+                                    if (selected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.small)
+                                    else Modifier
+                                )
+                                .clickable { onPickCover(book) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReadingRow(book: Book, sessions: List<Session>, onClick: () -> Unit) {
+    val fraction = if (book.totalPages > 0) (book.currentPage.toFloat() / book.totalPages).coerceIn(0f, 1f) else 0f
+    val progress by androidx.compose.animation.core.animateFloatAsState(targetValue = fraction, label = "progress")
+    // Time left is page velocity, so only meaningful for books tracked in pages.
+    val timeLeft = remember(book, sessions) {
+        if (book.progressUnit != ProgressUnit.Page) null
+        else AnalyticsEngine.formatEstimatedTime(
+            AnalyticsEngine.bookEstimatedMinutesLeft(book, sessions.filter { it.bookId == book.id }, sessions)
+        )
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .bounceClick(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        BookCover(book.coverUrl, Modifier.heroSharedElement("cover-${book.id}").size(width = 40.dp, height = 60.dp))
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                book.title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+                color = MaterialTheme.colorScheme.secondary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                gapSize = 0.dp,
+                drawStopIndicator = {}
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                listOfNotNull("${(fraction * 100).roundToInt()}%", timeLeft).joinToString(" · "),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
 
 @Composable
 fun SettingsRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
     onClick: () -> Unit = {}
 ) {
@@ -598,119 +781,4 @@ fun SettingsRow(
         Text(label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
         Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
-}
-
-internal fun getBadgeTierColor(tier: String): Color {
-    return when (tier.uppercase()) {
-        "PLATINUM" -> Color(0xFF00E5FF)
-        "GOLD" -> Color(0xFFFFB300)
-        "SILVER" -> Color(0xFFB0BEC5)
-        else -> Color(0xFFCD7F32) // BRONZE
-    }
-}
-
-@Composable
-internal fun BadgeDetailDialog(
-    badge: Badge,
-    isUnlocked: Boolean,
-    onDismiss: () -> Unit
-) {
-    val tierColor = getBadgeTierColor(badge.tier)
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = null,
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = tierColor.copy(alpha = 0.18f),
-                    border = BorderStroke(1.dp, tierColor.copy(alpha = 0.5f))
-                ) {
-                    Text(
-                        "✦ ${badge.tier} ACHIEVEMENT ✦",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = tierColor,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-
-                Spacer(Modifier.height(20.dp))
-
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(if (isUnlocked) tierColor.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant)
-                        .border(
-                            2.dp,
-                            if (isUnlocked) tierColor else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                            CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        if (isUnlocked) badge.icon else Icons.Filled.Lock,
-                        contentDescription = null,
-                        tint = if (isUnlocked) tierColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                Text(
-                    badge.title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(Modifier.height(8.dp))
-
-                Text(
-                    badge.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(Modifier.height(20.dp))
-
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = if (isUnlocked) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            if (isUnlocked) Icons.Filled.CheckCircle else Icons.Filled.Lock,
-                            contentDescription = null,
-                            tint = if (isUnlocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            if (isUnlocked) "Unlocked & Earned!" else "Locked Challenge",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isUnlocked) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close", fontWeight = FontWeight.Bold)
-            }
-        }
-    )
 }

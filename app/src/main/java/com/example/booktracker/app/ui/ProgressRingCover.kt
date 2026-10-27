@@ -35,14 +35,18 @@ fun ProgressRingCover(
     ringWidth: Dp = 18.dp,
     trackColor: Color = Color.Unspecified,
     ringColor: Color = Color.Unspecified,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Where the ring starts on first show, e.g. the page a session began on; null starts at [progress]. */
+    startProgress: Float? = null
 ) {
     val target = progress.coerceIn(0f, 1f)
-    val animated by animateFloatAsState(
-        targetValue = target,
-        animationSpec = tween(durationMillis = 900),
-        label = "completion"
-    )
+    val ring = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable((startProgress ?: target).coerceIn(0f, 1f)) }
+    androidx.compose.runtime.LaunchedEffect(target) {
+        // A beat's pause so the eye lands on the ring before it moves.
+        if (startProgress != null && ring.value != target) kotlinx.coroutines.delay(250)
+        ring.animateTo(target, tween(durationMillis = 1100, easing = com.example.booktracker.app.ui.animations.Motion.EmphasizedDecelerate))
+    }
+    val animated = ring.value
 
     val resolvedRing = if (ringColor == Color.Unspecified) {
         androidx.compose.material3.MaterialTheme.colorScheme.primary

@@ -207,8 +207,8 @@ fun ScannerScreen(
                 book = book,
                 onDismiss = { state = ScanState.Scanning },
                 dismissLabel = "Rescan",
-                onConfirmAdd = { status, startPage, format ->
-                    onBookConfirmed(book.copy(currentPage = startPage), status, format)
+                onConfirmAdd = { status, startPage, format, purchases ->
+                    onBookConfirmed(book.copy(currentPage = startPage, purchaseLog = purchases), status, format)
                 }
             )
         }

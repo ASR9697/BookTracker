@@ -77,6 +77,29 @@ object StreakEngine {
         return best
     }
 
+    /** One unbroken run of reading days, both ends inclusive. */
+    data class StreakRun(val start: LocalDate, val end: LocalDate) {
+        val length: Int get() = (end.toEpochDay() - start.toEpochDay()).toInt() + 1
+    }
+
+    /** Every run of consecutive reading days, most recent first. */
+    fun runs(activeDays: Set<LocalDate>): List<StreakRun> {
+        if (activeDays.isEmpty()) return emptyList()
+        val sorted = activeDays.sorted()
+        val result = mutableListOf<StreakRun>()
+        var start = sorted.first()
+        var previous = start
+        for (day in sorted.drop(1)) {
+            if (day != previous.plusDays(1)) {
+                result += StreakRun(start, previous)
+                start = day
+            }
+            previous = day
+        }
+        result += StreakRun(start, previous)
+        return result.reversed()
+    }
+
     /**
      * The one rule for "the reader read": the session moved the bookmark forward,
      * or the timer ran for at least [MIN_TIMED_READING_SECONDS]. Streaks, the

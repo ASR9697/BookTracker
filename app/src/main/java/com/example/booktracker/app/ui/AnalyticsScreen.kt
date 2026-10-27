@@ -313,13 +313,13 @@ fun AnalyticsScreen(
                                 fontWeight = FontWeight.Bold
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                FilterChip(
+                                TickFilterChip(
                                     selected = monthlyTargetMode == GoalType.MONTHLY_PAGES,
                                     onClick = { monthlyTargetMode = GoalType.MONTHLY_PAGES },
                                     label = { Text("Pages") },
                                     shape = CircleShape
                                 )
-                                FilterChip(
+                                TickFilterChip(
                                     selected = monthlyTargetMode == GoalType.MONTHLY_BOOKS,
                                     onClick = { monthlyTargetMode = GoalType.MONTHLY_BOOKS },
                                     label = { Text("Books") },
@@ -584,13 +584,13 @@ fun AnalyticsScreen(
                                 style = MaterialTheme.typography.titleLarge
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                FilterChip(
+                                TickFilterChip(
                                     selected = !showMinutes,
                                     onClick = { showMinutes = false },
                                     label = { Text("Pages") },
                                     shape = CircleShape
                                 )
-                                FilterChip(
+                                TickFilterChip(
                                     selected = showMinutes,
                                     onClick = { showMinutes = true },
                                     label = { Text("Minutes") },

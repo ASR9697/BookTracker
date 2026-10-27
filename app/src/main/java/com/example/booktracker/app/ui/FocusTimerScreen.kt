@@ -76,6 +76,13 @@ fun FocusTimerScreen(
     val phase by viewModel.timerPhase.collectAsState()
     val mode by viewModel.timerMode.collectAsState()
     val isRunning by viewModel.timerIsRunning.collectAsState()
+    // Paper-book readers set the phone down; keep the display awake while the timer is open.
+    val keepScreenOn by viewModel.keepScreenOn.collectAsState()
+    val timerView = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.DisposableEffect(keepScreenOn) {
+        timerView.keepScreenOn = keepScreenOn
+        onDispose { timerView.keepScreenOn = false }
+    }
     val timeLeftSeconds by viewModel.timeLeftSeconds.collectAsState()
     val elapsedSeconds by viewModel.elapsedSeconds.collectAsState()
     val noiseType by viewModel.noiseType.collectAsState()
@@ -397,7 +404,7 @@ fun FocusTimerScreen(
                             Text(
                                 when {
                                     sessionDelta > 0 -> "+$sessionDelta pages this session"
-                                    etaStr != null -> "About $etaStr left in this book"
+                                    etaStr != null -> "About $etaStr in this book"
                                     else -> "Tap + as you turn pages"
                                 },
                                 style = MaterialTheme.typography.labelSmall,
@@ -456,7 +463,7 @@ fun FocusTimerScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     listOf(10, 15, 25, 30, 45, 60, 90).forEach { mins ->
-                        FilterChip(
+                        TickFilterChip(
                             selected = mode == TimerMode.COUNTDOWN && countdownTotal == mins * 60,
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)

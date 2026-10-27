@@ -41,6 +41,7 @@ import com.example.booktracker.app.service.TimerService
 import com.example.booktracker.app.ui.BookTrackerApp
 import com.example.booktracker.app.ui.BookTrackerViewModel
 import com.example.booktracker.app.ui.theme.BookTrackerTheme
+import com.example.booktracker.app.widget.DeepLink
 
 class MainActivity : FragmentActivity() {
 
@@ -52,6 +53,8 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+        // A widget tap names the screen to open; a recreated activity already handled it.
+        if (savedInstanceState == null) viewModel.openRoute(DeepLink.routeFrom(intent))
         // Hold the splash until the lock preference is known, so locked content
         // never flashes on screen before the prompt.
         splashScreen.setKeepOnScreenCondition { viewModel.appLockSetting.value == null }
@@ -106,6 +109,12 @@ class MainActivity : FragmentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        viewModel.openRoute(DeepLink.routeFrom(intent))
     }
 
     override fun onStart() {

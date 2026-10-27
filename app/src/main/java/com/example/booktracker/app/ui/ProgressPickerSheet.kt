@@ -17,6 +17,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Numbers
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.runtime.key
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -73,6 +75,9 @@ fun ProgressPickerSheet(
 
     var keyboardMode by remember { mutableStateOf(false) }
     var selected by remember { mutableIntStateOf(initialPage.coerceIn(0, maxPage)) }
+    var scanning by remember { mutableStateOf(false) }
+    // Bumped when a scan sets the page, so the wheel re-centres on it.
+    var wheelKey by remember { mutableIntStateOf(0) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -94,6 +99,7 @@ fun ProgressPickerSheet(
 
             Spacer(Modifier.height(12.dp))
 
+            Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
             Surface(
                 shape = RoundedCornerShape(50),
                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -104,7 +110,7 @@ fun ProgressPickerSheet(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
                 ) {
                     Text(
-                        if (keyboardMode) "Change to wheel mode" else "Change to keyboard mode",
+                        if (keyboardMode) "Wheel" else "Keyboard",
                         style = MaterialTheme.typography.labelLarge
                     )
                     Spacer(Modifier.height(0.dp))
@@ -117,6 +123,21 @@ fun ProgressPickerSheet(
                     )
                 }
             }
+            // Read the page number off the page itself.
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                onClick = { scanning = true }
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                ) {
+                    Icon(Icons.Filled.PhotoCamera, contentDescription = null, modifier = Modifier.height(18.dp))
+                    Text("Scan page", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(start = 8.dp))
+                }
+            }
+            }
 
             Spacer(Modifier.height(16.dp))
 
@@ -128,13 +149,15 @@ fun ProgressPickerSheet(
                     onValueChange = { selected = it }
                 )
             } else {
-                PageWheel(
-                    maxPage = maxPage,
-                    totalPages = book.totalPages,
-                    unit = unit,
-                    initial = selected,
-                    onSelected = { selected = it }
-                )
+                key(wheelKey) {
+                    PageWheel(
+                        maxPage = maxPage,
+                        totalPages = book.totalPages,
+                        unit = unit,
+                        initial = selected,
+                        onSelected = { selected = it }
+                    )
+                }
             }
 
             Spacer(Modifier.height(20.dp))
@@ -152,6 +175,19 @@ fun ProgressPickerSheet(
                 Icon(Icons.Filled.Check, contentDescription = "Confirm", modifier = Modifier.height(26.dp))
             }
         }
+    }
+
+    if (scanning) {
+        PageScanDialog(
+            book = book,
+            onDismiss = { scanning = false },
+            onPage = { page ->
+                scanning = false
+                selected = page.coerceIn(0, maxPage)
+                keyboardMode = false
+                wheelKey++
+            }
+        )
     }
 }
 

@@ -15,8 +15,11 @@ import com.example.booktracker.shared.models.Ownership
 import com.example.booktracker.shared.models.ProgressUnit
 import com.example.booktracker.shared.models.Publication
 import com.example.booktracker.shared.models.PurchaseLog
+import com.example.booktracker.shared.models.ReviewKind
+import com.example.booktracker.shared.models.ReviewState
 import com.example.booktracker.shared.models.SeriesInfo
 import com.example.booktracker.shared.models.Session
+import com.example.booktracker.shared.models.VocabWord
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.util.zip.ZipEntry
@@ -36,6 +39,8 @@ import org.json.JSONObject
  * Format 2 carries every book field (v1 dropped ISBN, date added, publisher,
  * series, purchases and creator roles) and packs covers photographed on-device
  * into the zip so they survive a move to a new phone. Format 1 files still load.
+ * Vocabulary words and review progress ride along as optional arrays; files
+ * written before them simply have none.
  */
 object BackupEngine {
 
@@ -57,7 +62,9 @@ object BackupEngine {
         val monthlyGoalBooks: Int? = null,
         val dayStartsAtHour: Int? = null,
         /** [HomeLayout.encode] form, decoded leniently on restore. */
-        val homeLayout: String? = null
+        val homeLayout: String? = null,
+        /** A book-cover avatar only; a photo file is device-local and not carried over. */
+        val avatar: String? = null
     )
 
     suspend fun exportToUri(
@@ -89,6 +96,7 @@ object BackupEngine {
                 settings.monthlyGoalBooks?.let { put("monthlyGoalBooks", it) }
                 settings.dayStartsAtHour?.let { put("dayStartsAtHour", it) }
                 settings.homeLayout?.let { put("homeLayout", it) }
+                settings.avatar?.takeIf { it.startsWith(AvatarStore.COVER_PREFIX) }?.let { put("avatar", it) }
             })
             put("books", JSONArray(snapshot.books.map { book ->
                 book.toJson(coverEntry = localCovers[book.id]?.let { COVER_DIR + it.name })
@@ -99,6 +107,8 @@ object BackupEngine {
                     NoteImageStore.localFile(uri)?.takeIf { it.isFile }?.let { NOTE_IMAGE_DIR + it.name }
                 })
             }))
+            put("words", JSONArray(snapshot.words.map { it.toJson() }))
+            put("reviews", JSONArray(snapshot.reviews.map { it.toJson() }))
         }
         val output = context.contentResolver.openOutputStream(uri)
             ?: throw IllegalStateException("Cannot open backup destination")
@@ -174,7 +184,9 @@ object BackupEngine {
             snapshot = LibrarySnapshot(
                 books = root.optJSONArray("books").mapObjects { it.toBook(restoredCovers) },
                 sessions = root.optJSONArray("sessions").mapObjects { it.toSession() },
-                notes = root.optJSONArray("notes").mapObjects { it.toNote(restoredNoteImages) }
+                notes = root.optJSONArray("notes").mapObjects { it.toNote(restoredNoteImages) },
+                words = root.optJSONArray("words").mapObjects { it.toWord() },
+                reviews = root.optJSONArray("reviews").mapObjects { it.toReviewState() }
             ),
             settings = BackupSettings(
                 dailyGoal = settings?.optIntOrNull("dailyGoalPages"),
@@ -182,7 +194,8 @@ object BackupEngine {
                 monthlyGoalPages = settings?.optIntOrNull("monthlyGoalPages"),
                 monthlyGoalBooks = settings?.optIntOrNull("monthlyGoalBooks"),
                 dayStartsAtHour = settings?.optIntOrNull("dayStartsAtHour"),
-                homeLayout = settings?.optString("homeLayout")?.takeIf { it.isNotBlank() }
+                homeLayout = settings?.optString("homeLayout")?.takeIf { it.isNotBlank() },
+                avatar = settings?.optString("avatar")?.takeIf { it.startsWith(AvatarStore.COVER_PREFIX) }
             )
         )
     }
@@ -233,6 +246,8 @@ object BackupEngine {
         put("ownership", ownership.name)
         plannedDate?.let { put("plannedDate", it) }
         review?.let { put("review", it) }
+        finishBy?.let { put("finishBy", it) }
+        readStartedAt?.let { put("readStartedAt", it) }
         if (purchaseLog.isNotEmpty()) {
             put("purchaseLog", JSONArray(purchaseLog.map { it.toJson() }))
         }
@@ -330,6 +345,8 @@ object BackupEngine {
             readCount = optInt("readCount", 0),
             plannedDate = if (has("plannedDate")) optLong("plannedDate") else null,
             review = if (has("review")) optString("review") else null,
+            finishBy = if (has("finishBy")) optLong("finishBy") else null,
+            readStartedAt = if (has("readStartedAt")) optLong("readStartedAt") else null,
             purchaseLog = optJSONArray("purchaseLog").mapObjects { it.toPurchaseLog() },
             loanRecord = optJSONArray("loanRecord").mapObjects { it.toLoanRecord() },
             // Backups from before ownership existed: a logged purchase means Owned.
@@ -391,6 +408,46 @@ object BackupEngine {
         imageUris = optJSONArray("images")
             ?.let { arr -> (0 until arr.length()).mapNotNull { restoredImages[arr.optString(it)] } }
             .orEmpty()
+    )
+
+    private fun VocabWord.toJson(): JSONObject = JSONObject().apply {
+        put("id", id)
+        put("word", word)
+        put("definition", definition)
+        bookId?.let { put("bookId", it) }
+        put("pageNumber", pageNumber)
+        put("context", context)
+        put("addedAt", addedAt)
+    }
+
+    private fun JSONObject.toWord(): VocabWord = VocabWord(
+        id = getString("id"),
+        word = optString("word"),
+        definition = optString("definition"),
+        bookId = optStringOrNull("bookId"),
+        pageNumber = optInt("pageNumber"),
+        context = optString("context"),
+        addedAt = optLong("addedAt")
+    )
+
+    private fun ReviewState.toJson(): JSONObject = JSONObject().apply {
+        put("itemId", itemId)
+        put("kind", kind.name)
+        put("dueDay", dueDay)
+        put("intervalDays", intervalDays)
+        put("reps", reps)
+        put("lapses", lapses)
+        put("lastReviewedAt", lastReviewedAt)
+    }
+
+    private fun JSONObject.toReviewState(): ReviewState = ReviewState(
+        itemId = getString("itemId"),
+        kind = runCatching { ReviewKind.valueOf(optString("kind")) }.getOrDefault(ReviewKind.NOTE),
+        dueDay = optLong("dueDay"),
+        intervalDays = optInt("intervalDays"),
+        reps = optInt("reps"),
+        lapses = optInt("lapses"),
+        lastReviewedAt = optLong("lastReviewedAt")
     )
 
     private fun <T> JSONArray?.mapObjects(transform: (JSONObject) -> T): List<T> {

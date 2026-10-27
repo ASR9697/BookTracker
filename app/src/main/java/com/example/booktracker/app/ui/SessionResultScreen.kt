@@ -21,6 +21,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import com.example.booktracker.app.ui.animations.animateCountUp
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -32,8 +34,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.example.booktracker.app.analytics.AnalyticsEngine
+import com.example.booktracker.app.analytics.RereadMemories
 import com.example.booktracker.app.format.FormatAdaptabilityLayer
 import com.example.booktracker.shared.models.Book
+import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.Session
 import java.time.Instant
 import java.time.ZoneId
@@ -52,7 +56,8 @@ fun SessionResultScreen(
     book: Book,
     result: BookTrackerViewModel.SessionResult,
     allSessions: List<Session>,
-    onDone: () -> Unit
+    onDone: () -> Unit,
+    notes: List<MarginNote> = emptyList()
 ) {
     val zone = remember { ZoneId.systemDefault() }
     val unit = FormatAdaptabilityLayer.getDisplayUnit(book).lowercase()
@@ -112,6 +117,7 @@ fun SessionResultScreen(
                 ProgressRingCover(
                     coverUrl = book.coverUrl,
                     progress = progress,
+                    startProgress = if (book.totalPages > 0) result.startPage.toFloat() / book.totalPages else null,
                     ringColor = com.example.booktracker.app.ui.theme.ProgressAmber
                 )
             }
@@ -151,15 +157,26 @@ fun SessionResultScreen(
 
             if (result.endPage > result.startPage) {
                 Spacer(Modifier.height(12.dp))
+                val shownPages by animateCountUp(sessionPages, durationMillis = 1100)
                 StatSentence {
                     append("That session covered ")
-                    highlight("${result.endPage - result.startPage} $unit")
+                    highlight("$shownPages $unit")
                     if (sessionSpeedText != null) {
                         append(" at a pace of ")
                         highlight(sessionSpeedText)
                     }
                     append(".")
                 }
+            }
+
+            // On a re-read: what you wrote last time on the pages just read.
+            val readStart = remember(book, allSessions) { RereadMemories.currentReadStart(book, allSessions) }
+            val reached = remember(notes, readStart, result) {
+                readStart?.let { RereadMemories.reached(notes, it, result.startPage, result.endPage) }.orEmpty()
+            }
+            if (reached.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                MemoriesReachedCard(reached)
             }
         }
     }

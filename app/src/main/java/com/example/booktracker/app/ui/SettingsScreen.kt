@@ -36,6 +36,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Dataset
@@ -111,9 +112,6 @@ private const val YEARLY_STEP = 2
 @Composable
 fun SettingsScreen(
     userName: String,
-    dailyGoal: Int,
-    yearlyGoal: Int,
-    dayStartsAtHour: Int,
     dndDuringSession: Boolean,
     onDndChange: (Boolean) -> Unit,
     themeMode: ThemeMode,
@@ -122,14 +120,15 @@ fun SettingsScreen(
     onPaletteChange: (AppPalette) -> Unit,
     useDynamicColor: Boolean,
     onUserNameChange: (String) -> Unit,
-    onDailyGoalChange: (Int) -> Unit,
-    onYearlyGoalChange: (Int) -> Unit,
-    onDayStartsAtHourChange: (Int) -> Unit,
     onUseDynamicColorChange: (Boolean) -> Unit,
     useAppLock: Boolean,
     onAppLockChange: (Boolean) -> Unit,
-    reminder: ReminderSettings,
-    onReminderChange: (enabled: Boolean, hour: Int, minute: Int) -> Unit,
+    hapticsEnabled: Boolean = true,
+    onHapticsChange: (Boolean) -> Unit = {},
+    reduceMotion: Boolean = false,
+    onReduceMotionChange: (Boolean) -> Unit = {},
+    keepScreenOn: Boolean = true,
+    onKeepScreenOnChange: (Boolean) -> Unit = {},
     onImportCsv: (Uri, (CsvImportResult?) -> Unit) -> Unit,
     onImportBookmory: (Uri, (Result<BookmoryImportSummary>) -> Unit) -> Unit = { _, _ -> },
     onExportBackup: (Uri, (Boolean) -> Unit) -> Unit,
@@ -226,26 +225,6 @@ fun SettingsScreen(
             }
         }
     }
-    // Enabling reminders on Android 13+ needs the notification permission first.
-    var pendingReminderEnable by remember { mutableStateOf(false) }
-    val notificationPermission = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (pendingReminderEnable) {
-            if (granted) {
-                onReminderChange(true, reminder.hour, reminder.minute)
-            } else {
-                Toast.makeText(context, "Allow notifications to get reading reminders", Toast.LENGTH_LONG).show()
-            }
-        }
-        pendingReminderEnable = false
-    }
-
-    // Local slider state so dragging is smooth; persist the snapped value on change.
-    var goal by remember(dailyGoal) { mutableIntStateOf(dailyGoal) }
-    var booksGoal by remember(yearlyGoal) { mutableIntStateOf(yearlyGoal) }
-    var showReminderTimePicker by remember { mutableStateOf(false) }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -288,124 +267,7 @@ fun SettingsScreen(
                 )
             }
 
-            SettingsSectionTitle("Reading goals")
-            SettingsCard(
-                title = "Daily reading goal",
-                icon = { Icon(Icons.Filled.Flag, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
-            ) {
-                Text(
-                    "$goal pages per day",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.height(4.dp))
-                Slider(
-                    value = goal.toFloat(),
-                    onValueChange = { goal = snap(it) },
-                    onValueChangeFinished = { onDailyGoalChange(goal) },
-                    valueRange = GOAL_MIN.toFloat()..GOAL_MAX.toFloat(),
-                    steps = (GOAL_MAX - GOAL_MIN) / GOAL_STEP - 1
-                )
-                Text(
-                    "Used for your daily progress ring and reminders.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            SettingsCard(
-                title = "Yearly reading goal",
-                icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
-            ) {
-                Text(
-                    "$booksGoal books this year",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.height(4.dp))
-                Slider(
-                    value = booksGoal.toFloat(),
-                    onValueChange = {
-                        booksGoal = (Math.round(it / YEARLY_STEP) * YEARLY_STEP)
-                            .coerceIn(YEARLY_MIN, YEARLY_MAX)
-                    },
-                    onValueChangeFinished = { onYearlyGoalChange(booksGoal) },
-                    valueRange = YEARLY_MIN.toFloat()..YEARLY_MAX.toFloat(),
-                    steps = (YEARLY_MAX - YEARLY_MIN) / YEARLY_STEP - 1
-                )
-                Text(
-                    "Track the number of books you finish.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            SettingsCard(
-                title = "New day starts at",
-                icon = { Icon(Icons.Filled.NightsStay, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
-            ) {
-                var localHour by remember(dayStartsAtHour) { mutableIntStateOf(dayStartsAtHour) }
-                Text(
-                    formatTime(context, localHour, 0),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.height(4.dp))
-                Slider(
-                    value = localHour.toFloat(),
-                    onValueChange = { localHour = it.toInt() },
-                    onValueChangeFinished = { onDayStartsAtHourChange(localHour) },
-                    valueRange = 0f..6f,
-                    steps = 5
-                )
-                Text(
-                    "Reading past midnight? Delay the day rollover so late-night sessions count for yesterday.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            SettingsSectionTitle("Reminders & focus")
-            SettingsCard(
-                title = "Daily reminder",
-                icon = { Icon(Icons.Filled.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
-            ) {
-                SwitchRow(
-                    text = "Remind me to read if I haven't hit my daily goal",
-                    checked = reminder.enabled,
-                    onCheckedChange = { enable ->
-                        if (enable && !Notifications.canPost(context) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            pendingReminderEnable = true
-                            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        } else {
-                            onReminderChange(enable, reminder.hour, reminder.minute)
-                        }
-                    }
-                )
-                if (reminder.enabled) {
-                    Spacer(Modifier.height(8.dp))
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        onClick = { showReminderTimePicker = true }
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("Reminder time", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                            Text(
-                                formatTime(context, reminder.hour, reminder.minute),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
-            }
-
+            SettingsSectionTitle("Reading sessions")
             SettingsCard(
                 title = "Deep focus",
                 icon = { Icon(Icons.Filled.NotificationsOff, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
@@ -430,6 +292,33 @@ fun SettingsScreen(
                             onDndChange(false)
                         }
                     }
+                )
+                SwitchRow(
+                    text = "Keep the screen on while the reading timer is open",
+                    checked = keepScreenOn,
+                    onCheckedChange = onKeepScreenOnChange
+                )
+            }
+
+            SettingsSectionTitle("Motion & feel")
+            SettingsCard(
+                title = "Animations and haptics",
+                icon = { Icon(Icons.Filled.Vibration, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+            ) {
+                SwitchRow(
+                    text = "Haptic feedback on taps, goals and unlocks",
+                    checked = hapticsEnabled,
+                    onCheckedChange = onHapticsChange
+                )
+                SwitchRow(
+                    text = "Reduce motion: no confetti, flames, stars or count-ups",
+                    checked = reduceMotion,
+                    onCheckedChange = onReduceMotionChange
+                )
+                Text(
+                    "Android's own \"Remove animations\" setting is respected too.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -748,35 +637,10 @@ fun SettingsScreen(
         }
     }
 
-    if (showReminderTimePicker) {
-        val state = rememberTimePickerState(
-            initialHour = reminder.hour,
-            initialMinute = reminder.minute,
-            is24Hour = DateFormat.is24HourFormat(context)
-        )
-        AlertDialog(
-            onDismissRequest = { showReminderTimePicker = false },
-            title = { Text("Reminder time") },
-            text = {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    TimePicker(state = state)
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    onReminderChange(true, state.hour, state.minute)
-                    showReminderTimePicker = false
-                }) { Text("Save") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showReminderTimePicker = false }) { Text("Cancel") }
-            }
-        )
-    }
 }
 
 @Composable
-private fun SettingsCard(title: String, icon: @Composable (() -> Unit)? = null, content: @Composable () -> Unit) {
+internal fun SettingsCard(title: String, icon: @Composable (() -> Unit)? = null, content: @Composable () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -797,7 +661,7 @@ private fun SettingsCard(title: String, icon: @Composable (() -> Unit)? = null, 
 }
 
 @Composable
-private fun SwitchRow(text: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+internal fun SwitchRow(text: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -835,11 +699,11 @@ private fun LinkRow(icon: ImageVector, label: String, onClick: () -> Unit) {
     }
 }
 
-private fun snap(raw: Float): Int =
+internal fun snap(raw: Float): Int =
     (Math.round(raw / GOAL_STEP) * GOAL_STEP).coerceIn(GOAL_MIN, GOAL_MAX)
 
 @Composable
-private fun SettingsSectionTitle(title: String) {
+internal fun SettingsSectionTitle(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleSmall,
@@ -849,7 +713,7 @@ private fun SettingsSectionTitle(title: String) {
 }
 
 /** Clock time in the device's 12/24-hour style, e.g. "8:00 PM" or "20:00". */
-private fun formatTime(context: Context, hour: Int, minute: Int): String {
+internal fun formatTime(context: Context, hour: Int, minute: Int): String {
     val pattern = if (DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm a"
     return LocalTime.of(hour, minute).format(DateTimeFormatter.ofPattern(pattern))
 }

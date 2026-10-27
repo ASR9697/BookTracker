@@ -26,7 +26,7 @@ class HomeLayoutTest {
         assertEquals(
             listOf(
                 HomeSection.MONTHLY_PAGES, HomeSection.STREAK, HomeSection.GOALS,
-                HomeSection.UP_NEXT, HomeSection.OWNERSHIP, HomeSection.SHORTCUTS
+                HomeSection.REVIEW, HomeSection.UP_NEXT, HomeSection.OWNERSHIP, HomeSection.SHORTCUTS
             ),
             layout.order
         )

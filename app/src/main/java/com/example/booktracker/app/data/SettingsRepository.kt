@@ -44,6 +44,7 @@ class SettingsRepository(context: Context) {
     private val appPaletteKey = androidx.datastore.preferences.core.stringPreferencesKey("app_palette")
     private val userNameKey = androidx.datastore.preferences.core.stringPreferencesKey("user_name")
     private val workMinutesKey = intPreferencesKey("work_minutes")
+    private val preferredTimerModeKey = androidx.datastore.preferences.core.stringPreferencesKey("preferred_timer_mode")
     private val breakMinutesKey = intPreferencesKey("break_minutes")
     private val dayStartsAtHourKey = intPreferencesKey("day_starts_at_hour")
     private val useAppLockKey = booleanPreferencesKey("use_app_lock")
@@ -51,7 +52,11 @@ class SettingsRepository(context: Context) {
     private val reminderHourKey = intPreferencesKey("reminder_hour")
     private val reminderMinuteKey = intPreferencesKey("reminder_minute")
     private val homeLayoutKey = androidx.datastore.preferences.core.stringPreferencesKey("home_layout")
-    
+    private val avatarKey = androidx.datastore.preferences.core.stringPreferencesKey("avatar")
+    private val hapticsKey = booleanPreferencesKey("haptics_enabled")
+    private val reduceMotionKey = booleanPreferencesKey("reduce_motion")
+    private val keepScreenOnKey = booleanPreferencesKey("keep_screen_on_timer")
+
     private val activeTimerModeKey = androidx.datastore.preferences.core.stringPreferencesKey("active_timer_mode")
     private val activeTimerBookIdKey = androidx.datastore.preferences.core.stringPreferencesKey("active_timer_book_id")
     private val activeTimerPhaseKey = androidx.datastore.preferences.core.stringPreferencesKey("active_timer_phase")
@@ -78,10 +83,24 @@ class SettingsRepository(context: Context) {
     }
     val userName: Flow<String> = appContext.settingsDataStore.data.map { it[userNameKey] ?: "Reader" }
     val workMinutes: Flow<Int> = appContext.settingsDataStore.data.map { it[workMinutesKey] ?: 25 }
+    /**
+     * The timer mode the reader last chose ("STOPWATCH" or "COUNTDOWN"), so the
+     * next session opens the same way. A fresh install counts up: most readers
+     * just want to track their time, not race a clock.
+     */
+    val preferredTimerMode: Flow<String> = appContext.settingsDataStore.data.map { it[preferredTimerModeKey] ?: "STOPWATCH" }
     val breakMinutes: Flow<Int> = appContext.settingsDataStore.data.map { it[breakMinutesKey] ?: 5 }
     val dayStartsAtHour: Flow<Int> = appContext.settingsDataStore.data.map { it[dayStartsAtHourKey] ?: 3 } // Default 3 AM
     val useAppLock: Flow<Boolean> = appContext.settingsDataStore.data.map { it[useAppLockKey] ?: false }
     val homeLayout: Flow<HomeLayout> = appContext.settingsDataStore.data.map { HomeLayout.decode(it[homeLayoutKey]) }
+    /** Profile picture in [AvatarStore] form; blank shows the name's initial. */
+    val avatar: Flow<String> = appContext.settingsDataStore.data.map { it[avatarKey] ?: "" }
+    /** Taps, ticks and celebration buzzes; on by default. */
+    val hapticsEnabled: Flow<Boolean> = appContext.settingsDataStore.data.map { it[hapticsKey] ?: true }
+    /** Calmer app: no loops, particles or count-ups, on top of the system setting. */
+    val reduceMotion: Flow<Boolean> = appContext.settingsDataStore.data.map { it[reduceMotionKey] ?: false }
+    /** Keep the display awake while the reading timer is open, so a paper book never gets a locked phone. */
+    val keepScreenOn: Flow<Boolean> = appContext.settingsDataStore.data.map { it[keepScreenOnKey] ?: true }
 
     /** Daily reading reminder: off until the reader opts in, 8:00 PM by default. */
     val reminder: Flow<ReminderSettings> = appContext.settingsDataStore.data.map {
@@ -110,10 +129,15 @@ class SettingsRepository(context: Context) {
     suspend fun setAppPalette(palette: AppPalette) { appContext.settingsDataStore.edit { it[appPaletteKey] = palette.name } }
     suspend fun setUserName(name: String) { appContext.settingsDataStore.edit { it[userNameKey] = name } }
     suspend fun setWorkMinutes(mins: Int) { appContext.settingsDataStore.edit { it[workMinutesKey] = mins } }
+    suspend fun setPreferredTimerMode(mode: String) { appContext.settingsDataStore.edit { it[preferredTimerModeKey] = mode } }
     suspend fun setBreakMinutes(mins: Int) { appContext.settingsDataStore.edit { it[breakMinutesKey] = mins } }
     suspend fun setDayStartsAtHour(hour: Int) { appContext.settingsDataStore.edit { it[dayStartsAtHourKey] = hour } }
     suspend fun setUseAppLock(enabled: Boolean) { appContext.settingsDataStore.edit { it[useAppLockKey] = enabled } }
     suspend fun setHomeLayout(layout: HomeLayout) { appContext.settingsDataStore.edit { it[homeLayoutKey] = layout.encode() } }
+    suspend fun setAvatar(avatar: String) { appContext.settingsDataStore.edit { it[avatarKey] = avatar } }
+    suspend fun setHapticsEnabled(enabled: Boolean) { appContext.settingsDataStore.edit { it[hapticsKey] = enabled } }
+    suspend fun setReduceMotion(enabled: Boolean) { appContext.settingsDataStore.edit { it[reduceMotionKey] = enabled } }
+    suspend fun setKeepScreenOn(enabled: Boolean) { appContext.settingsDataStore.edit { it[keepScreenOnKey] = enabled } }
 
     val activeTimerMode: Flow<String?> = appContext.settingsDataStore.data.map { it[activeTimerModeKey] }
     val activeTimerBookId: Flow<String?> = appContext.settingsDataStore.data.map { it[activeTimerBookIdKey] }

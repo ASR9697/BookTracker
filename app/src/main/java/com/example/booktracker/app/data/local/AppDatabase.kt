@@ -11,15 +11,19 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SessionEntity::class,
         MarginNoteEntity::class,
         BookFtsEntity::class,
-        NoteFtsEntity::class
+        NoteFtsEntity::class,
+        ReviewStateEntity::class,
+        VocabWordEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun bookDao(): BookDao
     abstract fun sessionDao(): SessionDao
     abstract fun marginNoteDao(): MarginNoteDao
+    abstract fun reviewDao(): ReviewDao
+    abstract fun vocabDao(): VocabDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -173,6 +177,28 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Finish-by deadlines and re-read start dates on books, plus spaced review
+         * of highlights and a vocabulary list. Existing books simply have neither.
+         */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE books ADD COLUMN finishBy INTEGER")
+                db.execSQL("ALTER TABLE books ADD COLUMN readStartedAt INTEGER")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `review_states` (`itemId` TEXT NOT NULL, `kind` TEXT NOT NULL, " +
+                        "`dueDay` INTEGER NOT NULL, `intervalDays` INTEGER NOT NULL, `reps` INTEGER NOT NULL, " +
+                        "`lapses` INTEGER NOT NULL, `lastReviewedAt` INTEGER NOT NULL, PRIMARY KEY(`itemId`))"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `vocab_words` (`id` TEXT NOT NULL, `word` TEXT NOT NULL, " +
+                        "`definition` TEXT NOT NULL, `bookId` TEXT, `pageNumber` INTEGER NOT NULL, " +
+                        "`context` TEXT NOT NULL, `addedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_vocab_words_bookId` ON `vocab_words` (`bookId`)")
+            }
+        }
+
         val ALL_MIGRATIONS = arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -184,7 +210,8 @@ abstract class AppDatabase : RoomDatabase() {
             MIGRATION_8_9,
             MIGRATION_9_10,
             MIGRATION_10_11,
-            MIGRATION_11_12
+            MIGRATION_11_12,
+            MIGRATION_12_13
         )
     }
 }

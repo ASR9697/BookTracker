@@ -108,6 +108,7 @@ fun SessionSaveScreen(
     var showStatusPicker by remember { mutableStateOf(false) }
 
     var endPage by remember { mutableIntStateOf(initialPage.coerceAtMost(if (book.totalPages > 0) book.totalPages else initialPage)) }
+    val saveHaptics = com.example.booktracker.app.ui.animations.rememberHaptics()
     var durationSeconds by remember { mutableIntStateOf(initialDurationSeconds) }
     var status by remember { mutableStateOf<BookStatus?>(null) }
     var tag by remember { mutableStateOf("") }
@@ -197,7 +198,7 @@ fun SessionSaveScreen(
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            saveHaptics.confirm()
                             val end = endDateTime.atZone(zone).toInstant().toEpochMilli()
                             val start = end - durationSeconds * 1000L
                             onSave(endPage, tag, start, end, effectiveStatus)
@@ -301,7 +302,7 @@ fun SessionSaveScreen(
                             if (remainingPages > 0 && remainingEtaText != null) {
                                 Spacer(Modifier.height(2.dp))
                                 Text(
-                                    "~$remainingEtaText to finish book at this pace",
+                                    "~${remainingEtaText.removeSuffix(" left")} to finish the book at this pace",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -634,7 +635,7 @@ private fun TagPickerDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         row.forEach { preset ->
-                            FilterChip(
+                            TickFilterChip(
                                 selected = selected == preset,
                                 onClick = {
                                     selected = if (selected == preset) null else preset

@@ -60,7 +60,9 @@ fun BookEntity.toModel(): Book = Book(
     review = review,
     finishedAt = finishedAt,
     // MIGRATION_9_10 already marked purchased books Owned, so null here means unset.
-    ownership = Ownership.fromStored(ownership, hasPurchase = false)
+    ownership = Ownership.fromStored(ownership, hasPurchase = false),
+    finishBy = finishBy,
+    readStartedAt = readStartedAt
 )
 
 fun Book.toEntity(): BookEntity = BookEntity(
@@ -90,7 +92,9 @@ fun Book.toEntity(): BookEntity = BookEntity(
     plannedDate = plannedDate,
     review = review,
     finishedAt = finishedAt,
-    ownership = ownership.name
+    ownership = ownership.name,
+    finishBy = finishBy,
+    readStartedAt = readStartedAt
 )
 
 fun MarginNoteEntity.toModel(): MarginNote = MarginNote(
@@ -113,4 +117,44 @@ fun MarginNote.toEntity(): MarginNoteEntity = MarginNoteEntity(
     type = type.name,
     isFavorite = isFavorite,
     images = imageUris.takeIf { it.isNotEmpty() }?.let { gson.toJson(it) }
+)
+
+fun ReviewStateEntity.toModel(): ReviewState = ReviewState(
+    itemId = itemId,
+    kind = runCatching { ReviewKind.valueOf(kind) }.getOrDefault(ReviewKind.NOTE),
+    dueDay = dueDay,
+    intervalDays = intervalDays,
+    reps = reps,
+    lapses = lapses,
+    lastReviewedAt = lastReviewedAt
+)
+
+fun ReviewState.toEntity(): ReviewStateEntity = ReviewStateEntity(
+    itemId = itemId,
+    kind = kind.name,
+    dueDay = dueDay,
+    intervalDays = intervalDays,
+    reps = reps,
+    lapses = lapses,
+    lastReviewedAt = lastReviewedAt
+)
+
+fun VocabWordEntity.toModel(): VocabWord = VocabWord(
+    id = id,
+    word = word,
+    definition = definition,
+    bookId = bookId,
+    pageNumber = pageNumber,
+    context = context,
+    addedAt = addedAt
+)
+
+fun VocabWord.toEntity(): VocabWordEntity = VocabWordEntity(
+    id = id,
+    word = word,
+    definition = definition,
+    bookId = bookId,
+    pageNumber = pageNumber,
+    context = context,
+    addedAt = addedAt
 )

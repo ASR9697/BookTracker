@@ -109,7 +109,14 @@ data class Book(
     val review: String? = null,
     /** When the current read ended (finished or abandoned); null while unfinished. */
     val finishedAt: Long? = null,
-    val ownership: Ownership = Ownership.NONE
+    val ownership: Ownership = Ownership.NONE,
+    /** Start of the day the reader wants to be done by; null when no deadline is set. */
+    val finishBy: Long? = null,
+    /**
+     * When the current re-read began, so notes from earlier reads can resurface.
+     * Null on a first read, and on re-reads started before this was stored.
+     */
+    val readStartedAt: Long? = null
 ) {
     val authors: List<String> get() = creators.map { it.name }
     val genres: List<String> get() = classification.tags
@@ -173,6 +180,35 @@ data class MarginNote(
     val markdownContent: String = "",
     /** Attached photos as "file://" URIs, in the order they were added. */
     val imageUris: List<String> = emptyList()
+)
+
+/** What a [ReviewState] schedules: a saved highlight or a vocabulary word. */
+enum class ReviewKind { NOTE, WORD }
+
+/**
+ * Spaced-review progress for one highlight or word: the day it comes back
+ * (epoch day) and how far apart its reviews have grown.
+ */
+data class ReviewState(
+    val itemId: String,
+    val kind: ReviewKind,
+    val dueDay: Long,
+    val intervalDays: Int = 0,
+    val reps: Int = 0,
+    val lapses: Int = 0,
+    val lastReviewedAt: Long = 0L
+)
+
+/** A word met while reading, with what it means and where it was found. */
+data class VocabWord(
+    val id: String = "",
+    val word: String = "",
+    val definition: String = "",
+    val bookId: String? = null,
+    val pageNumber: Int = 0,
+    /** The sentence it appeared in, if the reader kept it. */
+    val context: String = "",
+    val addedAt: Long = 0L
 )
 
 object RatingAxis {

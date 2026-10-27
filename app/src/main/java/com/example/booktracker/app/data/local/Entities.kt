@@ -37,7 +37,33 @@ data class BookEntity(
     val review: String? = null,
     val finishedAt: Long? = null,
     /** [Ownership] name; null on rows from before version 10 that had no purchase. */
-    val ownership: String? = null
+    val ownership: String? = null,
+    val finishBy: Long? = null,
+    val readStartedAt: Long? = null
+)
+
+/** One row per highlight or word in spaced review; [kind] is a [ReviewKind] name. */
+@Entity(tableName = "review_states")
+data class ReviewStateEntity(
+    @PrimaryKey val itemId: String,
+    val kind: String,
+    val dueDay: Long,
+    val intervalDays: Int,
+    val reps: Int,
+    val lapses: Int,
+    val lastReviewedAt: Long
+)
+
+/** Words outlive the book they came from, so [bookId] is a plain reference, not a foreign key. */
+@Entity(tableName = "vocab_words", indices = [Index("bookId")])
+data class VocabWordEntity(
+    @PrimaryKey val id: String,
+    val word: String,
+    val definition: String,
+    val bookId: String?,
+    val pageNumber: Int,
+    val context: String,
+    val addedAt: Long
 )
 
 @Entity(

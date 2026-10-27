@@ -1,5 +1,13 @@
 package com.example.booktracker.app.ui
 
+import androidx.compose.foundation.lazy.itemsIndexed
+import com.example.booktracker.app.ui.animations.rememberEntranceState
+import com.example.booktracker.app.ui.animations.staggeredEntrance
+import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material.icons.filled.FormatQuote
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Spellcheck
+import androidx.compose.ui.graphics.vector.ImageVector
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -72,7 +80,11 @@ fun MemorizeScreen(
     onToggleFavorite: (String) -> Unit,
     onOpenBook: (Book) -> Unit = {},
     onUpdateNote: (noteId: String, page: Int, text: String, type: NoteType, images: List<String>) -> Unit = { _, _, _, _, _ -> },
-    onDeleteNote: (noteId: String) -> Unit = {}
+    onDeleteNote: (noteId: String) -> Unit = {},
+    reviewDue: Int = 0,
+    wordCount: Int = 0,
+    onOpenReview: () -> Unit = {},
+    onOpenWords: () -> Unit = {}
 ) {
     var searching by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
@@ -173,6 +185,29 @@ fun MemorizeScreen(
             }
         }
 
+        // The daily review and the word list live with the notes they come from.
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            NotesShortcut(
+                icon = Icons.Filled.AutoAwesome,
+                title = "Daily review",
+                subtitle = if (reviewDue > 0) "$reviewDue due today" else "All caught up",
+                highlighted = reviewDue > 0,
+                onClick = onOpenReview,
+                modifier = Modifier.weight(1f)
+            )
+            NotesShortcut(
+                icon = Icons.Filled.Spellcheck,
+                title = "Words",
+                subtitle = if (wordCount == 0) "Save words you meet" else "$wordCount saved",
+                highlighted = false,
+                onClick = onOpenWords,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
         if (searching) {
             val focus = remember { FocusRequester() }
             LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
@@ -200,7 +235,7 @@ fun MemorizeScreen(
                     .padding(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                FilterChip(
+                TickFilterChip(
                     selected = showFavoritesOnly,
                     onClick = { showFavoritesOnly = !showFavoritesOnly },
                     label = { Text("Favorites") },
@@ -213,7 +248,7 @@ fun MemorizeScreen(
                     }
                 )
                 (listOf<NoteType?>(null) + NoteType.entries).forEach { type ->
-                    FilterChip(
+                    TickFilterChip(
                         selected = typeFilter == type,
                         onClick = { typeFilter = type },
                         label = { Text(type?.shortLabel() ?: "All") }
@@ -221,7 +256,7 @@ fun MemorizeScreen(
                 }
                 if (view == NotesView.LIST) {
                     Box {
-                        FilterChip(
+                        TickFilterChip(
                             selected = false,
                             onClick = { showSortMenu = true },
                             label = { Text(sort.label) },
@@ -246,40 +281,43 @@ fun MemorizeScreen(
         }
 
         if (eligibleNotes.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(32.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    when {
-                        notes.isEmpty() -> "Your quotes and thoughts appear here. Add a note from any book's page."
-                        query.isNotBlank() -> "No notes match \"${query.trim()}\"."
-                        showFavoritesOnly && typeFilter == null -> "No favourite notes yet. Tap the heart on a note to add it here."
-                        else -> "No notes match these filters."
-                    },
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-            }
+            EmptyState(
+                icon = when {
+                    notes.isEmpty() -> androidx.compose.material.icons.Icons.Filled.FormatQuote
+                    showFavoritesOnly && typeFilter == null -> androidx.compose.material.icons.Icons.Filled.FavoriteBorder
+                    else -> androidx.compose.material.icons.Icons.Filled.SearchOff
+                },
+                title = when {
+                    notes.isEmpty() -> "No notes yet"
+                    showFavoritesOnly && typeFilter == null -> "No favourites yet"
+                    else -> "Nothing matches"
+                },
+                message = when {
+                    notes.isEmpty() -> "Your quotes and thoughts appear here. Add a note from any book's page."
+                    query.isNotBlank() -> "No notes match \"${query.trim()}\"."
+                    showFavoritesOnly && typeFilter == null -> "Tap the heart on a note to add it here."
+                    else -> "No notes match these filters."
+                }
+            )
         } else if (view == NotesView.LIST) {
+            val feedEntrance = rememberEntranceState()
             LazyColumn(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(listNotes, key = { it.id }) { note ->
-                    NoteFeedCard(
-                        note = note,
-                        book = booksById[note.bookId],
-                        onOpenBook = onOpenBook,
-                        onToggleFavorite = { onToggleFavorite(note.id) },
-                        onShare = { book -> noteToShare = note to book },
-                        onEdit = { noteToEdit = note },
-                        onDelete = { noteToDelete = note }
-                    )
+                itemsIndexed(listNotes, key = { _, note -> note.id }) { index, note ->
+                    Box(Modifier.animateItem().staggeredEntrance(feedEntrance, index)) {
+                        NoteFeedCard(
+                            note = note,
+                            book = booksById[note.bookId],
+                            onOpenBook = onOpenBook,
+                            onToggleFavorite = { onToggleFavorite(note.id) },
+                            onShare = { book -> noteToShare = note to book },
+                            onEdit = { noteToEdit = note },
+                            onDelete = { noteToDelete = note }
+                        )
+                    }
                 }
             }
         } else {
@@ -587,6 +625,32 @@ private fun NoteFeedCard(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotesShortcut(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    highlighted: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(18.dp),
+        color = if (highlighted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        modifier = modifier
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
         }
     }

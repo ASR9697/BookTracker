@@ -20,7 +20,8 @@ object ServiceLocator {
     val timerBookId = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val timerBookTitle = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val timerPhase = kotlinx.coroutines.flow.MutableStateFlow(com.example.booktracker.app.ui.TimerPhase.WORK)
-    val timerMode = kotlinx.coroutines.flow.MutableStateFlow(com.example.booktracker.app.ui.TimerMode.COUNTDOWN)
+    // Count-up until the saved preference loads (see BookTrackerViewModel.applyPreferredTimerMode).
+    val timerMode = kotlinx.coroutines.flow.MutableStateFlow(com.example.booktracker.app.ui.TimerMode.STOPWATCH)
     val timerIsRunning = kotlinx.coroutines.flow.MutableStateFlow(false)
     val timeLeftSeconds = kotlinx.coroutines.flow.MutableStateFlow(25 * 60)
     val elapsedSeconds = kotlinx.coroutines.flow.MutableStateFlow(0)
@@ -54,7 +55,7 @@ object ServiceLocator {
     }
 
     fun repository(context: Context): BookRepository =
-        db(context).let { RoomBookRepository(it.bookDao(), it.sessionDao(), it.marginNoteDao()) }
+        db(context).let { RoomBookRepository(it.bookDao(), it.sessionDao(), it.marginNoteDao(), it.reviewDao(), it.vocabDao()) }
 
     fun settings(context: Context): SettingsRepository =
         SettingsRepository(context.applicationContext)

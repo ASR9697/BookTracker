@@ -1,943 +1,544 @@
 package com.example.booktracker.app.ui
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.PauseCircle
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
-import com.example.booktracker.app.analytics.LoanEngine
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import com.example.booktracker.app.ui.animations.bounceClick
+import com.example.booktracker.app.ui.animations.Motion
+import com.example.booktracker.app.ui.animations.bounceOnPress
+import com.example.booktracker.app.ui.animations.rememberEntranceState
+import com.example.booktracker.app.ui.animations.rememberHaptics
+import com.example.booktracker.app.ui.animations.staggeredEntrance
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
 import kotlin.math.absoluteValue
 
-/**
- * Aesthetic wood styles for the virtual bookcase.
- */
-enum class BookshelfWoodTheme(
-    val title: String,
-    val backboardColor: Color,
-    val plankHighlightColor: Color,
-    val plankMainColor: Color,
-    val plankShadowColor: Color,
-    val brassTrimColor: Color
-) {
-    DARK_MAHOGANY(
-        title = "Dark Mahogany",
-        backboardColor = Color(0xFF160D08),
-        plankHighlightColor = Color(0xFF5A3118),
-        plankMainColor = Color(0xFF381D0D),
-        plankShadowColor = Color(0xFF140A04),
-        brassTrimColor = Color(0xFFD4AF37)
-    ),
-    CLASSIC_WALNUT(
-        title = "Classic Walnut",
-        backboardColor = Color(0xFF1E1510),
-        plankHighlightColor = Color(0xFF6B4226),
-        plankMainColor = Color(0xFF4A2B15),
-        plankShadowColor = Color(0xFF1A0E07),
-        brassTrimColor = Color(0xFFE5C07B)
-    ),
-    OBSIDIAN_SLATE(
-        title = "Obsidian Slate",
-        backboardColor = Color(0xFF121417),
-        plankHighlightColor = Color(0xFF2C3238),
-        plankMainColor = Color(0xFF1B1E22),
-        plankShadowColor = Color(0xFF0D0E10),
-        brassTrimColor = Color(0xFF64B5F6)
-    )
+/** Shelves by where a book is in your reading life, in the order you'd scan them. */
+private enum class ShelfGroup(val label: String, val icon: ImageVector) {
+    READING("Reading now", Icons.Filled.AutoStories),
+    UP_NEXT("To read", Icons.Filled.Schedule),
+    FINISHED("Finished", Icons.Filled.EmojiEvents),
+    ON_HOLD("Paused & set aside", Icons.Filled.PauseCircle);
+
+    companion object {
+        fun of(status: String): ShelfGroup = when (status.uppercase()) {
+            BookStatus.READING.name -> READING
+            BookStatus.FINISHED.name -> FINISHED
+            BookStatus.PAUSED.name, BookStatus.ABANDONED.name, BookStatus.DNF.name -> ON_HOLD
+            else -> UP_NEXT
+        }
+    }
 }
 
+private enum class ShelfStyle(val label: String) { SPINES("Spines"), COVERS("Covers") }
+
+private val SPINE_GAP = 4.dp
+private const val COVERS_PER_ROW = 3
+
 /**
- * Virtual 3D Spine Bookshelf View (Bookmory Flagship Feature).
- * Displays books standing side-by-side with page-proportional spine thickness,
- * cover/genre derived bookbinding textures, embossed metallic titles, dangling bookmark ribbons,
- * and smooth pull-out animations.
+ * Your library as a modern shelf. Books stand on clean, theme-coloured ledges,
+ * grouped by status. Each spine takes its colour from the cover and its size
+ * from the page count. Tap a book to lift it and see a preview; long-press for
+ * quick actions. Switch to Covers to see them face-out.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VirtualBookshelfView(
     books: List<Book>,
     onOpenBook: (Book) -> Unit,
     onStartReading: (Book) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onChangeStatus: ((Book, BookStatus) -> Unit)? = null,
+    /** Told when the preview card opens or closes, so floating buttons can make room. */
+    onSelectionChange: (Boolean) -> Unit = {}
 ) {
-    val haptic = LocalHapticFeedback.current
-    var selectedWoodTheme by remember { mutableStateOf(BookshelfWoodTheme.DARK_MAHOGANY) }
-    var selectedBookId by remember { mutableStateOf<String?>(null) }
-    val selectedBook = remember(selectedBookId, books) {
-        books.find { it.id == selectedBookId }
+    var style by rememberSaveable { mutableStateOf(ShelfStyle.SPINES) }
+    var selectedId by remember { mutableStateOf<String?>(null) }
+    var actionsFor by remember { mutableStateOf<Book?>(null) }
+    val selected = remember(selectedId, books) { books.find { it.id == selectedId } }
+    val reportSelection by rememberUpdatedState(onSelectionChange)
+    LaunchedEffect(selected != null) { reportSelection(selected != null) }
+    DisposableEffect(Unit) { onDispose { reportSelection(false) } }
+    val haptics = rememberHaptics()
+    val entrance = rememberEntranceState()
+    val groups = remember(books) {
+        books.groupBy { ShelfGroup.of(it.status) }.toSortedMap(compareBy { it.ordinal })
     }
 
-    // Distribute books across realistic shelves (~6 to 8 books per shelf tier)
-    val shelves = remember(books) {
-        if (books.isEmpty()) emptyList()
-        else books.chunked(7)
+    actionsFor?.let { book ->
+        BookQuickActionsSheet(
+            book = book,
+            onDismiss = { actionsFor = null },
+            onOpen = { onOpenBook(book) },
+            onStartReading = { onStartReading(book) }.takeIf { book.status != BookStatus.FINISHED.name },
+            onChangeStatus = onChangeStatus?.let { change -> { status -> change(book, status) } }
+        )
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(selectedWoodTheme.backboardColor)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Wood style selector bar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Finish:",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.6f),
-                    fontWeight = FontWeight.Bold
-                )
-                BookshelfWoodTheme.entries.forEach { theme ->
-                    val isSelected = selectedWoodTheme == theme
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (isSelected) theme.brassTrimColor.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.08f),
-                        border = if (isSelected) BorderStroke(1.dp, theme.brassTrimColor) else null,
-                        modifier = Modifier.bounceClick {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            selectedWoodTheme = theme
-                        }
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(10.dp)
-                                    .clip(CircleShape)
-                                    .background(theme.plankMainColor)
-                                    .border(0.8.dp, theme.brassTrimColor, CircleShape)
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                theme.title,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (isSelected) theme.brassTrimColor else Color.White.copy(alpha = 0.8f),
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+    if (books.isEmpty()) {
+        EmptyState(
+            icon = Icons.AutoMirrored.Filled.MenuBook,
+            title = "An empty shelf",
+            message = "Books you add will stand here, grouped by what you're reading, what's next and what you've finished.",
+            modifier = modifier
+        )
+        return
+    }
+
+    val select: (Book) -> Unit = { book ->
+        haptics.tick()
+        selectedId = if (selectedId == book.id) null else book.id
+    }
+    val longPress: (Book) -> Unit = { book ->
+        haptics.longPress()
+        actionsFor = book
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 200.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            item(key = "header") {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    val finished = groups[ShelfGroup.FINISHED]?.size ?: 0
+                    Text(
+                        "${books.size} ${if (books.size == 1) "book" else "books"} · $finished finished",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    SingleChoiceSegmentedButtonRow {
+                        ShelfStyle.entries.forEachIndexed { index, option ->
+                            SegmentedButton(
+                                selected = style == option,
+                                onClick = {
+                                    if (style != option) haptics.tick()
+                                    style = option
+                                },
+                                shape = SegmentedButtonDefaults.itemShape(index, ShelfStyle.entries.size),
+                                icon = {},
+                                label = { Text(option.label, maxLines = 1) }
                             )
                         }
                     }
                 }
             }
 
-            if (books.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        "Your bookshelf is empty.\nAdd or categorize books to stock your shelves.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.6f),
-                        textAlign = TextAlign.Center
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f),
-                    contentPadding = PaddingValues(top = 12.dp, bottom = 120.dp),
-                    verticalArrangement = Arrangement.spacedBy(28.dp)
-                ) {
-                    itemsIndexed(shelves, key = { index, _ -> "shelf_$index" }) { shelfIndex, shelfBooks ->
-                        BookshelfRow(
-                            books = shelfBooks,
-                            shelfNumber = shelfIndex + 1,
-                            woodTheme = selectedWoodTheme,
-                            selectedBookId = selectedBookId,
-                            onSelectBook = { book ->
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                selectedBookId = if (selectedBookId == book.id) null else book.id
-                            }
-                        )
+            var groupIndex = 0
+            groups.forEach { (group, shelfBooks) ->
+                val index = groupIndex++
+                item(key = group.name) {
+                    Column(modifier = Modifier.staggeredEntrance(entrance, index)) {
+                        ShelfHeader(group, shelfBooks.size)
+                        when (style) {
+                            ShelfStyle.SPINES -> SpineShelf(shelfBooks, selectedId, select, longPress)
+                            ShelfStyle.COVERS -> CoverShelf(shelfBooks, selectedId, select, longPress)
+                        }
                     }
                 }
             }
         }
 
-        // Pull-out Book Inspector Floating Sheet
         AnimatedVisibility(
-            visible = selectedBook != null,
-            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            visible = selected != null,
+            enter = slideInVertically(tween(Motion.MEDIUM, easing = Motion.EmphasizedDecelerate)) { it } + fadeIn(),
+            exit = slideOutVertically(tween(Motion.SHORT, easing = Motion.EmphasizedAccelerate)) { it } + fadeOut(),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
-            selectedBook?.let { book ->
-                BookPullOutInspector(
+            // Keep the last book on screen while the card slides away.
+            var lastShown by remember { mutableStateOf<Book?>(null) }
+            SideEffect { if (selected != null) lastShown = selected }
+            (selected ?: lastShown)?.let { book ->
+                ShelfInspector(
                     book = book,
-                    woodTheme = selectedWoodTheme,
-                    onOpenBook = { onOpenBook(book) },
-                    onStartReading = { onStartReading(book) },
-                    onDismiss = { selectedBookId = null }
+                    onOpen = { onOpenBook(book) },
+                    onRead = { onStartReading(book) },
+                    onDismiss = { selectedId = null }
                 )
             }
         }
     }
 }
 
-/**
- * A single wooden shelf tier supporting a row of books standing side by side.
- */
 @Composable
-private fun BookshelfRow(
-    books: List<Book>,
-    shelfNumber: Int,
-    woodTheme: BookshelfWoodTheme,
-    selectedBookId: String?,
-    onSelectBook: (Book) -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth()
+private fun ShelfHeader(group: ShelfGroup, count: Int) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(top = 16.dp, bottom = 12.dp)
     ) {
-        // Book spines resting on the shelf
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            // Left brass decorative bookend
-            BrassBookend(isLeft = true, trimColor = woodTheme.brassTrimColor)
-
-            books.forEach { book ->
-                val isSelected = selectedBookId == book.id
-                BookSpineItem(
-                    book = book,
-                    isSelected = isSelected,
-                    onClick = { onSelectBook(book) }
-                )
-            }
-
-            // Right brass decorative bookend
-            BrassBookend(isLeft = false, trimColor = woodTheme.brassTrimColor)
-        }
-
-        // 3D Wooden Shelf Plank
-        WoodenShelfPlank(woodTheme = woodTheme)
-    }
-}
-
-/**
- * Individual 3D book spine standing vertically with page-proportional thickness,
- * realistic curvature shading, embossed typography, and ribbon bookmarks.
- */
-@Composable
-private fun BookSpineItem(
-    book: Book,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val coverAccent = rememberCoverAccent(book.coverUrl)
-    val baseColor = remember(book, coverAccent) {
-        coverAccent.dominant
-            ?: coverAccent.vibrant
-            ?: getGenreSpineColor(book.genres.firstOrNull(), book.title)
-    }
-
-    // Dynamic spine thickness proportional to totalPages (32.dp to 74.dp)
-    val spineWidth: Dp = remember(book.totalPages) {
-        if (book.totalPages <= 0) 44.dp
-        else {
-            val clamped = book.totalPages.coerceIn(50, 1100)
-            val fraction = (clamped - 50) / 1050f
-            (32f + fraction * 42f).dp
-        }
-    }
-
-    // Organic height variance (195.dp to 222.dp)
-    val spineHeight: Dp = remember(book.title) {
-        val hash = book.title.hashCode().absoluteValue
-        (196 + (hash % 26)).dp
-    }
-
-    // Spring physics for the pull-out motion
-    val pullOutOffset by animateDpAsState(
-        targetValue = if (isSelected) (-34).dp else 0.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "pullOutOffset"
-    )
-
-    val spineScale by animateFloatAsState(
-        targetValue = if (isSelected) 1.05f else 1.0f,
-        label = "spineScale"
-    )
-
-    val rotationY by animateFloatAsState(
-        targetValue = if (isSelected) -11f else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "spineRotationY"
-    )
-    val rotationZ by animateFloatAsState(
-        targetValue = if (isSelected) -1.8f else 0f,
-        label = "spineRotationZ"
-    )
-
-    val isReading = book.status.equals(BookStatus.READING.name, ignoreCase = true)
-
-    Box(
-        contentAlignment = Alignment.BottomCenter,
-        modifier = Modifier
-            .offset(y = pullOutOffset)
-            .graphicsLayer {
-                scaleX = spineScale
-                scaleY = spineScale
-                this.rotationY = rotationY
-                this.rotationZ = rotationZ
-                cameraDistance = 14f * density
-            }
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            )
-    ) {
-        // Ambient golden halo spotlight behind the selected pull-out spine
-        if (isSelected) {
-            Box(
-                modifier = Modifier
-                    .size(width = spineWidth + 14.dp, height = spineHeight + 18.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                Color(0xFFFFD54F).copy(alpha = 0.35f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-        }
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Spine Body
-            Box(
-                modifier = Modifier
-                    .width(spineWidth)
-                    .height(spineHeight)
-                    .shadow(
-                        elevation = if (isSelected) 22.dp else 4.dp,
-                        shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 1.dp, bottomEnd = 1.dp),
-                        spotColor = if (isSelected) Color(0xFFD4AF37) else Color.Black
-                    )
-                    .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 1.dp, bottomEnd = 1.dp))
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            listOf(
-                                baseColor.copy(alpha = 0.95f),
-                                baseColor.lighter(0.18f),
-                                baseColor,
-                                baseColor.darker(0.25f)
-                            )
-                        )
-                    )
-                    .border(
-                        width = if (isSelected) 2.dp else 0.5.dp,
-                        color = if (isSelected) Color(0xFFFFD54F) else Color.Black.copy(alpha = 0.4f),
-                        shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 1.dp, bottomEnd = 1.dp)
-                    )
-            ) {
-                // Left book joint / hinge groove
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .width(3.dp)
-                        .fillMaxHeight()
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    Color.Black.copy(alpha = 0.45f),
-                                    Color.Transparent
-                                )
-                            )
-                        )
-                )
-                // Right page edge bevel shadow
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .width(3.5.dp)
-                        .fillMaxHeight()
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    Color.Transparent,
-                                    Color.Black.copy(alpha = 0.5f)
-                                )
-                            )
-                        )
-                )
-
-                // Embossed decorative headcap and tail bands
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(vertical = 8.dp),
-                    verticalArrangement = Arrangement.SpaceBetween,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                // Top double gold ribs
-                SpineGoldRibs()
-
-                // Vertical title & author
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .padding(horizontal = 2.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    VerticalSpineText(
-                        title = book.title,
-                        author = book.authors.firstOrNull() ?: "",
-                        spineWidth = spineWidth
-                    )
-                }
-
-                // Bottom double gold ribs & status indicator
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    val activeLoan = remember(book.loanRecord) { LoanEngine.activeLoan(book) }
-                    if (activeLoan != null) {
-                        Text(
-                            if (activeLoan.isLentOut) "🤝" else "🏛️",
-                            fontSize = 9.sp,
-                            modifier = Modifier.padding(bottom = 1.dp)
-                        )
-                    } else if (book.isFavorite) {
-                        Text(
-                            "★",
-                            color = Color(0xFFFFD54F),
-                            fontSize = 10.sp,
-                            modifier = Modifier.padding(bottom = 2.dp)
-                        )
-                    }
-                    SpineGoldRibs()
-                }
-            }
-        }
-
-        // Dangling Bookmark Ribbon (for actively reading books)
-        if (isReading) {
-            BookmarkRibbon(
-                progressPercent = if (book.totalPages > 0) ((book.currentPage.toFloat() / book.totalPages) * 100).toInt() else null
-            )
-        } else {
-            Spacer(Modifier.height(14.dp))
-        }
-    }
-    }
-}
-
-/**
- * Elegant embossed double metallic bands on book spine headcaps.
- */
-@Composable
-private fun SpineGoldRibs() {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.5.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            Color(0xFFB8860B),
-                            Color(0xFFFFDF73),
-                            Color(0xFFD4AF37),
-                            Color(0xFF8B6508)
-                        )
-                    )
-                )
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            Color(0xFF8B6508),
-                            Color(0xFFFFDF73),
-                            Color(0xFF8B6508)
-                        )
-                    )
-                )
-        )
-    }
-}
-
-/**
- * Rotated vertical spine title with embossed metallic shadow.
- */
-@Composable
-private fun VerticalSpineText(
-    title: String,
-    author: String,
-    spineWidth: Dp
-) {
-    val showAuthor = spineWidth >= 46.dp
-    val textToDisplay = if (showAuthor && author.isNotBlank()) "$title • $author" else title
-
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = textToDisplay,
-            color = Color(0xFFF9F6EE),
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = if (spineWidth < 38.dp) 10.sp else 11.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Serif,
-                shadow = Shadow(
-                    color = Color.Black.copy(alpha = 0.85f),
-                    offset = Offset(1.5f, 1.5f),
-                    blurRadius = 2f
-                )
-            ),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .rotate(-90f)
-                .requiredWidth(170.dp)
-        )
-    }
-}
-
-/**
- * Silky dangling bookmark ribbon hanging from the bottom of an active book.
- */
-@Composable
-private fun BookmarkRibbon(progressPercent: Int?) {
-    val ribbonColor = Color(0xFFB91C1C) // Luxurious crimson silk
-    val ribbonShape = remember {
-        GenericShape { size, _ ->
-            moveTo(0f, 0f)
-            lineTo(size.width, 0f)
-            lineTo(size.width, size.height)
-            lineTo(size.width / 2f, size.height - 6.dp.value)
-            lineTo(0f, size.height)
-            close()
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .width(14.dp)
-            .height(20.dp)
-            .offset(y = (-2).dp)
-            .clip(ribbonShape)
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        ribbonColor,
-                        Color(0xFFDC2626),
-                        Color(0xFF991B1B)
-                    )
-                )
-            )
-            .shadow(4.dp),
-        contentAlignment = Alignment.TopCenter
-    ) {
-        if (progressPercent != null) {
+        Icon(group.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(group.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.width(8.dp))
+        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHighest) {
             Text(
-                text = "$progressPercent%",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 7.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFFFFD54F)
-                ),
-                modifier = Modifier.padding(top = 1.dp)
+                "$count",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
             )
         }
     }
 }
 
-/**
- * 3D Wooden Shelf Plank with depth beveling, procedural wood grain texture, brass accent inlay, and drop shadow.
- */
+/** Width by page count: a novella is slim, a doorstop is wide. */
+private fun spineWidth(book: Book): Dp {
+    if (book.totalPages <= 0) return 34.dp
+    val fraction = (book.totalPages.coerceIn(80, 900) - 80) / 820f
+    return (24f + fraction * 26f).dp
+}
+
+/** Height by page count with a little per-title variation, so a row looks like real books. */
+private fun spineHeight(book: Book): Dp {
+    val fraction = if (book.totalPages <= 0) 0.4f else (book.totalPages.coerceIn(80, 900) - 80) / 820f
+    val jitter = (book.title.hashCode().absoluteValue % 13) - 6
+    return (148f + fraction * 34f + jitter).dp
+}
+
 @Composable
-private fun WoodenShelfPlank(woodTheme: BookshelfWoodTheme) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // Shelf face and procedural wood-grain canvas
-        androidx.compose.foundation.Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(20.dp)
-        ) {
-            val width = size.width
-            val height = size.height
-
-            // 1. Top chamfer bevel highlight
-            val bevelHeight = 3.dp.toPx()
-            drawRect(
-                color = woodTheme.plankHighlightColor,
-                topLeft = Offset(0f, 0f),
-                size = Size(width, bevelHeight)
-            )
-
-            // 2. Brass accent inlay runner strip embedded in the front lip
-            val brassHeight = 1.dp.toPx()
-            drawRect(
-                brush = Brush.horizontalGradient(
-                    listOf(
-                        woodTheme.brassTrimColor.copy(alpha = 0.5f),
-                        woodTheme.brassTrimColor,
-                        woodTheme.brassTrimColor.copy(alpha = 0.8f),
-                        woodTheme.brassTrimColor.copy(alpha = 0.4f)
-                    )
-                ),
-                topLeft = Offset(0f, bevelHeight),
-                size = Size(width, brassHeight)
-            )
-
-            // 3. Main fascia vertical gradient
-            val fasciaTop = bevelHeight + brassHeight
-            val fasciaHeight = height - fasciaTop - 2.5.dp.toPx()
-            drawRect(
-                brush = Brush.verticalGradient(
-                    listOf(
-                        woodTheme.plankMainColor,
-                        woodTheme.plankShadowColor
-                    ),
-                    startY = fasciaTop,
-                    endY = fasciaTop + fasciaHeight
-                ),
-                topLeft = Offset(0f, fasciaTop),
-                size = Size(width, fasciaHeight)
-            )
-
-            // 4. Procedural organic wood grain striations
-            val grainColor = woodTheme.plankHighlightColor.copy(alpha = 0.14f)
-            val shadowGrainColor = woodTheme.plankShadowColor.darker(0.3f).copy(alpha = 0.28f)
-            val grainYOffsets = listOf(0.22f, 0.42f, 0.65f, 0.85f)
-            grainYOffsets.forEachIndexed { idx, frac ->
-                val lineY = fasciaTop + (fasciaHeight * frac)
-                val path = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(0f, lineY)
-                    var x = 0f
-                    val waveLen = 80f + (idx * 25f)
-                    while (x <= width) {
-                        val dy = (kotlin.math.sin((x / waveLen).toDouble()) * 1.2).toFloat()
-                        lineTo(x, lineY + dy)
-                        x += 16f
-                    }
+private fun SpineShelf(
+    books: List<Book>,
+    selectedId: String?,
+    onSelect: (Book) -> Unit,
+    onLongPress: (Book) -> Unit
+) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        // Fill each ledge left to right, wrapping when the next spine wouldn't fit.
+        val rows = remember(books, maxWidth) {
+            val result = mutableListOf<MutableList<Book>>()
+            var used = 0.dp
+            books.forEach { book ->
+                val width = spineWidth(book) + SPINE_GAP
+                if (result.isEmpty() || used + width > maxWidth - 8.dp) {
+                    result += mutableListOf(book)
+                    used = width
+                } else {
+                    result.last() += book
+                    used += width
                 }
-                drawPath(
-                    path = path,
-                    color = if (idx % 2 == 0) grainColor else shadowGrainColor,
-                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
-                )
             }
-
-            // 5. Bottom angled chamfer undercut
-            val undercutY = fasciaTop + fasciaHeight
-            val undercutHeight = height - undercutY
-            drawRect(
-                color = woodTheme.plankShadowColor.darker(0.4f),
-                topLeft = Offset(0f, undercutY),
-                size = Size(width, undercutHeight)
-            )
+            result
         }
+        Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            rows.forEach { row ->
+                Column {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(SPINE_GAP),
+                        verticalAlignment = Alignment.Bottom,
+                        modifier = Modifier.padding(horizontal = 6.dp)
+                    ) {
+                        row.forEach { book ->
+                            BookSpine(
+                                book = book,
+                                selected = book.id == selectedId,
+                                onClick = { onSelect(book) },
+                                onLongClick = { onLongPress(book) }
+                            )
+                        }
+                    }
+                    Ledge()
+                }
+            }
+        }
+    }
+}
 
-        // Deep underside cast shadow onto the wall/books below
+@Composable
+private fun CoverShelf(
+    books: List<Book>,
+    selectedId: String?,
+    onSelect: (Book) -> Unit,
+    onLongPress: (Book) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        books.chunked(COVERS_PER_ROW).forEach { row ->
+            Column {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.Bottom,
+                    modifier = Modifier.padding(horizontal = 10.dp)
+                ) {
+                    row.forEach { book ->
+                        FaceOutCover(
+                            book = book,
+                            selected = book.id == selectedId,
+                            onClick = { onSelect(book) },
+                            onLongClick = { onLongPress(book) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    repeat(COVERS_PER_ROW - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+                Ledge()
+            }
+        }
+    }
+}
+
+/** The surface books stand on: a rounded ledge with a soft shadow falling below it. */
+@Composable
+private fun Ledge() {
+    Column {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(10.dp)
+                .clip(RoundedCornerShape(5.dp))
                 .background(
                     Brush.verticalGradient(
-                        listOf(
-                            Color.Black.copy(alpha = 0.65f),
-                            Color.Black.copy(alpha = 0.25f),
-                            Color.Transparent
-                        )
+                        listOf(MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.surfaceContainerHigh)
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp)
+                .height(10.dp)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), Color.Transparent)
                     )
                 )
         )
     }
 }
 
-/**
- * Antique brass decorative bookend to frame the sides of a shelf row.
- */
+/** A colour for books whose cover hasn't loaded or has none, nudged toward the theme so it fits. */
 @Composable
-private fun BrassBookend(isLeft: Boolean, trimColor: Color) {
+private fun fallbackSpineColor(book: Book): Color {
+    val hues = listOf(0xFF5C6BC0, 0xFF26A69A, 0xFFEF6C00, 0xFF8D6E63, 0xFFAB47BC, 0xFF42A5F5, 0xFF66BB6A, 0xFFEC407A)
+    val base = Color(hues[book.title.hashCode().absoluteValue % hues.size])
+    return lerp(base, MaterialTheme.colorScheme.primary, 0.25f)
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun BookSpine(book: Book, selected: Boolean, onClick: () -> Unit, onLongClick: () -> Unit) {
+    val accent = rememberCoverAccent(book.coverUrl)
+    val fallback = fallbackSpineColor(book)
+    val color = accent.dominant ?: accent.vibrant ?: fallback
+    val ink = if (color.luminance() > 0.5f) Color(0xFF1C1B1F) else Color.White
+    val width = spineWidth(book)
+    val height = spineHeight(book)
+    val lift by animateDpAsState(if (selected) (-16).dp else 0.dp, Motion.press(), label = "lift")
+    val press = remember { MutableInteractionSource() }
+    val progress = if (book.status == BookStatus.READING.name && book.totalPages > 0)
+        (book.currentPage.toFloat() / book.totalPages).coerceIn(0f, 1f) else null
+    val shape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 3.dp, bottomEnd = 3.dp)
+
     Box(
         modifier = Modifier
-            .padding(bottom = 2.dp)
-            .size(width = 10.dp, height = 70.dp)
-            .background(
-                Brush.horizontalGradient(
-                    if (isLeft) listOf(trimColor.copy(alpha = 0.5f), trimColor, trimColor.copy(alpha = 0.8f))
-                    else listOf(trimColor.copy(alpha = 0.8f), trimColor, trimColor.copy(alpha = 0.4f))
-                ),
-                shape = RoundedCornerShape(
-                    topStart = if (isLeft) 4.dp else 0.dp,
-                    topEnd = if (!isLeft) 4.dp else 0.dp,
-                    bottomStart = 0.dp,
-                    bottomEnd = 0.dp
-                )
+            .size(width = width, height = height)
+            .graphicsLayer { translationY = lift.toPx() }
+            .bounceOnPress(press)
+            .shadow(if (selected) 12.dp else 2.dp, shape)
+            .clip(shape)
+            // Lit from the left, so a flat colour still reads as a rounded spine.
+            .background(Brush.horizontalGradient(listOf(lerp(color, Color.White, 0.14f), color, lerp(color, Color.Black, 0.16f))))
+            .combinedClickable(
+                interactionSource = press,
+                indication = null,
+                onClick = onClick,
+                onLongClickLabel = "Book actions",
+                onLongClick = onLongClick
             )
-            .border(
-                0.8.dp,
-                Color.Black.copy(alpha = 0.5f),
-                RoundedCornerShape(
-                    topStart = if (isLeft) 4.dp else 0.dp,
-                    topEnd = if (!isLeft) 4.dp else 0.dp
-                )
-            )
-    )
-}
-
-/**
- * Sleek bottom inspector card that slides up when a book is selected on the shelf.
- */
-@Composable
-private fun BookPullOutInspector(
-    book: Book,
-    woodTheme: BookshelfWoodTheme,
-    onOpenBook: () -> Unit,
-    onStartReading: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 20.dp),
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        tonalElevation = 12.dp,
-        border = BorderStroke(1.dp, woodTheme.brassTrimColor.copy(alpha = 0.4f)),
-        shadowElevation = 16.dp
     ) {
-        Column(modifier = Modifier.padding(18.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Book Cover Thumbnail
-                Box(
-                    modifier = Modifier
-                        .size(width = 54.dp, height = 80.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .shadow(6.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (book.coverUrl.isNotBlank()) {
-                        AsyncImage(
-                            model = book.coverUrl,
-                            contentDescription = book.title,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Icon(
-                            Icons.AutoMirrored.Filled.MenuBook,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-
-                Spacer(Modifier.width(16.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        book.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        book.authors.firstOrNull()?.ifBlank { "Unknown Author" } ?: "Unknown Author",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Spacer(Modifier.height(6.dp))
-
-                    val progress = if (book.totalPages > 0) book.currentPage.toFloat() / book.totalPages else 0f
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp)
-                            .clip(CircleShape),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "${book.currentPage} of ${book.totalPages} pages (${(progress * 100).toInt()}%)",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    val activeLoan = remember(book.loanRecord) { LoanEngine.activeLoan(book) }
-                    if (activeLoan != null) {
-                        Spacer(Modifier.height(6.dp))
-                        val loanStatus = remember(activeLoan) { LoanEngine.getLoanStatus(activeLoan) }
-                        LoanBadge(loanStatus)
-                    }
-                }
-
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Filled.Close, contentDescription = "Close Inspector")
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // Action Buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onOpenBook,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Filled.Info, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Details")
-                }
-
-                Button(
-                    onClick = onStartReading,
-                    modifier = Modifier.weight(1.2f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(if (book.currentPage > 0) "Resume" else "Start Read")
-                }
-            }
-        }
-    }
-}
-
-/**
- * Genre-based fallback bookbinding palette.
- */
-private fun getGenreSpineColor(genre: String?, title: String): Color {
-    val clean = (genre ?: "").lowercase()
-    return when {
-        clean.contains("fantasy") || clean.contains("magic") -> Color(0xFF4A1D4E) // Royal Plum
-        clean.contains("sci-fi") || clean.contains("science") -> Color(0xFF0F4C5C) // Cosmic Teal
-        clean.contains("history") || clean.contains("classic") -> Color(0xFF5B1E31) // Burgundy Leather
-        clean.contains("mystery") || clean.contains("thriller") -> Color(0xFF1E293B) // Midnight Navy
-        clean.contains("nature") || clean.contains("fiction") -> Color(0xFF1B4332) // Forest Green
-        clean.contains("biography") || clean.contains("memoir") -> Color(0xFF78350F) // Warm Ochre
-        clean.contains("philosophy") || clean.contains("essay") -> Color(0xFF38220F) // Espresso Leather
-        else -> {
-            val palettes = listOf(
-                Color(0xFF5B1E31), // Burgundy
-                Color(0xFF1B4332), // Forest Green
-                Color(0xFF162A45), // Imperial Navy
-                Color(0xFF78350F), // Ochre
-                Color(0xFF4A1D4E), // Plum
-                Color(0xFF38220F), // Espresso
-                Color(0xFF0F4C5C)  // Teal
+        // Head band and a favourite mark near the top.
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 12.dp)
+                .fillMaxWidth(0.7f)
+                .height(2.dp)
+                .background(ink.copy(alpha = 0.35f), CircleShape)
+        )
+        if (book.isFavorite) {
+            Icon(
+                Icons.Filled.Favorite,
+                contentDescription = "Favourite",
+                tint = ink.copy(alpha = 0.8f),
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 20.dp).size(10.dp)
             )
-            palettes[title.hashCode().absoluteValue % palettes.size]
+        }
+        Text(
+            book.title,
+            style = if (width < 30.dp) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = ink,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(vertical = 34.dp)
+                .verticalText()
+        )
+        // Reading progress as a slim rail at the foot of the spine.
+        if (progress != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(start = 5.dp, end = 5.dp, bottom = 8.dp)
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .clip(CircleShape)
+                    .background(ink.copy(alpha = 0.25f))
+            ) {
+                Box(Modifier.fillMaxHeight().fillMaxWidth(progress).background(ink))
+            }
         }
     }
 }
 
-private fun Color.lighter(factor: Float = 0.15f): Color {
-    return Color(
-        red = (red + (1f - red) * factor).coerceIn(0f, 1f),
-        green = (green + (1f - green) * factor).coerceIn(0f, 1f),
-        blue = (blue + (1f - blue) * factor).coerceIn(0f, 1f),
-        alpha = alpha
-    )
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun FaceOutCover(
+    book: Book,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val lift by animateDpAsState(if (selected) (-12).dp else 0.dp, Motion.press(), label = "lift")
+    val press = remember { MutableInteractionSource() }
+    Box(
+        modifier = modifier
+            .aspectRatio(2f / 3f)
+            .graphicsLayer { translationY = lift.toPx() }
+            .bounceOnPress(press)
+            .shadow(if (selected) 12.dp else 4.dp, MaterialTheme.shapes.small)
+            .combinedClickable(
+                interactionSource = press,
+                indication = null,
+                onClick = onClick,
+                onLongClickLabel = "Book actions",
+                onLongClick = onLongClick
+            )
+    ) {
+        BookCover(book.coverUrl, Modifier.heroSharedElement("cover-${book.id}").fillMaxSize())
+        if (book.status == BookStatus.READING.name && book.totalPages > 0) {
+            LinearProgressIndicator(
+                progress = { (book.currentPage.toFloat() / book.totalPages).coerceIn(0f, 1f) },
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = Color.Black.copy(alpha = 0.4f),
+                gapSize = 0.dp,
+                drawStopIndicator = {}
+            )
+        }
+    }
 }
 
-private fun Color.darker(factor: Float = 0.2f): Color {
-    return Color(
-        red = (red * (1f - factor)).coerceIn(0f, 1f),
-        green = (green * (1f - factor)).coerceIn(0f, 1f),
-        blue = (blue * (1f - factor)).coerceIn(0f, 1f),
-        alpha = alpha
+/** The card that rises when a book is lifted off the shelf. */
+@Composable
+private fun ShelfInspector(book: Book, onOpen: () -> Unit, onRead: () -> Unit, onDismiss: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shadowElevation = 12.dp,
+        modifier = Modifier.fillMaxWidth().padding(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row {
+                BookCover(book.coverUrl, Modifier.size(width = 64.dp, height = 96.dp))
+                Spacer(Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(book.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    if (book.authors.isNotEmpty()) {
+                        Text(
+                            book.authors.joinToString(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    val status = BookStatus.entries.firstOrNull { it.name.equals(book.status, ignoreCase = true) }
+                    val detail = buildList {
+                        status?.let { add(it.label) }
+                        if (book.totalPages > 0) add("${book.totalPages} pages")
+                        book.overallRating?.takeIf { it > 0f }?.let { add("★ %.1f".format(it)) }
+                    }.joinToString(" · ")
+                    Text(detail, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    if (status == BookStatus.READING && book.totalPages > 0) {
+                        Spacer(Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            progress = { (book.currentPage.toFloat() / book.totalPages).coerceIn(0f, 1f) },
+                            modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+                            gapSize = 0.dp,
+                            drawStopIndicator = {}
+                        )
+                    }
+                }
+                IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Filled.Close, contentDescription = "Put back", modifier = Modifier.size(18.dp))
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                FilledTonalButton(onClick = onOpen, modifier = Modifier.weight(1f)) { Text("Open book") }
+                if (book.status != BookStatus.FINISHED.name) {
+                    Button(onClick = onRead, modifier = Modifier.weight(1f)) {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(if (book.status == BookStatus.READING.name) "Read" else "Start")
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Lays text out rotated a quarter turn, reading bottom to top like a spine. */
+private fun Modifier.verticalText(): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(
+        Constraints(maxWidth = constraints.maxHeight, maxHeight = constraints.maxWidth)
     )
+    layout(placeable.height, placeable.width) {
+        placeable.placeWithLayer(
+            x = (placeable.height - placeable.width) / 2,
+            y = (placeable.width - placeable.height) / 2
+        ) { rotationZ = -90f }
+    }
 }
