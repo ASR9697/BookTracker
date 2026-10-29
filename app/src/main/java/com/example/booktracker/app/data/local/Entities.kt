@@ -35,7 +35,39 @@ data class BookEntity(
     val readCount: Int = 0,
     val plannedDate: Long? = null,
     val review: String? = null,
-    val finishedAt: Long? = null
+    val finishedAt: Long? = null,
+    /** [Ownership] name; null on rows from before version 10 that had no purchase. */
+    val ownership: String? = null,
+    val finishBy: Long? = null,
+    val readStartedAt: Long? = null,
+    // Nullable so rows from before version 14 need no SQL default.
+    val audioMinutes: Int? = null,
+    val audioSpeed: Float? = null,
+    val wish: String? = null // JSON object, WishInfo
+)
+
+/** One row per highlight or word in spaced review; [kind] is a [ReviewKind] name. */
+@Entity(tableName = "review_states")
+data class ReviewStateEntity(
+    @PrimaryKey val itemId: String,
+    val kind: String,
+    val dueDay: Long,
+    val intervalDays: Int,
+    val reps: Int,
+    val lapses: Int,
+    val lastReviewedAt: Long
+)
+
+/** Words outlive the book they came from, so [bookId] is a plain reference, not a foreign key. */
+@Entity(tableName = "vocab_words", indices = [Index("bookId")])
+data class VocabWordEntity(
+    @PrimaryKey val id: String,
+    val word: String,
+    val definition: String,
+    val bookId: String?,
+    val pageNumber: Int,
+    val context: String,
+    val addedAt: Long
 )
 
 @Entity(
@@ -59,7 +91,9 @@ data class SessionEntity(
     val startPage: Int,
     val endPage: Int,
     val pagesRead: Int,
-    val environmentTag: String
+    val environmentTag: String,
+    val zoneId: String? = null,
+    val focus: Int? = null
 )
 
 @Entity(
@@ -81,7 +115,9 @@ data class MarginNoteEntity(
     val content: String,
     val type: String,
     val isFavorite: Boolean,
-    val timestamp: Long
+    val timestamp: Long,
+    /** JSON array of photo URIs; null on notes from before version 11 and on notes without photos. */
+    val images: String? = null
 )
 
 // External-content FTS mirrors

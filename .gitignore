@@ -16,3 +16,7 @@ captures/
 keystore.properties
 *.jks
 *.keystore
+
+# Personal reading-data samples used to build importers; never commit.
+samples/
+sample/

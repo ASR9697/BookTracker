@@ -28,7 +28,8 @@ class ReminderWorker(
 
     override suspend fun doWork(): Result {
         val settings = ServiceLocator.settings(context)
-        if (!settings.reminder.first().enabled || !Notifications.canPost(context)) {
+        val quiet = settings.prefs.first().isQuiet(java.time.LocalTime.now().hour)
+        if (!settings.reminder.first().enabled || !Notifications.canPost(context) || quiet) {
             return Result.success()
         }
         val dailyGoal = settings.dailyGoal.first()
@@ -38,7 +39,7 @@ class ReminderWorker(
         val zone = java.time.ZoneId.systemDefault()
         val today = StreakEngine.readingDate(System.currentTimeMillis(), zone, dayStartsAtHour)
         val todayProgress = sessions
-            .filter { StreakEngine.readingDate(it.startTime, zone, dayStartsAtHour) == today }
+            .filter { StreakEngine.sessionDay(it, zone, dayStartsAtHour) == today }
             .sumOf { it.pagesRead }
 
         if (todayProgress < dailyGoal) {

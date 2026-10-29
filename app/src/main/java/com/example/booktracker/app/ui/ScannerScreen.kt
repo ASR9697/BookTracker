@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -20,7 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -65,7 +67,9 @@ private sealed interface ScanState {
 fun ScannerScreen(
     onClose: () -> Unit,
     onBookConfirmed: (BookMetadata, com.example.booktracker.shared.models.BookStatus, com.example.booktracker.shared.models.BookFormat) -> Unit,
-    onAddManually: () -> Unit
+    onAddManually: () -> Unit,
+    /** Scanned in a shop and not bought yet: straight onto the wishlist. */
+    onAddToWishlist: ((BookMetadata, com.example.booktracker.shared.models.BookFormat) -> Unit)? = null
 ) {
     val context = LocalContext.current
     var hasPermission by remember {
@@ -122,7 +126,7 @@ fun ScannerScreen(
                         .border(
                             width = 2.dp,
                             color = Color.White.copy(alpha = 0.9f),
-                            shape = RoundedCornerShape(16.dp)
+                            shape = AppShape.M
                         )
                 )
                 Text(
@@ -135,7 +139,7 @@ fun ScannerScreen(
                         .padding(horizontal = 32.dp, vertical = 24.dp)
                         .background(
                             Color.Black.copy(alpha = 0.5f),
-                            RoundedCornerShape(8.dp)
+                            AppShape.XS
                         )
                         .padding(8.dp)
                 )
@@ -192,7 +196,7 @@ fun ScannerScreen(
                     .padding(4.dp)
             ) {
                 Icon(
-                    Icons.Filled.Close,
+                    Icons.Rounded.Close,
                     contentDescription = "Close scanner",
                     tint = Color.White
                 )
@@ -207,9 +211,10 @@ fun ScannerScreen(
                 book = book,
                 onDismiss = { state = ScanState.Scanning },
                 dismissLabel = "Rescan",
-                onConfirmAdd = { status, startPage, format ->
-                    onBookConfirmed(book.copy(currentPage = startPage), status, format)
-                }
+                onConfirmAdd = { status, startPage, format, purchases ->
+                    onBookConfirmed(book.copy(currentPage = startPage, purchaseLog = purchases), status, format)
+                },
+                onAddToWishlist = onAddToWishlist?.let { add -> { format -> add(book, format) } }
             )
         }
         is ScanState.NotFound -> {
@@ -221,7 +226,7 @@ fun ScannerScreen(
                     TextButton(onClick = { state = ScanState.Scanning }) { Text("Rescan") }
                 },
                 dismissButton = {
-                    TextButton(onClick = onAddManually) { Text("Add Manually") }
+                    TextButton(onClick = onAddManually) { Text("Add by hand") }
                 }
             )
         }

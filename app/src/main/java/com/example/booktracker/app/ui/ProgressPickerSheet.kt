@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Box
@@ -14,9 +16,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.Numbers
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Keyboard
+import androidx.compose.material.icons.rounded.Numbers
+import androidx.compose.material.icons.rounded.PhotoCamera
+import androidx.compose.runtime.key
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -64,7 +68,12 @@ fun ProgressPickerSheet(
     book: Book,
     initialPage: Int,
     onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit
+    onConfirm: (Int) -> Unit,
+    /** Set when logging a session: adds quick steps from it and a live "+N pages" line. */
+    sessionStartPage: Int? = null,
+    sessionSeconds: Int = 0,
+    /** Opens straight onto the page scanner. */
+    startWithScan: Boolean = false
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val haptic = LocalHapticFeedback.current
@@ -73,6 +82,9 @@ fun ProgressPickerSheet(
 
     var keyboardMode by remember { mutableStateOf(false) }
     var selected by remember { mutableIntStateOf(initialPage.coerceIn(0, maxPage)) }
+    var scanning by remember { mutableStateOf(startWithScan) }
+    // Bumped when a scan sets the page, so the wheel re-centres on it.
+    var wheelKey by remember { mutableIntStateOf(0) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -94,6 +106,7 @@ fun ProgressPickerSheet(
 
             Spacer(Modifier.height(12.dp))
 
+            Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
             Surface(
                 shape = RoundedCornerShape(50),
                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -104,12 +117,12 @@ fun ProgressPickerSheet(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
                 ) {
                     Text(
-                        if (keyboardMode) "Change to wheel mode" else "Change to keyboard mode",
+                        if (keyboardMode) "Wheel" else "Keyboard",
                         style = MaterialTheme.typography.labelLarge
                     )
                     Spacer(Modifier.height(0.dp))
                     Icon(
-                        if (keyboardMode) Icons.Filled.Numbers else Icons.Filled.Keyboard,
+                        if (keyboardMode) Icons.Rounded.Numbers else Icons.Rounded.Keyboard,
                         contentDescription = null,
                         modifier = Modifier
                             .padding(start = 8.dp)
@@ -117,23 +130,81 @@ fun ProgressPickerSheet(
                     )
                 }
             }
+            // Read the page number off the page itself.
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                onClick = { scanning = true }
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                ) {
+                    Icon(Icons.Rounded.PhotoCamera, contentDescription = null, modifier = Modifier.height(18.dp))
+                    Text("Scan page", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(start = 8.dp))
+                }
+            }
+            }
+
+            if (sessionStartPage != null) {
+                Spacer(Modifier.height(12.dp))
+                // Steps count from where the session began, not from the wheel.
+                Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+                    listOf(0, 5, 10, 20).forEach { step ->
+                        val page = (sessionStartPage + step).coerceIn(0, maxPage)
+                        TickFilterChip(
+                            selected = selected == page,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                selected = page
+                                wheelKey++
+                            },
+                            label = { Text(if (step == 0) "Same page" else "+$step") }
+                        )
+                    }
+                }
+            }
 
             Spacer(Modifier.height(16.dp))
 
             if (keyboardMode) {
-                KeyboardEntry(
-                    book = book,
-                    maxPage = maxPage,
-                    value = selected,
-                    onValueChange = { selected = it }
-                )
+                key(wheelKey) {
+                    KeyboardEntry(
+                        book = book,
+                        maxPage = maxPage,
+                        value = selected,
+                        onValueChange = { selected = it }
+                    )
+                }
             } else {
-                PageWheel(
-                    maxPage = maxPage,
-                    totalPages = book.totalPages,
-                    unit = unit,
-                    initial = selected,
-                    onSelected = { selected = it }
+                key(wheelKey) {
+                    PageWheel(
+                        maxPage = maxPage,
+                        totalPages = book.totalPages,
+                        unit = unit,
+                        initial = selected,
+                        onSelected = { selected = it }
+                    )
+                }
+            }
+
+            if (sessionStartPage != null) {
+                val delta = selected - sessionStartPage
+                val pace = com.example.booktracker.app.analytics.AnalyticsEngine.formatSessionPpm(
+                    com.example.booktracker.app.analytics.AnalyticsEngine.sessionSpeedPpm(delta, sessionSeconds)
+                )
+                val word = FormatAdaptabilityLayer.getDisplayUnit(book).lowercase().let { if (abs(delta) == 1) it.trimEnd('s') else it }
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    when {
+                        delta > 0 && pace != null -> "+$delta $word this session · $pace"
+                        delta > 0 -> "+$delta $word this session"
+                        delta == 0 -> "Same ${word.trimEnd('s')} as you started on"
+                        else -> "${-delta} $word back from where you started"
+                    },
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (delta > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -147,11 +218,24 @@ fun ProgressPickerSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(60.dp),
-                shape = RoundedCornerShape(18.dp)
+                shape = AppShape.M
             ) {
-                Icon(Icons.Filled.Check, contentDescription = "Confirm", modifier = Modifier.height(26.dp))
+                Icon(Icons.Rounded.Check, contentDescription = "Confirm", modifier = Modifier.height(26.dp))
             }
         }
+    }
+
+    if (scanning) {
+        PageScanDialog(
+            book = book,
+            onDismiss = { scanning = false },
+            onPage = { page ->
+                scanning = false
+                selected = page.coerceIn(0, maxPage)
+                keyboardMode = false
+                wheelKey++
+            }
+        )
     }
 }
 
@@ -208,7 +292,7 @@ private fun PageWheel(
                 .height(ITEM_HEIGHT + 8.dp)
                 .background(
                     MaterialTheme.colorScheme.surfaceContainerHighest,
-                    RoundedCornerShape(14.dp)
+                    AppShape.S
                 )
         )
 

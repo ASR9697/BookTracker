@@ -24,12 +24,70 @@
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Launcher entries, one per app icon in Settings > Appearance. Exactly one is
+             enabled at a time (AppIcon.apply); the class names must match AppIcon. -->
+        <activity-alias
+            android:name=".LauncherDefault"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:enabled="true"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherGoldenTome"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_tome"
+            android:roundIcon="@mipmap/ic_launcher_tome">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherMoon"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_moon"
+            android:roundIcon="@mipmap/ic_launcher_moon">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherFountainPen"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_pen"
+            android:roundIcon="@mipmap/ic_launcher_pen">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherPixelShelf"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:enabled="false"
+            android:icon="@mipmap/ic_launcher_shelf"
+            android:roundIcon="@mipmap/ic_launcher_shelf">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
         <service
             android:name=".sync.WearSyncService"
             android:exported="true">
@@ -72,6 +130,61 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/reading_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.SessionWidgetReceiver"
+            android:exported="true"
+            android:label="@string/session_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/session_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.StreakWidgetReceiver"
+            android:exported="true"
+            android:label="@string/streak_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/streak_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.QuoteWidgetReceiver"
+            android:exported="true"
+            android:label="@string/quote_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/quote_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.PixelsWidgetReceiver"
+            android:exported="true"
+            android:label="@string/pixels_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/pixels_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.UpNextWidgetReceiver"
+            android:exported="true"
+            android:label="@string/upnext_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/upnext_widget_info" />
         </receiver>
     </application>
 </manifest>

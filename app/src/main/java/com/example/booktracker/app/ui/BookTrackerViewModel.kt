@@ -1,37 +1,57 @@
 package com.example.booktracker.app.ui
 
 import android.content.Context
-import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.booktracker.app.analytics.BadgeEngine
+import com.example.booktracker.app.analytics.BadgeInput
+import com.example.booktracker.app.analytics.BadgeStatus
+import com.example.booktracker.app.analytics.ReviewEngine
 import com.example.booktracker.app.analytics.StreakEngine
+import com.example.booktracker.app.analytics.TandemEngine
+import com.example.booktracker.app.sync.DriveAuth
+import com.example.booktracker.app.sync.DriveClient
+import com.example.booktracker.app.sync.DriveSync
+import com.example.booktracker.app.worker.DriveSyncScheduler
 import com.example.booktracker.app.data.AppPalette
 import com.example.booktracker.app.data.BackupEngine
 import com.example.booktracker.app.data.BookRepository
 import com.example.booktracker.app.data.CsvImportResult
 import com.example.booktracker.app.data.DeletedBook
+import com.example.booktracker.app.data.HomeLayout
+import com.example.booktracker.app.data.bookmory.BookmoryImportSummary
+import com.example.booktracker.app.data.bookmory.BookmoryImporter
 import com.example.booktracker.app.data.LibrarySearchResults
+import com.example.booktracker.app.data.AvatarStore
+import com.example.booktracker.app.data.NoteImageStore
+import kotlinx.coroutines.Dispatchers
 import com.example.booktracker.app.data.ReminderSettings
 import com.example.booktracker.app.data.ServiceLocator
 import com.example.booktracker.app.data.SettingsRepository
+import com.example.booktracker.app.data.AppPrefs
+import com.example.booktracker.app.util.CsvExporter
+import com.example.booktracker.app.worker.AutoBackupWorker
 import com.example.booktracker.app.data.ThemeMode
 import com.example.booktracker.app.data.remote.BookMetadata
 import com.example.booktracker.app.journal.NoiseType
 import com.example.booktracker.app.journal.SoundscapeEngine
 import com.example.booktracker.app.service.TimerPersistence
 import com.example.booktracker.app.sync.WearBridge
-import com.example.booktracker.app.widget.ReadingWidget
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookFormat
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.LoanRecord
 import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.NoteType
+import com.example.booktracker.shared.models.Ownership
+import com.example.booktracker.shared.models.ReviewState
 import com.example.booktracker.shared.models.Session
+import com.example.booktracker.shared.models.VocabWord
+import com.example.booktracker.shared.models.WishInfo
+import java.time.ZoneId
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -45,11 +65,21 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+sealed interface DriveSyncState {
+    data object Idle : DriveSyncState
+    data object Syncing : DriveSyncState
+    data class NeedsConsent(val sender: android.content.IntentSender) : DriveSyncState
+    data class Done(val message: String) : DriveSyncState
+    data class Failed(val message: String) : DriveSyncState
+}
 
 class BookTrackerViewModel(
     private val appContext: Context,
@@ -108,6 +138,25 @@ class BookTrackerViewModel(
     val dayStartsAtHour: StateFlow<Int> = settings.dayStartsAtHour
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 3)
 
+    val homeLayout: StateFlow<HomeLayout> = settings.homeLayout
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeLayout.DEFAULT)
+
+    val driveSyncEnabled: StateFlow<Boolean> = settings.driveSyncEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val driveLastSync: StateFlow<Long> = settings.driveLastSync
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0L)
+
+    private val _driveSync = MutableStateFlow<DriveSyncState>(DriveSyncState.Idle)
+
+    /** Progress of a sync the reader started; background syncs don't show here. */
+    val driveSync: StateFlow<DriveSyncState> = _driveSync
+
+    /** A finished or failed sync's message is news once; leaving Settings clears it. */
+    fun clearDriveStatus() {
+        if (_driveSync.value is DriveSyncState.Done || _driveSync.value is DriveSyncState.Failed) _driveSync.value = DriveSyncState.Idle
+    }
+
     val streak: StateFlow<StreakEngine.StreakInfo> =
         combine(completedSessions, settings.dailyGoal, settings.dayStartsAtHour) { sessions, goal, dayStart ->
             StreakEngine.compute(sessions, goal, dayStartsAtHour = dayStart)
@@ -123,14 +172,143 @@ class BookTrackerViewModel(
     val totalNotesCount: StateFlow<Int> = repository.observeTotalNotesCount()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-    val unlockedBadges: StateFlow<Set<String>> = combine(
+    val words: StateFlow<List<VocabWord>> = repository.observeWords()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val reviewStates: StateFlow<List<ReviewState>> = repository.observeReviewStates()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * Today's review, in order. Null until the library has loaded, so the review
+     * screen can tell "nothing due" from "not read yet". Built from the database
+     * flows directly for the same reason.
+     */
+    val reviewQueue: StateFlow<List<ReviewEngine.Item>?> = combine(
+        repository.observeAllNotes(),
+        repository.observeWords(),
+        repository.observeReviewStates(),
+        streak
+    ) { notes, wordList, states, streakInfo ->
+        val today = streakInfo.today.toEpochDay()
+        val zone = ZoneId.systemDefault()
+        val reviewedToday = ReviewEngine.reviewedOn(states, today) {
+            StreakEngine.readingDate(it, zone, streakInfo.dayStartsAtHour).toEpochDay()
+        }
+        ReviewEngine.dailyQueue(
+            items = ReviewEngine.noteItems(notes) + ReviewEngine.wordItems(wordList),
+            states = states.associateBy { it.itemId },
+            today = today,
+            reviewedToday = reviewedToday
+        )
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val avatar: StateFlow<String> = settings.avatar
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+
+    val hapticsEnabled: StateFlow<Boolean> = settings.hapticsEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    val reduceMotion: StateFlow<Boolean> = settings.reduceMotion
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val keepScreenOn: StateFlow<Boolean> = settings.keepScreenOn
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    fun setHapticsEnabled(enabled: Boolean) { viewModelScope.launch { settings.setHapticsEnabled(enabled) } }
+    fun setReduceMotion(enabled: Boolean) { viewModelScope.launch { settings.setReduceMotion(enabled) } }
+    fun setKeepScreenOn(enabled: Boolean) { viewModelScope.launch { settings.setKeepScreenOn(enabled) } }
+
+    /** Eager: the activity reads the lock delay and screen flags before any screen subscribes. */
+    val prefs: StateFlow<AppPrefs> = settings.prefs
+        .stateIn(viewModelScope, SharingStarted.Eagerly, AppPrefs())
+
+    fun updatePrefs(transform: (AppPrefs) -> AppPrefs) { viewModelScope.launch { settings.updatePrefs(transform) } }
+
+    /**
+     * The first-run welcome: an empty library and a welcome not yet seen. False
+     * until both have loaded, so it never flashes up for a reader with books.
+     */
+    val showWelcome: StateFlow<Boolean> = combine(repository.observeBooks(), settings.prefs) { books, prefs ->
+        books.isEmpty() && !prefs.onboarded
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    init {
+        // Readers who had books before the welcome existed never need it.
+        viewModelScope.launch {
+            repository.observeBooks().first { it.isNotEmpty() }
+            if (!settings.prefs.first().onboarded) settings.updatePrefs { it.copy(onboarded = true) }
+        }
+    }
+
+    fun finishWelcome() = updatePrefs { it.copy(onboarded = true) }
+
+    /** Writes the library as a Goodreads-style CSV to [uri]. */
+    fun exportCsv(context: Context, uri: android.net.Uri, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val ok = runCatching {
+                val csv = CsvExporter.toGoodreadsCsv(repository.observeBooks().first(), ZoneId.systemDefault())
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(uri)?.use { it.write(csv.toByteArray()) } ?: error("no stream")
+                }
+            }.isSuccess
+            onDone(ok)
+        }
+    }
+
+    /** Writes the weekly automatic backup right now, into the folder the reader picked. */
+    fun backupNow(context: Context, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val folder = settings.prefs.first().autoBackupFolder
+            val ok = folder.isNotBlank() && runCatching {
+                AutoBackupWorker.backupNow(context.applicationContext, android.net.Uri.parse(folder))
+            }.isSuccess
+            onDone(ok)
+        }
+    }
+
+    /**
+     * Deletes every book, session, note, review card and word, with their covers
+     * and photos. Preferences stay. Refused while Drive sync is on, because the
+     * next sync would bring the whole library straight back.
+     */
+    fun deleteAllData(context: Context, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            if (settings.driveSyncEnabled.first()) {
+                onDone(false)
+                return@launch
+            }
+            val ok = runCatching { ServiceLocator.wipeLibrary(context) }.isSuccess
+            onDone(ok)
+        }
+    }
+
+    // Replaying history for earned dates is a few hundred evaluations, so keep it off the main thread.
+    val badgeStatuses: StateFlow<List<BadgeStatus>> = combine(
         books,
         completedSessions,
         streak,
-        totalNotesCount
+        allNotes
     ) { b, s, st, notes ->
-        BadgeEngine.evaluate(b, s, st.currentStreak, notes)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+        val noteTimes = notes.map { it.timestamp }
+        val statuses = BadgeEngine.statuses(BadgeInput(b, s, st.longestStreak, noteTimes.size))
+        BadgeEngine.withEarnedDates(statuses, b, s, noteTimes, st.dayStartsAtHour)
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val monthlyChallenge: StateFlow<BadgeStatus?> = combine(
+        books,
+        completedSessions,
+        streak,
+        allNotes
+    ) { b, s, st, notes ->
+        BadgeEngine.monthlyChallenge(b, s, notes.map { it.timestamp }, st.today, dayStartsAtHour = st.dayStartsAtHour)
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val unlockedBadges: StateFlow<Set<String>> = badgeStatuses
+        .map { list -> list.filter { it.unlocked }.map { it.badge.id }.toSet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     private val _newUnlockEvents = Channel<Set<String>>(Channel.BUFFERED)
     val newUnlockEvents = _newUnlockEvents.receiveAsFlow()
@@ -169,6 +347,12 @@ class BookTrackerViewModel(
     private val recentlyDeleted = mutableMapOf<String, DeletedBook>()
 
     init {
+        // Photos from notes deleted (and not undone) in an earlier session, or
+        // picked into a note sheet that was then dismissed.
+        viewModelScope.launch {
+            val notes = repository.observeAllNotes().first()
+            NoteImageStore.sweepOrphans(appContext, notes.flatMap { it.imageUris })
+        }
         viewModelScope.launch {
             combine(
                 repository.observeBooks().map { list ->
@@ -196,19 +380,7 @@ class BookTrackerViewModel(
                 }
         }
 
-        // The home-screen widget only re-renders when asked, so refresh it whenever
-        // progress or the streak changes (debounced so +1 taps don't thrash it).
-        viewModelScope.launch {
-            @OptIn(FlowPreview::class)
-            combine(repository.observeBooks(), streak) { books, streakInfo ->
-                books.filter { it.status == BookStatus.READING.name }
-                    .map { Triple(it.id, it.currentPage, it.totalPages) } to streakInfo.currentStreak
-            }
-                .distinctUntilChanged()
-                .drop(1)
-                .debounce(1_000)
-                .collect { runCatching { ReadingWidget().updateAll(appContext) } }
-        }
+        // Home-screen widgets refresh from WidgetRefresher, which starts with the app.
 
         viewModelScope.launch {
             combine(unlockedBadges, settings.seenBadges) { unlocked, seen ->
@@ -248,13 +420,17 @@ class BookTrackerViewModel(
         // foreground service kept running) — the in-memory state is newer.
         viewModelScope.launch {
             if (ServiceLocator.timerBookId.value != null) return@launch
-            val savedBookId = settings.activeTimerBookId.firstOrNull() ?: return@launch
+            val savedBookId = settings.activeTimerBookId.firstOrNull() ?: run {
+                applyPreferredTimerMode()
+                return@launch
+            }
             // A timer left "running" for half a day (or restored from a device
             // backup) isn't a real session any more; drop it rather than resume it.
             val savedTick = settings.activeTimerLastTickTime.firstOrNull()
             val bookExists = repository.observeBooks().first().any { it.id == savedBookId }
             if (!bookExists || (savedTick != null && System.currentTimeMillis() - savedTick > STALE_TIMER_MS)) {
                 settings.clearTimerState()
+                applyPreferredTimerMode()
                 return@launch
             }
             ServiceLocator.timerBookId.value = savedBookId
@@ -271,6 +447,7 @@ class BookTrackerViewModel(
                 }
             }
             ServiceLocator.activeReadingSeconds.value = settings.activeTimerActiveReading.firstOrNull() ?: 0
+            ServiceLocator.sessionPageTarget.value = settings.activeTimerPageTarget.firstOrNull()
 
             // Background State Fix: elapsed = now - last persisted tick
             val wasRunning = settings.activeTimerIsRunning.firstOrNull() ?: false
@@ -295,6 +472,143 @@ class BookTrackerViewModel(
                         setTimerRunning(true)
                     }
                 }
+            }
+        }
+    }
+
+    private val _pendingRoute = MutableStateFlow<String?>(null)
+
+    /** A screen a widget asked to open; the nav host shows it and then consumes it. */
+    val pendingRoute: StateFlow<String?> = _pendingRoute
+
+    fun openRoute(route: String?) {
+        if (!route.isNullOrBlank()) _pendingRoute.value = route
+    }
+
+    fun consumeRoute() {
+        _pendingRoute.value = null
+    }
+
+    fun gradeReview(item: ReviewEngine.Item, grade: ReviewEngine.Grade) {
+        viewModelScope.launch {
+            val previous = repository.observeReviewStates().first().find { it.itemId == item.id }
+            repository.saveReviewState(
+                ReviewEngine.schedule(previous, item.id, item.kind, grade, streak.value.today.toEpochDay(), System.currentTimeMillis())
+            )
+        }
+    }
+
+    fun saveWord(word: VocabWord) {
+        viewModelScope.launch {
+            repository.saveWord(
+                if (word.id.isBlank()) word.copy(id = java.util.UUID.randomUUID().toString(), addedAt = System.currentTimeMillis())
+                else word
+            )
+        }
+    }
+
+    fun deleteWord(word: VocabWord) {
+        viewModelScope.launch { repository.deleteWord(word.id) }
+    }
+
+    fun setFinishBy(book: Book, finishBy: Long?) {
+        viewModelScope.launch { repository.setFinishBy(book.id, finishBy) }
+    }
+
+    /** Connects Drive the first time, then syncs; asks the UI to show Google's consent screen when needed. */
+    fun syncDrive() {
+        if (_driveSync.value == DriveSyncState.Syncing) return
+        _driveSync.value = DriveSyncState.Syncing
+        viewModelScope.launch {
+            when (val outcome = DriveAuth.authorize(appContext)) {
+                is DriveAuth.Outcome.Token -> runDriveSync(outcome.value)
+                is DriveAuth.Outcome.NeedsConsent -> _driveSync.value = DriveSyncState.NeedsConsent(outcome.sender)
+                is DriveAuth.Outcome.Failed -> _driveSync.value = DriveSyncState.Failed(outcome.message)
+            }
+        }
+    }
+
+    /** The consent screen was shown; keep the spinner while it is up. */
+    fun driveConsentShown() {
+        if (_driveSync.value is DriveSyncState.NeedsConsent) _driveSync.value = DriveSyncState.Syncing
+    }
+
+    fun onDriveConsent(data: android.content.Intent?) {
+        val token = DriveAuth.fromConsent(appContext, data)
+        if (token == null) {
+            _driveSync.value = DriveSyncState.Failed("Drive access wasn't granted, so nothing was synced.")
+            return
+        }
+        viewModelScope.launch { runDriveSync(token) }
+    }
+
+    private suspend fun runDriveSync(token: String) {
+        _driveSync.value = DriveSyncState.Syncing
+        runCatching { DriveSync.run(appContext, token) }
+            .onSuccess { summary ->
+                settings.setDriveSyncEnabled(true)
+                settings.setDriveLastSync(System.currentTimeMillis())
+                DriveSyncScheduler.apply(appContext, enabled = true)
+                _driveSync.value = DriveSyncState.Done(
+                    if (summary.changedHere == 0) "Everything was already up to date."
+                    else "Synced. ${summary.changedHere} change${if (summary.changedHere == 1) "" else "s"} came in from your other devices."
+                )
+            }
+            .onFailure { error ->
+                _driveSync.value = DriveSyncState.Failed(
+                    when ((error as? DriveClient.DriveException)?.code) {
+                        401, 403 -> "Google turned down the Drive request. Try connecting again."
+                        null -> error.message?.takeIf { "Another device" in it } ?: "Couldn't reach Google Drive. Check your connection."
+                        else -> "Drive had a problem (${error.code}). Try again later."
+                    }
+                )
+            }
+    }
+
+    /** Stops syncing on this phone. What's already in Drive stays there until the reader removes it. */
+    fun disconnectDrive() {
+        viewModelScope.launch {
+            settings.setDriveSyncEnabled(false)
+            DriveSyncScheduler.apply(appContext, enabled = false)
+            DriveSync.reset(appContext)
+            _driveSync.value = DriveSyncState.Idle
+        }
+    }
+
+    fun setAudiobook(book: Book, minutes: Int, speed: Float) {
+        viewModelScope.launch { repository.setAudiobook(book.id, minutes, speed) }
+    }
+
+    /** Listening to the audiobook edition: logged as a session that moves the page by the narration covered. */
+    fun logListening(book: Book, minutes: Int) {
+        if (minutes <= 0 || !TandemEngine.isTandem(book)) return
+        val endPage = TandemEngine.pageAfterListening(book, minutes)
+        logManualSession(book.id, book.currentPage, endPage, minutes)
+    }
+
+    /** Jumps both editions to where the audiobook player says the reader is. */
+    fun setAudioPosition(book: Book, position: Int) {
+        setProgress(book, TandemEngine.pageForAudio(book, position))
+    }
+
+    /** Books picked from a shelf photo, added in one go; marked owned when the reader said so. */
+    fun addShelfBooks(found: List<BookMetadata>, status: BookStatus, owned: Boolean) {
+        viewModelScope.launch {
+            found.forEach { scanned ->
+                val added = repository.addBook(
+                    title = scanned.title,
+                    authors = scanned.authors,
+                    totalPages = scanned.pageCount,
+                    coverUrl = scanned.coverUrl,
+                    description = scanned.description,
+                    genres = scanned.genres,
+                    publishedDate = scanned.publishedDate,
+                    status = status,
+                    creators = scanned.creators,
+                    isbn = scanned.isbn,
+                    publisher = scanned.publisher
+                )
+                if (owned) repository.updateOwnership(added.id, Ownership.OWNED)
             }
         }
     }
@@ -333,6 +647,25 @@ class BookTrackerViewModel(
     fun importCsv(context: Context, uri: android.net.Uri, onComplete: (CsvImportResult?) -> Unit) {
         viewModelScope.launch {
             val result = runCatching { repository.importCsv(context, uri) }.getOrNull()
+            onComplete(result)
+        }
+    }
+
+    /**
+     * Imports a Bookmory backup into the library through the normal backup merge,
+     * so anything already imported is left alone. Fails with
+     * [BookmoryImporter.NotABookmoryBackup] for files that aren't one.
+     */
+    fun importBookmory(context: Context, uri: android.net.Uri, onComplete: (Result<BookmoryImportSummary>) -> Unit) {
+        viewModelScope.launch {
+            val result = runCatching {
+                val import = BookmoryImporter.read(context, uri, repository.snapshotForBackup())
+                repository.restoreFromBackup(import.snapshot.copy(sessions = emptyList()))
+                repository.upsertSessions(import.snapshot.sessions)
+                // Same day boundary as Bookmory, so the imported streak reads the same.
+                import.summary.dayStartHour?.let { settings.setDayStartsAtHour(it) }
+                import.summary
+            }
             onComplete(result)
         }
     }
@@ -417,6 +750,81 @@ class BookTrackerViewModel(
         viewModelScope.launch { repository.updateFormat(book.id, format) }
     }
 
+    fun setOwnership(book: Book, ownership: Ownership) {
+        viewModelScope.launch {
+            val current = repository.observeBooks().first().find { it.id == book.id } ?: book
+            // Going on the wishlist starts its details, so the page can sort by when it was added.
+            if (ownership == Ownership.WISHLIST && current.wish == null) {
+                val now = System.currentTimeMillis()
+                repository.updateBook(current.copy(ownership = ownership, wish = WishInfo(addedAt = now), lastUpdated = now))
+            } else {
+                repository.updateOwnership(book.id, ownership)
+            }
+        }
+    }
+
+    /** Priority, expected price, store, who recommended it and when it comes out. */
+    fun setWish(book: Book, wish: WishInfo) {
+        viewModelScope.launch {
+            val current = repository.observeBooks().first().find { it.id == book.id } ?: book
+            repository.updateBook(current.copy(wish = wish, lastUpdated = System.currentTimeMillis()))
+        }
+    }
+
+    /**
+     * "Got it": off the wishlist and onto the shelf. With a [purchase] it was
+     * bought and the purchase is logged; without one it was a gift.
+     */
+    fun gotWished(book: Book, purchase: com.example.booktracker.shared.models.PurchaseLog?) {
+        viewModelScope.launch {
+            val current = repository.observeBooks().first().find { it.id == book.id } ?: book
+            repository.updateBook(
+                current.copy(
+                    ownership = if (purchase != null) Ownership.OWNED else Ownership.GIFT,
+                    purchaseLog = current.purchaseLog + listOfNotNull(purchase),
+                    lastUpdated = System.currentTimeMillis()
+                )
+            )
+        }
+    }
+
+    /** Adds a searched or scanned book straight to the wishlist, on the to-read pile. */
+    fun addToWishlist(scanned: BookMetadata, format: BookFormat, onAdded: (Book) -> Unit = {}) {
+        viewModelScope.launch {
+            val added = repository.addBook(
+                title = scanned.title,
+                authors = scanned.authors,
+                totalPages = scanned.pageCount,
+                coverUrl = scanned.coverUrl,
+                description = scanned.description,
+                genres = scanned.genres,
+                publishedDate = scanned.publishedDate,
+                status = BookStatus.TO_READ,
+                format = format,
+                creators = scanned.creators,
+                isbn = scanned.isbn,
+                publisher = scanned.publisher
+            )
+            val wished = added.copy(ownership = Ownership.WISHLIST, wish = WishInfo(addedAt = added.dateAdded))
+            repository.updateBook(wished)
+            onAdded(wished)
+        }
+    }
+
+    /** Replaces the book's purchase records; a first purchase also marks an unset book as owned. */
+    fun setPurchases(book: Book, purchases: List<com.example.booktracker.shared.models.PurchaseLog>) {
+        viewModelScope.launch {
+            val current = repository.observeBooks().first().find { it.id == book.id } ?: book
+            repository.updateBook(
+                current.copy(
+                    purchaseLog = purchases,
+                    ownership = if (purchases.isNotEmpty() && current.ownership == Ownership.NONE) Ownership.OWNED else current.ownership,
+                    lastUpdated = System.currentTimeMillis()
+                )
+            )
+        }
+    }
+
     fun finishBook(book: Book, rating: Map<String, Float>, review: String? = null) {
         viewModelScope.launch { repository.finishBook(book.id, rating, review) }
     }
@@ -458,6 +866,8 @@ class BookTrackerViewModel(
                 soundscapeEngine.stop()
                 ServiceLocator.activeReadingSeconds.value = 0
                 ServiceLocator.elapsedSeconds.value = 0
+                ServiceLocator.timerPausedAt.value = null
+                ServiceLocator.sessionPageTarget.value = null
                 ServiceLocator.timerPhase.value = TimerPhase.WORK
                 val workMins = ServiceLocator.customWorkMinutes.value ?: workMinutes.value
                 ServiceLocator.timeLeftSeconds.value = workMins * 60
@@ -474,7 +884,10 @@ class BookTrackerViewModel(
         val savedAt: Long,
         val durationSeconds: Int,
         val startPage: Int,
-        val endPage: Int
+        val endPage: Int,
+        /** So "your usual pace" can leave this session out. */
+        val sessionId: String = "",
+        val focus: Int = 0
     )
 
     private val _lastSessionResult = MutableStateFlow<SessionResult?>(null)
@@ -492,6 +905,11 @@ class BookTrackerViewModel(
         startTime: Long,
         endTime: Long,
         newStatus: BookStatus?,
+        focus: Int = 0,
+        /** A line copied from the book on the save screen; kept as a note on [endPage]. */
+        quote: String = "",
+        /** An earlier session to join this one onto; see [BookRepository.endSessionDetailed]. */
+        mergeWithId: String? = null,
         onSaved: () -> Unit
     ) {
         viewModelScope.launch {
@@ -500,8 +918,11 @@ class BookTrackerViewModel(
                 endPage = endPage,
                 environmentTag = environmentTag,
                 startTime = startTime,
-                endTime = endTime
+                endTime = endTime,
+                focus = focus,
+                mergeWithId = mergeWithId
             )
+            if (quote.isNotBlank()) repository.addNote(book.id, endPage, quote.trim(), NoteType.BOOK_CONTENT, emptyList())
             // FINISHED/DNF are applied by their own calls so rating and DNF payloads
             // are not lost; anything else falls back to keeping the book READING.
             if (newStatus != null && newStatus != BookStatus.FINISHED && newStatus != BookStatus.DNF) {
@@ -515,15 +936,13 @@ class BookTrackerViewModel(
                 durationSeconds = saved?.durationSeconds
                     ?: ((endTime - startTime) / 1000L).toInt().coerceAtLeast(0),
                 startPage = saved?.startPage ?: book.currentPage,
-                endPage = saved?.endPage ?: endPage
+                endPage = saved?.endPage ?: endPage,
+                sessionId = saved?.id.orEmpty(),
+                focus = saved?.focus ?: focus
             )
             if (ServiceLocator.timerBookId.value == book.id) setTimerBook(null)
             onSaved()
         }
-    }
-
-    fun clearSessionResult() {
-        _lastSessionResult.value = null
     }
 
     /** Drops the running session without recording it. */
@@ -587,8 +1006,35 @@ class BookTrackerViewModel(
         }
     }
 
+    fun setHomeLayout(layout: HomeLayout) {
+        viewModelScope.launch { settings.setHomeLayout(layout) }
+    }
+
     fun setUserName(name: String) {
         viewModelScope.launch { settings.setUserName(name.trim().ifBlank { "Reader" }) }
+    }
+
+    /** Sets the profile picture to a picked photo; onDone(false) if it couldn't be read. */
+    fun setAvatarPhoto(uri: android.net.Uri, onDone: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            val stored = AvatarStore.importPhoto(appContext, uri)
+            if (stored != null) settings.setAvatar(stored)
+            onDone(stored != null)
+        }
+    }
+
+    fun setAvatarCover(bookId: String) {
+        viewModelScope.launch {
+            AvatarStore.clearPhoto(appContext)
+            settings.setAvatar(AvatarStore.COVER_PREFIX + bookId)
+        }
+    }
+
+    fun clearAvatar() {
+        viewModelScope.launch {
+            AvatarStore.clearPhoto(appContext)
+            settings.setAvatar("")
+        }
     }
 
     fun setDailyGoal(pages: Int) {
@@ -642,6 +1088,8 @@ class BookTrackerViewModel(
         ServiceLocator.timerBookTitle.value = bookTitle
         if (bookId == null) {
             ServiceLocator.timerIsRunning.value = false
+            ServiceLocator.timerPausedAt.value = null
+            ServiceLocator.sessionPageTarget.value = null
             ServiceLocator.consumeTimerExpired()
             soundscapeEngine.stop()
             viewModelScope.launch {
@@ -658,7 +1106,24 @@ class BookTrackerViewModel(
         }
     }
 
+    /**
+     * With no timer to resume, open the way the reader last chose: count-up, or a
+     * countdown of their last length. Only an explicit pick in the timer sheet
+     * changes the preference (see [setTimerMode]).
+     */
+    private suspend fun applyPreferredTimerMode() {
+        if (settings.preferredTimerMode.first() == TimerMode.COUNTDOWN.name) {
+            ServiceLocator.timerMode.value = TimerMode.COUNTDOWN
+            ServiceLocator.timeLeftSeconds.value = (ServiceLocator.customWorkMinutes.value ?: settings.workMinutes.first()) * 60
+        } else {
+            ServiceLocator.timerMode.value = TimerMode.STOPWATCH
+            ServiceLocator.elapsedSeconds.value = 0
+        }
+    }
+
     fun setTimerMode(mode: TimerMode) {
+        // Remembered even if it's already the current mode, so re-picking it sticks.
+        viewModelScope.launch { settings.setPreferredTimerMode(mode.name) }
         if (ServiceLocator.timerMode.value == mode) return
         ServiceLocator.timerMode.value = mode
         if (mode == TimerMode.STOPWATCH) {
@@ -694,12 +1159,33 @@ class BookTrackerViewModel(
         if (isRunning && ServiceLocator.timerMode.value == TimerMode.COUNTDOWN && ServiceLocator.timeLeftSeconds.value <= 0) {
             return
         }
-        ServiceLocator.timerIsRunning.value = isRunning
+        ServiceLocator.setTimerRunning(isRunning)
         if (isRunning) {
             if (_noiseType.value != NoiseType.NONE) soundscapeEngine.play(_noiseType.value)
         } else {
             soundscapeEngine.stop()
         }
+        persistTimer()
+    }
+
+    /**
+     * Stops a clock nobody answered "still reading?" for, and takes back the time
+     * spent waiting for that answer: it's the one stretch known not to be reading.
+     */
+    fun pauseUnattended(waitedSeconds: Int) {
+        setTimerRunning(false)
+        ServiceLocator.activeReadingSeconds.value = (ServiceLocator.activeReadingSeconds.value - waitedSeconds).coerceAtLeast(0)
+        if (ServiceLocator.timerMode.value == TimerMode.STOPWATCH) {
+            ServiceLocator.elapsedSeconds.value = (ServiceLocator.elapsedSeconds.value - waitedSeconds).coerceAtLeast(0)
+        } else {
+            ServiceLocator.timeLeftSeconds.value = (ServiceLocator.timeLeftSeconds.value + waitedSeconds).coerceAtMost(countdownTotalSeconds())
+        }
+        persistTimer()
+    }
+
+    /** The page this session aims for, or null to read without a page goal. */
+    fun setPageTarget(page: Int?) {
+        ServiceLocator.sessionPageTarget.value = page
         persistTimer()
     }
 
@@ -752,13 +1238,14 @@ class BookTrackerViewModel(
         bookId: String,
         page: Int,
         text: String,
-        type: NoteType = NoteType.BOOK_CONTENT
+        type: NoteType = NoteType.BOOK_CONTENT,
+        images: List<String> = emptyList()
     ) {
-        viewModelScope.launch { repository.addNote(bookId, page, text, type) }
+        viewModelScope.launch { repository.addNote(bookId, page, text, type, images) }
     }
 
-    fun updateNote(noteId: String, page: Int, text: String, type: NoteType) {
-        viewModelScope.launch { repository.updateNote(noteId, page, text, type) }
+    fun updateNote(noteId: String, page: Int, text: String, type: NoteType, images: List<String>) {
+        viewModelScope.launch { repository.updateNote(noteId, page, text, type, images) }
     }
 
     fun toggleNoteFavorite(noteId: String) {
@@ -779,13 +1266,7 @@ class BookTrackerViewModel(
                     context = context,
                     uri = uri,
                     snapshot = repository.snapshotForBackup(),
-                    settings = BackupEngine.BackupSettings(
-                        dailyGoal = settings.dailyGoal.first(),
-                        yearlyGoal = settings.yearlyGoal.first(),
-                        monthlyGoalPages = settings.monthlyGoalPages.first(),
-                        monthlyGoalBooks = settings.monthlyGoalBooks.first(),
-                        dayStartsAtHour = settings.dayStartsAtHour.first()
-                    )
+                    settings = settings.backupSettings()
                 )
                 onDone(true)
             } catch (e: Exception) {
@@ -805,6 +1286,8 @@ class BookTrackerViewModel(
                 parsed.settings.monthlyGoalPages?.let { settings.setMonthlyGoalPages(it) }
                 parsed.settings.monthlyGoalBooks?.let { settings.setMonthlyGoalBooks(it) }
                 parsed.settings.dayStartsAtHour?.let { settings.setDayStartsAtHour(it) }
+                parsed.settings.homeLayout?.let { settings.setHomeLayout(HomeLayout.decode(it)) }
+                parsed.settings.avatar?.let { settings.setAvatar(it) }
                 onDone(parsed.snapshot.books.size)
             } catch (e: Exception) {
                 onDone(-1)

@@ -1,5 +1,11 @@
 package com.example.booktracker.app.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,6 +46,23 @@ data class CoverAccent(
 
     private companion object {
         val NightBase = Color(0xFF1B2430)
+    }
+}
+
+/**
+ * A soft wash of the cover's colour fading into the surface: down from the top
+ * of a screen, or in from the left of a card. It fades in once the palette
+ * resolves, so each book's pages feel like its own.
+ */
+fun Modifier.coverGlow(accent: CoverAccent, strength: Float = 0.28f, fromLeft: Boolean = false): Modifier = composed {
+    val target = (accent.vibrant ?: accent.dominant)?.copy(alpha = strength) ?: Color.Transparent
+    val color by animateColorAsState(target, tween(com.example.booktracker.app.ui.animations.Motion.LONG), label = "coverGlow")
+    drawBehind {
+        if (color.alpha <= 0f) return@drawBehind
+        drawRect(
+            if (fromLeft) Brush.horizontalGradient(listOf(color, Color.Transparent), endX = size.width * 0.7f)
+            else Brush.verticalGradient(listOf(color, Color.Transparent), endY = size.height * 0.5f)
+        )
     }
 }
 

@@ -78,20 +78,38 @@ object GoalEngine {
         val daysInMonth: Int
     )
 
+    /** Days of tracking needed before the year-end projection is shown. */
+    const val MIN_DAYS_FOR_PROJECTION = 14
+
+    /** First day the reader added a book or logged a session, or null with no data. */
+    fun trackingStart(books: List<Book>, sessions: List<Session>, zone: ZoneId = ZoneId.systemDefault()): LocalDate? =
+        (books.map { it.dateAdded.takeIf { d -> d > 0 } ?: it.lastUpdated } + sessions.map { it.startTime })
+            .filter { it > 0 }
+            .minOrNull()
+            ?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
+
     /**
      * Calculates whether the reader is ahead, on track, or behind schedule for
-     * their yearly reading target based on the current day of the year, including
-     * velocity-based year-end completion forecast.
+     * their yearly reading target, including a velocity-based year-end forecast.
+     *
+     * Pace runs from [trackingStart] when that falls inside [date]'s year, so a
+     * reader who starts in October is not judged on January to September.
      */
     fun calculateYearlyPace(
         yearlyGoal: Int,
         completedBooksThisYear: Int,
-        date: LocalDate = LocalDate.now()
+        date: LocalDate = LocalDate.now(),
+        trackingStart: LocalDate? = null
     ): YearlyGoalPace {
         val safeGoal = yearlyGoal.coerceAtLeast(1)
         val daysInYear = date.lengthOfYear()
         val dayOfYear = date.dayOfYear
-        val expected = (dayOfYear.toFloat() / daysInYear) * safeGoal
+        val startDay = trackingStart
+            ?.takeIf { it.year == date.year && !it.isAfter(date) }
+            ?.dayOfYear ?: 1
+        val windowDays = daysInYear - startDay + 1
+        val elapsedDays = dayOfYear - startDay + 1
+        val expected = (elapsedDays.toFloat() / windowDays) * safeGoal
         val diff = completedBooksThisYear - expected
 
         val status = when {
@@ -112,18 +130,18 @@ object GoalEngine {
             GoalPaceStatus.ON_TRACK -> "On track for your yearly goal"
         }
 
-        val projected = if (dayOfYear > 0) {
-            ((completedBooksThisYear.toFloat() / dayOfYear) * daysInYear).roundToInt().coerceAtLeast(completedBooksThisYear)
-        } else {
-            completedBooksThisYear
-        }
+        // Books before tracking began still count; the rate comes from the tracked window.
+        val projected = ((completedBooksThisYear.toFloat() / elapsedDays) * windowDays)
+            .roundToInt().coerceAtLeast(completedBooksThisYear)
 
         val paceRatio = if (expected > 0f) (completedBooksThisYear / expected).coerceIn(0f, 3f) else 1f
 
         val projectionMessage = when {
-            projected > safeGoal -> "Projected to finish $projected books by Dec 31 (+${projected - safeGoal} above target)"
-            projected == safeGoal -> "Projected to reach exactly $projected books by Dec 31"
-            else -> "Projected to finish $projected books (${safeGoal - projected} short of target)"
+            elapsedDays < MIN_DAYS_FOR_PROJECTION && completedBooksThisYear < safeGoal ->
+                "Year-end forecast appears after ${MIN_DAYS_FOR_PROJECTION} days of reading"
+            projected > safeGoal -> "Projected to finish ${bookCount(projected)} by Dec 31 (+${projected - safeGoal} above target)"
+            projected == safeGoal -> "Projected to reach exactly ${bookCount(projected)} by Dec 31"
+            else -> "Projected to finish ${bookCount(projected)} (${safeGoal - projected} short of target)"
         }
 
         return YearlyGoalPace(
@@ -141,6 +159,8 @@ object GoalEngine {
         )
     }
 
+    private fun bookCount(n: Int) = "$n book${if (n == 1) "" else "s"}"
+
     /**
      * Evaluates daily reading habit consistency over a rolling window (e.g. 30 days or year-to-date).
      */
@@ -148,17 +168,14 @@ object GoalEngine {
         sessions: List<Session>,
         daysWindow: Int = 30,
         date: LocalDate = LocalDate.now(),
-        zone: ZoneId = ZoneId.systemDefault()
+        zone: ZoneId = ZoneId.systemDefault(),
+        dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR
     ): HabitConsistency {
         val safeWindow = daysWindow.coerceAtLeast(7)
         val startDate = date.minusDays((safeWindow - 1).toLong())
 
-        val activeDates = sessions
-            .filter { it.pagesRead > 0 }
-            .map { Instant.ofEpochMilli(it.endTime).atZone(zone).toLocalDate() }
-            .filter { !it.isBefore(startDate) && !it.isAfter(date) }
-            .distinct()
-            .count()
+        val activeDates = StreakEngine.pagesByDay(sessions, zone, dayStartsAtHour).keys
+            .count { !it.isBefore(startDate) && !it.isAfter(date) }
 
         val percent = ((activeDates.toFloat() / safeWindow) * 100f).roundToInt().coerceIn(0, 100)
 
@@ -253,18 +270,16 @@ object GoalEngine {
         monthlyGoalPages: Int,
         monthlyGoalBooks: Int,
         date: LocalDate = LocalDate.now(),
-        zone: ZoneId = ZoneId.systemDefault()
+        zone: ZoneId = ZoneId.systemDefault(),
+        dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR
     ): MonthlyGoalSummary {
         val daysInMonth = date.lengthOfMonth()
         val year = date.year
         val month = date.monthValue
 
-        val pagesThisMonth = sessions
-            .filter {
-                val d = Instant.ofEpochMilli(it.endTime).atZone(zone).toLocalDate()
-                d.year == year && d.monthValue == month
-            }
-            .sumOf { it.pagesRead }
+        val pagesByDayThisMonth = StreakEngine.pagesByDay(sessions, zone, dayStartsAtHour)
+            .filterKeys { it.year == year && it.monthValue == month }
+        val pagesThisMonth = pagesByDayThisMonth.values.sum()
 
         val booksThisMonth = books
             .filter { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) }
@@ -273,12 +288,7 @@ object GoalEngine {
                 d.year == year && d.monthValue == month
             }
 
-        val activeDays = sessions
-            .filter { it.pagesRead > 0 }
-            .map { Instant.ofEpochMilli(it.endTime).atZone(zone).toLocalDate() }
-            .filter { it.year == year && it.monthValue == month }
-            .distinct()
-            .count()
+        val activeDays = pagesByDayThisMonth.size
 
         return MonthlyGoalSummary(
             year = year,

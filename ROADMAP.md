@@ -148,6 +148,48 @@ These features build on top of our existing 100% offline, local-first Room + Dat
 
 ---
 
+## Phase 6 — Cross-device sync with privacy (planned, not started)
+
+Goal: one library on phone, tablet and watch, with no account, no server of ours, and nothing
+readable by anyone but the reader. Privacy is the feature: *"Your data is encrypted on your phone.
+Only your devices hold the key."* Note this relaxes the "no cloud" constraint only for the reader's
+own Google Drive, and only ever with ciphertext; confirm before building.
+
+### 6.1 Change tracking (prerequisite)
+- Every synced record (books, sessions, notes, vocabulary words, review states, settings subset)
+  needs a last-modified time, a device id and a tombstone for deletions, so edits from two devices
+  merge instead of overwrite. Today only books and notes carry timestamps, and deletes leave no trace.
+- Merge rule: last write wins per record; sessions are append-only and merged by id; a delete beats
+  an older edit. Pure merge engine in `app/analytics`-style folder with unit tests (two devices
+  editing the same book, delete vs edit, clock skew).
+- Needs a Room migration, `BackupEngine` format bump and `Models.kt` fields (see AGENTS.md).
+
+### 6.2 Pairing and encryption
+- Pair a new device by scanning a QR code from an already-paired one; the QR carries a random
+  256-bit key. No passwords, no account.
+- Key lives in the Android Keystore on each device (wrapped); AES-256-GCM for every file; a
+  random nonce per file. Lost every device = data unrecoverable, so offer an optional printed
+  recovery phrase.
+- Revoke a device by rotating the key and re-encrypting.
+
+### 6.3 Transport
+- **Drive app-data folder** (`drive.appdata` scope, hidden from the user's Drive and invisible to
+  other apps): each device writes small encrypted change files; others pull and merge. Google only
+  ever stores ciphertext. Needs Google Play Services, so devices without it cannot use this path.
+- **Direct sync (later):** Wi-Fi Direct / local network between devices that are together, no cloud.
+- **Watch:** keeps using the Wearable Data Layer directly to the phone (already built); it does not
+  need Drive.
+- Photos (note images, covers) sync as separate encrypted blobs, downscaled, after the text.
+
+### 6.4 UI
+- Settings → Sync: pair a device, list devices with last-seen time, revoke, sync now, pause, and
+  a plain statement of what leaves the phone. Update `privacy-policy.md` and the store listing.
+
+Open questions: opt in per data type (photos can be large)? Wi-Fi only by default? Offer a sync
+status chip on Profile?
+
+---
+
 ## Explicitly dropped (do not build without a new ask)
 Removed at the user's request / off-constraint — see [CLAUDE.md](CLAUDE.md) history:
 Google Cast, Android Auto, Desktop PWA, Anime-canon bridge, and any Firebase/paid dependency.

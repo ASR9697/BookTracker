@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pixel Bookshelf: chunky pixel spines of different heights on a wooden ledge. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#FFE05A47" android:pathData="M30,42h6v30h-6z" />
+    <path android:fillColor="#FF3FA7A0" android:pathData="M37,46h5v26h-5z" />
+    <path android:fillColor="#FFF2B33D" android:pathData="M43,38h7v34h-7z" />
+    <path android:fillColor="#FF7BB662" android:pathData="M51,44h5v28h-5z" />
+    <path android:fillColor="#FF4F7CC9" android:pathData="M57,40h6v32h-6z" />
+    <path android:fillColor="#FFF3E6C8" android:pathData="M64,48h5v24h-5z" />
+    <path android:fillColor="#FFB0607E" android:pathData="M70,42h8v30h-8z" />
+    <!-- Pixel bands on a few spines -->
+    <path android:fillColor="#66000000" android:pathData="M30,46h6v2h-6z M43,42h7v2h-7z M43,64h7v2h-7z M57,66h6v2h-6z M70,47h8v2h-8z" />
+    <!-- Shelf -->
+    <path android:fillColor="#FF9C6B3F" android:pathData="M27,72h54v5h-54z" />
+    <path android:fillColor="#FF6E4A2A" android:pathData="M27,77h54v2h-54z" />
+</vector>

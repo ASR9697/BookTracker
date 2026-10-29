@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.FlowRow
@@ -13,8 +15,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -45,37 +47,37 @@ fun LoanBadge(
         LoanEngine.LoanUrgency.OVERDUE -> Triple(
             MaterialTheme.colorScheme.errorContainer,
             MaterialTheme.colorScheme.onErrorContainer,
-            Icons.Filled.Warning
+            Icons.Rounded.Warning
         )
         LoanEngine.LoanUrgency.DUE_SOON -> Triple(
             MaterialTheme.colorScheme.tertiaryContainer,
             MaterialTheme.colorScheme.onTertiaryContainer,
-            Icons.Filled.Schedule
+            Icons.Rounded.Schedule
         )
         LoanEngine.LoanUrgency.NORMAL -> {
             if (status.isLentOut) {
                 Triple(
                     MaterialTheme.colorScheme.secondaryContainer,
                     MaterialTheme.colorScheme.onSecondaryContainer,
-                    Icons.Filled.Person
+                    Icons.Rounded.Person
                 )
             } else {
                 Triple(
                     MaterialTheme.colorScheme.surfaceContainerHighest,
                     MaterialTheme.colorScheme.onSurfaceVariant,
-                    Icons.AutoMirrored.Filled.MenuBook
+                    Icons.AutoMirrored.Rounded.MenuBook
                 )
             }
         }
         LoanEngine.LoanUrgency.RETURNED -> Triple(
             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
             MaterialTheme.colorScheme.onSurfaceVariant,
-            Icons.Filled.CheckCircle
+            Icons.Rounded.CheckCircle
         )
     }
 
     Surface(
-        shape = RoundedCornerShape(8.dp),
+        shape = AppShape.XS,
         color = containerColor,
         contentColor = contentColor,
         modifier = modifier
@@ -126,10 +128,10 @@ fun UrgentLoanBanner(
     else
         MaterialTheme.colorScheme.onTertiaryContainer
 
-    val icon = if (isOverdue) Icons.Filled.ErrorOutline else Icons.Filled.Schedule
+    val icon = if (isOverdue) Icons.Rounded.ErrorOutline else Icons.Rounded.Schedule
 
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = AppShape.M,
         color = containerColor,
         contentColor = contentColor,
         modifier = modifier
@@ -152,7 +154,7 @@ fun UrgentLoanBanner(
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    if (isOverdue) "Library Book Overdue!" else "Library Return Approaching",
+                    if (isOverdue) "Library book overdue" else "Library book due soon",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -208,7 +210,7 @@ fun LoanDetailCard(
     }
 
     Card(
-        shape = RoundedCornerShape(20.dp),
+        shape = AppShape.L,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         modifier = modifier
             .fillMaxWidth()
@@ -222,14 +224,14 @@ fun LoanDetailCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        if (activeLoan?.isLentOut == true) Icons.Filled.Person else Icons.AutoMirrored.Filled.MenuBook,
+                        if (activeLoan?.isLentOut == true) Icons.Rounded.Person else Icons.AutoMirrored.Rounded.MenuBook,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        if (activeLoan?.isLentOut == true) "Lending Record" else "Library & Lending",
+                        if (activeLoan?.isLentOut == true) "Lending record" else "Library & lending",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -301,17 +303,17 @@ fun LoanDetailCard(
                     Button(
                         onClick = onMarkReturned,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = AppShape.S
                     ) {
-                        Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Mark Returned")
+                        Text("Mark returned")
                     }
                     OutlinedButton(
                         onClick = { showDialog = true },
-                        shape = RoundedCornerShape(12.dp)
+                        shape = AppShape.S
                     ) {
-                        Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Rounded.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Edit")
                     }
@@ -325,10 +327,10 @@ fun LoanDetailCard(
                 Spacer(Modifier.height(14.dp))
                 OutlinedButton(
                     onClick = { showDialog = true },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = AppShape.S,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
                     Text("Borrow from Library or Lend to Friend")
                 }
@@ -344,7 +346,7 @@ fun LoanDetailCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        if (showHistory) "Hide Loan History" else "View Past Loan History (${pastLoans.size})",
+                        if (showHistory) "Hide past loans" else "Past loans (${pastLoans.size})",
                         style = MaterialTheme.typography.labelMedium
                     )
                 }
@@ -357,7 +359,7 @@ fun LoanDetailCard(
                     ) {
                         pastLoans.reversed().forEach { past ->
                             Surface(
-                                shape = RoundedCornerShape(10.dp),
+                                shape = AppShape.XS,
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -366,7 +368,7 @@ fun LoanDetailCard(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        Icons.Filled.CheckCircle,
+                                        Icons.Rounded.CheckCircle,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(16.dp)
@@ -420,7 +422,7 @@ fun LoanRecordDialog(
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = AppShape.L,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             tonalElevation = 6.dp,
             modifier = Modifier.fillMaxWidth()
@@ -462,7 +464,7 @@ fun LoanRecordDialog(
                     label = { Text(if (isLentOut) "Who has it?" else "From (library or person)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = AppShape.S
                 )
 
                 // Due date duration presets
@@ -493,7 +495,7 @@ fun LoanRecordDialog(
                     onValueChange = { memo = it },
                     label = { Text("Note (optional)") },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = AppShape.S,
                     minLines = 2,
                     maxLines = 3
                 )
@@ -523,7 +525,7 @@ fun LoanRecordDialog(
                             )
                             onSave(record)
                         },
-                        shape = RoundedCornerShape(12.dp)
+                        shape = AppShape.S
                     ) {
                         Text("Save")
                     }

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget picker preview for the Quote of the day widget (sample content). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_preview_bg"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:padding="16dp"
+    tools:ignore="HardcodedText">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="serif"
+        android:text="“It is not the lives we regret not living that are the real problem. It is the regret itself.”"
+        android:textColor="#FFF4EDE1"
+        android:textSize="15sp"
+        android:textStyle="italic" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="— The Midnight Library"
+        android:textColor="#FFF59E0B"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+</LinearLayout>

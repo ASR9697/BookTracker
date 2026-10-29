@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -11,10 +13,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.FormatQuote
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.FormatQuote
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -60,8 +62,10 @@ fun QuoteCardDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
+                // A share card, not a banner: on a tablet it stays card-sized.
+                .widthIn(max = 480.dp)
                 .wrapContentHeight(),
-            shape = RoundedCornerShape(28.dp),
+            shape = AppShape.XL,
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp
         ) {
@@ -79,12 +83,12 @@ fun QuoteCardDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Quote Card",
+                        "Quote card",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Filled.Close, contentDescription = "Close")
+                        Icon(Icons.Rounded.Close, contentDescription = "Close")
                     }
                 }
 
@@ -94,7 +98,7 @@ fun QuoteCardDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(AppShape.S)
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                         .padding(3.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -104,9 +108,9 @@ fun QuoteCardDialog(
                         Surface(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(AppShape.S)
                                 .clickable { selectedFormat = fmt },
-                            shape = RoundedCornerShape(12.dp),
+                            shape = AppShape.S,
                             color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
                         ) {
                             Text(
@@ -136,7 +140,7 @@ fun QuoteCardDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(previewAspectRatio)
-                        .clip(RoundedCornerShape(24.dp))
+                        .clip(AppShape.L)
                         .background(brush)
                         .padding(if (selectedFormat == QuoteCardFormat.STORY) 14.dp else 16.dp),
                     contentAlignment = Alignment.Center
@@ -145,7 +149,7 @@ fun QuoteCardDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .fillMaxHeight(if (selectedFormat == QuoteCardFormat.STORY) 0.88f else 1f),
-                        shape = RoundedCornerShape(20.dp),
+                        shape = AppShape.L,
                         color = cardColor,
                         border = if (selectedTheme == QuoteCardTheme.POLAROID) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)) else null
                     ) {
@@ -158,7 +162,7 @@ fun QuoteCardDialog(
                         ) {
                             // Top quote glyph
                             Icon(
-                                Icons.Filled.FormatQuote,
+                                Icons.Rounded.FormatQuote,
                                 contentDescription = null,
                                 tint = attrColor.copy(alpha = 0.5f),
                                 modifier = Modifier
@@ -210,7 +214,7 @@ fun QuoteCardDialog(
 
                 // Theme selector (Horizontal scroll)
                 Text(
-                    "Card Theme (${QuoteCardTheme.entries.size} aesthetics)",
+                    "Card style (${QuoteCardTheme.entries.size} looks)",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.Start)
@@ -260,9 +264,9 @@ fun QuoteCardDialog(
                             Toast.makeText(context, "Quote copied to clipboard", Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = AppShape.M
                     ) {
-                        Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("Copy")
                     }
@@ -273,11 +277,11 @@ fun QuoteCardDialog(
                             onDismiss()
                         },
                         modifier = Modifier.weight(1.5f),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = AppShape.M
                     ) {
-                        Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Share Card")
+                        Text("Share card")
                     }
                 }
             }

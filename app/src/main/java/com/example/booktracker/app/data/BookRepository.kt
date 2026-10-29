@@ -3,15 +3,19 @@ package com.example.booktracker.app.data
 import com.example.booktracker.app.data.local.BookDao
 import com.example.booktracker.app.data.local.MarginNoteDao
 import com.example.booktracker.app.data.local.MarginNoteEntity
+import com.example.booktracker.app.data.local.ReviewDao
 import com.example.booktracker.app.data.local.SessionDao
 import com.example.booktracker.app.data.local.SessionEntity
+import com.example.booktracker.app.data.local.VocabDao
 import com.example.booktracker.app.data.local.toEntity
 import com.example.booktracker.app.data.local.toModel
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.DnfData
 import com.example.booktracker.shared.models.MarginNote
+import com.example.booktracker.shared.models.ReviewState
 import com.example.booktracker.shared.models.Session
+import com.example.booktracker.shared.models.VocabWord
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -43,6 +47,7 @@ interface BookRepository {
     suspend fun updateBook(book: Book)
     suspend fun updateStatus(id: String, status: BookStatus)
     suspend fun updateFormat(id: String, format: String)
+    suspend fun updateOwnership(id: String, ownership: com.example.booktracker.shared.models.Ownership)
     suspend fun finishBook(id: String, rating: Map<String, Float>, review: String? = null)
     suspend fun markDnf(id: String, abandonedPercentage: Float, reason: String)
     suspend fun addProgress(id: String, delta: Int)
@@ -62,7 +67,11 @@ interface BookRepository {
         endPage: Int,
         environmentTag: String,
         startTime: Long,
-        endTime: Long
+        endTime: Long,
+        /** 1 to 5, or 0 when the reader skipped it. */
+        focus: Int = 0,
+        /** An earlier session of the same book to fold this one into, so the two count as one. */
+        mergeWithId: String? = null
     ): Session?
     suspend fun addManualSession(
         bookId: String,
@@ -83,7 +92,8 @@ interface BookRepository {
         page: Int,
         text: String,
         type: com.example.booktracker.shared.models.NoteType =
-            com.example.booktracker.shared.models.NoteType.BOOK_CONTENT
+            com.example.booktracker.shared.models.NoteType.BOOK_CONTENT,
+        images: List<String> = emptyList()
     )
     suspend fun updateCollections(bookId: String, collections: List<String>)
     suspend fun setProgress(bookId: String, page: Int)
@@ -101,12 +111,27 @@ interface BookRepository {
         id: String,
         page: Int,
         text: String,
-        type: com.example.booktracker.shared.models.NoteType
+        type: com.example.booktracker.shared.models.NoteType,
+        images: List<String>
     )
 
     suspend fun searchLibrary(query: String): LibrarySearchResults
     suspend fun snapshotForBackup(): LibrarySnapshot
     suspend fun restoreFromBackup(snapshot: LibrarySnapshot)
+    /** Writes sessions as given, replacing any with the same id. */
+    suspend fun upsertSessions(sessions: List<Session>)
+
+    fun observeReviewStates(): Flow<List<ReviewState>>
+    suspend fun saveReviewState(state: ReviewState)
+    fun observeWords(): Flow<List<VocabWord>>
+    suspend fun saveWord(word: VocabWord)
+    suspend fun deleteWord(id: String)
+    /** Sets or clears the day the reader wants to be done with the book by. */
+    suspend fun setFinishBy(bookId: String, finishBy: Long?)
+    /** Sets the audiobook length (0 stops tandem reading) and listening speed. */
+    suspend fun setAudiobook(bookId: String, minutes: Int, speed: Float)
+    /** Writes and removes what a Drive sync merged, books first so sessions and notes have a parent. */
+    suspend fun applySync(changes: com.example.booktracker.app.sync.SyncMerge.Changes)
 }
 
 /** A margin-note hit carries its book so the UI can label and link it. */
@@ -120,7 +145,9 @@ data class LibrarySearchResults(
 data class LibrarySnapshot(
     val books: List<Book> = emptyList(),
     val sessions: List<Session> = emptyList(),
-    val notes: List<MarginNote> = emptyList()
+    val notes: List<MarginNote> = emptyList(),
+    val words: List<VocabWord> = emptyList(),
+    val reviews: List<ReviewState> = emptyList()
 )
 
 /** Everything a book delete removes, held so the Undo snackbar can restore it whole. */
@@ -133,7 +160,9 @@ data class DeletedBook(
 class RoomBookRepository(
     private val bookDao: BookDao,
     private val sessionDao: SessionDao,
-    private val marginNoteDao: MarginNoteDao
+    private val marginNoteDao: MarginNoteDao,
+    private val reviewDao: ReviewDao,
+    private val vocabDao: VocabDao
 ) : BookRepository {
 
     override suspend fun importCsv(context: android.content.Context, uri: android.net.Uri): CsvImportResult {
@@ -183,7 +212,10 @@ class RoomBookRepository(
             purchaseLog = purchaseLog,
             loanRecord = loanRecord,
             isbn = isbn?.takeIf { it.isNotBlank() && !it.startsWith("manual_") },
-            finishedAt = if (finished) now else null
+            finishedAt = if (finished) now else null,
+            // Logging a purchase while adding the book says the reader owns it.
+            ownership = if (purchaseLog.isNotEmpty()) com.example.booktracker.shared.models.Ownership.OWNED
+            else com.example.booktracker.shared.models.Ownership.NONE
         )
         bookDao.upsert(book.toEntity())
         return book
@@ -220,6 +252,11 @@ class RoomBookRepository(
     override suspend fun updateFormat(id: String, format: String) {
         val entity = bookDao.getById(id) ?: return
         bookDao.upsert(entity.copy(format = format, lastUpdated = System.currentTimeMillis()))
+    }
+
+    override suspend fun updateOwnership(id: String, ownership: com.example.booktracker.shared.models.Ownership) {
+        val entity = bookDao.getById(id) ?: return
+        bookDao.upsert(entity.copy(ownership = ownership.name, lastUpdated = System.currentTimeMillis()))
     }
 
     override suspend fun finishBook(id: String, rating: Map<String, Float>, review: String?) {
@@ -322,18 +359,19 @@ class RoomBookRepository(
         bookId: String,
         page: Int,
         text: String,
-        type: com.example.booktracker.shared.models.NoteType
+        type: com.example.booktracker.shared.models.NoteType,
+        images: List<String>
     ) {
         marginNoteDao.upsert(
-            MarginNoteEntity(
+            MarginNote(
                 id = UUID.randomUUID().toString(),
                 bookId = bookId,
                 timestamp = System.currentTimeMillis(),
                 pageNumber = page,
                 content = text,
-                type = type.name,
-                isFavorite = false
-            )
+                type = type,
+                imageUris = images
+            ).toEntity()
         )
     }
 
@@ -360,6 +398,7 @@ class RoomBookRepository(
      */
     override suspend fun restartReading(bookId: String) {
         val entity = bookDao.getById(bookId) ?: return
+        val now = System.currentTimeMillis()
         bookDao.upsert(
             entity.copy(
                 status = BookStatus.READING.name,
@@ -367,7 +406,10 @@ class RoomBookRepository(
                 readCount = entity.readCount + 1,
                 finishedAt = null,
                 dnfData = null,
-                lastUpdated = System.currentTimeMillis()
+                // A deadline belonged to the last read; the start lets old notes resurface.
+                finishBy = null,
+                readStartedAt = now,
+                lastUpdated = now
             )
         )
     }
@@ -401,16 +443,18 @@ class RoomBookRepository(
 
     override suspend fun deleteNote(id: String) {
         marginNoteDao.deleteById(id)
+        reviewDao.deleteById(id)
     }
 
     override suspend fun updateNote(
         id: String,
         page: Int,
         text: String,
-        type: com.example.booktracker.shared.models.NoteType
+        type: com.example.booktracker.shared.models.NoteType,
+        images: List<String>
     ) {
-        val existing = marginNoteDao.getById(id) ?: return
-        marginNoteDao.upsert(existing.copy(pageNumber = page, content = text, type = type.name))
+        val existing = marginNoteDao.getById(id)?.toModel() ?: return
+        marginNoteDao.upsert(existing.copy(pageNumber = page, content = text, type = type, imageUris = images).toEntity())
     }
 
     override suspend fun searchLibrary(query: String): LibrarySearchResults {
@@ -446,6 +490,8 @@ class RoomBookRepository(
 
     private companion object {
         val FTS_OPERATORS = setOf("AND", "OR", "NOT", "NEAR")
+        /** Quick page taps this close to the first one are folded into one record. */
+        const val QUICK_LOG_MERGE_MS = 10 * 60_000L
         val PIPELINE_STATUSES = setOf(
             BookStatus.TO_READ.name, BookStatus.SHORTLIST.name,
             BookStatus.UP_NEXT.name, BookStatus.PAUSED.name, "BACKLOG"
@@ -455,8 +501,67 @@ class RoomBookRepository(
     override suspend fun snapshotForBackup(): LibrarySnapshot = LibrarySnapshot(
         books = bookDao.getAll().map { it.toModel() },
         sessions = sessionDao.getAll().map { it.toModel() },
-        notes = marginNoteDao.getAll().map { it.toModel() }
+        notes = marginNoteDao.getAll().map { it.toModel() },
+        words = vocabDao.getAll().map { it.toModel() },
+        reviews = reviewDao.getAll().map { it.toModel() }
     )
+
+    override suspend fun upsertSessions(sessions: List<Session>) {
+        if (sessions.isNotEmpty()) sessionDao.upsert(sessions.map { it.toEntity() })
+    }
+
+    override fun observeReviewStates(): Flow<List<ReviewState>> =
+        reviewDao.observeAll().map { entities -> entities.map { it.toModel() } }
+
+    override suspend fun saveReviewState(state: ReviewState) {
+        reviewDao.upsert(state.toEntity())
+    }
+
+    override fun observeWords(): Flow<List<VocabWord>> =
+        vocabDao.observeAll().map { entities -> entities.map { it.toModel() } }
+
+    override suspend fun saveWord(word: VocabWord) {
+        vocabDao.upsert(word.toEntity())
+    }
+
+    override suspend fun deleteWord(id: String) {
+        vocabDao.deleteById(id)
+        reviewDao.deleteById(id)
+    }
+
+    override suspend fun setFinishBy(bookId: String, finishBy: Long?) {
+        val entity = bookDao.getById(bookId) ?: return
+        bookDao.upsert(entity.copy(finishBy = finishBy, lastUpdated = System.currentTimeMillis()))
+    }
+
+    override suspend fun setAudiobook(bookId: String, minutes: Int, speed: Float) {
+        val entity = bookDao.getById(bookId) ?: return
+        bookDao.upsert(
+            entity.copy(
+                audioMinutes = minutes.takeIf { it > 0 },
+                audioSpeed = speed.takeIf { minutes > 0 },
+                lastUpdated = System.currentTimeMillis()
+            )
+        )
+    }
+
+    override suspend fun applySync(changes: com.example.booktracker.app.sync.SyncMerge.Changes) {
+        val upserts = changes.snapshot
+        if (upserts.books.isNotEmpty()) bookDao.upsert(upserts.books.map { it.toEntity() })
+        if (upserts.sessions.isNotEmpty()) sessionDao.upsert(upserts.sessions.map { it.toEntity() })
+        if (upserts.notes.isNotEmpty()) marginNoteDao.upsert(upserts.notes.map { it.toEntity() })
+        if (upserts.words.isNotEmpty()) vocabDao.upsert(upserts.words.map { it.toEntity() })
+        if (upserts.reviews.isNotEmpty()) reviewDao.upsert(upserts.reviews.map { it.toEntity() })
+        changes.deletedReviews.forEach { reviewDao.deleteById(it) }
+        changes.deletedWords.forEach { vocabDao.deleteById(it) }
+        changes.deletedNotes.forEach { marginNoteDao.deleteById(it) }
+        changes.deletedSessions.forEach { sessionDao.deleteById(it) }
+        // Deleting a book cascades to its sessions and notes.
+        changes.deletedBooks.forEach { bookDao.deleteById(it) }
+    }
+
+    /** Zone a new session is recorded in; see [Session.zoneId]. */
+    private fun currentZoneId(): String = java.time.ZoneId.systemDefault().id
 
     override suspend fun restoreFromBackup(snapshot: LibrarySnapshot) {
         val existingBooks = bookDao.getAll().associateBy { it.id }
@@ -489,6 +594,21 @@ class RoomBookRepository(
             if (notesToUpsert.isNotEmpty()) {
                 marginNoteDao.upsert(notesToUpsert)
             }
+        }
+
+        if (snapshot.words.isNotEmpty()) {
+            val existingWords = vocabDao.getAll().map { it.id }.toSet()
+            val wordsToUpsert = snapshot.words.filter { it.id !in existingWords }.map { it.toEntity() }
+            if (wordsToUpsert.isNotEmpty()) vocabDao.upsert(wordsToUpsert)
+        }
+
+        if (snapshot.reviews.isNotEmpty()) {
+            val existingReviews = reviewDao.getAll().associateBy { it.itemId }
+            val reviewsToUpsert = snapshot.reviews.filter { backup ->
+                val existing = existingReviews[backup.itemId]
+                existing == null || backup.lastReviewedAt > existing.lastReviewedAt
+            }.map { it.toEntity() }
+            if (reviewsToUpsert.isNotEmpty()) reviewDao.upsert(reviewsToUpsert)
         }
     }
 
@@ -523,7 +643,8 @@ class RoomBookRepository(
                 endPage = finalStartUnit,
                 pagesRead = 0,
                 durationSeconds = 0,
-                environmentTag = ""
+                environmentTag = "",
+                zoneId = currentZoneId()
             )
         )
     }
@@ -543,7 +664,9 @@ class RoomBookRepository(
         endPage: Int,
         environmentTag: String,
         startTime: Long,
-        endTime: Long
+        endTime: Long,
+        focus: Int,
+        mergeWithId: String?
     ): Session? {
         val book = bookDao.getById(bookId) ?: return null
         val ceiling = if (book.totalPages > 0) book.totalPages else Int.MAX_VALUE
@@ -564,7 +687,8 @@ class RoomBookRepository(
                 startPage = startPage,
                 endPage = startPage,
                 pagesRead = 0,
-                environmentTag = ""
+                environmentTag = "",
+                zoneId = currentZoneId()
             )
             ).copy(
             startTime = startTime,
@@ -572,12 +696,29 @@ class RoomBookRepository(
             endPage = cappedEnd,
             pagesRead = (cappedEnd - startPage).coerceAtLeast(0),
             durationSeconds = ((endTime - startTime) / 1000L).toInt().coerceAtLeast(0),
-            environmentTag = environmentTag
+            environmentTag = environmentTag,
+            focus = focus.takeIf { it in 1..5 }
         )
-        sessionDao.upsert(finalized)
+        val earlier = mergeWithId
+            ?.let { id -> sessionDao.getForBook(bookId).firstOrNull { it.id == id && it.endTime in 1..startTime } }
+        val saved = if (earlier == null) finalized else {
+            // One session covering both readings. The gap between them isn't reading,
+            // so the start moves up to keep endTime - startTime equal to the time read.
+            val seconds = earlier.durationSeconds + finalized.durationSeconds
+            finalized.copy(
+                startTime = endTime - seconds * 1000L,
+                durationSeconds = seconds,
+                startPage = earlier.startPage,
+                pagesRead = (cappedEnd - earlier.startPage).coerceAtLeast(0),
+                environmentTag = environmentTag.ifBlank { earlier.environmentTag },
+                focus = finalized.focus ?: earlier.focus
+            )
+        }
+        sessionDao.upsert(saved)
+        if (earlier != null) sessionDao.deleteById(earlier.id)
 
         if (ServiceLocator.timerBookId.value == bookId) ServiceLocator.activeReadingSeconds.value = 0
-        return finalized.toModel()
+        return saved.toModel()
     }
 
     private suspend fun finalizeSession(open: SessionEntity, tag: String = "") {
@@ -634,7 +775,8 @@ class RoomBookRepository(
                 endPage = cappedEnd,
                 pagesRead = (cappedEnd - cappedStart).coerceAtLeast(0),
                 durationSeconds = (durationMillis / 1000).toInt(),
-                environmentTag = "Manual Entry"
+                environmentTag = "Manual Entry",
+                zoneId = currentZoneId()
             )
         )
 
@@ -674,8 +816,27 @@ class RoomBookRepository(
         source: String
     ) {
         val gained = newUnit - oldUnit
-        if (gained <= 0) return
+        if (gained == 0) return
         if (sessionDao.getOpenSessionForBook(bookId) != null) return
+        // The quick log this change continues: an untimed record ending where this one starts.
+        val quickLog = sessionDao.getLatestCompletedForBook(bookId)?.takeIf {
+            it.durationSeconds == 0 && it.startTime == it.endTime && it.environmentTag.isEmpty() &&
+                it.endPage == oldUnit && at - it.endTime in 0..QUICK_LOG_MERGE_MS
+        }
+        if (gained < 0) {
+            // Taking pages back (Undo, a mistaken +5 on the widget) trims the record they went into.
+            if (quickLog != null) {
+                val end = newUnit.coerceAtLeast(quickLog.startPage)
+                if (end == quickLog.startPage) sessionDao.deleteById(quickLog.id)
+                else sessionDao.upsert(quickLog.copy(endPage = end, pagesRead = end - quickLog.startPage))
+            }
+            return
+        }
+        // Several taps a moment apart are one bit of reading, not a pile of one-page sessions.
+        if (quickLog != null) {
+            sessionDao.upsert(quickLog.copy(endPage = newUnit, pagesRead = quickLog.pagesRead + gained))
+            return
+        }
         sessionDao.insert(
             SessionEntity(
                 id = UUID.randomUUID().toString(),
@@ -686,7 +847,8 @@ class RoomBookRepository(
                 endPage = newUnit,
                 pagesRead = gained,
                 durationSeconds = 0,
-                environmentTag = ""
+                environmentTag = "",
+                zoneId = currentZoneId()
             )
         )
     }

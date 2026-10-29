@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -20,9 +22,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.booktracker.app.analytics.StreakEngine
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.Session
@@ -75,10 +78,11 @@ fun ReadingCalendarView(
     onOpenBook: (Book) -> Unit,
     onStartTimer: (Book) -> Unit,
     onEditGoal: () -> Unit = {},
+    dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR,
     modifier: Modifier = Modifier
 ) {
     val zone = remember { ZoneId.systemDefault() }
-    val today = remember { LocalDate.now(zone) }
+    val today = remember(dayStartsAtHour) { StreakEngine.readingDate(System.currentTimeMillis(), zone, dayStartsAtHour) }
     val haptic = LocalHapticFeedback.current
     var selectedMonth by remember { mutableStateOf(YearMonth.now(zone)) }
     var selectedDate by remember { mutableStateOf(today) }
@@ -88,9 +92,9 @@ fun ReadingCalendarView(
     val booksById = remember(books) { books.associateBy { it.id } }
 
     // Map sessions by LocalDate
-    val sessionsByDate = remember(sessions) {
+    val sessionsByDate = remember(sessions, dayStartsAtHour) {
         sessions.filter { it.endTime > 0 }
-            .groupBy { Instant.ofEpochMilli(it.endTime).atZone(zone).toLocalDate() }
+            .groupBy { StreakEngine.sessionDay(it, zone, dayStartsAtHour) }
     }
 
     // Map notes by LocalDate
@@ -117,16 +121,16 @@ fun ReadingCalendarView(
     }
 
     // Monthly summary stats
-    val monthSessions = remember(sessions, selectedMonth) {
+    val monthSessions = remember(sessions, selectedMonth, dayStartsAtHour) {
         sessions.filter {
-            val date = Instant.ofEpochMilli(it.endTime).atZone(zone).toLocalDate()
-            YearMonth.from(date) == selectedMonth && it.endTime > 0
+            it.endTime > 0 && YearMonth.from(StreakEngine.sessionDay(it, zone, dayStartsAtHour)) == selectedMonth
         }
     }
     val monthTotalPages = remember(monthSessions) { monthSessions.sumOf { it.pagesRead } }
     val monthTotalMinutes = remember(monthSessions) { monthSessions.sumOf { it.durationSeconds } / 60 }
     val monthActiveDays = remember(monthSessions) {
-        monthSessions.map { Instant.ofEpochMilli(it.endTime).atZone(zone).toLocalDate() }.distinct().size
+        monthSessions.filter(StreakEngine::isReading)
+            .map { StreakEngine.sessionDay(it, zone, dayStartsAtHour) }.distinct().size
     }
     val monthFinishedBooks = remember(finishedDates, selectedMonth) {
         finishedDates.count { YearMonth.from(it) == selectedMonth }
@@ -142,7 +146,7 @@ fun ReadingCalendarView(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
-            shape = RoundedCornerShape(24.dp),
+            shape = AppShape.L,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -156,7 +160,7 @@ fun ReadingCalendarView(
                             onClick = { selectedMonth = selectedMonth.minusMonths(1) },
                             modifier = Modifier.size(36.dp)
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Previous month")
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Previous month")
                         }
 
                         TextButton(onClick = {
@@ -175,7 +179,7 @@ fun ReadingCalendarView(
                             onClick = { selectedMonth = selectedMonth.plusMonths(1) },
                             modifier = Modifier.size(36.dp)
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next month")
+                            Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = "Next month")
                         }
                     }
 
@@ -184,8 +188,8 @@ fun ReadingCalendarView(
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            Icons.Filled.Share,
-                            contentDescription = "Share Monthly Report",
+                            Icons.Rounded.Share,
+                            contentDescription = "Share monthly report",
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -196,7 +200,7 @@ fun ReadingCalendarView(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(AppShape.M)
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f))
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.SpaceAround,
@@ -205,14 +209,14 @@ fun ReadingCalendarView(
                     MonthStatItem(
                         value = "$monthActiveDays",
                         unit = "days read",
-                        icon = Icons.Filled.CalendarMonth,
+                        icon = Icons.Rounded.CalendarMonth,
                         tint = MaterialTheme.colorScheme.primary
                     )
                     VerticalDivider(modifier = Modifier.height(24.dp))
                     MonthStatItem(
                         value = "$monthTotalPages",
                         unit = "pages",
-                        icon = Icons.Filled.AutoStories,
+                        icon = Icons.Rounded.AutoStories,
                         tint = MaterialTheme.colorScheme.tertiary
                     )
                     if (monthFinishedBooks > 0) {
@@ -220,7 +224,7 @@ fun ReadingCalendarView(
                         MonthStatItem(
                             value = "$monthFinishedBooks",
                             unit = "finished",
-                            icon = Icons.Filled.EmojiEvents,
+                            icon = Icons.Rounded.EmojiEvents,
                             tint = Color(0xFFFFB300)
                         )
                     }
@@ -228,7 +232,7 @@ fun ReadingCalendarView(
                     MonthStatItem(
                         value = "${monthTotalMinutes / 60}h ${monthTotalMinutes % 60}m",
                         unit = "time",
-                        icon = Icons.Filled.Timer,
+                        icon = Icons.Rounded.Timer,
                         tint = MaterialTheme.colorScheme.secondary
                     )
                 }
@@ -243,7 +247,7 @@ fun ReadingCalendarView(
                 )
                 val goalPct = (goalProgress * 100).toInt()
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = AppShape.S,
                     color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -257,7 +261,7 @@ fun ReadingCalendarView(
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    Icons.Filled.Flag,
+                                    Icons.Rounded.Flag,
                                     contentDescription = null,
                                     modifier = Modifier.size(13.dp),
                                     tint = MaterialTheme.colorScheme.primary
@@ -295,7 +299,7 @@ fun ReadingCalendarView(
         // Calendar Grid
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
+            shape = AppShape.L,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
@@ -308,14 +312,14 @@ fun ReadingCalendarView(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Monthly View",
+                        "Month view",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
+                        shape = AppShape.S,
                         color = MaterialTheme.colorScheme.surfaceContainerHighest,
                     ) {
                         Row(modifier = Modifier.padding(2.dp)) {
@@ -327,7 +331,7 @@ fun ReadingCalendarView(
                             modes.forEach { (mode, label) ->
                                 val isSelected = viewMode == mode
                                 Surface(
-                                    shape = RoundedCornerShape(10.dp),
+                                    shape = AppShape.XS,
                                     color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
                                     modifier = Modifier.bounceClick {
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -341,9 +345,9 @@ fun ReadingCalendarView(
                                     ) {
                                         Icon(
                                             imageVector = when (mode) {
-                                                CalendarViewMode.PAGES -> Icons.Filled.AutoStories
-                                                CalendarViewMode.COVERS -> Icons.Filled.PhotoLibrary
-                                                CalendarViewMode.YEAR_HEATMAP -> Icons.Filled.CalendarMonth
+                                                CalendarViewMode.PAGES -> Icons.Rounded.AutoStories
+                                                CalendarViewMode.COVERS -> Icons.Rounded.PhotoLibrary
+                                                CalendarViewMode.YEAR_HEATMAP -> Icons.Rounded.CalendarMonth
                                             },
                                             contentDescription = null,
                                             modifier = Modifier.size(13.dp),
@@ -368,6 +372,7 @@ fun ReadingCalendarView(
                         books = books,
                         notes = notes,
                         onOpenBook = onOpenBook,
+                        dayStartsAtHour = dayStartsAtHour,
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
                     )
                 } else {
@@ -379,9 +384,10 @@ fun ReadingCalendarView(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceAround
                 ) {
-                    val daysOfWeek = listOf("S", "M", "T", "W", "T", "F", "S")
-                    daysOfWeek.forEachIndexed { idx, day ->
-                        val isWeekend = idx == 0 || idx == 6
+                    val weekStart = LocalAppPrefs.current.weekStart
+                    weekDays(weekStart).forEach { dow ->
+                        val day = dow.getDisplayName(TextStyle.NARROW, Locale.getDefault())
+                        val isWeekend = dow == java.time.DayOfWeek.SATURDAY || dow == java.time.DayOfWeek.SUNDAY
                         Text(
                             text = day,
                             style = MaterialTheme.typography.labelMedium,
@@ -413,8 +419,7 @@ fun ReadingCalendarView(
                 ) { (month, currentViewMode) ->
                     val firstDayOfMonth = month.atDay(1)
                     val daysInMonth = month.lengthOfMonth()
-                    // Sunday = 7 in DayOfWeek, convert to 0-indexed where Sun = 0
-                    val firstDayOffset = firstDayOfMonth.dayOfWeek.value % 7
+                    val firstDayOffset = leadingDays(firstDayOfMonth, LocalAppPrefs.current.weekStart)
 
                     val totalCells = ((firstDayOffset + daysInMonth + 6) / 7) * 7
 
@@ -477,7 +482,7 @@ fun ReadingCalendarView(
         if (viewMode == CalendarViewMode.YEAR_HEATMAP) {
             Spacer(Modifier.height(16.dp))
             Surface(
-                shape = RoundedCornerShape(16.dp),
+                shape = AppShape.M,
                 color = MaterialTheme.colorScheme.surfaceContainer,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
             ) {
@@ -486,7 +491,7 @@ fun ReadingCalendarView(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Filled.TouchApp,
+                        Icons.Rounded.TouchApp,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
@@ -512,7 +517,7 @@ fun ReadingCalendarView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
-                shape = RoundedCornerShape(20.dp),
+                shape = AppShape.L,
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
             ) {
                 Column(
@@ -520,7 +525,7 @@ fun ReadingCalendarView(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
-                        Icons.Filled.MenuBook,
+                        Icons.Rounded.MenuBook,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.size(40.dp)
@@ -555,7 +560,7 @@ fun ReadingCalendarView(
                 if (selectedDayNotes.isNotEmpty()) {
                     item {
                         Text(
-                            "Notes & Quotes (${selectedDayNotes.size})",
+                            "Notes & quotes (${selectedDayNotes.size})",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.primary,
@@ -570,7 +575,7 @@ fun ReadingCalendarView(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .animateItem(),
-                            shape = RoundedCornerShape(16.dp),
+                            shape = AppShape.M,
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
@@ -643,7 +648,7 @@ private fun CalendarDayCell(
 
     if (viewMode == CalendarViewMode.COVERS && coverBook != null) {
         // Bookmory Cover Thumbnail Cell
-        val cellShape = RoundedCornerShape(10.dp)
+        val cellShape = AppShape.XS
         Box(
             modifier = Modifier
                 .size(width = 44.dp, height = 58.dp)
@@ -664,7 +669,7 @@ private fun CalendarDayCell(
         ) {
             // Book cover image
             BookCover(
-                url = coverBook.coverUrl,
+                book = coverBook,
                 modifier = Modifier.fillMaxSize()
             )
 
@@ -731,7 +736,7 @@ private fun CalendarDayCell(
             else -> MaterialTheme.colorScheme.onSurface
         }
 
-        val cellShape = RoundedCornerShape(14.dp)
+        val cellShape = AppShape.S
 
         Box(
             modifier = Modifier
@@ -846,7 +851,7 @@ private fun SessionHistoryCard(
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onOpenBook()
             },
-        shape = RoundedCornerShape(20.dp),
+        shape = AppShape.L,
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
     ) {
         Row(
@@ -862,7 +867,7 @@ private fun SessionHistoryCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = book?.title ?: "Unknown Book",
+                    text = book?.title ?: "Unknown book",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -885,7 +890,7 @@ private fun SessionHistoryCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
+                        shape = AppShape.XS,
                         color = MaterialTheme.colorScheme.primaryContainer
                     ) {
                         Text(
@@ -907,7 +912,7 @@ private fun SessionHistoryCard(
 
                     if (session.environmentTag.isNotBlank()) {
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
+                            shape = AppShape.XS,
                             color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
                         ) {
                             Text(
@@ -923,7 +928,7 @@ private fun SessionHistoryCard(
 
             IconButton(onClick = onStartTimer) {
                 Icon(
-                    Icons.Filled.PlayArrow,
+                    Icons.Rounded.PlayArrow,
                     contentDescription = "Read again",
                     tint = MaterialTheme.colorScheme.primary
                 )

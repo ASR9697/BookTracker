@@ -1,6 +1,8 @@
 package com.example.booktracker.app.analytics
 
 import com.example.booktracker.shared.models.Book
+import com.example.booktracker.shared.models.BookFormat
+import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.Session
 import java.time.Instant
 import java.time.LocalDate
@@ -19,6 +21,28 @@ object AnalyticsEngine {
 
     /** Sessions shorter than this can't produce a meaningful pages/hour. */
     const val MIN_TIMED_SESSION_MILLIS = 60_000L
+
+    /** Reading days in a year before Wrapped has enough to summarize. */
+    const val MIN_DAYS_FOR_WRAPPED = 7
+
+    /**
+     * Wrapped is a shareable card, so it stays locked until the year has a
+     * finished book or [MIN_DAYS_FOR_WRAPPED] reading days, never a card of zeros.
+     */
+    fun hasYearToReview(
+        books: List<Book>,
+        sessions: List<Session>,
+        year: Int,
+        zone: ZoneId = ZoneId.systemDefault(),
+        dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR
+    ): Boolean {
+        val finished = books.any {
+            it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) && it.completedAt > 0 &&
+                Instant.ofEpochMilli(it.completedAt).atZone(zone).year == year
+        }
+        return finished ||
+            StreakEngine.pagesByDay(sessions, zone, dayStartsAtHour).keys.count { it.year == year } >= MIN_DAYS_FOR_WRAPPED
+    }
 
     fun timedSessions(sessions: List<Session>): List<Session> =
         sessions.filter {
@@ -138,17 +162,17 @@ object AnalyticsEngine {
         val last14Days = today.minusDays(13)
         val recentMinutesByDay = timed
             .filter {
-                val date = StreakEngine.readingDate(it.endTime, zone)
+                val date = StreakEngine.sessionDay(it, zone)
                 !date.isBefore(last14Days) && !date.isAfter(today)
             }
-            .groupBy { StreakEngine.readingDate(it.endTime, zone) }
+            .groupBy { StreakEngine.sessionDay(it, zone) }
             .mapValues { (_, sList) -> sList.sumOf { it.endTime - it.startTime } / 60_000L }
 
         val avgDailyMinutes = if (recentMinutesByDay.isNotEmpty()) {
             recentMinutesByDay.values.average().coerceAtLeast(15.0)
         } else if (timed.isNotEmpty()) {
             val totalMins = timed.sumOf { it.endTime - it.startTime } / 60_000L
-            val distinctDays = timed.map { StreakEngine.readingDate(it.endTime, zone) }.distinct().size.coerceAtLeast(1)
+            val distinctDays = timed.map { StreakEngine.sessionDay(it, zone) }.distinct().size.coerceAtLeast(1)
             (totalMins.toDouble() / distinctDays).coerceAtLeast(15.0)
         } else {
             25.0
@@ -169,10 +193,11 @@ object AnalyticsEngine {
     /** Reading minutes per day (timed sessions only), keyed like pagesByDay. */
     fun minutesByDay(
         sessions: List<Session>,
-        zone: ZoneId = ZoneId.systemDefault()
+        zone: ZoneId = ZoneId.systemDefault(),
+        dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR
     ): Map<LocalDate, Long> =
         timedSessions(sessions)
-            .groupBy { StreakEngine.readingDate(it.endTime, zone) }
+            .groupBy { StreakEngine.sessionDay(it, zone, dayStartsAtHour) }
             .mapValues { (_, day) -> day.sumOf { it.endTime - it.startTime } / 60_000L }
 
     data class TimeSummary(
@@ -189,7 +214,7 @@ object AnalyticsEngine {
         val timed = timedSessions(sessions)
         val weekStart = today.minusDays(6)
         val last7 = timed.filter {
-            val day = StreakEngine.readingDate(it.endTime, zone)
+            val day = StreakEngine.sessionDay(it, zone)
             !day.isBefore(weekStart) && !day.isAfter(today)
         }
         val totalMinutes = { list: List<Session> ->
@@ -241,6 +266,48 @@ object AnalyticsEngine {
                 )
             }
             .sortedByDescending { it.totalPages }
+
+    private val FORMAT_TAGS = BookFormat.entries.map { it.name.lowercase() }.toSet() + "ebook"
+
+    /**
+     * Most common tag across [books], read as a genre. Tags double as genres, so a
+     * format tag like "#Audiobook" is skipped: it says how, not what, you read.
+     */
+    fun topGenre(books: List<Book>): String? =
+        books.flatMap { it.genres }
+            .map { it.trim().removePrefix("#").trim() }
+            .filter { it.isNotEmpty() && it.lowercase() !in FORMAT_TAGS }
+            .groupingBy { it }.eachCount()
+            .maxByOrNull { it.value }?.key
+
+    /**
+     * Short traits for the profile header, e.g. ["Night reader", "32-min sessions",
+     * "loves Fantasy"]. Each trait is left out until there is data behind it.
+     */
+    fun readerPersonality(
+        books: List<Book>,
+        sessions: List<Session>,
+        zone: ZoneId = ZoneId.systemDefault()
+    ): List<String> {
+        val traits = mutableListOf<String>()
+        bestTimeOfDay(sessions, zone)?.let { traits += "$it reader" }
+        summarizeTime(sessions, zone).avgSessionMinutes.takeIf { it > 0 }?.let { traits += "$it-min sessions" }
+
+        val shelf = books.filter {
+            it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) ||
+                it.status.equals(BookStatus.READING.name, ignoreCase = true)
+        }
+        // Paperback is the default format, so only a deliberate majority says anything.
+        val topFormat = shelf.groupingBy { it.format }.eachCount().maxByOrNull { it.value }
+        val genre = topGenre(shelf)
+        when {
+            topFormat != null && topFormat.key != BookFormat.Paperback &&
+                shelf.size >= 3 && topFormat.value * 10 >= shelf.size * 6 ->
+                traits += "mostly ${topFormat.key.name.lowercase()}s"
+            genre != null -> traits += "loves $genre"
+        }
+        return traits
+    }
 
     /** "2h 15m", "45m", "<1m" — for durations shown in stats and recaps. */
     fun formatMinutes(minutes: Long): String = when {

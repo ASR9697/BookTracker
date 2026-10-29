@@ -3,6 +3,16 @@
     <string name="app_name">Nocturnal Reader</string>
     <!-- Public support address shown in the privacy policy. Leave empty to point readers at the Play listing. -->
     <string name="support_email" translatable="false"></string>
-    <string name="widget_label">Current book</string>
-    <string name="widget_description">Your current book with quick +1 / +10 page logging</string>
+    <string name="widget_label">Now reading</string>
+    <string name="widget_description">Your book with +1 / +5 page logging, a Read button and a live timer</string>
+    <string name="streak_widget_label">Streak &amp; today</string>
+    <string name="streak_widget_description">Your streak with today\'s pages as a ring; turns amber in the evening if you haven\'t read</string>
+    <string name="quote_widget_label">Quote of the day</string>
+    <string name="quote_widget_description">One of your saved passages, a new one every day</string>
+    <string name="pixels_widget_label">Year in pixels</string>
+    <string name="pixels_widget_description">Your recent weeks of reading as a heatmap</string>
+    <string name="upnext_widget_label">Up next</string>
+    <string name="upnext_widget_description">The next books on your pile; tap one to start it</string>
+    <string name="session_widget_label">Reading session</string>
+    <string name="session_widget_description">Your session live: the clock, pages this session and your page goal, with pause, +1 and finish</string>
 </resources>

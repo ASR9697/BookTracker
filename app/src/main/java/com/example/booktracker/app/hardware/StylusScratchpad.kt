@@ -60,10 +60,13 @@ fun StylusScratchpad(
 
     val inkColor = MaterialTheme.colorScheme.onSurface
 
+    // A stylus on a tablet wants room to write: a wider sheet and a taller page.
+    val roomy = com.example.booktracker.app.ui.LocalWidthTier.current.atLeastMedium
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = MaterialTheme.colorScheme.surface,
+        sheetMaxWidth = if (roomy) 960.dp else androidx.compose.material3.BottomSheetDefaults.SheetMaxWidth
     ) {
         Column(
             modifier = Modifier
@@ -82,7 +85,7 @@ fun StylusScratchpad(
             Canvas(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(240.dp)
+                    .height(if (roomy) 420.dp else 240.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                     .pointerInput(Unit) {

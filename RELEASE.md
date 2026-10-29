@@ -96,7 +96,7 @@ Watch app (optional): `./gradlew :wear:bundleRelease` →
   the user searches or scans. Declare it as **App activity → In-app search
   history**: collected, not shared, processed ephemerally, optional (books can
   be added manually), purpose *App functionality*. Nothing else is collected:
-  the library, notes and sessions never leave the phone.
+  the library, notes and sessions never reach the developer (see Drive sync below).
 - **Encrypted in transit:** Yes (HTTPS).
 - **Deletion requests:** Not applicable (nothing is stored off-device).
 - **ML Kit:** the bundled ML Kit APIs (barcode scanning, text recognition,
@@ -105,6 +105,36 @@ Watch app (optional): `./gradlew :wear:bundleRelease` →
   into the form.
 - Android Auto Backup (to the user's own Google account) is device backup, not
   developer collection, and doesn't need declaring.
+- **ML Kit translate / language ID and the document scanner** also ship now;
+  copy Google's published answers for them from the same page.
+- **Drive sync** is opt-in and writes only to the user's own Drive appDataFolder;
+  the developer never receives the data. Check Play's current guidance on
+  user-directed transfers to the user's own cloud storage before answering
+  "data shared", and mention it in the form's notes either way.
+
+## Drive sync: Google Cloud setup (one time)
+
+Drive sync signs in with Google's AuthorizationClient, which only works when
+Google knows this app. Without it, "Connect Google Drive" fails with an error.
+
+1. In the Google Cloud console, create (or pick) a project and enable the
+   **Google Drive API**.
+2. **OAuth consent screen:** external, app name, support email, privacy policy
+   URL, and add the scope `https://www.googleapis.com/auth/drive.appdata`.
+   That scope is non-sensitive, so no Google verification review is needed.
+   While the screen is in "Testing", add your own Google account as a test user.
+3. **Credentials → Create OAuth client ID → Android**, once per signing key:
+   package name = `APP_ID`, SHA-1 of the debug key (`./gradlew signingReport`),
+   the upload key, and the **Play app signing** key from Play Console → Setup →
+   App integrity. No client ID goes in the code.
+4. **Before release: publish the consent screen** (OAuth consent screen →
+   Publish app → *In production*). In "Testing" only listed test users (max
+   100) can connect; everyone else gets an access error. Users themselves never
+   touch Google Cloud: they tap *Connect Google Drive*, pick an account and
+   approve, and their data goes to their own Drive.
+
+Sideloaded or self-built APKs signed with a key not registered in step 3 can't
+connect; add an Android client for that key's SHA-1 if you hand out such builds.
 
 ## Store listing
 

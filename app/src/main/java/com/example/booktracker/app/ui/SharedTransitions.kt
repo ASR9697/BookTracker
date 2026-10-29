@@ -12,6 +12,14 @@ import androidx.compose.ui.composed
 @OptIn(ExperimentalSharedTransitionApi::class)
 val LocalSharedTransitionScope = compositionLocalOf<SharedTransitionScope?> { null }
 
+/**
+ * False on content that is composed but not the one on screen, such as the
+ * neighbouring pages the main pager keeps ready. Two visible elements with the
+ * same key count as one shared element, so one of them would be hidden: that
+ * is what blanked Home's Up next covers while Library sat next door.
+ */
+val LocalHeroEnabled = compositionLocalOf { true }
+
 @OptIn(ExperimentalSharedTransitionApi::class)
 val LocalAnimatedVisibilityScope = compositionLocalOf<AnimatedVisibilityScope?> { null }
 
@@ -23,7 +31,7 @@ fun Modifier.heroSharedElement(
     val sharedScope = LocalSharedTransitionScope.current
     val animatedScope = LocalAnimatedVisibilityScope.current
 
-    if (sharedScope != null && animatedScope != null) {
+    if (sharedScope != null && animatedScope != null && LocalHeroEnabled.current) {
         with(sharedScope) {
             Modifier.sharedElement(
                 sharedContentState = rememberSharedContentState(key = key),

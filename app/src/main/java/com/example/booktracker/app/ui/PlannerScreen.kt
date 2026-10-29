@@ -1,5 +1,8 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+import com.example.booktracker.app.ui.animations.staggeredItems
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,9 +14,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.ChevronLeft
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -51,10 +54,10 @@ fun PlannerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Reading Planner", fontWeight = FontWeight.Bold) },
+                title = { Text("Reading planner", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -96,15 +99,17 @@ fun PlannerScreen(
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("No books planned for this day.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Nothing planned for this day yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
+                // Picking another day rolls its books in afresh.
+                val entrance = com.example.booktracker.app.ui.animations.rememberEntranceState(selectedDate)
                 LazyColumn(
                     modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(booksOnSelectedDate, key = { it.id }) { book ->
+                    staggeredItems(entrance, booksOnSelectedDate, key = { it.id }) { book ->
                         PlannedBookItem(book = book, onRemove = { onPlanBook(book.id, null) })
                     }
                 }
@@ -141,7 +146,7 @@ fun CalendarView(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { onMonthChange(currentMonth.minusMonths(1)) }) {
-                Icon(Icons.Filled.ChevronLeft, "Previous Month")
+                Icon(Icons.Rounded.ChevronLeft, "Previous month")
             }
             Text(
                 text = "${currentMonth.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${currentMonth.year}",
@@ -149,14 +154,14 @@ fun CalendarView(
                 fontWeight = FontWeight.Bold
             )
             IconButton(onClick = { onMonthChange(currentMonth.plusMonths(1)) }) {
-                Icon(Icons.Filled.ChevronRight, "Next Month")
+                Icon(Icons.Rounded.ChevronRight, "Next month")
             }
         }
         
         Spacer(Modifier.height(8.dp))
         
         Row(modifier = Modifier.fillMaxWidth()) {
-            val daysOfWeek = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+            val daysOfWeek = weekDays(LocalAppPrefs.current.weekStart).map { it.getDisplayName(TextStyle.SHORT, Locale.getDefault()) }
             daysOfWeek.forEach { day ->
                 Text(
                     text = day,
@@ -172,7 +177,7 @@ fun CalendarView(
         
         val daysInMonth = currentMonth.lengthOfMonth()
         val firstDayOfMonth = currentMonth.atDay(1)
-        val offset = (firstDayOfMonth.dayOfWeek.value - 1)
+        val offset = leadingDays(firstDayOfMonth, LocalAppPrefs.current.weekStart)
         
         val totalCells = daysInMonth + offset
         val rows = if (totalCells % 7 == 0) totalCells / 7 else (totalCells / 7) + 1
@@ -222,7 +227,7 @@ fun CalendarView(
 fun PlannedBookItem(book: Book, onRemove: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
+        shape = AppShape.S
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -259,7 +264,7 @@ fun PlanBookDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select Book") },
+        title = { Text("Choose a book") },
         text = {
             if (availableBooks.isEmpty()) {
                 Text("No available books to plan.")

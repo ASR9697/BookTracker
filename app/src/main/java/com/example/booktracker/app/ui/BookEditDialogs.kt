@@ -1,6 +1,9 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import android.graphics.Bitmap
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.launch
@@ -18,8 +21,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Crop
+import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
@@ -48,6 +52,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.booktracker.app.camera.rememberPageScanner
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.Creator
@@ -103,12 +108,30 @@ fun EditBookDialog(
         }
     }
 
+    // A flattened, de-shadowed photo of the real cover, copied out of the scanner's cache.
+    val scanCover = rememberPageScanner(
+        pageLimit = 1,
+        onScanned = { pages ->
+            pages.firstOrNull()?.let { uri ->
+                val dir = File(context.filesDir, "covers").apply { mkdirs() }
+                val file = File(dir, "cover_${UUID.randomUUID()}.jpg")
+                val copied = runCatching {
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        FileOutputStream(file).use { input.copyTo(it) }
+                    }
+                }.getOrNull() != null
+                if (copied) coverUrl = "file://${file.absolutePath}"
+            }
+        },
+        onError = { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+    )
+
     val pagesInt = totalPages.toIntOrNull()
     val titleValid = title.isNotBlank()
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = AppShape.L,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             modifier = Modifier
                 .fillMaxWidth()
@@ -164,7 +187,10 @@ fun EditBookDialog(
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = { takePicture.launch() }) {
-                        Icon(Icons.Filled.PhotoCamera, contentDescription = "Take a cover photo")
+                        Icon(Icons.Rounded.PhotoCamera, contentDescription = "Take a cover photo")
+                    }
+                    IconButton(onClick = scanCover) {
+                        Icon(Icons.Rounded.Crop, contentDescription = "Scan the cover flat")
                     }
                 }
                 if (coverUrl.isNotBlank()) {
@@ -220,7 +246,7 @@ fun EditBookDialog(
                 )
                 if (book.isEnded()) {
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
+                        shape = AppShape.S,
                         color = MaterialTheme.colorScheme.surfaceContainerHighest,
                         onClick = { showFinishedPicker = true },
                         modifier = Modifier.fillMaxWidth()
@@ -229,7 +255,7 @@ fun EditBookDialog(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.width(12.dp))
                             Text(
                                 if (book.status == BookStatus.DNF.name) "Stopped on" else "Finished on",
@@ -326,7 +352,7 @@ fun LogSessionDialog(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = AppShape.S,
                     color = MaterialTheme.colorScheme.surfaceContainerHighest,
                     onClick = { showDatePicker = true },
                     modifier = Modifier.fillMaxWidth()
@@ -335,7 +361,7 @@ fun LogSessionDialog(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.width(12.dp))
                         Text(
                             Instant.ofEpochMilli(date).atZone(ZoneId.systemDefault()).toLocalDate().format(dateLabelFormat),

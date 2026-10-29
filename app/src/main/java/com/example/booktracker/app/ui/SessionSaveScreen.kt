@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,16 +19,25 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Flag
+import androidx.compose.material.icons.rounded.MenuBook
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.Bookmark
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.Place
+import androidx.compose.material.icons.rounded.CenterFocusStrong
+import androidx.compose.material.icons.automirrored.rounded.CallMerge
+import com.example.booktracker.shared.models.Session
+import androidx.compose.material.icons.rounded.FormatQuote
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.draw.clip
+import com.example.booktracker.app.ui.animations.staggeredEntrance
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.example.booktracker.app.analytics.AnalyticsEngine
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
@@ -37,7 +48,7 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -96,7 +107,13 @@ fun SessionSaveScreen(
     sessionStartPage: Int,
     onDiscard: () -> Unit,
     onBack: () -> Unit,
-    onSave: (endPage: Int, tag: String, startTime: Long, endTime: Long, status: BookStatus?) -> Unit
+    onSave: (SessionDraft) -> Unit,
+    /** A session of this book that ended a little earlier; offered as one to join onto. */
+    previousSession: Session? = null,
+    /** Shorter than this with no pages read asks before saving; 0 never asks. */
+    minSessionSeconds: Int = 0,
+    /** Open the camera on the page number rather than the page wheel. */
+    scanFirst: Boolean = false
 ) {
     val zone = remember { ZoneId.systemDefault() }
     val haptic = LocalHapticFeedback.current
@@ -108,9 +125,15 @@ fun SessionSaveScreen(
     var showStatusPicker by remember { mutableStateOf(false) }
 
     var endPage by remember { mutableIntStateOf(initialPage.coerceAtMost(if (book.totalPages > 0) book.totalPages else initialPage)) }
+    val saveHaptics = com.example.booktracker.app.ui.animations.rememberHaptics()
     var durationSeconds by remember { mutableIntStateOf(initialDurationSeconds) }
     var status by remember { mutableStateOf<BookStatus?>(null) }
     var tag by remember { mutableStateOf("") }
+    var focus by remember { mutableIntStateOf(0) }
+    var quote by remember { mutableStateOf("") }
+    var joinPrevious by remember { mutableStateOf(false) }
+    var showTooShort by remember { mutableStateOf(false) }
+    var scanOnOpen by remember { mutableStateOf(false) }
 
     var endDateTime by remember {
         mutableStateOf(
@@ -123,6 +146,16 @@ fun SessionSaveScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var showPagePicker by remember { mutableStateOf(false) }
+    // The page is the one thing the timer can't know, so ask for it on arrival, once.
+    var askedForPage by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        if (!askedForPage) {
+            askedForPage = true
+            kotlinx.coroutines.delay(250)
+            scanOnOpen = scanFirst
+            showPagePicker = true
+        }
+    }
     var showDurationEditor by remember { mutableStateOf(false) }
     var showDiscardConfirm by remember { mutableStateOf(false) }
     var showTagPicker by remember { mutableStateOf(false) }
@@ -133,13 +166,39 @@ fun SessionSaveScreen(
 
     val effectiveStatus = status ?: if (complete) BookStatus.FINISHED else BookStatus.READING
 
+    val commit = {
+        saveHaptics.confirm()
+        val end = endDateTime.atZone(zone).toInstant().toEpochMilli()
+        val start = end - durationSeconds * 1000L
+        onSave(
+            SessionDraft(
+                endPage = endPage,
+                tag = tag,
+                startTime = start,
+                endTime = end,
+                status = effectiveStatus,
+                focus = focus,
+                quote = quote,
+                mergeWithId = previousSession?.id?.takeIf { joinPrevious }
+            )
+        )
+    }
+    val tooShort = minSessionSeconds > 0 && durationSeconds < minSessionSeconds &&
+        endPage <= sessionStartPage && !joinPrevious
+
+    val accent = rememberCoverAccent(book.coverUrl)
+    val entrance = com.example.booktracker.app.ui.animations.rememberEntranceState()
     Scaffold(
+        modifier = Modifier
+            .background(MaterialTheme.colorScheme.background)
+            .coverGlow(accent),
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = {},
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
@@ -151,7 +210,7 @@ fun SessionSaveScreen(
                                 .size(44.dp)
                         ) {
                             Icon(
-                                Icons.Filled.Tune,
+                                Icons.Rounded.Tune,
                                 contentDescription = "Session options",
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -162,7 +221,7 @@ fun SessionSaveScreen(
                         ) {
                             DropdownMenuItem(
                                 text = { Text("Edit read time") },
-                                leadingIcon = { Icon(Icons.Filled.Timer, contentDescription = null) },
+                                leadingIcon = { Icon(Icons.Rounded.Timer, contentDescription = null) },
                                 onClick = {
                                     showOptions = false
                                     showDurationEditor = true
@@ -170,7 +229,7 @@ fun SessionSaveScreen(
                             )
                             DropdownMenuItem(
                                 text = { Text("Where you read") },
-                                leadingIcon = { Icon(Icons.Filled.Place, contentDescription = null) },
+                                leadingIcon = { Icon(Icons.Rounded.Place, contentDescription = null) },
                                 onClick = {
                                     showOptions = false
                                     showTagPicker = true
@@ -182,7 +241,7 @@ fun SessionSaveScreen(
                                 },
                                 leadingIcon = {
                                     Icon(
-                                        Icons.Filled.Delete,
+                                        Icons.Rounded.Delete,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.error
                                     )
@@ -196,16 +255,11 @@ fun SessionSaveScreen(
                     }
                     Spacer(Modifier.width(8.dp))
                     Button(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            val end = endDateTime.atZone(zone).toInstant().toEpochMilli()
-                            val start = end - durationSeconds * 1000L
-                            onSave(endPage, tag, start, end, effectiveStatus)
-                        },
+                        onClick = { if (tooShort) showTooShort = true else commit() },
                         shape = RoundedCornerShape(50),
                         modifier = Modifier.padding(end = 12.dp)
                     ) {
-                        Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("Save", fontWeight = FontWeight.SemiBold)
                     }
@@ -219,6 +273,7 @@ fun SessionSaveScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
+                .readableWidth()
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp)
         ) {
@@ -230,7 +285,7 @@ fun SessionSaveScreen(
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Please check the contents to be saved.",
+                "Check the page you stopped on, then save.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -246,7 +301,9 @@ fun SessionSaveScreen(
             Spacer(Modifier.height(20.dp))
 
             SaveRow(
-                icon = { Icon(Icons.Filled.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp)) },
+
+                modifier = Modifier.staggeredEntrance(entrance, 1),
+                icon = { Icon(Icons.Rounded.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp)) },
                 label = "Read time",
                 value = formatClock(durationSeconds),
                 onClick = { showDurationEditor = true }
@@ -255,7 +312,9 @@ fun SessionSaveScreen(
             Spacer(Modifier.height(12.dp))
 
             SaveRow(
-                icon = { Icon(Icons.Filled.Bookmark, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp)) },
+
+                modifier = Modifier.staggeredEntrance(entrance, 2),
+                icon = { Icon(Icons.Rounded.Bookmark, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp)) },
                 label = "Reading progress",
                 value = "$unit $endPage",
                 trailing = if (book.totalPages > 0) " / ${book.totalPages}" else null,
@@ -273,10 +332,10 @@ fun SessionSaveScreen(
             } else null
             val remainingEtaText = remember(remainingMinutes) { AnalyticsEngine.formatEstimatedTime(remainingMinutes) }
 
-            if (deltaPages > 0 && durationSeconds >= 60 && sessionSpeedText != null) {
+            if (deltaPages > 0) {
                 Spacer(Modifier.height(12.dp))
                 Surface(
-                    shape = RoundedCornerShape(16.dp),
+                    shape = AppShape.M,
                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.fillMaxWidth()
@@ -286,7 +345,7 @@ fun SessionSaveScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            Icons.Filled.Speed,
+                            Icons.Rounded.Speed,
                             contentDescription = null,
                             modifier = Modifier.size(22.dp),
                             tint = MaterialTheme.colorScheme.primary
@@ -294,14 +353,15 @@ fun SessionSaveScreen(
                         Spacer(Modifier.width(12.dp))
                         Column {
                             Text(
-                                "+$deltaPages $unit at $sessionSpeedText",
+                                if (sessionSpeedText != null) "+$deltaPages $unit at $sessionSpeedText"
+                                else "+$deltaPages $unit this session",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
                             if (remainingPages > 0 && remainingEtaText != null) {
                                 Spacer(Modifier.height(2.dp))
                                 Text(
-                                    "~$remainingEtaText to finish book at this pace",
+                                    "~${remainingEtaText.removeSuffix(" left")} to finish the book at this pace",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -314,7 +374,9 @@ fun SessionSaveScreen(
             Spacer(Modifier.height(12.dp))
 
             SaveRow(
-                icon = { Icon(Icons.Filled.MenuBook, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp)) },
+
+                modifier = Modifier.staggeredEntrance(entrance, 3),
+                icon = { Icon(Icons.Rounded.MenuBook, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp)) },
                 label = "Status",
                 value = effectiveStatus.label,
                 onClick = { showStatusPicker = true }
@@ -323,16 +385,58 @@ fun SessionSaveScreen(
             Spacer(Modifier.height(12.dp))
 
             SaveRow(
-                icon = { Icon(Icons.Filled.Place, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp)) },
+
+                modifier = Modifier.staggeredEntrance(entrance, 4),
+                icon = { Icon(Icons.Rounded.Place, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp)) },
                 label = "Where you read",
                 value = tag.ifBlank { "Not set" },
                 onClick = { showTagPicker = true }
             )
 
+            if (previousSession != null) {
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow, AppShape.L)
+                        .clickable { joinPrevious = !joinPrevious }
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.AutoMirrored.Rounded.CallMerge, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                    Spacer(Modifier.width(20.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        val endedAt = Instant.ofEpochMilli(previousSession.endTime).atZone(zone).toLocalTime().format(saveTimeFormat)
+                        Text("Join your $endedAt session", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(
+                            "${AnalyticsEngine.formatMinutes(previousSession.durationSeconds / 60L)}, $unit ${previousSession.startPage} → ${previousSession.endPage}. Saved as one session.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    androidx.compose.material3.Switch(checked = joinPrevious, onCheckedChange = { joinPrevious = it })
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            FocusPicker(focus, Modifier.staggeredEntrance(entrance, 5)) { focus = if (focus == it) 0 else it }
+
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = quote,
+                onValueChange = { quote = it.take(1000) },
+                label = { Text("A line worth keeping (optional)") },
+                supportingText = { Text("Saved as a note on $unit $endPage") },
+                leadingIcon = { Icon(Icons.Rounded.FormatQuote, contentDescription = null) },
+                minLines = 2,
+                shape = AppShape.L,
+                modifier = Modifier.fillMaxWidth()
+            )
+
             if (complete && status != BookStatus.DNF) {
                 Spacer(Modifier.height(16.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(
                         "You reached the last ${unit.trimEnd('.')} — this will finish the book.",
@@ -401,11 +505,38 @@ fun SessionSaveScreen(
         ProgressPickerSheet(
             book = book,
             initialPage = endPage,
-            onDismiss = { showPagePicker = false },
+            sessionStartPage = sessionStartPage,
+            sessionSeconds = durationSeconds,
+            startWithScan = scanOnOpen,
+            onDismiss = {
+                showPagePicker = false
+                scanOnOpen = false
+            },
             onConfirm = {
                 endPage = it
                 if (book.totalPages > 0 && it >= book.totalPages) status = BookStatus.FINISHED
                 showPagePicker = false
+                scanOnOpen = false
+            }
+        )
+    }
+
+    if (showTooShort) {
+        ActionSheet(
+            onDismiss = { showTooShort = false },
+            icon = Icons.Rounded.Timer,
+            title = "Only ${formatShort(durationSeconds)}, with no pages",
+            message = "Sessions this short are usually started by accident. Keep it anyway, or let it go?",
+            confirmLabel = "Let it go",
+            onConfirm = {
+                showTooShort = false
+                onDiscard()
+            },
+            destructive = true,
+            dismissLabel = "Save anyway",
+            onDismissAction = {
+                showTooShort = false
+                commit()
             }
         )
     }
@@ -433,58 +564,123 @@ fun SessionSaveScreen(
     }
 
     if (showStatusPicker) {
-        AlertDialog(
-            onDismissRequest = { showStatusPicker = false },
-            title = { Text("After this session") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutcomeButton("Keep reading", Icons.Filled.Bookmark, effectiveStatus == BookStatus.READING) {
-                        status = BookStatus.READING
-                        showStatusPicker = false
-                    }
-                    OutcomeButton("Pause this book", Icons.Filled.Pause, effectiveStatus == BookStatus.PAUSED) {
-                        status = BookStatus.PAUSED
-                        showStatusPicker = false
-                    }
-                    OutcomeButton("I've finished it", Icons.Filled.Check, effectiveStatus == BookStatus.FINISHED) {
-                        status = BookStatus.FINISHED
-                        if (book.totalPages > 0) endPage = book.totalPages
-                        showStatusPicker = false
-                    }
-                    OutcomeButton("Give up on it", Icons.Filled.Flag, effectiveStatus == BookStatus.DNF) {
-                        status = BookStatus.DNF
-                        showStatusPicker = false
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showStatusPicker = false }) { Text("Close") }
+        ActionSheet(
+            onDismiss = { showStatusPicker = false },
+            icon = Icons.Rounded.MenuBook,
+            title = "After this session",
+            message = "Where does this book stand now?",
+            dismissLabel = "Close"
+        ) {
+            OutcomeButton("Keep reading", Icons.Rounded.Bookmark, effectiveStatus == BookStatus.READING) {
+                status = BookStatus.READING
+                showStatusPicker = false
             }
-        )
+            OutcomeButton("Pause this book", Icons.Rounded.Pause, effectiveStatus == BookStatus.PAUSED) {
+                status = BookStatus.PAUSED
+                showStatusPicker = false
+            }
+            OutcomeButton("I've finished it", Icons.Rounded.Check, effectiveStatus == BookStatus.FINISHED) {
+                status = BookStatus.FINISHED
+                if (book.totalPages > 0) endPage = book.totalPages
+                showStatusPicker = false
+            }
+            OutcomeButton("Give up on it", Icons.Rounded.Flag, effectiveStatus == BookStatus.DNF) {
+                status = BookStatus.DNF
+                showStatusPicker = false
+            }
+        }
     }
 
     if (showDiscardConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDiscardConfirm = false },
-            title = { Text("Discard this session?") },
-            text = { Text("The time you just read will not be recorded. Your reading progress stays where it is.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDiscardConfirm = false
-                    onDiscard()
-                }) { Text("Discard", color = MaterialTheme.colorScheme.error) }
+        ActionSheet(
+            onDismiss = { showDiscardConfirm = false },
+            icon = Icons.Rounded.Delete,
+            title = "Discard this session?",
+            message = "The time you just read won't be recorded. Your page stays where it is.",
+            confirmLabel = "Discard",
+            onConfirm = {
+                showDiscardConfirm = false
+                onDiscard()
             },
-            dismissButton = {
-                TextButton(onClick = { showDiscardConfirm = false }) { Text("Keep") }
-            }
+            destructive = true,
+            dismissLabel = "Keep it"
         )
+    }
+}
+
+/** What the reader confirmed on the save screen. */
+data class SessionDraft(
+    val endPage: Int,
+    val tag: String,
+    val startTime: Long,
+    val endTime: Long,
+    val status: BookStatus?,
+    val focus: Int,
+    val quote: String,
+    /** The earlier session to join this one onto, when the reader chose to. */
+    val mergeWithId: String?
+)
+
+private fun formatShort(seconds: Int): String =
+    if (seconds < 60) "${seconds}s" else "${seconds / 60} min"
+
+internal fun focusLabel(level: Int): String = when (level) {
+    1 -> "Distracted"
+    2 -> "Restless"
+    3 -> "Steady"
+    4 -> "Focused"
+    5 -> "Deep focus"
+    else -> "Not rated"
+}
+
+/** Five steps from distracted to deep focus; tapping the chosen one clears it. */
+@Composable
+private fun FocusPicker(focus: Int, modifier: Modifier = Modifier, onPick: (Int) -> Unit) {
+    val haptic = LocalHapticFeedback.current
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceContainerLow, AppShape.L)
+            .padding(horizontal = 20.dp, vertical = 18.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.CenterFocusStrong, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+            Spacer(Modifier.width(20.dp))
+            Column {
+                Text("How focused were you?", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(focusLabel(focus), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            (1..5).forEach { level ->
+                val on = level <= focus
+                Surface(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onPick(level)
+                    },
+                    shape = AppShape.S,
+                    color = if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp)
+                        .semantics { contentDescription = focusLabel(level) }
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("$level", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
     }
 }
 
 @Composable
 private fun EditableStamp(text: String, onClick: () -> Unit) {
     Surface(
-        shape = RoundedCornerShape(8.dp),
+        shape = AppShape.XS,
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         onClick = onClick
     ) {
@@ -503,12 +699,15 @@ private fun SaveRow(
     label: String,
     value: String,
     trailing: String? = null,
+    modifier: Modifier = Modifier,
     onClick: (() -> Unit)?
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(20.dp))
+            // Clipped first, so the press ripple follows the rounded corners.
+            .clip(AppShape.L)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .let { if (onClick != null) it.clickable(onClick = onClick) else it }
             .padding(horizontal = 20.dp, vertical = 18.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -523,11 +722,21 @@ private fun SaveRow(
             )
             Spacer(Modifier.height(2.dp))
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    value,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
+                // A changed value rolls in from below rather than snapping.
+                androidx.compose.animation.AnimatedContent(
+                    targetState = value,
+                    transitionSpec = {
+                        (androidx.compose.animation.slideInVertically { it / 2 } + androidx.compose.animation.fadeIn()) togetherWith
+                            (androidx.compose.animation.slideOutVertically { -it / 2 } + androidx.compose.animation.fadeOut())
+                    },
+                    label = "saveValue"
+                ) { shown ->
+                    Text(
+                        shown,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 if (trailing != null) {
                     Text(
                         trailing,
@@ -578,39 +787,39 @@ private fun DurationEditorDialog(
     var minutes by remember { mutableStateOf(((initialSeconds % 3600) / 60).toString()) }
     var seconds by remember { mutableStateOf((initialSeconds % 60).toString()) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Read time") },
-        text = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(
-                    Triple("Hr", hours, { v: String -> hours = v }),
-                    Triple("Min", minutes, { v: String -> minutes = v }),
-                    Triple("Sec", seconds, { v: String -> seconds = v })
-                ).forEach { (label, value, setter) ->
-                    OutlinedTextField(
-                        value = value,
-                        onValueChange = { setter(it.filter(Char::isDigit).take(3)) },
-                        label = { Text(label) },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
-                        )
+    ActionSheet(
+        onDismiss = onDismiss,
+        icon = Icons.Rounded.Timer,
+        title = "Read time",
+        message = "How long you actually read, pauses left out.",
+        confirmLabel = "Save",
+        onConfirm = {
+            val total = (hours.toIntOrNull() ?: 0) * 3600 +
+                (minutes.toIntOrNull() ?: 0) * 60 +
+                (seconds.toIntOrNull() ?: 0)
+            onConfirm(total.coerceAtLeast(0))
+        }
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(
+                Triple("Hours", hours, { v: String -> hours = v }),
+                Triple("Minutes", minutes, { v: String -> minutes = v }),
+                Triple("Seconds", seconds, { v: String -> seconds = v })
+            ).forEach { (label, value, setter) ->
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = { setter(it.filter(Char::isDigit).take(3)) },
+                    label = { Text(label) },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
                     )
-                }
+                )
             }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                val total = (hours.toIntOrNull() ?: 0) * 3600 +
-                    (minutes.toIntOrNull() ?: 0) * 60 +
-                    (seconds.toIntOrNull() ?: 0)
-                onConfirm(total.coerceAtLeast(0))
-            }) { Text("OK") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
-    )
+        }
+    }
 }
 
 @Composable
@@ -623,51 +832,44 @@ private fun TagPickerDialog(
     var custom by remember { mutableStateOf(if (initial in presets) "" else initial) }
     var selected by remember { mutableStateOf(initial.takeIf { it in presets }) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Where or how were you reading?") },
-        text = {
-            Column {
-                presets.chunked(2).forEach { row ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        row.forEach { preset ->
-                            FilterChip(
-                                selected = selected == preset,
-                                onClick = {
-                                    selected = if (selected == preset) null else preset
-                                    if (selected != null) custom = ""
-                                },
-                                label = { Text(preset) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        if (row.size == 1) Spacer(Modifier.weight(1f))
-                    }
-                    Spacer(Modifier.height(4.dp))
+    ActionSheet(
+        onDismiss = onDismiss,
+        icon = Icons.Rounded.Place,
+        title = "Where were you reading?",
+        message = "Stats show where you read best.",
+        confirmLabel = "Save",
+        onConfirm = { onConfirm(custom.trim().ifBlank { selected.orEmpty() }) }
+    ) {
+        presets.chunked(2).forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                row.forEach { preset ->
+                    TickFilterChip(
+                        selected = selected == preset,
+                        onClick = {
+                            selected = if (selected == preset) null else preset
+                            if (selected != null) custom = ""
+                        },
+                        label = { Text(preset) },
+                        modifier = Modifier.weight(1f)
+                    )
                 }
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = custom,
-                    onValueChange = {
-                        custom = it
-                        if (it.isNotEmpty()) selected = null
-                    },
-                    label = { Text("Custom") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                if (row.size == 1) Spacer(Modifier.weight(1f))
             }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                onConfirm(custom.trim().ifBlank { selected.orEmpty() })
-            }) { Text("OK") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
-    )
+        }
+        OutlinedTextField(
+            value = custom,
+            onValueChange = {
+                custom = it
+                if (it.isNotEmpty()) selected = null
+            },
+            label = { Text("Somewhere else") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
 }
 
 internal fun formatClock(totalSeconds: Int): String {

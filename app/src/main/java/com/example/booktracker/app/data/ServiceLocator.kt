@@ -20,12 +20,24 @@ object ServiceLocator {
     val timerBookId = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val timerBookTitle = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val timerPhase = kotlinx.coroutines.flow.MutableStateFlow(com.example.booktracker.app.ui.TimerPhase.WORK)
-    val timerMode = kotlinx.coroutines.flow.MutableStateFlow(com.example.booktracker.app.ui.TimerMode.COUNTDOWN)
+    // Count-up until the saved preference loads (see BookTrackerViewModel.applyPreferredTimerMode).
+    val timerMode = kotlinx.coroutines.flow.MutableStateFlow(com.example.booktracker.app.ui.TimerMode.STOPWATCH)
     val timerIsRunning = kotlinx.coroutines.flow.MutableStateFlow(false)
     val timeLeftSeconds = kotlinx.coroutines.flow.MutableStateFlow(25 * 60)
     val elapsedSeconds = kotlinx.coroutines.flow.MutableStateFlow(0)
     val customWorkMinutes = kotlinx.coroutines.flow.MutableStateFlow<Int?>(null)
     val activeReadingSeconds = kotlinx.coroutines.flow.MutableStateFlow(0)
+    /** The page this session aims to reach; null without a page goal. */
+    val sessionPageTarget = kotlinx.coroutines.flow.MutableStateFlow<Int?>(null)
+    /** When the running clock was last paused; null while it runs or before it starts. */
+    val timerPausedAt = kotlinx.coroutines.flow.MutableStateFlow<Long?>(null)
+
+    /** The one place the clock starts and stops, so the pause time is always recorded. */
+    fun setTimerRunning(running: Boolean) {
+        if (timerIsRunning.value && !running) timerPausedAt.value = System.currentTimeMillis()
+        if (running) timerPausedAt.value = null
+        timerIsRunning.value = running
+    }
 
     /** True while MainActivity is started; the timer only alerts when the reader has left the app. */
     val appInForeground = kotlinx.coroutines.flow.MutableStateFlow(false)
@@ -54,7 +66,7 @@ object ServiceLocator {
     }
 
     fun repository(context: Context): BookRepository =
-        db(context).let { RoomBookRepository(it.bookDao(), it.sessionDao(), it.marginNoteDao()) }
+        db(context).let { RoomBookRepository(it.bookDao(), it.sessionDao(), it.marginNoteDao(), it.reviewDao(), it.vocabDao()) }
 
     fun settings(context: Context): SettingsRepository =
         SettingsRepository(context.applicationContext)
@@ -70,6 +82,12 @@ object ServiceLocator {
                 settings(context)
             ).also { dndManager = it }
         }
+
+    /** Empties the library: every table, cover and note photo, and Drive sync's merge base. Preferences stay. */
+    suspend fun wipeLibrary(context: Context) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        db(context).clearAllTables()
+        listOf("covers", NoteImageStore.DIR, "sync").forEach { java.io.File(context.filesDir, it).deleteRecursively() }
+    }
 
     private fun db(context: Context): AppDatabase =
         database ?: synchronized(this) {

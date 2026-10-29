@@ -35,20 +35,15 @@ fun Modifier.bounceClick(
     val isPressed by actualInteractionSource.collectIsPressedAsState()
     
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = Motion.press(),
         label = "bounceScale"
     )
 
-    val haptic = LocalHapticFeedback.current
+    val haptics = rememberHaptics()
     LaunchedEffect(isPressed) {
-        if (isPressed) {
-            // A crisp, subtle tick for the physical squish
-            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        }
+        // A crisp, subtle tick for the physical squish
+        if (isPressed) haptics.tick()
     }
 
     this
@@ -72,13 +67,12 @@ fun Modifier.bounceClick(
 fun Modifier.bounceOnPress(interactionSource: MutableInteractionSource) = composed {
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.94f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = Motion.press(),
         label = "pressScale"
     )
+    val haptics = rememberHaptics()
+    LaunchedEffect(isPressed) { if (isPressed) haptics.tick() }
     this.graphicsLayer {
         scaleX = scale
         scaleY = scale
@@ -100,11 +94,9 @@ fun Modifier.shimmer(): Modifier = composed {
         label = "shimmerTranslate"
     )
 
-    val shimmerColors = listOf(
-        Color.LightGray.copy(alpha = 0.35f),
-        Color.LightGray.copy(alpha = 0.1f),
-        Color.LightGray.copy(alpha = 0.35f)
-    )
+    // Drawn from the theme's ink so it reads on both light and dark surfaces.
+    val ink = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
+    val shimmerColors = listOf(ink.copy(alpha = 0.10f), ink.copy(alpha = 0.03f), ink.copy(alpha = 0.10f))
 
     val brush = Brush.linearGradient(
         colors = shimmerColors,

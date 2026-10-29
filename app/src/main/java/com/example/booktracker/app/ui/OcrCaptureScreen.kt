@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -21,8 +23,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,7 +53,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.booktracker.app.camera.OcrTextCleaner
 import com.example.booktracker.app.camera.TextRecognitionAnalyzer
+import com.example.booktracker.shared.models.VocabWord
 import java.util.concurrent.Executors
 
 /**
@@ -60,7 +66,9 @@ import java.util.concurrent.Executors
 @Composable
 fun OcrCaptureScreen(
     onClose: () -> Unit,
-    onTextConfirmed: (String) -> Unit
+    onTextConfirmed: (String) -> Unit,
+    bookId: String? = null,
+    onSaveWord: ((VocabWord) -> Unit)? = null
 ) {
     val context = LocalContext.current
     var hasPermission by remember {
@@ -97,7 +105,7 @@ fun OcrCaptureScreen(
                         .border(
                             width = 2.dp,
                             color = Color.White.copy(alpha = 0.85f),
-                            shape = RoundedCornerShape(16.dp)
+                            shape = AppShape.M
                         )
                         .padding(vertical = 80.dp)
                 )
@@ -109,7 +117,7 @@ fun OcrCaptureScreen(
                         .align(Alignment.TopCenter)
                         .statusBarsPadding()
                         .padding(horizontal = 32.dp, vertical = 24.dp)
-                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                        .background(Color.Black.copy(alpha = 0.5f), AppShape.XS)
                         .padding(8.dp)
                 )
 
@@ -132,7 +140,7 @@ fun OcrCaptureScreen(
                             modifier = Modifier
                                 .background(
                                     Color.Black.copy(alpha = 0.6f),
-                                    RoundedCornerShape(8.dp)
+                                    AppShape.XS
                                 )
                                 .padding(12.dp)
                         )
@@ -181,14 +189,16 @@ fun OcrCaptureScreen(
                     .statusBarsPadding()
                     .padding(4.dp)
             ) {
-                Icon(Icons.Filled.Close, contentDescription = "Close scanner", tint = Color.White)
+                Icon(Icons.Rounded.Close, contentDescription = "Close scanner", tint = Color.White)
             }
         }
     }
 
     if (frozen) {
         OcrConfirmSheet(
-            initialText = liveText,
+            initialText = remember(liveText) { OcrTextCleaner.clean(liveText) },
+            bookId = bookId,
+            onSaveWord = onSaveWord,
             onDismiss = { frozen = false },
             onConfirm = { edited ->
                 onTextConfirmed(edited)
@@ -203,11 +213,28 @@ fun OcrCaptureScreen(
 @Composable
 private fun OcrConfirmSheet(
     initialText: String,
+    bookId: String?,
+    onSaveWord: ((VocabWord) -> Unit)?,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var text by remember { mutableStateOf(initialText) }
+    var translating by remember { mutableStateOf(false) }
+
+    if (translating) {
+        TranslateSheet(
+            passage = text,
+            bookId = bookId,
+            page = 0,
+            onSaveWord = onSaveWord,
+            onDismiss = { translating = false },
+            onUseTranslation = {
+                text = it
+                translating = false
+            }
+        )
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -234,6 +261,14 @@ private fun OcrConfirmSheet(
                 minLines = 4,
                 modifier = Modifier.fillMaxWidth()
             )
+            OutlinedButton(
+                enabled = text.isNotBlank(),
+                onClick = { translating = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Rounded.Translate, contentDescription = null)
+                Text("  Translate")
+            }
             Button(
                 enabled = text.isNotBlank(),
                 onClick = { onConfirm(text.trim()) },

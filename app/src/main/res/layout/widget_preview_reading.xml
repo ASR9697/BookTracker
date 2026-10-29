@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget picker preview for the Now reading widget (sample content). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_preview_bg"
+    android:orientation="vertical"
+    android:padding="12dp"
+    tools:ignore="HardcodedText">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="56dp"
+            android:layout_height="84dp"
+            android:contentDescription="@null"
+            android:src="@drawable/widget_preview_cover" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="The Midnight Library"
+                android:textColor="#FFF4EDE1"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Matt Haig"
+                android:textColor="#FFB9B1C0"
+                android:textSize="12sp" />
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="6dp"
+                android:layout_marginTop="8dp"
+                android:contentDescription="@null"
+                android:scaleType="fitXY"
+                android:src="@drawable/widget_preview_progress" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="p. 186 / 304 · about 3h left"
+                android:textColor="#FFB9B1C0"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:background="@drawable/widget_preview_pill"
+            android:gravity="center"
+            android:paddingHorizontal="16dp"
+            android:text="+1"
+            android:textColor="#FFF4EDE1"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/widget_preview_pill"
+            android:gravity="center"
+            android:paddingHorizontal="16dp"
+            android:text="+5"
+            android:textColor="#FFF4EDE1"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="6dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_preview_pill_accent"
+            android:gravity="center"
+            android:text="▶  Read"
+            android:textColor="#FF1F1B24"
+            android:textStyle="bold" />
+    </LinearLayout>
+</LinearLayout>

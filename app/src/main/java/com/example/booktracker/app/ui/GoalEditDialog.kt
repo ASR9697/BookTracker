@@ -1,14 +1,16 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Flag
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,10 +21,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
 enum class GoalType(val label: String) {
-    YEARLY_BOOKS("Yearly Books"),
-    MONTHLY_PAGES("Monthly Pages"),
-    MONTHLY_BOOKS("Monthly Books"),
-    DAILY_PAGES("Daily Pages")
+    YEARLY_BOOKS("Yearly books"),
+    MONTHLY_PAGES("Monthly pages"),
+    MONTHLY_BOOKS("Monthly books"),
+    DAILY_PAGES("Daily pages")
 }
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
@@ -87,13 +89,13 @@ fun GoalEditDialog(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    Icons.Filled.Flag,
+                    Icons.Rounded.Flag,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(Modifier.width(10.dp))
-                Text("Reading Targets", fontWeight = FontWeight.Bold)
+                Text("Reading targets", fontWeight = FontWeight.Bold)
             }
         },
         text = {
@@ -124,7 +126,7 @@ fun GoalEditDialog(
 
                 // Big Stepper Card
                 Surface(
-                    shape = RoundedCornerShape(20.dp),
+                    shape = AppShape.L,
                     color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -154,14 +156,14 @@ fun GoalEditDialog(
                                 onClick = { updateCurrentVal(currentVal - stepSmall) },
                                 shape = CircleShape
                             ) {
-                                Icon(Icons.Filled.Remove, contentDescription = "Decrease")
+                                Icon(Icons.Rounded.Remove, contentDescription = "Decrease")
                             }
 
                             FilledTonalIconButton(
                                 onClick = { updateCurrentVal(currentVal + stepSmall) },
                                 shape = CircleShape
                             ) {
-                                Icon(Icons.Filled.Add, contentDescription = "Increase")
+                                Icon(Icons.Rounded.Add, contentDescription = "Increase")
                             }
                         }
                     }
@@ -171,7 +173,7 @@ fun GoalEditDialog(
 
                 // Presets
                 Text(
-                    "Quick Presets",
+                    "Quick picks",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.SemiBold

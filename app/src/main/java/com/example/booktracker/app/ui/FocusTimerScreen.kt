@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
@@ -9,14 +11,26 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.focusable
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.NoteAdd
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.NoteAdd
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,10 +55,14 @@ import com.example.booktracker.app.analytics.AnalyticsEngine
 import com.example.booktracker.app.format.FormatAdaptabilityLayer
 import com.example.booktracker.app.journal.NoiseType
 import com.example.booktracker.shared.models.Book
+import com.example.booktracker.shared.models.NoteType
 import java.util.Locale
 
 enum class TimerPhase { WORK, BREAK }
 enum class TimerMode { COUNTDOWN, STOPWATCH }
+
+private const val STILL_READING_AFTER_SECONDS = 30 * 60
+private const val STILL_READING_GRACE_SECONDS = 5 * 60
 
 private fun formatTimerClock(totalSeconds: Int): String {
     val hrs = totalSeconds / 3600
@@ -68,13 +86,21 @@ fun FocusTimerScreen(
     book: Book,
     viewModel: BookTrackerViewModel,
     onBack: () -> Unit,
-    onSaveSession: () -> Unit,
-    onAddNote: (page: Int, text: String) -> Unit,
+    /** Carries the live page, since the save screen can open before that write lands. */
+    onSaveSession: (endPage: Int) -> Unit,
+    onAddNote: (page: Int, text: String, type: NoteType, images: List<String>) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val phase by viewModel.timerPhase.collectAsState()
     val mode by viewModel.timerMode.collectAsState()
     val isRunning by viewModel.timerIsRunning.collectAsState()
+    // Paper-book readers set the phone down; keep the display awake while the timer is open.
+    val keepScreenOn by viewModel.keepScreenOn.collectAsState()
+    val timerView = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.DisposableEffect(keepScreenOn) {
+        timerView.keepScreenOn = keepScreenOn
+        onDispose { timerView.keepScreenOn = false }
+    }
     val timeLeftSeconds by viewModel.timeLeftSeconds.collectAsState()
     val elapsedSeconds by viewModel.elapsedSeconds.collectAsState()
     val noiseType by viewModel.noiseType.collectAsState()
@@ -105,9 +131,11 @@ fun FocusTimerScreen(
     val bookSessions = remember(book.id, completedSessions) {
         completedSessions.filter { it.bookId == book.id }
     }
-    val speedStr = remember(bookSessions, completedSessions) {
-        AnalyticsEngine.formatReadingSpeed(AnalyticsEngine.bookPagesPerHour(bookSessions, completedSessions))
+    // Only this book's own history: another book's pace says little about this one.
+    val bookSpeedStr = remember(bookSessions) {
+        AnalyticsEngine.formatReadingSpeed(AnalyticsEngine.pagesPerHour(bookSessions))
     }
+    val activeReadingSeconds by com.example.booktracker.app.data.ServiceLocator.activeReadingSeconds.collectAsState()
     val etaStr = remember(book, bookSessions, completedSessions) {
         AnalyticsEngine.formatEstimatedTime(AnalyticsEngine.bookEstimatedMinutesLeft(book, bookSessions, completedSessions))
     }
@@ -116,13 +144,88 @@ fun FocusTimerScreen(
     // page survives leaving this screen, the save screen sees it, and a burst of
     // taps is one write rather than many.
     var sessionCurrentPage by remember(book.id) { mutableIntStateOf(book.currentPage) }
+    // The page this screen last wrote, so a change made elsewhere (notification, widget,
+    // watch) can be told apart from our own write landing, and taken up instead of overwritten.
+    var lastWrittenPage by remember(book.id) { mutableIntStateOf(book.currentPage) }
     val maxPage = if (book.totalPages > 0) book.totalPages else Int.MAX_VALUE
     LaunchedEffect(sessionCurrentPage) {
         kotlinx.coroutines.delay(600)
-        if (sessionCurrentPage != book.currentPage) viewModel.setProgress(book, sessionCurrentPage)
+        if (sessionCurrentPage != book.currentPage) {
+            lastWrittenPage = sessionCurrentPage
+            viewModel.setProgress(book, sessionCurrentPage)
+        }
+    }
+    LaunchedEffect(book.currentPage) {
+        if (book.currentPage != lastWrittenPage) {
+            lastWrittenPage = book.currentPage
+            sessionCurrentPage = book.currentPage
+        }
     }
     val sessionStartPage = openSession?.takeIf { it.bookId == book.id }?.startPage ?: book.currentPage
     val sessionDelta = (sessionCurrentPage - sessionStartPage).coerceAtLeast(0)
+    // Measured once a minute has passed and a page has turned; until then, the book's usual pace.
+    val livePaceStr = AnalyticsEngine.formatSessionPpm(
+        AnalyticsEngine.sessionSpeedPpm(sessionDelta, activeReadingSeconds)
+    )
+    val pageWord = FormatAdaptabilityLayer.getDisplayUnit(book).lowercase().let { if (sessionDelta == 1) it.trimEnd('s') else it }
+
+    // Page goal: how far this session means to get, counted from where it began.
+    val pageTarget by com.example.booktracker.app.data.ServiceLocator.sessionPageTarget.collectAsState()
+    val goalPages = pageTarget?.let { (it - sessionStartPage).coerceAtLeast(1) }
+    val goalReached = pageTarget?.let { sessionCurrentPage >= it } == true
+    var goalWasReached by remember(book.id) { mutableStateOf(goalReached) }
+    val goalHaptic = LocalHapticFeedback.current
+    LaunchedEffect(goalReached) {
+        if (goalReached && !goalWasReached) goalHaptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        goalWasReached = goalReached
+    }
+    var showGoalSheet by remember { mutableStateOf(false) }
+
+    // "Still reading?" after a long stretch with no touch; any touch on the screen answers it.
+    // Measured in reading seconds, so time spent paused never counts towards it.
+    val prefs = LocalAppPrefs.current
+    val checkInHaptic = LocalHapticFeedback.current
+    var lastTouchSecond by remember(book.id) { mutableIntStateOf(activeReadingSeconds) }
+    var askingSince by remember(book.id) { mutableStateOf<Int?>(null) }
+    var pausedUnattended by remember(book.id) { mutableStateOf(false) }
+    val markTouched = {
+        lastTouchSecond = activeReadingSeconds
+        askingSince = null
+    }
+    LaunchedEffect(isRunning) {
+        if (isRunning) {
+            markTouched()
+            pausedUnattended = false
+        }
+    }
+    LaunchedEffect(activeReadingSeconds, isRunning, prefs.stillReadingCheck) {
+        if (!prefs.stillReadingCheck || !isRunning) {
+            askingSince = null
+            return@LaunchedEffect
+        }
+        val asked = askingSince
+        if (asked == null) {
+            if (activeReadingSeconds - lastTouchSecond >= STILL_READING_AFTER_SECONDS) {
+                askingSince = activeReadingSeconds
+                checkInHaptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
+        } else if (activeReadingSeconds - asked >= STILL_READING_GRACE_SECONDS) {
+            askingSince = null
+            pausedUnattended = true
+            viewModel.pauseUnattended(activeReadingSeconds - asked)
+        }
+    }
+
+    // How long the current pause has lasted, ticking while paused.
+    val pausedAt by com.example.booktracker.app.data.ServiceLocator.timerPausedAt.collectAsState()
+    var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(pausedAt, isRunning) {
+        while (pausedAt != null && !isRunning) {
+            nowMillis = System.currentTimeMillis()
+            kotlinx.coroutines.delay(1000)
+        }
+    }
+    val pausedForSeconds = pausedAt?.takeIf { !isRunning }?.let { ((nowMillis - it) / 1000).toInt().coerceAtLeast(0) }
 
     var isZenMode by remember { mutableStateOf(false) }
     var showSoundscapeSheet by remember { mutableStateOf(false) }
@@ -130,6 +233,8 @@ fun FocusTimerScreen(
     var showCountdownSheet by remember { mutableStateOf(false) }
 
     val haptic = LocalHapticFeedback.current
+
+    val haptics = com.example.booktracker.app.ui.animations.rememberHaptics()
     val accent = rememberCoverAccent(book.coverUrl)
     val background = accent.immersiveBackground(MaterialTheme.colorScheme.surfaceContainerLowest)
     val onBackground = if (background.luminance() > 0.45f) Color.Black else Color.White
@@ -144,10 +249,13 @@ fun FocusTimerScreen(
         onBack()
     }
     val finish = {
-        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        haptics.confirm()
         viewModel.setTimerRunning(false)
-        if (sessionCurrentPage != book.currentPage) viewModel.setProgress(book, sessionCurrentPage)
-        onSaveSession()
+        if (sessionCurrentPage != book.currentPage) {
+            lastWrittenPage = sessionCurrentPage
+            viewModel.setProgress(book, sessionCurrentPage)
+        }
+        onSaveSession(sessionCurrentPage)
     }
     androidx.activity.compose.BackHandler {
         if (isZenMode) isZenMode = false else leave()
@@ -168,14 +276,51 @@ fun FocusTimerScreen(
     val displaySeconds = if (mode == TimerMode.STOPWATCH) elapsedSeconds else timeLeftSeconds
     val chrome = onBackground.copy(alpha = 0.12f)
 
-    Box(
+    // Tablets: this book's notes sit beside the clock.
+    val showNotesPane = LocalWidthTier.current.atLeastExpanded
+    val bookNotes by remember(book.id) { viewModel.notesFor(book.id) }.collectAsState(initial = emptyList())
+    // Half-open foldables: the clock above the hinge, the controls below it.
+    val hinge = rememberTabletopHinge()
+    var columnTop by remember { mutableFloatStateOf(0f) }
+    val density = LocalDensity.current
+    val hingeTop = hinge?.let { with(density) { (it.top - columnTop).toDp() } }?.takeIf { it > 160.dp }
+    val hingeHeight = hinge?.let { with(density) { it.height.toDp() } } ?: 0.dp
+    // Space starts and pauses the clock from a keyboard.
+    val keyFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { keyFocus.requestFocus() } }
+
+    Row(
         modifier = modifier
             .fillMaxSize()
+            // Watches every touch without taking it, so a touch anywhere answers "still reading?".
+            .pointerInput(book.id) {
+                awaitPointerEventScope {
+                    while (true) {
+                        awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                        markTouched()
+                    }
+                }
+            }
+    ) {
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight()
             .background(if (isZenMode) Color(0xFF090D14) else background)
+            .focusRequester(keyFocus)
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyUp && event.key == Key.Spacebar) {
+                    if (countdownDone) finish() else viewModel.setTimerRunning(!isRunning)
+                    true
+                } else {
+                    false
+                }
+            }
+            .focusable()
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        haptics.confirm()
                         isZenMode = !isZenMode
                     }
                 )
@@ -184,9 +329,11 @@ fun FocusTimerScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+                .onGloballyPositioned { columnTop = it.positionInWindow().y },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            val topPart: @Composable ColumnScope.() -> Unit = {
             // Top bar: minimise on the left; sounds, zen and Done on the right.
             AnimatedVisibility(visible = !isZenMode, enter = fadeIn(), exit = fadeOut()) {
                 Row(
@@ -196,7 +343,7 @@ fun FocusTimerScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TimerIconButton(
-                        icon = Icons.Filled.KeyboardArrowDown,
+                        icon = Icons.Rounded.KeyboardArrowDown,
                         description = if (notStarted) "Close timer" else "Minimize timer",
                         tint = onBackground,
                         container = chrome,
@@ -204,7 +351,7 @@ fun FocusTimerScreen(
                     )
                     Spacer(Modifier.weight(1f))
                     TimerIconButton(
-                        icon = if (noiseType == NoiseType.NONE) Icons.Filled.Headphones else Icons.Filled.GraphicEq,
+                        icon = if (noiseType == NoiseType.NONE) Icons.Rounded.Headphones else Icons.Rounded.GraphicEq,
                         description = "Ambient sounds",
                         tint = onBackground,
                         container = if (noiseType == NoiseType.NONE) chrome else onBackground.copy(alpha = 0.24f),
@@ -212,12 +359,12 @@ fun FocusTimerScreen(
                     )
                     Spacer(Modifier.width(8.dp))
                     TimerIconButton(
-                        icon = Icons.Filled.Bedtime,
+                        icon = Icons.Rounded.Bedtime,
                         description = "Zen mode",
                         tint = onBackground,
                         container = chrome,
                         onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            haptics.confirm()
                             isZenMode = true
                         }
                     )
@@ -235,7 +382,7 @@ fun FocusTimerScreen(
                                     modifier = Modifier.padding(horizontal = 16.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                                    Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(20.dp))
                                     Spacer(Modifier.width(6.dp))
                                     Text("Done", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                                 }
@@ -262,34 +409,73 @@ fun FocusTimerScreen(
                 text = when {
                     countdownDone -> "Time's up. Tap to save your session"
                     phase == TimerPhase.BREAK && isRunning -> "Break. Rest your eyes"
-                    isRunning && speedStr != null -> "Reading · $speedStr"
+                    isRunning && goalReached -> "Page goal reached · keep going if you like"
+                    isRunning && livePaceStr != null -> "Reading · $livePaceStr"
+                    isRunning && bookSpeedStr != null -> "Reading · usually $bookSpeedStr"
                     isRunning -> "Reading…"
                     notStarted -> "Ready when you are"
+                    pausedUnattended && pausedForSeconds != null -> "Paused while you were away · ${formatTimerClock(pausedForSeconds)}"
+                    pausedForSeconds != null -> "Paused for ${formatTimerClock(pausedForSeconds)}"
                     else -> "Paused"
                 },
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleSmall.copy(fontFeatureSettings = "tnum"),
                 color = onBackground.copy(alpha = 0.7f)
             )
+            AnimatedVisibility(visible = sessionDelta > 0 && !isZenMode, enter = fadeIn(), exit = fadeOut()) {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = onBackground.copy(alpha = 0.12f),
+                    contentColor = onBackground,
+                    modifier = Modifier.padding(top = 12.dp)
+                ) {
+                    Text(
+                        "+$sessionDelta $pageWord this session",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                    )
+                }
+            }
 
-            Spacer(Modifier.height(36.dp))
+            // Before starting: where the last session ended and the last thing written in this book.
+            val lastSession = remember(bookSessions) { bookSessions.maxByOrNull { it.endTime } }
+            val lastNote = remember(bookNotes) { bookNotes.filter { it.content.isNotBlank() }.maxByOrNull { it.timestamp } }
+            AnimatedVisibility(
+                visible = notStarted && !isZenMode && (lastSession != null || lastNote != null),
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                PickUpCard(
+                    lastSessionEnd = lastSession?.endTime,
+                    currentPage = book.currentPage,
+                    unit = FormatAdaptabilityLayer.unitAbbrev(book),
+                    lastNote = lastNote,
+                    tint = onBackground,
+                    modifier = Modifier.padding(top = 20.dp)
+                )
+            }
+            }
 
+            val bottomPart: @Composable ColumnScope.() -> Unit = {
             AnimatedVisibility(visible = !isZenMode, enter = fadeIn(), exit = fadeOut()) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     PlayButton(
                         isRunning = isRunning,
                         countdownDone = countdownDone,
-                        // Empty until the clock has actually moved.
+                        // The ring fills towards an end: the countdown's, or the page goal's.
+                        // Counting up with no page goal has no end, so no ring.
                         progress = when {
-                            notStarted -> 0f
-                            mode == TimerMode.COUNTDOWN -> 1f - timeLeftSeconds.toFloat() / countdownTotal
-                            else -> (elapsedSeconds % 3600) / 3600f
-                        }.coerceIn(0f, 1f),
+                            mode == TimerMode.COUNTDOWN && notStarted -> 0f
+                            mode == TimerMode.COUNTDOWN -> (1f - timeLeftSeconds.toFloat() / countdownTotal).coerceIn(0f, 1f)
+                            goalPages != null -> (sessionDelta.toFloat() / goalPages).coerceIn(0f, 1f)
+                            else -> null
+                        },
                         ringColor = if (phase == TimerPhase.BREAK) Color(0xFF6EE7A0) else onBackground,
                         foreground = onBackground,
                         background = background,
                         glow = if (isRunning) breath else 0f,
                         onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            haptics.confirm()
                             if (countdownDone) finish() else viewModel.setTimerRunning(!isRunning)
                         }
                     )
@@ -303,28 +489,28 @@ fun FocusTimerScreen(
                         phase == TimerPhase.BREAK -> "Break · ${countdownTotal / 60} min"
                         else -> "${countdownTotal / 60} min countdown"
                     }
-                    AnimatedVisibility(visible = notStarted || mode == TimerMode.COUNTDOWN) {
-                        Surface(
-                            onClick = { showCountdownSheet = true },
-                            enabled = notStarted,
-                            shape = RoundedCornerShape(50),
-                            color = Color.Transparent,
-                            contentColor = onBackground.copy(alpha = if (notStarted) 0.9f else 0.6f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, onBackground.copy(alpha = 0.3f))
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    if (mode == TimerMode.STOPWATCH) Icons.Filled.Timer else Icons.Filled.HourglassBottom,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(countdownLabel, style = MaterialTheme.typography.labelLarge)
-                            }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (notStarted || mode == TimerMode.COUNTDOWN) {
+                            TimerChip(
+                                icon = if (mode == TimerMode.STOPWATCH) Icons.Rounded.Timer else Icons.Rounded.HourglassBottom,
+                                label = countdownLabel,
+                                tint = onBackground,
+                                enabled = notStarted,
+                                onClick = { showCountdownSheet = true }
+                            )
                         }
+                        // A page goal can be set or changed at any point in the session.
+                        TimerChip(
+                            icon = Icons.Rounded.Flag,
+                            label = when {
+                                pageTarget == null -> "Page goal"
+                                goalReached -> "Goal reached"
+                                else -> "$sessionDelta / $goalPages ${FormatAdaptabilityLayer.getDisplayUnit(book).lowercase()}"
+                            },
+                            tint = onBackground,
+                            filled = goalReached,
+                            onClick = { showGoalSheet = true }
+                        )
                     }
                 }
             }
@@ -333,7 +519,7 @@ fun FocusTimerScreen(
 
             AnimatedVisibility(visible = !isZenMode, enter = fadeIn(), exit = fadeOut()) {
                 Surface(
-                    shape = RoundedCornerShape(24.dp),
+                    shape = AppShape.L,
                     color = onBackground.copy(alpha = 0.08f),
                     border = androidx.compose.foundation.BorderStroke(1.dp, onBackground.copy(alpha = 0.14f)),
                     modifier = Modifier.fillMaxWidth()
@@ -342,7 +528,7 @@ fun FocusTimerScreen(
                         modifier = Modifier.padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        BookCover(book.coverUrl, Modifier.size(width = 64.dp, height = 96.dp))
+                        BookCover(book, Modifier.heroSharedElement("cover-${book.id}").size(width = 64.dp, height = 96.dp))
                         Spacer(Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
@@ -373,7 +559,7 @@ fun FocusTimerScreen(
                                     enabled = sessionCurrentPage > 0,
                                     modifier = Modifier.size(32.dp)
                                 ) {
-                                    Icon(Icons.Filled.Remove, contentDescription = "Page back", tint = onBackground, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Rounded.Remove, contentDescription = "Page back", tint = onBackground, modifier = Modifier.size(18.dp))
                                 }
                                 Text(
                                     if (book.totalPages > 0) "p. $sessionCurrentPage / ${book.totalPages}" else "p. $sessionCurrentPage",
@@ -390,13 +576,12 @@ fun FocusTimerScreen(
                                     enabled = sessionCurrentPage < maxPage,
                                     modifier = Modifier.size(32.dp)
                                 ) {
-                                    Icon(Icons.Filled.Add, contentDescription = "Page forward", tint = onBackground, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Rounded.Add, contentDescription = "Page forward", tint = onBackground, modifier = Modifier.size(18.dp))
                                 }
                             }
                             Text(
                                 when {
-                                    sessionDelta > 0 -> "+$sessionDelta pages this session"
-                                    etaStr != null -> "About $etaStr left in this book"
+                                    etaStr != null -> "About $etaStr in this book"
                                     else -> "Tap + as you turn pages"
                                 },
                                 style = MaterialTheme.typography.labelSmall,
@@ -414,7 +599,7 @@ fun FocusTimerScreen(
                             ),
                             modifier = Modifier.size(52.dp)
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.NoteAdd, contentDescription = "Add a note")
+                            Icon(Icons.AutoMirrored.Rounded.NoteAdd, contentDescription = "Add a note")
                         }
                     }
                 }
@@ -428,7 +613,47 @@ fun FocusTimerScreen(
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
             }
+            }
+
+            if (hingeTop != null) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().height(hingeTop),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    topPart()
+                    Spacer(Modifier.height(12.dp))
+                }
+                Spacer(Modifier.height(hingeHeight + 12.dp))
+                Column(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) { bottomPart() }
+            } else {
+                topPart()
+                Spacer(Modifier.height(36.dp))
+                bottomPart()
+            }
         }
+
+        StillReadingCard(
+            secondsLeft = askingSince?.let { STILL_READING_GRACE_SECONDS - (activeReadingSeconds - it) },
+            onPause = { viewModel.setTimerRunning(false) },
+            onStillReading = markTouched,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 72.dp, start = 20.dp, end = 20.dp)
+        )
+    }
+    AnimatedVisibility(visible = showNotesPane && !isZenMode && hingeTop == null) {
+        TimerNotesPane(
+            notes = bookNotes,
+            currentPage = sessionCurrentPage,
+            pageLabel = FormatAdaptabilityLayer.unitAbbrev(book),
+            onQuickNote = { page, text, type -> onAddNote(page, text, type, emptyList()) },
+            onOpenNoteSheet = { showNoteSheet = true },
+            modifier = Modifier.width(380.dp).fillMaxHeight()
+        )
+    }
     }
 
     if (showCountdownSheet) {
@@ -455,7 +680,7 @@ fun FocusTimerScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     listOf(10, 15, 25, 30, 45, 60, 90).forEach { mins ->
-                        FilterChip(
+                        TickFilterChip(
                             selected = mode == TimerMode.COUNTDOWN && countdownTotal == mins * 60,
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -471,13 +696,13 @@ fun FocusTimerScreen(
                 ListItem(
                     headlineContent = { Text("No countdown") },
                     supportingContent = { Text("Count up until you stop") },
-                    leadingContent = { Icon(Icons.Filled.Timer, contentDescription = null) },
+                    leadingContent = { Icon(Icons.Rounded.Timer, contentDescription = null) },
                     trailingContent = {
-                        if (mode == TimerMode.STOPWATCH) Icon(Icons.Filled.Check, contentDescription = "Selected")
+                        if (mode == TimerMode.STOPWATCH) Icon(Icons.Rounded.Check, contentDescription = "Selected")
                     },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(AppShape.M)
                         .clickable {
                             viewModel.setTimerMode(TimerMode.STOPWATCH)
                             showCountdownSheet = false
@@ -485,6 +710,20 @@ fun FocusTimerScreen(
                 )
             }
         }
+    }
+
+    if (showGoalSheet) {
+        PageGoalSheet(
+            book = book,
+            startPage = sessionStartPage,
+            currentTarget = pageTarget,
+            onDismiss = { showGoalSheet = false },
+            onSet = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                viewModel.setPageTarget(it)
+                showGoalSheet = false
+            }
+        )
     }
 
     if (showSoundscapeSheet) {
@@ -520,7 +759,7 @@ fun FocusTimerScreen(
                     sounds.forEach { (type, meta) ->
                         val isSelected = noiseType == type
                         Surface(
-                            shape = RoundedCornerShape(16.dp),
+                            shape = AppShape.M,
                             color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -548,7 +787,7 @@ fun FocusTimerScreen(
                                     )
                                 }
                                 if (isSelected) {
-                                    Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
                         }
@@ -576,15 +815,216 @@ fun FocusTimerScreen(
     }
 
     if (showNoteSheet) {
-        InSessionNoteSheet(
-            book = book,
-            defaultPage = sessionCurrentPage,
+        NoteSheet(
+            suggestedPage = sessionCurrentPage,
+            totalPages = book.totalPages,
+            pageLabel = FormatAdaptabilityLayer.getDisplayUnit(book).trimEnd('s'),
+            draftKey = book.id,
             onDismiss = { showNoteSheet = false },
-            onConfirm = { page, text ->
-                onAddNote(page, text)
+            onConfirm = { page, text, type, images ->
+                onAddNote(page, text, type, images)
                 showNoteSheet = false
-            }
+            },
+            onConfirmAndAddAnother = onAddNote
         )
+    }
+}
+
+/** An outlined pill under the play button; [filled] marks one that's done. */
+@Composable
+private fun TimerChip(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    tint: Color,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    filled: Boolean = false
+) {
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        shape = RoundedCornerShape(50),
+        color = if (filled) tint.copy(alpha = 0.18f) else Color.Transparent,
+        contentColor = tint.copy(alpha = if (enabled) 0.9f else 0.6f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, tint.copy(alpha = 0.3f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(if (filled) Icons.Rounded.Check else icon, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        }
+    }
+}
+
+/** How far this session means to get: a few steps from where it began, or a page typed in. */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun PageGoalSheet(
+    book: Book,
+    startPage: Int,
+    currentTarget: Int?,
+    onDismiss: () -> Unit,
+    onSet: (Int?) -> Unit
+) {
+    val unit = FormatAdaptabilityLayer.unitAbbrev(book)
+    val word = FormatAdaptabilityLayer.getDisplayUnit(book).lowercase()
+    val maxPage = if (book.totalPages > 0) book.totalPages else Int.MAX_VALUE
+    var typed by remember { mutableStateOf(currentTarget?.toString().orEmpty()) }
+    val typedPage = typed.toIntOrNull()?.takeIf { it in (startPage + 1)..maxPage }
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp)
+        ) {
+            Text("Page goal", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                "How far do you want to get? This session started on $unit $startPage.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(16.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(10, 20, 30, 50).filter { startPage + it <= maxPage }.forEach { step ->
+                    TickFilterChip(
+                        selected = currentTarget == startPage + step,
+                        onClick = { onSet(startPage + step) },
+                        label = { Text("+$step $word") }
+                    )
+                }
+                if (book.totalPages > startPage) {
+                    TickFilterChip(
+                        selected = currentTarget == book.totalPages,
+                        onClick = { onSet(book.totalPages) },
+                        label = { Text("To the end") }
+                    )
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = typed,
+                    onValueChange = { typed = it.filter(Char::isDigit).take(6) },
+                    label = { Text("Read to ${word.trimEnd('s')}") },
+                    singleLine = true,
+                    isError = typed.isNotEmpty() && typedPage == null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(Modifier.width(12.dp))
+                Button(onClick = { onSet(typedPage) }, enabled = typedPage != null) { Text("Set") }
+            }
+            if (currentTarget != null) {
+                Spacer(Modifier.height(8.dp))
+                TextButton(onClick = { onSet(null) }) { Text("No page goal") }
+            }
+        }
+    }
+}
+
+/** Before the clock starts: when the book was last read and the last note in it. */
+@Composable
+private fun PickUpCard(
+    lastSessionEnd: Long?,
+    currentPage: Int,
+    unit: String,
+    lastNote: com.example.booktracker.shared.models.MarginNote?,
+    tint: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = AppShape.L,
+        color = tint.copy(alpha = 0.08f),
+        contentColor = tint,
+        modifier = modifier.widthIn(max = 420.dp).fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp)) {
+            Text(
+                "Pick up where you left off",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = tint.copy(alpha = 0.7f)
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                buildString {
+                    lastSessionEnd?.let { append("Last read ${relativeDay(it)} · ") }
+                    append("you're on $unit $currentPage")
+                }.replaceFirstChar { it.uppercase() },
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            if (lastNote != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "“${lastNote.content.trim()}”",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    "Your note on $unit ${lastNote.pageNumber}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = tint.copy(alpha = 0.6f)
+                )
+            }
+        }
+    }
+}
+
+/** "today", "yesterday", or a short date. */
+private fun relativeDay(millis: Long): String {
+    val zone = java.time.ZoneId.systemDefault()
+    val day = java.time.Instant.ofEpochMilli(millis).atZone(zone).toLocalDate()
+    val today = java.time.LocalDate.now(zone)
+    return when (day) {
+        today -> "today"
+        today.minusDays(1) -> "yesterday"
+        else -> day.format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault()))
+    }
+}
+
+/** "Still reading?" check-in; shown while [secondsLeft] (time until the clock pauses itself) is set. */
+@Composable
+private fun StillReadingCard(
+    secondsLeft: Int?,
+    onPause: () -> Unit,
+    onStillReading: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    AnimatedVisibility(visible = secondsLeft != null, enter = fadeIn(), exit = fadeOut(), modifier = modifier) {
+        Surface(
+            shape = AppShape.L,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            shadowElevation = 6.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(start = 20.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Still reading?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        "The clock pauses in ${formatTimerClock((secondsLeft ?: 0).coerceAtLeast(0))} unless you tap",
+                        style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                TextButton(onClick = onPause) { Text("Pause") }
+                Button(onClick = onStillReading) { Text("Yes") }
+            }
+        }
     }
 }
 
@@ -606,12 +1046,12 @@ private fun TimerIconButton(
     }
 }
 
-/** The big round play/pause button, ringed by the session's progress. */
+/** The big round play/pause button, ringed by the countdown's progress when there is one. */
 @Composable
 private fun PlayButton(
     isRunning: Boolean,
     countdownDone: Boolean,
-    progress: Float,
+    progress: Float?,
     ringColor: Color,
     foreground: Color,
     background: Color,
@@ -631,6 +1071,7 @@ private fun PlayButton(
                     radius = size.minDimension / 2f
                 )
             }
+            if (progress == null) return@Canvas
             drawArc(
                 color = foreground.copy(alpha = 0.16f),
                 startAngle = -90f,
@@ -663,9 +1104,9 @@ private fun PlayButton(
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = when {
-                        countdownDone -> Icons.Filled.Check
-                        isRunning -> Icons.Filled.Pause
-                        else -> Icons.Filled.PlayArrow
+                        countdownDone -> Icons.Rounded.Check
+                        isRunning -> Icons.Rounded.Pause
+                        else -> Icons.Rounded.PlayArrow
                     },
                     contentDescription = when {
                         countdownDone -> "Save session"
@@ -674,61 +1115,6 @@ private fun PlayButton(
                     },
                     modifier = Modifier.size(52.dp)
                 )
-            }
-        }
-    }
-}
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun InSessionNoteSheet(
-    book: Book,
-    defaultPage: Int,
-    onDismiss: () -> Unit,
-    onConfirm: (page: Int, text: String) -> Unit
-) {
-    var pageText by remember { mutableStateOf(defaultPage.toString()) }
-    var noteText by remember { mutableStateOf("") }
-    val page = pageText.toIntOrNull()
-    val pageValid = page != null && page >= 0 && (book.totalPages <= 0 || page <= book.totalPages)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text("Quick Thought or Quote", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            OutlinedTextField(
-                value = pageText,
-                onValueChange = { pageText = it.filter(Char::isDigit).take(6) },
-                label = { Text(FormatAdaptabilityLayer.getDisplayUnit(book).trimEnd('s')) },
-                isError = pageText.isNotEmpty() && !pageValid,
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = noteText,
-                onValueChange = { noteText = it },
-                label = { Text("What stood out in this passage?") },
-                minLines = 4,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Button(
-                onClick = { onConfirm(page ?: defaultPage, noteText.trim()) },
-                enabled = noteText.isNotBlank() && pageValid,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Text("Save Memo", fontWeight = FontWeight.Bold)
             }
         }
     }

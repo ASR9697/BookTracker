@@ -1,11 +1,15 @@
 package com.example.booktracker.app.analytics
 
 import com.example.booktracker.shared.models.Book
+import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.Session
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
+import java.time.ZoneId
 
 /**
  * Guards the "time remaining" chain that the session result screen depends on.
@@ -147,5 +151,31 @@ class AnalyticsEngineTest {
 
         val finishedBook = book(total = 200, current = 200)
         assertNull(AnalyticsEngine.predictCompletionDate(finishedBook, emptyList(), globalSessions))
+    }
+
+    @Test
+    fun `wrapped stays locked until a finished book or a week of reading`() {
+        val zone = ZoneId.of("UTC")
+        fun dayAt(d: LocalDate) = d.atStartOfDay(zone).toInstant().toEpochMilli() + 12 * 3_600_000L
+        fun readOn(d: LocalDate, pages: Int = 10) =
+            Session(id = "s-$d", bookId = "b", startTime = dayAt(d), endTime = dayAt(d) + 600_000L, pagesRead = pages)
+        val oct = LocalDate.of(2026, 10, 1)
+
+        val sixDays = (0L until 6L).map { readOn(oct.plusDays(it)) }
+        assertFalse(AnalyticsEngine.hasYearToReview(emptyList(), sixDays, 2026, zone))
+
+        // A timer run with no pages does not make the seventh day.
+        val plusEmpty = sixDays + readOn(oct.plusDays(6), pages = 0)
+        assertFalse(AnalyticsEngine.hasYearToReview(emptyList(), plusEmpty, 2026, zone))
+
+        val sevenDays = sixDays + readOn(oct.plusDays(6))
+        assertTrue(AnalyticsEngine.hasYearToReview(emptyList(), sevenDays, 2026, zone))
+
+        val finished = Book(
+            id = "b", title = "Done", isbn = null,
+            status = BookStatus.FINISHED.name, finishedAt = dayAt(oct)
+        )
+        assertTrue(AnalyticsEngine.hasYearToReview(listOf(finished), emptyList(), 2026, zone))
+        assertFalse(AnalyticsEngine.hasYearToReview(listOf(finished), emptyList(), 2027, zone))
     }
 }
