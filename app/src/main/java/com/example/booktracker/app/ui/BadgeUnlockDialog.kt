@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -14,7 +16,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.QuestionMark
+import androidx.compose.material.icons.rounded.QuestionMark
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -109,7 +111,7 @@ fun BadgeUnlockDialog(
                                     .background(tierColor.copy(alpha = 0.25f))
                                     .border(3.dp, tierColor, CircleShape)
                             ) {
-                                Icon(Icons.Filled.QuestionMark, contentDescription = null, tint = tierColor, modifier = Modifier.size(64.dp))
+                                Icon(Icons.Rounded.QuestionMark, contentDescription = null, tint = tierColor, modifier = Modifier.size(64.dp))
                             }
                         } else {
                             ShiningMedal(badge, tierColor, shine = !reduce)
@@ -117,7 +119,7 @@ fun BadgeUnlockDialog(
                     }
                     Spacer(Modifier.height(28.dp))
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
+                        shape = AppShape.XS,
                         color = tierColor.copy(alpha = 0.2f),
                         border = BorderStroke(1.dp, tierColor.copy(alpha = 0.5f))
                     ) {

@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Box
@@ -14,10 +16,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.Numbers
-import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Keyboard
+import androidx.compose.material.icons.rounded.Numbers
+import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.runtime.key
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -120,7 +122,7 @@ fun ProgressPickerSheet(
                     )
                     Spacer(Modifier.height(0.dp))
                     Icon(
-                        if (keyboardMode) Icons.Filled.Numbers else Icons.Filled.Keyboard,
+                        if (keyboardMode) Icons.Rounded.Numbers else Icons.Rounded.Keyboard,
                         contentDescription = null,
                         modifier = Modifier
                             .padding(start = 8.dp)
@@ -138,7 +140,7 @@ fun ProgressPickerSheet(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
                 ) {
-                    Icon(Icons.Filled.PhotoCamera, contentDescription = null, modifier = Modifier.height(18.dp))
+                    Icon(Icons.Rounded.PhotoCamera, contentDescription = null, modifier = Modifier.height(18.dp))
                     Text("Scan page", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(start = 8.dp))
                 }
             }
@@ -216,9 +218,9 @@ fun ProgressPickerSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(60.dp),
-                shape = RoundedCornerShape(18.dp)
+                shape = AppShape.M
             ) {
-                Icon(Icons.Filled.Check, contentDescription = "Confirm", modifier = Modifier.height(26.dp))
+                Icon(Icons.Rounded.Check, contentDescription = "Confirm", modifier = Modifier.height(26.dp))
             }
         }
     }
@@ -290,7 +292,7 @@ private fun PageWheel(
                 .height(ITEM_HEIGHT + 8.dp)
                 .background(
                     MaterialTheme.colorScheme.surfaceContainerHighest,
-                    RoundedCornerShape(14.dp)
+                    AppShape.S
                 )
         )
 

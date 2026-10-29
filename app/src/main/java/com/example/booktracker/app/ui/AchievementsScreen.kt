@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,9 +17,9 @@ import com.example.booktracker.app.ui.animations.staggeredEntrance
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -69,7 +71,7 @@ fun AchievementsScreen(
                 title = { Text("Achievements") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -140,7 +142,7 @@ private fun AchievementSummary(statuses: List<BadgeStatus>) {
     val shownUnlocked by animateCountUp(unlocked)
     val fraction = if (statuses.isEmpty()) 0f else shownUnlocked.toFloat() / statuses.size
     Card(
-        shape = RoundedCornerShape(20.dp),
+        shape = AppShape.L,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -197,7 +199,7 @@ private fun MonthlyChallengeCard(status: BadgeStatus) {
     val today = LocalDate.now()
     val daysLeft = today.lengthOfMonth() - today.dayOfMonth
     Card(
-        shape = RoundedCornerShape(20.dp),
+        shape = AppShape.L,
         colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.10f)),
         border = BorderStroke(1.dp, color.copy(alpha = 0.4f)),
         modifier = Modifier.fillMaxWidth()
@@ -240,7 +242,7 @@ private fun MonthlyChallengeCard(status: BadgeStatus) {
 private fun NextUpCard(status: BadgeStatus, onClick: () -> Unit) {
     val tierColor = getBadgeTierColor(status.badge.tier)
     Card(
-        shape = RoundedCornerShape(20.dp),
+        shape = AppShape.L,
         colors = CardDefaults.cardColors(containerColor = tierColor.copy(alpha = 0.08f)),
         border = BorderStroke(1.dp, tierColor.copy(alpha = 0.35f)),
         modifier = Modifier.fillMaxWidth().bounceClick(onClick = onClick)
@@ -279,7 +281,7 @@ private fun BadgeCard(status: BadgeStatus, onClick: () -> Unit) {
             else MaterialTheme.colorScheme.surfaceContainer
         ),
         border = if (status.unlocked) BorderStroke(1.5.dp, tierColor.copy(alpha = 0.45f)) else null,
-        shape = RoundedCornerShape(18.dp)
+        shape = AppShape.M
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(14.dp),
@@ -311,7 +313,7 @@ private fun BadgeCard(status: BadgeStatus, onClick: () -> Unit) {
             Spacer(Modifier.height(10.dp))
             if (status.unlocked) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(24.dp)) {
-                    Icon(Icons.Filled.CheckCircle, null, tint = tierColor, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Rounded.CheckCircle, null, tint = tierColor, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(4.dp))
                     Text(
                         status.earnedAt?.let { "Earned ${formatEarned(it, withYear = false)}" } ?: "Earned",
@@ -380,7 +382,7 @@ internal fun BadgeMedallion(status: BadgeStatus, size: Dp) {
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Filled.Lock,
+                    Icons.Rounded.Lock,
                     contentDescription = "Locked",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(size / 5)
@@ -444,7 +446,7 @@ internal fun BadgeDetailDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = AppShape.S,
                     color = tierColor.copy(alpha = 0.18f),
                     border = BorderStroke(1.dp, tierColor.copy(alpha = 0.5f))
                 ) {
@@ -477,20 +479,20 @@ internal fun BadgeDetailDialog(
                 Spacer(Modifier.height(20.dp))
 
                 if (status.unlocked) {
-                    Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                    Surface(shape = AppShape.XS, color = MaterialTheme.colorScheme.primaryContainer) {
                         Row(
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                Icons.Filled.CheckCircle,
+                                Icons.Rounded.CheckCircle,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(
-                                status.earnedAt?.let { "Earned ${formatEarned(it, withYear = true)}" } ?: "Unlocked & Earned!",
+                                status.earnedAt?.let { "Earned ${formatEarned(it, withYear = true)}" } ?: "Earned",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer

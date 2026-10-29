@@ -1,5 +1,8 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+import com.example.booktracker.app.ui.animations.staggeredItems
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,10 +20,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FormatQuote
-import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.FormatQuote
+import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -96,7 +99,7 @@ fun LibrarySearchScreen(
                         trailingIcon = {
                             if (query.isNotEmpty()) {
                                 IconButton(onClick = { query = "" }) {
-                                    Icon(Icons.Filled.Close, contentDescription = "Clear")
+                                    Icon(Icons.Rounded.Close, contentDescription = "Clear")
                                 }
                             }
                         }
@@ -104,7 +107,7 @@ fun LibrarySearchScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -120,7 +123,7 @@ fun LibrarySearchScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
-                        Icons.Filled.SearchOff,
+                        Icons.Rounded.SearchOff,
                         contentDescription = null,
                         modifier = Modifier.size(48.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -140,6 +143,8 @@ fun LibrarySearchScreen(
         }
 
         val side = windowCentredPadding()
+        // Each new set of results rolls in afresh.
+        val entrance = com.example.booktracker.app.ui.animations.rememberEntranceState(results)
         LazyColumn(
             modifier = Modifier
                 .padding(padding)
@@ -149,13 +154,13 @@ fun LibrarySearchScreen(
         ) {
             if (results.books.isNotEmpty()) {
                 item { SearchSectionHeader("Books") }
-                items(results.books, key = { "book-${it.id}" }) { book ->
+                staggeredItems(entrance, results.books, key = { "book-${it.id}" }) { book ->
                     BookHitRow(book = book, onClick = { onOpenBook(book.id) })
                 }
             }
             if (results.notes.isNotEmpty()) {
                 item { SearchSectionHeader("Margin notes") }
-                items(results.notes, key = { "note-${it.first.id}" }) { (note, book) ->
+                staggeredItems(entrance, results.notes, key = { "note-${it.first.id}" }, startIndex = results.books.size) { (note, book) ->
                     NoteHitRow(
                         note = note,
                         book = book,
@@ -187,7 +192,7 @@ private fun BookHitRow(book: Book, onClick: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        BookCover(book.coverUrl, Modifier.size(width = 44.dp, height = 66.dp))
+        BookCover(book, Modifier.heroSharedElement("cover-${book.id}").size(width = 44.dp, height = 66.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 book.title,
@@ -216,12 +221,12 @@ private fun NoteHitRow(note: MarginNote, book: Book?, onClick: () -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = AppShape.S,
         color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Row(modifier = Modifier.padding(12.dp)) {
             Icon(
-                Icons.Filled.FormatQuote,
+                Icons.Rounded.FormatQuote,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
                 tint = MaterialTheme.colorScheme.primary
@@ -259,7 +264,7 @@ private fun StatusChip(status: String) {
         return
     }
     Surface(
-        shape = RoundedCornerShape(8.dp),
+        shape = AppShape.XS,
         color = MaterialTheme.colorScheme.secondaryContainer,
         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
     ) {

@@ -11,9 +11,9 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.rounded.QrCodeScanner
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -91,17 +91,17 @@ fun AppTopBar(
         },
         navigationIcon = {
             IconButton(onClick = onSearch, modifier = iconBackdrop) {
-                Icon(Icons.Filled.Search, contentDescription = "Search library")
+                Icon(Icons.Rounded.Search, contentDescription = "Search library")
             }
         },
         actions = {
             IconButton(onClick = onScan, modifier = iconBackdrop) {
-                Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan ISBN")
+                Icon(Icons.Rounded.QrCodeScanner, contentDescription = "Scan ISBN")
             }
             // Settings sit behind the gear on Profile.
             AnimatedVisibility(visible = showSettings) {
                 IconButton(onClick = onSettings) {
-                    Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                    Icon(Icons.Rounded.Settings, contentDescription = "Settings")
                 }
             }
         },

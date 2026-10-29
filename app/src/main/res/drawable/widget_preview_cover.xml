@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A book in cloth, with a darker spine down the left edge. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#FF6B2737" />
+            <corners android:radius="6dp" />
+        </shape>
+    </item>
+    <item android:gravity="start|fill_vertical" android:width="5dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#40000000" />
+            <corners android:topLeftRadius="6dp" android:bottomLeftRadius="6dp" />
+        </shape>
+    </item>
+</layer-list>

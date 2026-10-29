@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -100,7 +100,7 @@ fun TranslateSheet(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Translate, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Rounded.Translate, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(10.dp))
                 Text("Translate", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             }
@@ -175,7 +175,7 @@ fun TranslateSheet(
                             },
                             label = { Text(word) },
                             leadingIcon = if (isSaved) {
-                                { Icon(Icons.Filled.Check, contentDescription = "Saved", modifier = Modifier.size(16.dp)) }
+                                { Icon(Icons.Rounded.Check, contentDescription = "Saved", modifier = Modifier.size(16.dp)) }
                             } else if (savingWord == word) {
                                 { CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp) }
                             } else null

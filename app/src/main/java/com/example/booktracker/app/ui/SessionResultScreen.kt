@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,14 +21,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.NoteAdd
-import androidx.compose.material.icons.filled.CenterFocusStrong
-import androidx.compose.material.icons.filled.EventAvailable
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.TrackChanges
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.NoteAdd
+import androidx.compose.material.icons.rounded.CenterFocusStrong
+import androidx.compose.material.icons.rounded.EventAvailable
+import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.TrackChanges
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -148,14 +150,21 @@ fun SessionResultScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    val accent = rememberCoverAccent(book.coverUrl)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .coverGlow(accent, strength = 0.32f)
+    ) {
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = {},
                 navigationIcon = {
                     IconButton(onClick = onDone) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Done")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Done")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -172,7 +181,7 @@ fun SessionResultScreen(
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedButton(onClick = { showNoteSheet = true }, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.AutoMirrored.Filled.NoteAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.AutoMirrored.Rounded.NoteAdd, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("Add a note")
                     }
@@ -180,7 +189,7 @@ fun SessionResultScreen(
                         onClick = { scope.launch { shareLayerImage(context, shareLayer, "session.png", "Share this session") } },
                         modifier = Modifier.weight(1f)
                     ) {
-                        Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("Share")
                     }
@@ -188,7 +197,7 @@ fun SessionResultScreen(
                 Spacer(Modifier.height(10.dp))
                 Button(
                     onClick = onDone,
-                    shape = RoundedCornerShape(18.dp),
+                    shape = AppShape.M,
                     modifier = Modifier.fillMaxWidth().height(56.dp)
                 ) {
                     Text("Done", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -224,7 +233,7 @@ fun SessionResultScreen(
                         shareLayer.record { this@drawWithContent.drawContent() }
                         drawLayer(shareLayer)
                     }
-                    .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(28.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow, AppShape.XL)
                     .padding(20.dp)
             ) {
                 Text(
@@ -269,8 +278,8 @@ fun SessionResultScreen(
                 if (paceComparison != null || result.focus > 0) {
                     Spacer(Modifier.height(14.dp))
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        paceComparison?.let { Pill(Icons.Filled.Speed, it) }
-                        if (result.focus > 0) Pill(Icons.Filled.CenterFocusStrong, "Focus: ${focusLabel(result.focus)}")
+                        paceComparison?.let { Pill(Icons.Rounded.Speed, it) }
+                        if (result.focus > 0) Pill(Icons.Rounded.CenterFocusStrong, "Focus: ${focusLabel(result.focus)}")
                     }
                 }
             }
@@ -317,13 +326,13 @@ fun SessionResultScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow, AppShape.L)
                         .padding(horizontal = 20.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     if (streak != null && streak.dailyGoal > 0) {
                         GoalRow(
-                            icon = Icons.Filled.TrackChanges,
+                            icon = Icons.Rounded.TrackChanges,
                             title = if (streak.goalMetToday) "Daily goal met" else "Daily goal",
                             detail = "${streak.pagesToday} / ${streak.dailyGoal} $unit today",
                             fraction = streak.pagesToday.toFloat() / streak.dailyGoal
@@ -331,7 +340,7 @@ fun SessionResultScreen(
                     }
                     if (streak != null && streak.currentStreak > 0) {
                         GoalRow(
-                            icon = Icons.Filled.LocalFireDepartment,
+                            icon = Icons.Rounded.LocalFireDepartment,
                             title = "${streak.currentStreak}-day streak",
                             detail = if (streak.currentStreak >= streak.longestStreak && streak.currentStreak > 1) "Your longest yet"
                             else "Best: ${streak.longestStreak} days"
@@ -339,7 +348,7 @@ fun SessionResultScreen(
                     }
                     finishBy?.let { (line, good) ->
                         GoalRow(
-                            icon = Icons.Filled.EventAvailable,
+                            icon = Icons.Rounded.EventAvailable,
                             title = "Finish-by plan",
                             detail = line,
                             detailColor = if (good) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
@@ -413,7 +422,7 @@ private fun RowScope.StatTile(value: String, label: String) {
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .weight(1f)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest, AppShape.M)
             .padding(vertical = 14.dp, horizontal = 6.dp)
     ) {
         Text(
@@ -501,7 +510,7 @@ private fun StatSentence(content: StatSentenceScope.() -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow, AppShape.L)
             .padding(horizontal = 24.dp, vertical = 20.dp)
     ) {
         Text(

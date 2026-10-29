@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -25,11 +27,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material.icons.filled.ViewWeek
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.PhotoCamera
+import androidx.compose.material.icons.rounded.PhotoLibrary
+import androidx.compose.material.icons.rounded.SwapHoriz
+import androidx.compose.material.icons.rounded.ViewWeek
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -174,7 +176,7 @@ fun ShelfScanScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Scan a bookshelf") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } }
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back") } }
             )
         },
         bottomBar = {
@@ -200,7 +202,7 @@ fun ShelfScanScreen(
                                     owned
                                 )
                             },
-                            shape = RoundedCornerShape(18.dp),
+                            shape = AppShape.M,
                             modifier = Modifier.fillMaxWidth().height(56.dp)
                         ) { Text(if (count == 1) "Add 1 book" else "Add $count books", fontWeight = FontWeight.SemiBold) }
                     }
@@ -215,7 +217,7 @@ fun ShelfScanScreen(
                     verticalArrangement = Arrangement.Center,
                     modifier = Modifier.fillMaxSize().padding(32.dp)
                 ) {
-                    Icon(Icons.Filled.ViewWeek, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(56.dp))
+                    Icon(Icons.Rounded.ViewWeek, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(56.dp))
                     Spacer(Modifier.height(16.dp))
                     Text("Add a whole shelf at once", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
@@ -231,9 +233,9 @@ fun ShelfScanScreen(
                             if (granted) launchCamera() else cameraPermission.launch(Manifest.permission.CAMERA)
                         },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
-                        shape = RoundedCornerShape(18.dp)
+                        shape = AppShape.M
                     ) {
-                        Icon(Icons.Filled.PhotoCamera, contentDescription = null)
+                        Icon(Icons.Rounded.PhotoCamera, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Text("Take a photo")
                     }
@@ -241,9 +243,9 @@ fun ShelfScanScreen(
                     OutlinedButton(
                         onClick = { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
-                        shape = RoundedCornerShape(18.dp)
+                        shape = AppShape.M
                     ) {
-                        Icon(Icons.Filled.PhotoLibrary, contentDescription = null)
+                        Icon(Icons.Rounded.PhotoLibrary, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Text("Choose a photo")
                     }
@@ -318,7 +320,7 @@ fun ShelfScanScreen(
                                 matches[index] = match.copyWith(chosen = option, selected = true)
                                 swapping = null
                             },
-                            shape = RoundedCornerShape(14.dp),
+                            shape = AppShape.S,
                             color = if (option == match.chosen) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
                         ) {
@@ -348,7 +350,7 @@ private fun SpineRow(match: SpineMatch, onToggle: () -> Unit, onSwap: (() -> Uni
     val book = match.book
     Surface(
         onClick = onToggle,
-        shape = RoundedCornerShape(18.dp),
+        shape = AppShape.M,
         color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -370,7 +372,7 @@ private fun SpineRow(match: SpineMatch, onToggle: () -> Unit, onSwap: (() -> Uni
                 )
             }
             if (onSwap != null) {
-                IconButton(onClick = onSwap) { Icon(Icons.Filled.SwapHoriz, contentDescription = "Pick another match") }
+                IconButton(onClick = onSwap) { Icon(Icons.Rounded.SwapHoriz, contentDescription = "Pick another match") }
             }
         }
     }

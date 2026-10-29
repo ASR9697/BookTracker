@@ -12,6 +12,13 @@ import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridItemScope
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridScope
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -150,6 +157,46 @@ fun rememberEntranceState(): EntranceState {
 private const val ENTRANCE_WINDOW_MS = 700L
 private const val ENTRANCE_MAX_ITEMS = 15
 private const val ENTRANCE_STAGGER_MS = 40L
+
+/**
+ * A list item that joins the list's opening stagger ([staggeredEntrance]) and
+ * glides when the list reorders or removes it. Drop-in for `item { }`.
+ */
+fun LazyListScope.staggeredItem(state: EntranceState, index: Int, key: Any? = null, content: @Composable LazyItemScope.() -> Unit) =
+    item(key = key) {
+        val scope = this
+        Box(Modifier.animateItem().staggeredEntrance(state, index)) { scope.content() }
+    }
+
+/** [staggeredItem] for every element of [items]; drop-in for `items(list, key) { }`. */
+fun <T> LazyListScope.staggeredItems(
+    state: EntranceState,
+    items: List<T>,
+    key: ((T) -> Any)? = null,
+    /** Where this run sits in the stagger, when other items come before it. */
+    startIndex: Int = 0,
+    content: @Composable LazyItemScope.(T) -> Unit
+) = itemsIndexed(items, key = key?.let { k -> { _: Int, item: T -> k(item) } }) { index, item ->
+    val scope = this
+    Box(Modifier.animateItem().staggeredEntrance(state, startIndex + index)) { scope.content(item) }
+}
+
+/** [staggeredItem] for a staggered grid (Stats lays its cards out in one). */
+fun LazyStaggeredGridScope.staggeredItem(state: EntranceState, index: Int, key: Any? = null, content: @Composable LazyStaggeredGridItemScope.() -> Unit) =
+    item(key = key) {
+        val scope = this
+        Box(Modifier.animateItem().staggeredEntrance(state, index)) { scope.content() }
+    }
+
+fun <T> LazyStaggeredGridScope.staggeredItems(state: EntranceState, items: List<T>, key: ((T) -> Any)? = null, content: @Composable LazyStaggeredGridItemScope.(T) -> Unit) =
+    itemsIndexed(items, key = key?.let { k -> { _: Int, item: T -> k(item) } }) { index, item ->
+        val scope = this
+        Box(Modifier.animateItem().staggeredEntrance(state, index)) { scope.content(item) }
+    }
+
+/** An entrance that restarts whenever [key] changes, e.g. a fresh set of search results. */
+@Composable
+fun rememberEntranceState(key: Any?): EntranceState = remember(key) { EntranceState(SystemClock.uptimeMillis()) }
 
 /**
  * Fades and lifts an item in, a beat after the one before it. Only items that

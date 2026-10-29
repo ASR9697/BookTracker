@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.horizontalScroll
@@ -12,19 +14,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.LibraryBooks
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.BookmarkAdd
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Savings
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.LibraryBooks
+import androidx.compose.material.icons.automirrored.rounded.Sort
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.BookmarkAdd
+import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Savings
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -39,6 +41,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.booktracker.app.analytics.WishlistEngine
+import com.example.booktracker.app.ui.animations.rememberEntranceState
+import com.example.booktracker.app.ui.animations.staggeredItem
+import com.example.booktracker.app.ui.animations.staggeredItems
 import com.example.booktracker.app.ui.animations.swipeToAct
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.PurchaseLog
@@ -120,16 +125,16 @@ fun WishlistScreen(
             TopAppBar(
                 title = { Text("Wishlist") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back") }
                 },
                 actions = {
                     Box {
-                        IconButton(onClick = { sortMenu = true }) { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort") }
+                        IconButton(onClick = { sortMenu = true }) { Icon(Icons.AutoMirrored.Rounded.Sort, contentDescription = "Sort") }
                         DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
                             WishlistEngine.Sort.entries.forEach { option ->
                                 DropdownMenuItem(
                                     text = { Text(option.label) },
-                                    trailingIcon = { if (option == sort) Icon(Icons.Filled.Check, contentDescription = "Selected") },
+                                    trailingIcon = { if (option == sort) Icon(Icons.Rounded.Check, contentDescription = "Selected") },
                                     onClick = {
                                         sortName = option.name
                                         sortMenu = false
@@ -147,19 +152,20 @@ fun WishlistScreen(
                             context.safeStartActivity(Intent.createChooser(send, "Share your wishlist"))
                         },
                         enabled = wished.isNotEmpty()
-                    ) { Icon(Icons.Filled.Share, contentDescription = "Share list") }
-                    IconButton(onClick = { onSearch("") }) { Icon(Icons.Filled.Add, contentDescription = "Add a book") }
+                    ) { Icon(Icons.Rounded.Share, contentDescription = "Share list") }
+                    IconButton(onClick = { onSearch("") }) { Icon(Icons.Rounded.Add, contentDescription = "Add a book") }
                 }
             )
         }
     ) { padding ->
         val side = 16.dp + windowCentredPadding()
+        val entrance = rememberEntranceState()
         LazyColumn(
             contentPadding = PaddingValues(start = side, end = side, top = padding.calculateTopPadding(), bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize()
         ) {
-            item(key = "summary") {
+            staggeredItem(entrance, 0, key = "summary") {
                 Column(modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) {
                     Text(
                         "${total.count} ${if (total.count == 1) "book" else "books"}",
@@ -181,12 +187,12 @@ fun WishlistScreen(
                 }
             }
 
-            item(key = "budget") {
+            staggeredItem(entrance, 1, key = "budget") {
                 BudgetCard(budget = budget, spent = spent, currency = currency, onEdit = { editingBudget = true })
             }
 
             if (gaps.isNotEmpty()) {
-                item(key = "series") {
+                staggeredItem(entrance, 2, key = "series") {
                     SeriesGapsCard(gaps = gaps, onFind = { gap -> onSearch("${gap.seriesName} book ${gap.nextPosition}") })
                 }
             }
@@ -211,7 +217,7 @@ fun WishlistScreen(
             if (shown.isEmpty()) {
                 item(key = "empty") {
                     EmptyState(
-                        icon = Icons.Filled.BookmarkAdd,
+                        icon = Icons.Rounded.BookmarkAdd,
                         title = if (wished.isEmpty()) "Nothing on your wishlist" else "Nothing matches",
                         message = if (wished.isEmpty()) {
                             "Search for a book and choose Wishlist, long-press any cover, or set a book's ownership to Wishlist."
@@ -223,7 +229,7 @@ fun WishlistScreen(
                     )
                 }
             } else {
-                items(shown, key = { it.id }) { book ->
+                staggeredItems(entrance, shown, key = { it.id }, startIndex = 3) { book ->
                     WishRow(
                         book = book,
                         today = today,
@@ -235,8 +241,7 @@ fun WishlistScreen(
                                 Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=" + Uri.encode(WishlistEngine.findQuery(book))))
                             )
                         },
-                        onRemove = { onRemove(book) },
-                        modifier = Modifier.animateItem()
+                        onRemove = { onRemove(book) }
                     )
                 }
                 item(key = "hint") {
@@ -294,12 +299,12 @@ internal fun money(amount: Double, code: String): String = runCatching {
 private fun BudgetCard(budget: Int, spent: Double, currency: String, onEdit: () -> Unit) {
     Surface(
         onClick = onEdit,
-        shape = RoundedCornerShape(20.dp),
+        shape = AppShape.L,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.Savings, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Icon(Icons.Rounded.Savings, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 if (budget <= 0) {
@@ -339,10 +344,10 @@ private fun BudgetCard(budget: Int, spent: Double, currency: String, onEdit: () 
 
 @Composable
 private fun SeriesGapsCard(gaps: List<WishlistEngine.SeriesGap>, onFind: (WishlistEngine.SeriesGap) -> Unit) {
-    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = Modifier.fillMaxWidth()) {
+    Surface(shape = AppShape.L, color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.AutoMirrored.Filled.LibraryBooks, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.AutoMirrored.Rounded.LibraryBooks, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(14.dp))
                 Text("Next in your series", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             }
@@ -360,7 +365,7 @@ private fun SeriesGapsCard(gaps: List<WishlistEngine.SeriesGap>, onFind: (Wishli
                         )
                     }
                     FilledTonalButton(onClick = { onFind(gap) }) {
-                        Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("Find it")
                     }
@@ -384,14 +389,15 @@ private fun WishRow(
     val wish = WishlistEngine.info(book)
     val zone = remember { ZoneId.systemDefault() }
     var menu by remember { mutableStateOf(false) }
+    val accent = rememberCoverAccent(book.coverUrl)
     Surface(
         onClick = onOpen,
-        shape = RoundedCornerShape(20.dp),
+        shape = AppShape.L,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = modifier.fillMaxWidth().swipeToAct(onSwipeRight = onGotIt, onSwipeLeft = onRemove)
     ) {
-        Row(modifier = Modifier.padding(12.dp)) {
-            BookCover(book.coverUrl, Modifier.size(width = 56.dp, height = 84.dp))
+        Row(modifier = Modifier.coverGlow(accent, strength = 0.18f, fromLeft = true).padding(12.dp)) {
+            BookCover(book, Modifier.heroSharedElement("cover-${book.id}").size(width = 56.dp, height = 84.dp))
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.Top) {
@@ -445,27 +451,27 @@ private fun WishRow(
                 Spacer(Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     FilledTonalButton(onClick = onGotIt, contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp), modifier = Modifier.height(36.dp)) {
-                        Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("Got it")
                     }
                     Spacer(Modifier.weight(1f))
                     Box {
-                        IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, contentDescription = "More") }
+                        IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = "More") }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             DropdownMenuItem(
                                 text = { Text("Edit details") },
-                                leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                                leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
                                 onClick = { menu = false; onEdit() }
                             )
                             DropdownMenuItem(
                                 text = { Text("Find it online") },
-                                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                                 onClick = { menu = false; onFind() }
                             )
                             DropdownMenuItem(
                                 text = { Text("Remove from wishlist", color = MaterialTheme.colorScheme.error) },
-                                leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                                leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                                 onClick = { menu = false; onRemove() }
                             )
                         }
@@ -569,12 +575,12 @@ internal fun WishEditorDialog(
                 )
                 Surface(
                     onClick = { pickingDate = true },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = AppShape.S,
                     color = MaterialTheme.colorScheme.surfaceContainerHighest,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.CalendarToday, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Rounded.CalendarToday, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(10.dp))
                         Text(
                             release?.let { "Comes out ${Instant.ofEpochMilli(it).atZone(zone).toLocalDate().format(releaseYearFormat)}" } ?: "Not out yet? Add the release day",
@@ -638,12 +644,15 @@ internal fun GotItFlow(book: Book, onDismiss: () -> Unit, onGotIt: (PurchaseLog?
     var buying by remember { mutableStateOf(false) }
     val wish = WishlistEngine.info(book)
     if (!buying) {
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text("Got it!") },
-            text = { Text("How did “${book.title}” reach your shelf? It moves off the wishlist either way.") },
-            confirmButton = { TextButton(onClick = { buying = true }) { Text("I bought it") } },
-            dismissButton = { TextButton(onClick = { onGotIt(null) }) { Text("It was a gift") } }
+        ActionSheet(
+            onDismiss = onDismiss,
+            icon = Icons.Rounded.Check,
+            title = "On your shelf at last",
+            message = "How did “${book.title}” get there? It moves off the wishlist either way.",
+            confirmLabel = "I bought it",
+            onConfirm = { buying = true },
+            dismissLabel = "It was a gift",
+            onDismissAction = { onGotIt(null) }
         )
     } else {
         PurchaseEditorDialog(
@@ -665,33 +674,24 @@ internal fun GotItFlow(book: Book, onDismiss: () -> Unit, onGotIt: (PurchaseLog?
 private fun BudgetDialog(current: Int, currency: String, onDismiss: () -> Unit, onSave: (Int) -> Unit) {
     var text by remember { mutableStateOf(current.takeIf { it > 0 }?.toString().orEmpty()) }
     val value = text.toIntOrNull()
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Monthly book budget") },
-        text = {
-            Column {
-                Text(
-                    "What you mean to spend on books each month. Purchases you log count against it.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it.filter(Char::isDigit).take(7) },
-                    label = { Text("Budget ($currency)") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = { TextButton(onClick = { onSave(value ?: 0) }) { Text("Save") } },
-        dismissButton = {
-            Row {
-                if (current > 0) TextButton(onClick = { onSave(0) }) { Text("No budget") }
-                TextButton(onClick = onDismiss) { Text("Cancel") }
-            }
-        }
-    )
+    ActionSheet(
+        onDismiss = onDismiss,
+        icon = Icons.Rounded.Savings,
+        title = "Monthly book budget",
+        message = "What you mean to spend on books each month. Purchases you log count against it.",
+        confirmLabel = "Save",
+        onConfirm = { onSave(value ?: 0) },
+        dismissLabel = if (current > 0) "No budget" else "Cancel",
+        onDismissAction = { if (current > 0) onSave(0) else onDismiss() }
+    ) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it.filter(Char::isDigit).take(7) },
+            label = { Text("Budget ($currency)") },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
 }

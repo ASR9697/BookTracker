@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import android.graphics.Bitmap
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -19,9 +21,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Crop
-import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Crop
+import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
@@ -129,7 +131,7 @@ fun EditBookDialog(
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = AppShape.L,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             modifier = Modifier
                 .fillMaxWidth()
@@ -185,10 +187,10 @@ fun EditBookDialog(
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = { takePicture.launch() }) {
-                        Icon(Icons.Filled.PhotoCamera, contentDescription = "Take a cover photo")
+                        Icon(Icons.Rounded.PhotoCamera, contentDescription = "Take a cover photo")
                     }
                     IconButton(onClick = scanCover) {
-                        Icon(Icons.Filled.Crop, contentDescription = "Scan the cover flat")
+                        Icon(Icons.Rounded.Crop, contentDescription = "Scan the cover flat")
                     }
                 }
                 if (coverUrl.isNotBlank()) {
@@ -244,7 +246,7 @@ fun EditBookDialog(
                 )
                 if (book.isEnded()) {
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
+                        shape = AppShape.S,
                         color = MaterialTheme.colorScheme.surfaceContainerHighest,
                         onClick = { showFinishedPicker = true },
                         modifier = Modifier.fillMaxWidth()
@@ -253,7 +255,7 @@ fun EditBookDialog(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.width(12.dp))
                             Text(
                                 if (book.status == BookStatus.DNF.name) "Stopped on" else "Finished on",
@@ -350,7 +352,7 @@ fun LogSessionDialog(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = AppShape.S,
                     color = MaterialTheme.colorScheme.surfaceContainerHighest,
                     onClick = { showDatePicker = true },
                     modifier = Modifier.fillMaxWidth()
@@ -359,7 +361,7 @@ fun LogSessionDialog(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.width(12.dp))
                         Text(
                             Instant.ofEpochMilli(date).atZone(ZoneId.systemDefault()).toLocalDate().format(dateLabelFormat),

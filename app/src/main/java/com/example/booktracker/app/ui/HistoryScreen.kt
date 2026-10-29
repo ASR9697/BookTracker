@@ -1,6 +1,11 @@
 package com.example.booktracker.app.ui
 
-import androidx.compose.material.icons.filled.History
+import com.example.booktracker.app.ui.theme.AppShape
+import com.example.booktracker.app.ui.animations.rememberEntranceState
+import com.example.booktracker.app.ui.animations.staggeredItem
+import com.example.booktracker.app.ui.animations.staggeredItems
+
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,8 +22,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Watch
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Watch
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,7 +34,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.rememberSwipeToDismissBoxState
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -87,7 +92,7 @@ fun HistoryScreen(
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -110,7 +115,7 @@ fun HistoryScreen(
 
         if (byDay.isEmpty() && header == null) {
             EmptyState(
-                icon = androidx.compose.material.icons.Icons.Filled.History,
+                icon = androidx.compose.material.icons.Icons.Rounded.History,
                 title = "No sessions yet",
                 message = "Start the timer or log pages from Home, and every session will be kept here.",
                 modifier = Modifier.padding(innerPadding)
@@ -118,6 +123,7 @@ fun HistoryScreen(
             return@Scaffold
         }
 
+        val entrance = rememberEntranceState()
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -125,9 +131,10 @@ fun HistoryScreen(
             contentPadding = PaddingValues(horizontal = 16.dp + windowCentredPadding(), vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (header != null) item(key = "overview") { header() }
+            if (header != null) staggeredItem(entrance, 0, key = "overview") { header() }
+            var row = if (header != null) 1 else 0
             byDay.forEach { (day, daySessions) ->
-                item(key = "header-$day") {
+                staggeredItem(entrance, row++, key = "header-$day") {
                     val pages = daySessions.sumOf { it.pagesRead }
                     val minutes = AnalyticsEngine.timedSessions(daySessions)
                         .sumOf { it.endTime - it.startTime } / 60_000L
@@ -149,7 +156,7 @@ fun HistoryScreen(
                         )
                     }
                 }
-                items(daySessions, key = { it.id }) { session ->
+                staggeredItems(entrance, daySessions, key = { it.id }, startIndex = row.also { row += daySessions.size }) { session ->
                     val dismissState = rememberSwipeToDismissBoxState(
                         confirmValueChange = { value ->
                             if (value == SwipeToDismissBoxValue.EndToStart) {
@@ -165,12 +172,12 @@ fun HistoryScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(MaterialTheme.colorScheme.error, RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.error, AppShape.S)
                                     .padding(horizontal = 20.dp),
                                 contentAlignment = Alignment.CenterEnd
                             ) {
                                 Icon(
-                                    Icons.Filled.Delete,
+                                    Icons.Rounded.Delete,
                                     contentDescription = "Delete",
                                     tint = MaterialTheme.colorScheme.onError
                                 )
@@ -244,7 +251,7 @@ private fun HistorySessionRow(session: Session, bookTitle: String, onClick: () -
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer, AppShape.S)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -269,7 +276,7 @@ private fun HistorySessionRow(session: Session, bookTitle: String, onClick: () -
         if (session.deviceSource == "watch") {
             Spacer(Modifier.width(8.dp))
             Icon(
-                Icons.Filled.Watch,
+                Icons.Rounded.Watch,
                 contentDescription = "From watch",
                 modifier = Modifier.size(16.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant

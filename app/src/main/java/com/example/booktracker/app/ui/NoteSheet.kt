@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -20,10 +22,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FormatBold
-import androidx.compose.material.icons.filled.FormatItalic
-import androidx.compose.material.icons.filled.FormatListBulleted
-import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.rounded.FormatBold
+import androidx.compose.material.icons.rounded.FormatItalic
+import androidx.compose.material.icons.rounded.FormatListBulleted
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
@@ -226,7 +228,7 @@ fun NoteSheet(
                 minLines = 6,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 modifier = Modifier.fillMaxWidth().focusRequester(textFocus),
-                shape = RoundedCornerShape(16.dp),
+                shape = AppShape.M,
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
                     focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
@@ -235,17 +237,17 @@ fun NoteSheet(
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { noteValue = NoteFormatting.toggleWrap(noteValue, NoteFormatting.BOLD) }) {
-                    Icon(Icons.Filled.FormatBold, contentDescription = "Bold")
+                    Icon(Icons.Rounded.FormatBold, contentDescription = "Bold")
                 }
                 IconButton(onClick = { noteValue = NoteFormatting.toggleWrap(noteValue, NoteFormatting.ITALIC) }) {
-                    Icon(Icons.Filled.FormatItalic, contentDescription = "Italic")
+                    Icon(Icons.Rounded.FormatItalic, contentDescription = "Italic")
                 }
                 IconButton(onClick = { noteValue = NoteFormatting.toggleBullets(noteValue) }) {
-                    Icon(Icons.Filled.FormatListBulleted, contentDescription = "Bullet list")
+                    Icon(Icons.Rounded.FormatListBulleted, contentDescription = "Bullet list")
                 }
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = ::dictate) {
-                    Icon(Icons.Filled.Mic, contentDescription = "Dictate")
+                    Icon(Icons.Rounded.Mic, contentDescription = "Dictate")
                 }
             }
             if (voiceMissing) {
@@ -267,7 +269,7 @@ fun NoteSheet(
                     isError = isPageError,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.width(112.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = AppShape.M,
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
                         focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
@@ -305,7 +307,7 @@ fun NoteSheet(
                     onConfirm(pageInt ?: 0, text.trim(), noteType, images)
                 },
                 modifier = Modifier.fillMaxWidth().height(60.dp),
-                shape = RoundedCornerShape(20.dp)
+                shape = AppShape.L
             ) {
                 Text(if (isEditing) "Save changes" else "Save note", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
@@ -321,7 +323,7 @@ fun NoteSheet(
                         saveCount++
                     },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(20.dp)
+                    shape = AppShape.L
                 ) {
                     Text("Save & add another")
                 }

@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import android.Manifest
 import android.app.NotificationManager
 import android.content.ActivityNotFoundException
@@ -37,10 +39,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -87,13 +89,13 @@ private const val GOAL_STEP = 5
 
 /** The sub-pages behind the hub's rows. Enum names are saved across rotation. */
 private enum class SettingsPage(val title: String, val icon: ImageVector) {
-    APPEARANCE("Appearance", Icons.Filled.Palette),
-    READING("Reading & timer", Icons.Filled.Timer),
-    NOTIFICATIONS("Notifications", Icons.Filled.Notifications),
-    PRIVACY("Privacy & security", Icons.Filled.Lock),
-    DATA("Data & sync", Icons.Filled.Backup),
-    MOTION("Motion & feel", Icons.Filled.Vibration),
-    ABOUT("About", Icons.Filled.Info)
+    APPEARANCE("Appearance", Icons.Rounded.Palette),
+    READING("Reading & timer", Icons.Rounded.Timer),
+    NOTIFICATIONS("Notifications", Icons.Rounded.Notifications),
+    PRIVACY("Privacy & security", Icons.Rounded.Lock),
+    DATA("Data & sync", Icons.Rounded.Backup),
+    MOTION("Motion & feel", Icons.Rounded.Vibration),
+    ABOUT("About", Icons.Rounded.Info)
 }
 
 private val TEXT_SIZES = listOf(0.9f to "Small", 1f to "Default", 1.12f to "Large", 1.25f to "Larger")
@@ -161,7 +163,7 @@ fun SettingsScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { if (page != null) page = null else onBack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -290,7 +292,7 @@ private fun SettingsHub(
         GroupDivider()
         row(SettingsPage.READING)
         GroupDivider()
-        SettingRow(Icons.Filled.Flag, "Goals & reminders", goalsSummary, onClick = onOpenGoals)
+        SettingRow(Icons.Rounded.Flag, "Goals & reminders", goalsSummary, onClick = onOpenGoals)
     }
     SettingsGroup {
         row(SettingsPage.NOTIFICATIONS)
@@ -311,12 +313,12 @@ private fun ProfileCard(userName: String, onUserNameChange: (String) -> Unit, fi
     var editing by remember { mutableStateOf(false) }
     val scheme = MaterialTheme.colorScheme
     Surface(
-        shape = RoundedCornerShape(24.dp),
+        shape = AppShape.L,
         color = scheme.primaryContainer,
         contentColor = scheme.onPrimaryContainer,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
+            .clip(AppShape.L)
             .clickable(onClickLabel = "Edit your name") { editing = true }
     ) {
         Row(modifier = Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -346,7 +348,7 @@ private fun ProfileCard(userName: String, onUserNameChange: (String) -> Unit, fi
                     color = scheme.onPrimaryContainer.copy(alpha = 0.8f)
                 )
             }
-            Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(20.dp))
+            Icon(Icons.Rounded.Edit, contentDescription = null, modifier = Modifier.size(20.dp))
         }
     }
     if (editing) {
@@ -451,7 +453,7 @@ private fun AppearancePage(
             SwitchSetting("Sky behind the greeting", "Sun, moon and stars that follow the clock", prefs.homeSky) { on -> onPrefsChange { it.copy(homeSky = on) } }
         }
         GroupDivider()
-        SettingRow(Icons.Filled.Dashboard, "Edit home screen", "Reorder or hide Home sections", onClick = onEditHome)
+        SettingRow(Icons.Rounded.Dashboard, "Edit home screen", "Reorder or hide Home sections", onClick = onEditHome)
     }
 
     GroupLabel("App icon")
@@ -462,7 +464,7 @@ private fun AppearancePage(
 @Composable
 private fun ThemePreview() {
     val scheme = MaterialTheme.colorScheme
-    Surface(shape = RoundedCornerShape(20.dp), color = scheme.surfaceContainerHigh, modifier = Modifier.fillMaxWidth()) {
+    Surface(shape = AppShape.L, color = scheme.surfaceContainerHigh, modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
@@ -479,7 +481,7 @@ private fun ThemePreview() {
             }
             Spacer(Modifier.width(14.dp))
             Surface(shape = CircleShape, color = scheme.primary, contentColor = scheme.onPrimary) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.padding(10.dp).size(20.dp))
+                Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.padding(10.dp).size(20.dp))
             }
         }
     }
@@ -496,11 +498,11 @@ private fun PaletteGrid(selected: AppPalette, dimmed: Boolean, onSelect: (AppPal
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(AppShape.S)
                             .border(
                                 if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
                                 else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                                RoundedCornerShape(14.dp)
+                                AppShape.S
                             )
                             .clickable(onClickLabel = "Use ${pal.title}") { onSelect(pal) }
                             .padding(vertical = 12.dp, horizontal = 6.dp)
@@ -518,7 +520,7 @@ private fun PaletteGrid(selected: AppPalette, dimmed: Boolean, onSelect: (AppPal
                             )
                             if (isSelected) {
                                 Icon(
-                                    Icons.Filled.Check, contentDescription = "Selected",
+                                    Icons.Rounded.Check, contentDescription = "Selected",
                                     tint = Color.Black.copy(alpha = 0.75f),
                                     modifier = Modifier.size(16.dp).align(Alignment.Center).offset(x = (-4).dp, y = (-4).dp)
                                 )
@@ -639,7 +641,7 @@ private fun ReadingPage(
     }
 
     SettingsGroup {
-        SettingRow(Icons.Filled.Flag, "Goals, day start and reminder", "Daily, monthly and yearly targets", onClick = onOpenGoals)
+        SettingRow(Icons.Rounded.Flag, "Goals, day start and reminder", "Daily, monthly and yearly targets", onClick = onOpenGoals)
     }
 }
 
@@ -654,7 +656,7 @@ private fun NotificationsPage(
     var canPost by remember { mutableStateOf(Notifications.canPost(context)) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { canPost = it }
     if (!canPost) {
-        Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer) {
+        Surface(shape = AppShape.L, color = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer) {
             Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("Notifications are off for this app, so none of these can reach you.", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                 TextButton(onClick = {
@@ -667,7 +669,7 @@ private fun NotificationsPage(
     GroupLabel("Reminders")
     SettingsGroup {
         SettingRow(
-            Icons.Filled.Alarm, "Daily goal reminder",
+            Icons.Rounded.Alarm, "Daily goal reminder",
             if (reminder?.enabled == true) "On at ${formatTime(context, reminder.hour, reminder.minute)} · set in Goals" else "Off · set in Goals",
             onClick = onOpenGoals
         )
@@ -824,7 +826,7 @@ private fun DataPage(
                 },
                 modifier = Modifier.weight(1f)
             ) {
-                Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Export")
             }
@@ -833,7 +835,7 @@ private fun DataPage(
                 onClick = { restoreLauncher.launch(arrayOf("application/zip", "application/json", "application/octet-stream")) },
                 modifier = Modifier.weight(1f)
             ) {
-                Icon(Icons.Filled.Restore, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Rounded.Restore, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Restore")
             }
@@ -878,17 +880,17 @@ private fun DataPage(
 
     GroupLabel("Import & export")
     SettingsGroup {
-        SettingRow(Icons.Filled.UploadFile, "Import from Goodreads or StoryGraph", "A CSV export. Books already here are skipped.", onClick = {
+        SettingRow(Icons.Rounded.UploadFile, "Import from Goodreads or StoryGraph", "A CSV export. Books already here are skipped.", onClick = {
             csvLauncher.launch(arrayOf("text/csv", "text/comma-separated-values", "text/plain", "application/vnd.ms-excel"))
         })
         GroupDivider()
         SettingRow(
-            Icons.Filled.UploadFile, "Import a Bookmory backup",
+            Icons.Rounded.UploadFile, "Import a Bookmory backup",
             if (bookmoryImporting) "Importing…" else "Books, history, notes and photos. Safe to run again.",
             onClick = { if (!bookmoryImporting) bookmoryLauncher.launch(arrayOf("*/*")) }
         )
         GroupDivider()
-        SettingRow(Icons.Filled.Description, "Export as CSV", "Goodreads layout, for spreadsheets and other apps", onClick = {
+        SettingRow(Icons.Rounded.Description, "Export as CSV", "Goodreads layout, for spreadsheets and other apps", onClick = {
             val stamp = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
             csvExportLauncher.launch("nocturnal-reader-library-$stamp.csv")
         })
@@ -956,7 +958,7 @@ private fun DeleteAllCard(driveConnected: Boolean, onDeleteAll: ((Boolean) -> Un
     val context = LocalContext.current
     var confirming by remember { mutableStateOf(false) }
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = AppShape.L,
         color = MaterialTheme.colorScheme.surfaceContainer,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f)),
         modifier = Modifier.fillMaxWidth()
@@ -976,7 +978,7 @@ private fun DeleteAllCard(driveConnected: Boolean, onDeleteAll: ((Boolean) -> Un
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = if (driveConnected) 0.3f else 1f)),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
             ) {
-                Icon(Icons.Filled.DeleteForever, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Rounded.DeleteForever, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Delete everything…")
             }
@@ -986,7 +988,7 @@ private fun DeleteAllCard(driveConnected: Boolean, onDeleteAll: ((Boolean) -> Un
         var typed by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { confirming = false },
-            icon = { Icon(Icons.Filled.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            icon = { Icon(Icons.Rounded.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
             title = { Text("Delete your whole library?") },
             text = {
                 Column {
@@ -1067,7 +1069,7 @@ private fun MotionPage(hapticsEnabled: Boolean, onHapticsChange: (Boolean) -> Un
 private fun AboutPage(onOpenPrivacyPolicy: () -> Unit) {
     val context = LocalContext.current
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
-        Icon(Icons.Filled.NightsStay, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
+        Icon(Icons.Rounded.NightsStay, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
         Spacer(Modifier.height(8.dp))
         Text(context.getString(R.string.app_name), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Text("Version ${appVersionName(context)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1080,9 +1082,9 @@ private fun AboutPage(onOpenPrivacyPolicy: () -> Unit) {
         )
     }
     SettingsGroup {
-        LinkRow(Icons.Filled.PrivacyTip, "Privacy policy", onClick = onOpenPrivacyPolicy)
+        LinkRow(Icons.Rounded.PrivacyTip, "Privacy policy", onClick = onOpenPrivacyPolicy)
         GroupDivider()
-        LinkRow(Icons.Filled.StarRate, "Rate the app") {
+        LinkRow(Icons.Rounded.StarRate, "Rate the app") {
             val pkg = context.packageName
             val opened = context.safeStartActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$pkg")))
             if (!opened) context.safeStartActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$pkg")))
@@ -1095,7 +1097,7 @@ private fun AboutPage(onOpenPrivacyPolicy: () -> Unit) {
 /** A rounded group of rows. [padded] for free-form content; rows bring their own padding. */
 @Composable
 private fun SettingsGroup(padded: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
-    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
+    Surface(shape = AppShape.L, color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = if (padded) Modifier.padding(16.dp) else Modifier.padding(vertical = 4.dp), content = content)
     }
 }
@@ -1137,7 +1139,7 @@ private fun SettingRow(icon: ImageVector, title: String, summary: String?, onCli
                 Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -1147,7 +1149,7 @@ private fun SwitchSetting(title: String, summary: String?, checked: Boolean, ena
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(AppShape.S)
             .clickable(enabled = enabled) { onCheckedChange(!checked) }
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -1211,7 +1213,7 @@ private fun HourDropdown(hour: Int, onChange: (Int) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
         AssistChip(onClick = { open = true }, label = { Text(formatTime(context, hour, 0)) }, trailingIcon = {
-            Icon(Icons.Filled.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp))
         })
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.heightIn(max = 320.dp)) {
             (0..23).forEach { h ->
@@ -1260,10 +1262,10 @@ private fun AppIconPicker() {
                         .border(
                             width = if (selected) 2.5.dp else 0.dp,
                             color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                            shape = RoundedCornerShape(18.dp)
+                            shape = AppShape.M
                         )
                         .padding(4.dp)
-                        .clip(RoundedCornerShape(15.dp))
+                        .clip(AppShape.M)
                 ) {
                     // Adaptive layers are 108dp with a 72dp visible window; scale so the window fills the tile.
                     Image(
@@ -1302,7 +1304,7 @@ private fun AppIconPicker() {
 internal fun SettingsCard(title: String, icon: @Composable (() -> Unit)? = null, content: @Composable () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = AppShape.L,
         color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -1350,7 +1352,7 @@ private fun LinkRow(icon: ImageVector, label: String, onClick: () -> Unit) {
         Spacer(Modifier.width(16.dp))
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Icon(
-            Icons.AutoMirrored.Filled.OpenInNew,
+            Icons.AutoMirrored.Rounded.OpenInNew,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(16.dp)

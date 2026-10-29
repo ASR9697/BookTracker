@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -26,8 +28,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -110,7 +112,7 @@ private fun PageScanContent(book: Book, onDismiss: () -> Unit, onPage: (Int) -> 
                         .fillMaxWidth()
                         .padding(horizontal = 28.dp)
                         .height(360.dp)
-                        .border(2.dp, Color.White.copy(alpha = 0.55f), RoundedCornerShape(20.dp))
+                        .border(2.dp, Color.White.copy(alpha = 0.55f), AppShape.L)
                 )
             } else {
                 Column(
@@ -128,7 +130,7 @@ private fun PageScanContent(book: Book, onDismiss: () -> Unit, onPage: (Int) -> 
                 modifier = Modifier.align(Alignment.TopStart).fillMaxWidth().statusBarsPadding().padding(8.dp)
             ) {
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.White)
+                    Icon(Icons.Rounded.Close, contentDescription = "Close", tint = Color.White)
                 }
                 Text(
                     "Point at the page number, usually in a top or bottom corner",
@@ -136,7 +138,7 @@ private fun PageScanContent(book: Book, onDismiss: () -> Unit, onPage: (Int) -> 
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier
                         .weight(1f)
-                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                        .background(Color.Black.copy(alpha = 0.5f), AppShape.XS)
                         .padding(horizontal = 12.dp, vertical = 8.dp)
                 )
             }
@@ -195,10 +197,10 @@ private fun PageScanContent(book: Book, onDismiss: () -> Unit, onPage: (Int) -> 
                     Button(
                         enabled = found != null,
                         onClick = { found?.let { haptics.confirm(); onPage(it) } },
-                        shape = RoundedCornerShape(18.dp),
+                        shape = AppShape.M,
                         modifier = Modifier.fillMaxWidth().height(56.dp)
                     ) {
-                        Icon(Icons.Filled.Check, contentDescription = null)
+                        Icon(Icons.Rounded.Check, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Text(found?.let { "Use page $it" } ?: "Use this page", fontWeight = FontWeight.SemiBold)
                     }

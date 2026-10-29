@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import android.content.Intent
 import android.graphics.Bitmap
 import androidx.compose.foundation.background
@@ -9,8 +11,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -101,7 +103,7 @@ fun WrappedScreen(
                 title = { Text("Your Wrapped") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
@@ -176,7 +178,7 @@ fun WrappedScreen(
                 Button(onClick = {
                     scope.launch { shareLayerImage(context, graphicsLayer, "wrapped.png", "Share your wrapped") }
                 }) {
-                    Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Share this slide")
                 }
@@ -243,7 +245,7 @@ private fun SlideFrame(
                     drawContent()
                 }
             }
-            .clip(RoundedCornerShape(28.dp))
+            .clip(AppShape.XL)
             // Opaque at both ends, so a shared PNG has no see-through corners.
             .background(Brush.verticalGradient(listOf(container, lerp(container, MaterialTheme.colorScheme.surface, 0.35f))))
             .pointerInput(Unit) {
@@ -326,7 +328,7 @@ private fun VolumeSlide(summary: WrappedEngine.Summary) {
         Box(modifier = Modifier.height(96.dp)) {
             finished.takeLast(MAX_STACKED_COVERS).forEachIndexed { index, book ->
                 BookCover(
-                    book.coverUrl,
+                    book,
                     Modifier.padding(start = (index * 36).dp).size(width = 64.dp, height = 96.dp)
                 )
             }
@@ -366,7 +368,7 @@ private fun TopBookSlide(summary: WrappedEngine.Summary) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
         Kicker(if (summary.isYear) "Book of the year" else "Book of the month")
         Spacer(Modifier.height(8.dp))
-        BookCover(book.coverUrl, Modifier.size(width = 140.dp, height = 210.dp))
+        BookCover(book, Modifier.size(width = 140.dp, height = 210.dp))
         Spacer(Modifier.height(20.dp))
         Text(
             book.title,

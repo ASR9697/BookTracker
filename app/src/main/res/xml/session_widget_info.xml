@@ -12,6 +12,7 @@
     android:targetCellHeight="2"
     android:description="@string/session_widget_description"
     android:previewImage="@mipmap/ic_launcher"
+    android:previewLayout="@layout/widget_preview_session"
     android:initialLayout="@layout/glance_default_loading_layout"
     tools:ignore="UnusedAttribute">
 </appwidget-provider>

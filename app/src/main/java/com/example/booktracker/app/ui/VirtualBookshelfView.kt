@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -16,14 +18,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.AutoStories
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.PauseCircle
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.rounded.AutoStories
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.PauseCircle
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -54,10 +56,10 @@ import kotlin.math.absoluteValue
 
 /** Shelves by where a book is in your reading life, in the order you'd scan them. */
 private enum class ShelfGroup(val label: String, val icon: ImageVector) {
-    READING("Reading now", Icons.Filled.AutoStories),
-    UP_NEXT("To read", Icons.Filled.Schedule),
-    FINISHED("Finished", Icons.Filled.EmojiEvents),
-    ON_HOLD("Paused & set aside", Icons.Filled.PauseCircle);
+    READING("Reading now", Icons.Rounded.AutoStories),
+    UP_NEXT("To read", Icons.Rounded.Schedule),
+    FINISHED("Finished", Icons.Rounded.EmojiEvents),
+    ON_HOLD("Paused & set aside", Icons.Rounded.PauseCircle);
 
     companion object {
         fun of(status: String): ShelfGroup = when (status.uppercase()) {
@@ -116,7 +118,7 @@ fun VirtualBookshelfView(
 
     if (books.isEmpty()) {
         EmptyState(
-            icon = Icons.AutoMirrored.Filled.MenuBook,
+            icon = Icons.AutoMirrored.Rounded.MenuBook,
             title = "An empty shelf",
             message = "Books you add will stand here, grouped by what you're reading, what's next and what you've finished.",
             modifier = modifier
@@ -396,7 +398,7 @@ private fun BookSpine(book: Book, selected: Boolean, onClick: () -> Unit, onLong
         )
         if (book.isFavorite) {
             Icon(
-                Icons.Filled.Favorite,
+                Icons.Rounded.Favorite,
                 contentDescription = "Favourite",
                 tint = ink.copy(alpha = 0.8f),
                 modifier = Modifier.align(Alignment.TopCenter).padding(top = 20.dp).size(10.dp)
@@ -457,7 +459,7 @@ private fun FaceOutCover(
                 onLongClick = onLongClick
             )
     ) {
-        BookCover(book.coverUrl, Modifier.heroSharedElement("cover-${book.id}").fillMaxSize())
+        BookCover(book, Modifier.heroSharedElement("cover-${book.id}").fillMaxSize())
         if (book.status == BookStatus.READING.name && book.totalPages > 0) {
             LinearProgressIndicator(
                 progress = { (book.currentPage.toFloat() / book.totalPages).coerceIn(0f, 1f) },
@@ -475,14 +477,14 @@ private fun FaceOutCover(
 @Composable
 private fun ShelfInspector(book: Book, onOpen: () -> Unit, onRead: () -> Unit, onDismiss: () -> Unit) {
     Surface(
-        shape = RoundedCornerShape(28.dp),
+        shape = AppShape.XL,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         shadowElevation = 12.dp,
         modifier = Modifier.fillMaxWidth().padding(16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row {
-                BookCover(book.coverUrl, Modifier.size(width = 64.dp, height = 96.dp))
+                BookCover(book, Modifier.size(width = 64.dp, height = 96.dp))
                 Spacer(Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(book.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -514,7 +516,7 @@ private fun ShelfInspector(book: Book, onOpen: () -> Unit, onRead: () -> Unit, o
                     }
                 }
                 IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Filled.Close, contentDescription = "Put back", modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.Close, contentDescription = "Put back", modifier = Modifier.size(18.dp))
                 }
             }
             Spacer(Modifier.height(14.dp))
@@ -522,7 +524,7 @@ private fun ShelfInspector(book: Book, onOpen: () -> Unit, onRead: () -> Unit, o
                 FilledTonalButton(onClick = onOpen, modifier = Modifier.weight(1f)) { Text("Open book") }
                 if (book.status != BookStatus.FINISHED.name) {
                     Button(onClick = onRead, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(if (book.status == BookStatus.READING.name) "Read" else "Start")
                     }

@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -30,13 +32,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Brush
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Crop
-import androidx.compose.material.icons.filled.DocumentScanner
-import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Brush
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Crop
+import androidx.compose.material.icons.rounded.DocumentScanner
+import androidx.compose.material.icons.rounded.PhotoCamera
+import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -79,7 +81,7 @@ import java.io.File
 /** Photos a single note can carry; enough for a spread and a close-up. */
 const val MAX_NOTE_PHOTOS = 4
 
-private val PhotoShape = RoundedCornerShape(12.dp)
+private val PhotoShape = AppShape.S
 
 /**
  * Photos on a note card: one photo fills the width, several share a row.
@@ -135,7 +137,7 @@ private fun PhotoViewer(uri: String, onDismiss: () -> Unit) {
                 modifier = Modifier.fillMaxSize()
             )
             IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-                Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.White)
+                Icon(Icons.Rounded.Close, contentDescription = "Close", tint = Color.White)
             }
         }
     }
@@ -254,7 +256,7 @@ fun NotePhotoEditor(
                     if (granted) launchCamera() else cameraPermission.launch(Manifest.permission.CAMERA)
                 }
             ) {
-                Icon(Icons.Filled.DocumentScanner, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Rounded.DocumentScanner, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("Scan text")
             }
@@ -267,7 +269,7 @@ fun NotePhotoEditor(
                     if (granted) launchCamera() else cameraPermission.launch(Manifest.permission.CAMERA)
                 }
             ) {
-                Icon(Icons.Filled.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Rounded.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("Camera")
             }
@@ -275,12 +277,12 @@ fun NotePhotoEditor(
                 enabled = room > 0 && !busy,
                 onClick = { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
             ) {
-                Icon(Icons.Filled.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Rounded.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("Gallery")
             }
             OutlinedButton(enabled = room > 0 && !busy, onClick = scanPage) {
-                Icon(Icons.Filled.Crop, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Rounded.Crop, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("Clean page")
             }
@@ -299,12 +301,12 @@ fun NotePhotoEditor(
                             modifier = Modifier.fillMaxSize().clip(PhotoShape)
                         )
                         PhotoAction(
-                            icon = Icons.Filled.Close,
+                            icon = Icons.Rounded.Close,
                             label = "Remove photo ${index + 1}",
                             modifier = Modifier.align(Alignment.TopEnd)
                         ) { onImagesChange(images - uri) }
                         PhotoAction(
-                            icon = Icons.Filled.DocumentScanner,
+                            icon = Icons.Rounded.DocumentScanner,
                             label = "Extract text from photo ${index + 1}",
                             modifier = Modifier.align(Alignment.BottomEnd)
                         ) {
@@ -316,13 +318,13 @@ fun NotePhotoEditor(
                             }
                         }
                         PhotoAction(
-                            icon = Icons.Filled.Brush,
+                            icon = Icons.Rounded.Brush,
                             label = "Highlight photo ${index + 1}",
                             modifier = Modifier.align(Alignment.BottomStart)
                         ) { highlighting = uri }
                         if (index > 0) {
                             PhotoAction(
-                                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                                icon = Icons.AutoMirrored.Rounded.ArrowBack,
                                 label = "Move photo ${index + 1} earlier",
                                 modifier = Modifier.align(Alignment.TopStart)
                             ) {

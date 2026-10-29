@@ -1,13 +1,15 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import com.example.booktracker.app.ui.animations.rememberEntranceState
 import com.example.booktracker.app.ui.animations.staggeredEntrance
-import androidx.compose.material.icons.filled.SearchOff
-import androidx.compose.material.icons.filled.FormatQuote
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Spellcheck
+import androidx.compose.material.icons.rounded.SearchOff
+import androidx.compose.material.icons.rounded.FormatQuote
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Spellcheck
 import androidx.compose.ui.graphics.vector.ImageVector
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -24,19 +26,19 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material.icons.filled.Style
+import androidx.compose.material.icons.automirrored.rounded.Sort
+import androidx.compose.material.icons.automirrored.rounded.ViewList
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.material.icons.rounded.Style
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -156,7 +158,7 @@ fun MemorizeScreen(
             }
             if (view == NotesView.CARDS) {
                 IconButton(onClick = { shuffleSeed++ }) {
-                    Icon(Icons.Filled.Shuffle, contentDescription = "Shuffle cards")
+                    Icon(Icons.Rounded.Shuffle, contentDescription = "Shuffle cards")
                 }
             }
             IconButton(onClick = {
@@ -164,7 +166,7 @@ fun MemorizeScreen(
                 if (!searching) query = ""
             }) {
                 Icon(
-                    if (searching) Icons.Filled.Close else Icons.Filled.Search,
+                    if (searching) Icons.Rounded.Close else Icons.Rounded.Search,
                     contentDescription = if (searching) "Close search" else "Search notes"
                 )
             }
@@ -177,7 +179,7 @@ fun MemorizeScreen(
                         icon = {}
                     ) {
                         Icon(
-                            if (option == NotesView.LIST) Icons.AutoMirrored.Filled.ViewList else Icons.Filled.Style,
+                            if (option == NotesView.LIST) Icons.AutoMirrored.Rounded.ViewList else Icons.Rounded.Style,
                             contentDescription = if (option == NotesView.LIST) "Show as list" else "Show as flashcards",
                             modifier = Modifier.size(18.dp)
                         )
@@ -192,7 +194,7 @@ fun MemorizeScreen(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             NotesShortcut(
-                icon = Icons.Filled.AutoAwesome,
+                icon = Icons.Rounded.AutoAwesome,
                 title = "Daily review",
                 subtitle = if (reviewDue > 0) "$reviewDue due today" else "All caught up",
                 highlighted = reviewDue > 0,
@@ -200,7 +202,7 @@ fun MemorizeScreen(
                 modifier = Modifier.weight(1f)
             )
             NotesShortcut(
-                icon = Icons.Filled.Spellcheck,
+                icon = Icons.Rounded.Spellcheck,
                 title = "Words",
                 subtitle = if (wordCount == 0) "Save words you meet" else "$wordCount saved",
                 highlighted = false,
@@ -217,14 +219,14 @@ fun MemorizeScreen(
                 onValueChange = { query = it },
                 placeholder = { Text("Search quotes, thoughts, books, authors") },
                 singleLine = true,
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                 trailingIcon = {
                     if (query.isNotEmpty()) {
-                        IconButton(onClick = { query = "" }) { Icon(Icons.Filled.Close, contentDescription = "Clear search") }
+                        IconButton(onClick = { query = "" }) { Icon(Icons.Rounded.Close, contentDescription = "Clear search") }
                     }
                 },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).focusRequester(focus),
-                shape = RoundedCornerShape(16.dp)
+                shape = AppShape.M
             )
         }
 
@@ -242,7 +244,7 @@ fun MemorizeScreen(
                     label = { Text("Favorites") },
                     leadingIcon = {
                         Icon(
-                            if (showFavoritesOnly) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                            if (showFavoritesOnly) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
@@ -262,7 +264,7 @@ fun MemorizeScreen(
                             onClick = { showSortMenu = true },
                             label = { Text(sort.label) },
                             leadingIcon = {
-                                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Icon(Icons.AutoMirrored.Rounded.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
                             }
                         )
                         DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
@@ -284,9 +286,9 @@ fun MemorizeScreen(
         if (eligibleNotes.isEmpty()) {
             EmptyState(
                 icon = when {
-                    notes.isEmpty() -> androidx.compose.material.icons.Icons.Filled.FormatQuote
-                    showFavoritesOnly && typeFilter == null -> androidx.compose.material.icons.Icons.Filled.FavoriteBorder
-                    else -> androidx.compose.material.icons.Icons.Filled.SearchOff
+                    notes.isEmpty() -> androidx.compose.material.icons.Icons.Rounded.FormatQuote
+                    showFavoritesOnly && typeFilter == null -> androidx.compose.material.icons.Icons.Rounded.FavoriteBorder
+                    else -> androidx.compose.material.icons.Icons.Rounded.SearchOff
                 },
                 title = when {
                     notes.isEmpty() -> "No notes yet"
@@ -365,7 +367,7 @@ fun MemorizeScreen(
                         .fillMaxWidth()
                         .fillMaxHeight(0.85f)
                         .clickable { isFlipped = !isFlipped },
-                    shape = RoundedCornerShape(28.dp),
+                    shape = AppShape.XL,
                     colors = CardDefaults.cardColors(
                         containerColor = if (isFlipped) MaterialTheme.colorScheme.secondaryContainer
                         else MaterialTheme.colorScheme.surfaceContainerHigh
@@ -379,16 +381,16 @@ fun MemorizeScreen(
                             if (book != null) {
                                 IconButton(onClick = { noteToShare = note to book }) {
                                     Icon(
-                                        Icons.Filled.Share,
-                                        contentDescription = "Share Quote",
+                                        Icons.Rounded.Share,
+                                        contentDescription = "Share quote",
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
                             IconButton(onClick = { onToggleFavorite(note.id) }) {
                                 Icon(
-                                    if (note.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                                    contentDescription = "Toggle Favorite",
+                                    if (note.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                    contentDescription = "Mark as favorite",
                                     tint = if (note.isFavorite) MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -402,7 +404,7 @@ fun MemorizeScreen(
                             ) {
                                 if (note.pageNumber > 0) {
                                     Surface(
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = AppShape.S,
                                         color = MaterialTheme.colorScheme.surfaceVariant
                                     ) {
                                         Text(
@@ -415,7 +417,7 @@ fun MemorizeScreen(
                                     Spacer(Modifier.height(16.dp))
                                 }
                                 Text(
-                                    book?.title ?: "Unknown Book",
+                                    book?.title ?: "Unknown book",
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center
@@ -535,7 +537,7 @@ private fun NoteFeedCard(
     val haptic = LocalHapticFeedback.current
     Card(
         onClick = { book?.let(onOpenBook) },
-        shape = RoundedCornerShape(20.dp),
+        shape = AppShape.L,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
         Column(modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 16.dp, bottom = 4.dp)) {
@@ -607,7 +609,7 @@ private fun NoteFeedCard(
                     onToggleFavorite()
                 }) {
                     Icon(
-                        if (note.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        if (note.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                         contentDescription = if (note.isFavorite) "Remove from favorites" else "Add to favorites",
                         tint = if (note.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
@@ -619,7 +621,7 @@ private fun NoteFeedCard(
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 }) {
                     Icon(
-                        Icons.Filled.ContentCopy,
+                        Icons.Rounded.ContentCopy,
                         contentDescription = "Copy note",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
@@ -628,7 +630,7 @@ private fun NoteFeedCard(
                 if (book != null) {
                     IconButton(onClick = { onShare(book) }) {
                         Icon(
-                            Icons.Filled.Share,
+                            Icons.Rounded.Share,
                             contentDescription = "Share quote",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
@@ -638,7 +640,7 @@ private fun NoteFeedCard(
                 Box {
                     IconButton(onClick = { menuOpen = true }) {
                         Icon(
-                            Icons.Filled.MoreVert,
+                            Icons.Rounded.MoreVert,
                             contentDescription = "More note actions",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
@@ -647,12 +649,12 @@ private fun NoteFeedCard(
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         DropdownMenuItem(
                             text = { Text("Edit") },
-                            leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                            leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
                             onClick = { menuOpen = false; onEdit() }
                         )
                         DropdownMenuItem(
                             text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
-                            leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                            leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                             onClick = { menuOpen = false; onDelete() }
                         )
                     }
@@ -673,7 +675,7 @@ private fun NotesShortcut(
 ) {
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(18.dp),
+        shape = AppShape.M,
         color = if (highlighted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
         modifier = modifier
     ) {

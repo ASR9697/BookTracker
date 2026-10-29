@@ -225,6 +225,24 @@ class BookTrackerViewModel(
 
     fun updatePrefs(transform: (AppPrefs) -> AppPrefs) { viewModelScope.launch { settings.updatePrefs(transform) } }
 
+    /**
+     * The first-run welcome: an empty library and a welcome not yet seen. False
+     * until both have loaded, so it never flashes up for a reader with books.
+     */
+    val showWelcome: StateFlow<Boolean> = combine(repository.observeBooks(), settings.prefs) { books, prefs ->
+        books.isEmpty() && !prefs.onboarded
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    init {
+        // Readers who had books before the welcome existed never need it.
+        viewModelScope.launch {
+            repository.observeBooks().first { it.isNotEmpty() }
+            if (!settings.prefs.first().onboarded) settings.updatePrefs { it.copy(onboarded = true) }
+        }
+    }
+
+    fun finishWelcome() = updatePrefs { it.copy(onboarded = true) }
+
     /** Writes the library as a Goodreads-style CSV to [uri]. */
     fun exportCsv(context: Context, uri: android.net.Uri, onDone: (Boolean) -> Unit) {
         viewModelScope.launch {

@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,8 +12,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -88,7 +90,7 @@ fun MonthlyReportDialog(
                 // A share card, not a banner: on a tablet it stays card-sized.
                 .widthIn(max = 480.dp)
                 .wrapContentHeight(),
-            shape = RoundedCornerShape(28.dp),
+            shape = AppShape.XL,
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp
         ) {
@@ -118,7 +120,7 @@ fun MonthlyReportDialog(
                         )
                     }
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Filled.Close, contentDescription = "Close")
+                        Icon(Icons.Rounded.Close, contentDescription = "Close")
                     }
                 }
 
@@ -187,7 +189,7 @@ fun MonthlyReportDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(aspectRatio)
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(AppShape.L)
                         .background(cardGradient)
                         .padding(if (selectedFormat == QuoteCardFormat.STORY) 16.dp else 14.dp),
                     contentAlignment = Alignment.Center
@@ -195,7 +197,7 @@ fun MonthlyReportDialog(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(AppShape.M)
                             .background(cardColor)
                             .padding(14.dp)
                     ) {
@@ -321,9 +323,9 @@ fun MonthlyReportDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = AppShape.M
                 ) {
-                    Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Share Monthly Card", fontWeight = FontWeight.Bold)
                 }
@@ -342,7 +344,7 @@ private fun MiniStatBox(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(10.dp),
+        shape = AppShape.XS,
         color = Color.Black.copy(alpha = 0.15f)
     ) {
         Column(

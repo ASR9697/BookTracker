@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -12,8 +14,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Timeline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -99,7 +101,7 @@ fun ReadingJourneyMap(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -107,7 +109,7 @@ fun ReadingJourneyMap(
     ) { padding ->
         if (reads.isEmpty()) {
             EmptyState(
-                icon = Icons.Filled.Timeline,
+                icon = Icons.Rounded.Timeline,
                 title = "Your journey starts with one book",
                 message = "Finish a book and it becomes the first stop on your path.",
                 modifier = Modifier.padding(padding)
@@ -263,14 +265,14 @@ private fun BookStop(stop: Stop.Finished, zone: ZoneId, onOpen: () -> Unit) {
                     translationX = (1f - cardIn.value) * slide
                 }
         ) {
-            val shape = RoundedCornerShape(12.dp)
+            val shape = AppShape.S
             Box(
                 modifier = Modifier
                     .size(CoverWidth, CoverHeight)
                     .shadow(8.dp, shape)
                     .bounceClick(onClick = onOpen)
             ) {
-                BookCover(book.coverUrl, Modifier.heroSharedElement("cover-${book.id}").fillMaxSize())
+                BookCover(book, Modifier.heroSharedElement("cover-${book.id}").fillMaxSize())
                 if (book.coverUrl.isBlank()) {
                     Text(
                         book.title,

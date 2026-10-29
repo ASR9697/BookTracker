@@ -3,6 +3,19 @@ package com.example.booktracker.app.ui.theme
 import androidx.compose.ui.graphics.Color
 import com.example.booktracker.app.data.AppPalette
 
+/** Book-cloth colours for covers typeset from the title; deep enough for cream ink on either theme. */
+val CoverCloth = listOf(
+    Color(0xFF2F4858), // slate teal
+    Color(0xFF6B2737), // burgundy
+    Color(0xFF1F3A5F), // navy
+    Color(0xFF2E5E4E), // forest
+    Color(0xFF5B3A6B), // plum
+    Color(0xFF8A5A2B), // saddle leather
+    Color(0xFF3A3A40), // charcoal
+    Color(0xFF7A3E2F)  // rust
+)
+val CoverInk = Color(0xFFF4EDE1)
+
 // Baseline Fallbacks
 val Background = Color(0xFF141218)
 val Surface = Color(0xFF141218)

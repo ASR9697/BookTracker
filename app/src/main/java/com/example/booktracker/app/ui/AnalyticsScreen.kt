@@ -1,5 +1,10 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+import com.example.booktracker.app.ui.animations.rememberEntranceState
+import com.example.booktracker.app.ui.animations.staggeredItem
+import com.example.booktracker.app.ui.animations.staggeredItems
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
@@ -10,16 +15,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.WbTwilight
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.AutoStories
-import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.WbTwilight
+import androidx.compose.material.icons.rounded.Flag
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.AutoStories
+import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material3.*
 import com.example.booktracker.app.analytics.GoalEngine
 import androidx.compose.ui.text.font.FontWeight
@@ -150,6 +155,8 @@ fun AnalyticsScreen(
         distribution.toList().sortedByDescending { it.second }
     }
 
+    val entrance = rememberEntranceState()
+
     // One column on a phone; on a tablet the cards sit side by side, two or three across.
     LazyVerticalStaggeredGrid(
         columns = StaggeredGridCells.Adaptive(minSize = 360.dp),
@@ -158,11 +165,11 @@ fun AnalyticsScreen(
         verticalItemSpacing = 24.dp,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        item {
+        staggeredItem(entrance, 0) {
             // Bookmory Yearly Reading Target with Pace
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                shape = RoundedCornerShape(20.dp),
+                shape = AppShape.L,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
@@ -173,16 +180,16 @@ fun AnalyticsScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                Icons.Filled.Flag,
+                                Icons.Rounded.Flag,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text("$thisYear Reading Target", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text("$thisYear reading target", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         }
                         IconButton(onClick = { onEditGoal(GoalType.YEARLY_BOOKS) }) {
-                            Icon(Icons.Filled.Edit, contentDescription = "Edit goal", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Icon(Icons.Rounded.Edit, contentDescription = "Edit goal", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
 
@@ -200,12 +207,12 @@ fun AnalyticsScreen(
                         GoalEngine.GoalPaceStatus.ON_TRACK -> MaterialTheme.colorScheme.onSecondaryContainer
                     }
                     val paceIcon = when (yearlyPace.status) {
-                        GoalEngine.GoalPaceStatus.AHEAD -> Icons.AutoMirrored.Filled.TrendingUp
-                        GoalEngine.GoalPaceStatus.BEHIND -> Icons.Filled.Schedule
-                        GoalEngine.GoalPaceStatus.ON_TRACK -> Icons.Filled.CheckCircle
+                        GoalEngine.GoalPaceStatus.AHEAD -> Icons.AutoMirrored.Rounded.TrendingUp
+                        GoalEngine.GoalPaceStatus.BEHIND -> Icons.Rounded.Schedule
+                        GoalEngine.GoalPaceStatus.ON_TRACK -> Icons.Rounded.CheckCircle
                     }
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
+                        shape = AppShape.S,
                         color = paceBg,
                         contentColor = paceContentColor,
                         modifier = Modifier.fillMaxWidth()
@@ -252,8 +259,9 @@ fun AnalyticsScreen(
                         }
                         Spacer(Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
+                            val shownFinished by com.example.booktracker.app.ui.animations.animateCountUp(finishedThisYear)
                             Text(
-                                "$finishedThisYear of $yearlyGoal books",
+                                "$shownFinished of $yearlyGoal books",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
                             )
@@ -271,7 +279,7 @@ fun AnalyticsScreen(
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                         Spacer(Modifier.height(12.dp))
                         Surface(
-                            shape = RoundedCornerShape(12.dp),
+                            shape = AppShape.S,
                             color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -280,7 +288,7 @@ fun AnalyticsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    Icons.AutoMirrored.Filled.TrendingUp,
+                                    Icons.AutoMirrored.Rounded.TrendingUp,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(16.dp)
@@ -300,11 +308,11 @@ fun AnalyticsScreen(
 
         }
 
-        item {
+        staggeredItem(entrance, 1) {
             // Bookmory Monthly Goal with Pages / Books Toggle
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                shape = RoundedCornerShape(20.dp),
+                shape = AppShape.L,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -381,22 +389,22 @@ fun AnalyticsScreen(
                     Spacer(Modifier.height(8.dp))
                     OutlinedButton(
                         onClick = { onEditGoal(monthlyTargetMode) },
-                        shape = RoundedCornerShape(12.dp)
+                        shape = AppShape.S
                     ) {
-                        Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Rounded.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Adjust Target")
+                        Text("Adjust target")
                     }
                 }
             }
 
         }
 
-        item {
+        staggeredItem(entrance, 2) {
             // Seasonal Reading Sprint Challenge
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                shape = RoundedCornerShape(20.dp),
+                shape = AppShape.L,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
@@ -431,7 +439,7 @@ fun AnalyticsScreen(
                             }
                         }
                         Surface(
-                            shape = RoundedCornerShape(12.dp),
+                            shape = AppShape.S,
                             color = if (seasonalSprint.isCompleted)
                                 MaterialTheme.colorScheme.primaryContainer
                             else
@@ -497,11 +505,11 @@ fun AnalyticsScreen(
 
         }
 
-        item {
+        staggeredItem(entrance, 3) {
             // Reading Habit Consistency Card
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                shape = RoundedCornerShape(20.dp),
+                shape = AppShape.L,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
@@ -512,14 +520,14 @@ fun AnalyticsScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                Icons.Filled.Psychology,
+                                Icons.Rounded.Psychology,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "Reading Habit Health",
+                                "Reading habit",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -558,8 +566,9 @@ fun AnalyticsScreen(
                                 strokeWidth = 7.dp,
                                 strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                             )
+                            val shownConsistency by com.example.booktracker.app.ui.animations.animateCountUp(habitConsistency.consistencyPercent)
                             Text(
-                                "${habitConsistency.consistencyPercent}%",
+                                "$shownConsistency%",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -584,11 +593,11 @@ fun AnalyticsScreen(
 
         }
 
-        item {
+        staggeredItem(entrance, 4) {
             // Last-7-days activity, switchable between pages and reading time.
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                shape = RoundedCornerShape(16.dp),
+                shape = AppShape.M,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -598,7 +607,7 @@ fun AnalyticsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            if (showMinutes) "Time Read" else "Pages Read",
+                            if (showMinutes) "Time read" else "Pages read",
                             style = MaterialTheme.typography.titleLarge
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -638,19 +647,19 @@ fun AnalyticsScreen(
         }
 
         // Reading-time stats from recorded session durations.
-        item {
+        staggeredItem(entrance, 5) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                shape = RoundedCornerShape(16.dp),
+                shape = AppShape.M,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Reading Time", style = MaterialTheme.typography.titleLarge)
+                    Text("Reading time", style = MaterialTheme.typography.titleLarge)
                     Spacer(Modifier.height(16.dp))
                     if (timeSummary.timedSessionCount == 0) {
                         Text(
-                            "Start and end sessions from the Home tab to unlock time " +
-                                "stats and your reading speed.",
+                            "Time a session with the reading timer, and your pace, best time of day " +
+                                "and weekly minutes will gather here.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -660,22 +669,22 @@ fun AnalyticsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             TimeStat(
-                                Icons.Filled.Schedule,
+                                Icons.Rounded.Schedule,
                                 AnalyticsEngine.formatMinutes(timeSummary.minutesLast7Days),
                                 "This week"
                             )
                             TimeStat(
-                                Icons.Filled.Schedule,
+                                Icons.Rounded.Schedule,
                                 AnalyticsEngine.formatMinutes(timeSummary.avgSessionMinutes),
                                 "Avg session"
                             )
                             TimeStat(
-                                Icons.Filled.Speed,
+                                Icons.Rounded.Speed,
                                 velocity?.let { "${it.roundToInt()} p/h" } ?: "—",
                                 "Speed"
                             )
                             TimeStat(
-                                Icons.Filled.WbTwilight,
+                                Icons.Rounded.WbTwilight,
                                 bestTime ?: "—",
                                 "Best time"
                             )
@@ -687,15 +696,15 @@ fun AnalyticsScreen(
 
         // When and where focus is best, from the focus rated on the save screen.
         if (focus != null) {
-            item { FocusInsightsCard(focus) }
+            staggeredItem(entrance, 6) { FocusInsightsCard(focus) }
         }
 
         // Where you read best — volume and pace per environment tag.
         if (environments.isNotEmpty()) {
-            item {
+            staggeredItem(entrance, 7) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = AppShape.M,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -739,10 +748,10 @@ fun AnalyticsScreen(
         }
 
         // Shares of one or two books are noise, so the split waits for a small library.
-        item {
+        staggeredItem(entrance, 8) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                shape = RoundedCornerShape(16.dp),
+                shape = AppShape.M,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -766,14 +775,14 @@ fun AnalyticsScreen(
         }
         
         if (formatDistribution.isNotEmpty()) {
-            item {
+            staggeredItem(entrance, 9) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = AppShape.M,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Format Distribution", style = MaterialTheme.typography.titleLarge)
+                        Text("Formats", style = MaterialTheme.typography.titleLarge)
                         Spacer(Modifier.height(16.dp))
                         PieChart(
                             data = formatDistribution,
@@ -789,19 +798,18 @@ fun AnalyticsScreen(
         if (finishedBooks.isNotEmpty()) {
             item(span = StaggeredGridItemSpan.FullLine) {
                 Text(
-                    "Recently Finished",
+                    "Recently finished",
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
-            items(finishedBooks, key = { it.id }) { book ->
+            staggeredItems(entrance, finishedBooks, key = { it.id }) { book ->
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = AppShape.S,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp)
-                        .animateItem()
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
@@ -833,7 +841,7 @@ fun AnalyticsScreen(
                                     color = MaterialTheme.colorScheme.secondary
                                 )
                                 Icon(
-                                    Icons.Filled.Star,
+                                    Icons.Rounded.Star,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.secondary,
                                     modifier = Modifier.size(16.dp)
@@ -853,7 +861,7 @@ private fun FocusInsightsCard(summary: com.example.booktracker.app.analytics.Foc
     val headline = com.example.booktracker.app.analytics.FocusInsights.headline(summary)
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        shape = RoundedCornerShape(16.dp),
+        shape = AppShape.M,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {

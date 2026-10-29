@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -98,7 +98,7 @@ fun LivingFlame(
             }
         }
         Icon(
-            Icons.Filled.LocalFireDepartment,
+            Icons.Rounded.LocalFireDepartment,
             contentDescription = null,
             tint = if (alive) tint else idleTint,
             modifier = Modifier

@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,7 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.NoteAdd
+import androidx.compose.material.icons.automirrored.rounded.NoteAdd
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -65,7 +67,7 @@ fun TimerNotesPane(
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = onOpenNoteSheet) {
-                    Icon(Icons.AutoMirrored.Filled.NoteAdd, contentDescription = "Note with photos or scanning")
+                    Icon(Icons.AutoMirrored.Rounded.NoteAdd, contentDescription = "Note with photos or scanning")
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -74,7 +76,7 @@ fun TimerNotesPane(
                 onValueChange = { draft = it },
                 placeholder = { Text("A thought or a quote, at $pageLabel $currentPage") },
                 minLines = 3,
-                shape = RoundedCornerShape(16.dp),
+                shape = AppShape.M,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(8.dp))
@@ -114,7 +116,7 @@ fun TimerNotesPane(
             ) {
                 items(recent, key = { it.id }) { note ->
                     Surface(
-                        shape = RoundedCornerShape(14.dp),
+                        shape = AppShape.S,
                         color = MaterialTheme.colorScheme.surfaceContainer,
                         modifier = Modifier.fillMaxWidth().animateItem()
                     ) {

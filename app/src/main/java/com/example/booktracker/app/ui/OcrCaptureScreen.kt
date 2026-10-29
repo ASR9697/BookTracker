@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -21,8 +23,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -103,7 +105,7 @@ fun OcrCaptureScreen(
                         .border(
                             width = 2.dp,
                             color = Color.White.copy(alpha = 0.85f),
-                            shape = RoundedCornerShape(16.dp)
+                            shape = AppShape.M
                         )
                         .padding(vertical = 80.dp)
                 )
@@ -115,7 +117,7 @@ fun OcrCaptureScreen(
                         .align(Alignment.TopCenter)
                         .statusBarsPadding()
                         .padding(horizontal = 32.dp, vertical = 24.dp)
-                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                        .background(Color.Black.copy(alpha = 0.5f), AppShape.XS)
                         .padding(8.dp)
                 )
 
@@ -138,7 +140,7 @@ fun OcrCaptureScreen(
                             modifier = Modifier
                                 .background(
                                     Color.Black.copy(alpha = 0.6f),
-                                    RoundedCornerShape(8.dp)
+                                    AppShape.XS
                                 )
                                 .padding(12.dp)
                         )
@@ -187,7 +189,7 @@ fun OcrCaptureScreen(
                     .statusBarsPadding()
                     .padding(4.dp)
             ) {
-                Icon(Icons.Filled.Close, contentDescription = "Close scanner", tint = Color.White)
+                Icon(Icons.Rounded.Close, contentDescription = "Close scanner", tint = Color.White)
             }
         }
     }
@@ -264,7 +266,7 @@ private fun OcrConfirmSheet(
                 onClick = { translating = true },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(Icons.Filled.Translate, contentDescription = null)
+                Icon(Icons.Rounded.Translate, contentDescription = null)
                 Text("  Translate")
             }
             Button(

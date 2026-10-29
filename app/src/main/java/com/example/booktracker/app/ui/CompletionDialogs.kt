@@ -17,10 +17,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.StarHalf
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.automirrored.rounded.StarHalf
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
@@ -93,8 +93,8 @@ fun StarRatingDisplay(rating: Float, starSize: Dp = 18.dp) {
 @Composable
 private fun StarIcon(fill: Float, size: Dp) {
     val icon = when {
-        fill >= 0.75f -> Icons.Filled.Star
-        fill >= 0.25f -> Icons.AutoMirrored.Filled.StarHalf
+        fill >= 0.75f -> Icons.Rounded.Star
+        fill >= 0.25f -> Icons.AutoMirrored.Rounded.StarHalf
         else -> Icons.Outlined.StarOutline
     }
     Icon(
@@ -151,7 +151,7 @@ fun FinishDialog(
                         modifier = Modifier.weight(1f)
                     )
                     Icon(
-                        if (showDetails) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        if (showDetails) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )

@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,10 +14,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.EventAvailable
-import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.EventAvailable
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
@@ -81,7 +83,7 @@ fun FinishByCard(
 
     PlanCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.EventAvailable, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Icon(Icons.Rounded.EventAvailable, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(10.dp))
             Text(
                 if (plan == null) "Finish by a date" else "Finish by ${plan.target.format(planDateFormat)}",
@@ -90,8 +92,8 @@ fun FinishByCard(
                 modifier = Modifier.weight(1f)
             )
             if (plan != null) {
-                IconButton(onClick = { picking = true }) { Icon(Icons.Filled.Edit, contentDescription = "Change date") }
-                IconButton(onClick = { onSetFinishBy(null) }) { Icon(Icons.Filled.Close, contentDescription = "Remove deadline") }
+                IconButton(onClick = { picking = true }) { Icon(Icons.Rounded.Edit, contentDescription = "Change date") }
+                IconButton(onClick = { onSetFinishBy(null) }) { Icon(Icons.Rounded.Close, contentDescription = "Remove deadline") }
             }
         }
         if (plan == null) {
@@ -173,7 +175,7 @@ private fun StatusPill(plan: FinishByPlanner.Plan, unit: String) {
         FinishByPlanner.Status.NO_PACE -> "Read a little and this will check your pace against the plan." to true
     }
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = AppShape.S,
         color = if (good) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
         contentColor = if (good) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
     ) {
@@ -219,7 +221,7 @@ fun RereadMemoriesCard(book: Book, readStart: Long, earlierNotes: List<MarginNot
     val next = remember(earlierNotes, book.currentPage) { RereadMemories.ahead(earlierNotes, readStart, book.currentPage).firstOrNull() }
     PlanCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.History, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Icon(Icons.Rounded.History, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text("From your last read", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -252,13 +254,13 @@ fun RereadMemoriesCard(book: Book, readStart: Long, earlierNotes: List<MarginNot
 @Composable
 fun MemoriesReachedCard(notes: List<MarginNote>, modifier: Modifier = Modifier) {
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = AppShape.L,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.History, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Rounded.History, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(10.dp))
                 Text(
                     if (notes.size == 1) "You passed a note from your last read" else "You passed ${notes.size} notes from your last read",
@@ -279,7 +281,7 @@ private fun MemoryNote(note: MarginNote) {
     val zone = remember { ZoneId.systemDefault() }
     Row {
         Surface(
-            shape = RoundedCornerShape(8.dp),
+            shape = AppShape.XS,
             color = MaterialTheme.colorScheme.secondaryContainer,
             modifier = Modifier.padding(top = 2.dp)
         ) {
@@ -312,7 +314,7 @@ private fun MemoryNote(note: MarginNote) {
 private fun PlanCard(content: @Composable () -> Unit) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(24.dp),
+        shape = AppShape.L,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
     ) {

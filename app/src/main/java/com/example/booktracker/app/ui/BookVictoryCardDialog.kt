@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -13,15 +15,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.FlipCameraAndroid
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.Verified
-import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.FlipCameraAndroid
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.Verified
+import androidx.compose.material.icons.rounded.WorkspacePremium
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -143,7 +145,7 @@ fun BookVictoryCardDialog(
                     // A share card, not a banner: on a tablet it stays card-sized.
                     .widthIn(max = 480.dp)
                     .wrapContentHeight(),
-                shape = RoundedCornerShape(28.dp),
+                shape = AppShape.XL,
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 6.dp
             ) {
@@ -169,7 +171,7 @@ fun BookVictoryCardDialog(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    Icons.Filled.EmojiEvents,
+                                    Icons.Rounded.EmojiEvents,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
@@ -191,7 +193,7 @@ fun BookVictoryCardDialog(
                         }
 
                         IconButton(onClick = onDismiss) {
-                            Icon(Icons.Filled.Close, contentDescription = "Close")
+                            Icon(Icons.Rounded.Close, contentDescription = "Close")
                         }
                     }
 
@@ -233,7 +235,7 @@ fun BookVictoryCardDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(previewAspect)
-                            .clip(RoundedCornerShape(24.dp))
+                            .clip(AppShape.L)
                             .background(previewBrush)
                             .padding(if (selectedFormat == QuoteCardFormat.STORY) 12.dp else 14.dp),
                         contentAlignment = Alignment.Center
@@ -251,7 +253,7 @@ fun BookVictoryCardDialog(
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     isFlipped = !isFlipped
                                 },
-                            shape = RoundedCornerShape(20.dp),
+                            shape = AppShape.L,
                             color = cardBgColor,
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
                         ) {
@@ -297,7 +299,7 @@ fun BookVictoryCardDialog(
 
                         // Flip pill indicator badge
                         Surface(
-                            shape = RoundedCornerShape(12.dp),
+                            shape = AppShape.S,
                             color = Color.Black.copy(alpha = 0.55f),
                             border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.White.copy(alpha = 0.25f)),
                             modifier = Modifier
@@ -314,8 +316,8 @@ fun BookVictoryCardDialog(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Icon(
-                                    Icons.Default.FlipCameraAndroid,
-                                    contentDescription = "Flip Card",
+                                    Icons.Rounded.FlipCameraAndroid,
+                                    contentDescription = "Flip card",
                                     tint = goldColor,
                                     modifier = Modifier.size(13.dp)
                                 )
@@ -335,7 +337,7 @@ fun BookVictoryCardDialog(
 
                     // Theme Selection Swatches
                     Text(
-                        "Card Theme (${VictoryCardTheme.entries.size} aesthetics)",
+                        "Card style (${VictoryCardTheme.entries.size} looks)",
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.align(Alignment.Start)
@@ -410,7 +412,7 @@ fun BookVictoryCardDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
-                        shape = RoundedCornerShape(18.dp),
+                        shape = AppShape.M,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
@@ -426,9 +428,9 @@ fun BookVictoryCardDialog(
                             Spacer(Modifier.width(10.dp))
                             Text("Rendering HD Card...", style = MaterialTheme.typography.titleMedium)
                         } else {
-                            Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(10.dp))
-                            Text("Share Victory Card", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text("Share victory card", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -500,7 +502,7 @@ private fun VictoryCardFrontContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 BookCover(
-                    url = book.coverUrl,
+                    book = book,
                     modifier = Modifier.size(width = 68.dp, height = 100.dp)
                 )
                 Spacer(Modifier.width(12.dp))
@@ -542,7 +544,7 @@ private fun VictoryCardFrontContent(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 BookCover(
-                    url = book.coverUrl,
+                    book = book,
                     modifier = Modifier.size(width = 90.dp, height = 135.dp)
                 )
                 Spacer(Modifier.height(8.dp))
@@ -596,7 +598,7 @@ private fun VictoryCardFrontContent(
             else -> "“A reader lives a thousand lives before he dies.”"
         }
         Surface(
-            shape = RoundedCornerShape(12.dp),
+            shape = AppShape.S,
             color = Color.White.copy(alpha = 0.08f),
             border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.White.copy(alpha = 0.15f)),
             modifier = Modifier.fillMaxWidth()
@@ -656,7 +658,7 @@ private fun VictoryCardBackContent(
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Icon(
-                    Icons.Default.WorkspacePremium,
+                    Icons.Rounded.WorkspacePremium,
                     contentDescription = null,
                     tint = goldColor,
                     modifier = Modifier.size(16.dp)
@@ -680,7 +682,7 @@ private fun VictoryCardBackContent(
 
         // Timeline Ribbon Box
         Surface(
-            shape = RoundedCornerShape(12.dp),
+            shape = AppShape.S,
             color = Color.White.copy(alpha = 0.08f),
             border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.White.copy(alpha = 0.15f)),
             modifier = Modifier.fillMaxWidth()
@@ -703,7 +705,7 @@ private fun VictoryCardBackContent(
                     )
                 }
                 Icon(
-                    Icons.AutoMirrored.Filled.MenuBook,
+                    Icons.AutoMirrored.Rounded.MenuBook,
                     contentDescription = null,
                     tint = goldColor.copy(alpha = 0.6f),
                     modifier = Modifier.size(18.dp)
@@ -734,7 +736,7 @@ private fun VictoryCardBackContent(
             ) {
                 JourneyStatTile(
                     modifier = Modifier.weight(1f),
-                    icon = Icons.Default.Timer,
+                    icon = Icons.Rounded.Timer,
                     label = "TOTAL TIME",
                     value = formattedTime,
                     textColor = textColor,
@@ -742,7 +744,7 @@ private fun VictoryCardBackContent(
                 )
                 JourneyStatTile(
                     modifier = Modifier.weight(1f),
-                    icon = Icons.Default.Speed,
+                    icon = Icons.Rounded.Speed,
                     label = "AVERAGE PACE",
                     value = formattedSpeed,
                     textColor = textColor,
@@ -755,7 +757,7 @@ private fun VictoryCardBackContent(
             ) {
                 JourneyStatTile(
                     modifier = Modifier.weight(1f),
-                    icon = Icons.AutoMirrored.Filled.MenuBook,
+                    icon = Icons.AutoMirrored.Rounded.MenuBook,
                     label = "VOLUME",
                     value = "$totalPagesRead pages",
                     textColor = textColor,
@@ -763,7 +765,7 @@ private fun VictoryCardBackContent(
                 )
                 JourneyStatTile(
                     modifier = Modifier.weight(1f),
-                    icon = Icons.Default.Verified,
+                    icon = Icons.Rounded.Verified,
                     label = "MARGIN NOTES",
                     value = "$noteCount saved",
                     textColor = textColor,
@@ -774,7 +776,7 @@ private fun VictoryCardBackContent(
 
         // Authenticated Reader Wax Seal Stamp
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = AppShape.M,
             color = goldColor.copy(alpha = 0.12f),
             border = androidx.compose.foundation.BorderStroke(1.5.dp, goldColor.copy(alpha = 0.6f)),
             modifier = Modifier
@@ -787,7 +789,7 @@ private fun VictoryCardBackContent(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    Icons.Default.Verified,
+                    Icons.Rounded.Verified,
                     contentDescription = null,
                     tint = goldColor,
                     modifier = Modifier.size(20.dp)
@@ -830,7 +832,7 @@ private fun JourneyStatTile(
     accentColor: Color
 ) {
     Surface(
-        shape = RoundedCornerShape(10.dp),
+        shape = AppShape.XS,
         color = Color.White.copy(alpha = 0.08f),
         border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.White.copy(alpha = 0.15f)),
         modifier = modifier
@@ -872,7 +874,7 @@ private fun PreviewStatPill(
     textColor: Color
 ) {
     Surface(
-        shape = RoundedCornerShape(10.dp),
+        shape = AppShape.XS,
         color = Color.White.copy(alpha = 0.1f),
         border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.White.copy(alpha = 0.2f)),
         modifier = modifier

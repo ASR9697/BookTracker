@@ -207,10 +207,10 @@ object MonthlyShareHelper {
         }
 
         val stats = listOf(
-            "🏆 ${finishedThisMonth.size}" to "Books Finished",
-            "📄 $totalPages" to "Pages Read",
-            "⏱️ ${totalHours}h" to "Reading Time",
-            "📅 $activeDays" to "Days Active"
+            "🏆 ${finishedThisMonth.size}" to "Books finished",
+            "📄 $totalPages" to "Pages read",
+            "⏱️ ${totalHours}h" to "Reading time",
+            "📅 $activeDays" to "Days active"
         )
 
         for (i in stats.indices) {
@@ -236,9 +236,9 @@ object MonthlyShareHelper {
         }
 
         val sectionTitle = if (finishedThisMonth.isNotEmpty()) {
-            "Books Finished (${finishedThisMonth.size})"
+            "Books finished (${finishedThisMonth.size})"
         } else {
-            "Reading Highlights"
+            "Reading highlights"
         }
         canvas.drawText(sectionTitle, cardRect.left + 40f, booksSectionTop, sectionHeaderPaint)
 
@@ -325,6 +325,6 @@ object MonthlyShareHelper {
             putExtra(Intent.EXTRA_STREAM, contentUri)
             putExtra(Intent.EXTRA_SUBJECT, "${yearMonth.format(monthFormatter)} Reading Report")
         }
-        context.startActivity(Intent.createChooser(shareIntent, "Share Monthly Reading Card"))
+        context.startActivity(Intent.createChooser(shareIntent, "Share monthly card"))
     }
 }

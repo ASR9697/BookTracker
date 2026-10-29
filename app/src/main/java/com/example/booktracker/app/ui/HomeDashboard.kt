@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
@@ -59,17 +61,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.automirrored.filled.NoteAdd
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.ViewWeek
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.automirrored.rounded.NoteAdd
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.ViewWeek
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
@@ -121,7 +123,7 @@ import java.time.temporal.ChronoUnit
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
-private val TileShape = RoundedCornerShape(24.dp)
+private val TileShape = AppShape.L
 
 /** How recent the reading must be for reaching today's goal to get a celebration. */
 private const val FRESH_LOG_WINDOW_MS = 5 * 60_000L
@@ -370,7 +372,7 @@ fun HomeDashboard(
                         Tile(onClick = onOpenReview, modifier = Modifier.padding(horizontal = 16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    Icons.Filled.AutoAwesome,
+                                    Icons.Rounded.AutoAwesome,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(28.dp)
@@ -440,7 +442,7 @@ fun HomeDashboard(
                                         modifier = Modifier
                                             .width(84.dp)
                                             .bounceOnPress(press)
-                                            .clip(RoundedCornerShape(12.dp))
+                                            .clip(AppShape.S)
                                             .onSecondaryClick { bookForActions = book }
                                             .combinedClickable(
                                                 interactionSource = press,
@@ -454,7 +456,7 @@ fun HomeDashboard(
                                             )
                                     ) {
                                         BookCover(
-                                            book.coverUrl,
+                                            book,
                                             Modifier.heroSharedElement("cover-${book.id}").size(width = 84.dp, height = 126.dp)
                                         )
                                         Spacer(Modifier.height(6.dp))
@@ -496,14 +498,14 @@ fun HomeDashboard(
                         val thisMonthPages = pagesByMonth[streak.today.monthValue - 1]
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             ShortcutTile(
-                                icon = Icons.Filled.CalendarMonth,
+                                icon = Icons.Rounded.CalendarMonth,
                                 title = "Calendar",
                                 subtitle = if (thisMonthPages > 0) "$thisMonthPages pages this month" else "Your reading by day",
                                 onClick = onOpenCalendar,
                                 modifier = Modifier.weight(1f)
                             )
                             ShortcutTile(
-                                icon = Icons.Filled.ViewWeek,
+                                icon = Icons.Rounded.ViewWeek,
                                 title = "Bookshelf",
                                 subtitle = "${books.size} ${if (books.size == 1) "book" else "books"}",
                                 onClick = onOpenBookshelf,
@@ -513,14 +515,14 @@ fun HomeDashboard(
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             val finishedCount = books.count { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) }
                             ShortcutTile(
-                                icon = Icons.Filled.EmojiEvents,
+                                icon = Icons.Rounded.EmojiEvents,
                                 title = "Finished",
                                 subtitle = "$finishedCount ${if (finishedCount == 1) "book" else "books"} read",
                                 onClick = onOpenFinished,
                                 modifier = Modifier.weight(1f)
                             )
                             ShortcutTile(
-                                icon = Icons.Filled.AutoAwesome,
+                                icon = Icons.Rounded.AutoAwesome,
                                 title = "Year in review",
                                 subtitle = if (hasYearToReview) "Your $year so far"
                                 else "Unlocks after ${AnalyticsEngine.MIN_DAYS_FOR_WRAPPED} reading days",
@@ -619,7 +621,7 @@ fun HomeDashboard(
             onClick = onEditHome,
             modifier = Modifier.align(Alignment.CenterHorizontally)
         ) {
-            Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(Icons.Rounded.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
             Text("Edit home screen")
         }
@@ -650,7 +652,7 @@ fun HomeDashboard(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
                 ) {
-                    Icon(Icons.Filled.LocalFireDepartment, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Rounded.LocalFireDepartment, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(8.dp))
                     Text("Daily goal reached!", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 }
@@ -733,7 +735,8 @@ private fun CurrentBookCard(
         interactionSource = press,
         modifier = modifier.fillMaxWidth().bounceOnPress(press)
     ) {
-        Column {
+        val accent = rememberCoverAccent(book.coverUrl)
+        Column(modifier = Modifier.coverGlow(accent, strength = 0.22f, fromLeft = true)) {
             // A thin progress rail along the top edge of every in-progress card.
             Box(
                 modifier = Modifier
@@ -762,7 +765,7 @@ private fun CurrentBookCard(
                     ) {
                         if (drag != 0f) {
                             Icon(
-                                if (drag > 0) Icons.Filled.Add else Icons.Filled.PlayArrow,
+                                if (drag > 0) Icons.Rounded.Add else Icons.Rounded.PlayArrow,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier
@@ -773,7 +776,7 @@ private fun CurrentBookCard(
                         }
                     }
                     BookCover(
-                        book.coverUrl,
+                        book,
                         Modifier
                             .heroSharedElement("cover-${book.id}")
                             .matchParentSize()
@@ -863,7 +866,7 @@ private fun CurrentBookCard(
                     modifier = Modifier.weight(1f).height(48.dp)
                 ) {
                     Icon(
-                        if (sessionOpen) Icons.Filled.Timer else Icons.Filled.PlayArrow,
+                        if (sessionOpen) Icons.Rounded.Timer else Icons.Rounded.PlayArrow,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp)
                     )
@@ -876,12 +879,12 @@ private fun CurrentBookCard(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     modifier = Modifier.height(48.dp)
                 ) {
-                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(4.dp))
                     Text("Pages", fontWeight = FontWeight.SemiBold)
                 }
                 FilledTonalIconButton(onClick = onAddNote, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.AutoMirrored.Filled.NoteAdd, contentDescription = "Add a note")
+                    Icon(Icons.AutoMirrored.Rounded.NoteAdd, contentDescription = "Add a note")
                 }
             }
         }
@@ -897,7 +900,7 @@ private fun NothingInProgressCard(
 ) {
     Tile(modifier = modifier) {
         Icon(
-            Icons.AutoMirrored.Filled.MenuBook,
+            Icons.AutoMirrored.Rounded.MenuBook,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(32.dp)

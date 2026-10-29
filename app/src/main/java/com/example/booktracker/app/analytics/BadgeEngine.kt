@@ -1,7 +1,7 @@
 package com.example.booktracker.app.analytics
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
@@ -59,7 +59,7 @@ object BadgeEngine {
             id = "first_chapter",
             title = "First Step",
             description = "Complete your first reading session.",
-            icon = Icons.Filled.PlayArrow,
+            icon = Icons.Rounded.PlayArrow,
             tier = "BRONZE",
             unit = "session",
             measure = { input -> if (input.sessions.any(StreakEngine::isReading)) 1 else 0 }
@@ -68,7 +68,7 @@ object BadgeEngine {
             id = "finisher",
             title = "Book Finisher",
             description = "Finish your very first book.",
-            icon = Icons.Filled.EmojiEvents,
+            icon = Icons.Rounded.EmojiEvents,
             tier = "BRONZE",
             unit = "book",
             measure = { input -> finishedCount(input.books).coerceAtMost(1) }
@@ -77,7 +77,7 @@ object BadgeEngine {
             id = "night_owl",
             title = "Night Owl",
             description = "Read between midnight and 4 AM.",
-            icon = Icons.Filled.Bedtime,
+            icon = Icons.Rounded.Bedtime,
             tier = "BRONZE",
             unit = "late session",
             measure = { input ->
@@ -89,7 +89,7 @@ object BadgeEngine {
             id = "streak_keeper",
             title = "Streak Keeper",
             description = "Read 7 days in a row.",
-            icon = Icons.Filled.LocalFireDepartment,
+            icon = Icons.Rounded.LocalFireDepartment,
             tier = "SILVER",
             target = 7,
             unit = "days",
@@ -99,7 +99,7 @@ object BadgeEngine {
             id = "century_streak",
             title = "Fire Walker",
             description = "Read 30 days in a row.",
-            icon = Icons.Filled.Whatshot,
+            icon = Icons.Rounded.Whatshot,
             tier = "GOLD",
             target = 30,
             unit = "days",
@@ -109,7 +109,7 @@ object BadgeEngine {
             id = "bookworm",
             title = "Bookworm",
             description = "Finish 5 or more books.",
-            icon = Icons.Filled.AutoStories,
+            icon = Icons.Rounded.AutoStories,
             tier = "SILVER",
             target = 5,
             unit = "books",
@@ -119,7 +119,7 @@ object BadgeEngine {
             id = "bibliophile",
             title = "Bibliophile",
             description = "Finish 20 or more books.",
-            icon = Icons.Filled.WorkspacePremium,
+            icon = Icons.Rounded.WorkspacePremium,
             tier = "PLATINUM",
             target = 20,
             unit = "books",
@@ -129,7 +129,7 @@ object BadgeEngine {
             id = "page_master",
             title = "Page Master",
             description = "Read over 1,000 pages in total.",
-            icon = Icons.Filled.MenuBook,
+            icon = Icons.Rounded.MenuBook,
             tier = "SILVER",
             target = 1000,
             unit = "pages",
@@ -139,7 +139,7 @@ object BadgeEngine {
             id = "marathoner",
             title = "Marathoner",
             description = "Read for 3 or more hours in a single session.",
-            icon = Icons.Filled.DirectionsRun,
+            icon = Icons.Rounded.DirectionsRun,
             tier = "GOLD",
             target = 180,
             unit = "min",
@@ -152,7 +152,7 @@ object BadgeEngine {
             id = "speed_reader",
             title = "Speed Reader",
             description = "Achieve a reading pace of 50+ pages per hour.",
-            icon = Icons.Filled.Speed,
+            icon = Icons.Rounded.Speed,
             tier = "GOLD",
             target = 50,
             unit = "p/h",
@@ -166,7 +166,7 @@ object BadgeEngine {
             id = "zen_focus",
             title = "Zen Master",
             description = "Complete 10 focused reading sessions of 15+ minutes.",
-            icon = Icons.Filled.SelfImprovement,
+            icon = Icons.Rounded.SelfImprovement,
             tier = "SILVER",
             target = 10,
             unit = "sessions",
@@ -176,7 +176,7 @@ object BadgeEngine {
             id = "polyglot_shelf",
             title = "Polyglot Shelf",
             description = "Read books spanning 5 or more distinct genres.",
-            icon = Icons.Filled.Category,
+            icon = Icons.Rounded.Category,
             tier = "GOLD",
             target = 5,
             unit = "genres",
@@ -192,7 +192,7 @@ object BadgeEngine {
             id = "marginalia",
             title = "Marginalia",
             description = "Write 25 or more margin notes or quotes.",
-            icon = Icons.Filled.EditNote,
+            icon = Icons.Rounded.EditNote,
             tier = "SILVER",
             target = 25,
             unit = "notes",
@@ -202,7 +202,7 @@ object BadgeEngine {
             id = "early_bird",
             title = "Early Bird",
             description = "Read between 5 and 7 AM.",
-            icon = Icons.Filled.WbTwilight,
+            icon = Icons.Rounded.WbTwilight,
             tier = "BRONZE",
             unit = "early session",
             measure = { input ->
@@ -214,7 +214,7 @@ object BadgeEngine {
             id = "let_it_go",
             title = "Let It Go",
             description = "Set aside a book that isn't working for you. Life's too short.",
-            icon = Icons.Filled.DoNotDisturbOn,
+            icon = Icons.Rounded.DoNotDisturbOn,
             tier = "BRONZE",
             unit = "book",
             measure = { input ->
@@ -225,7 +225,7 @@ object BadgeEngine {
             id = "re_reader",
             title = "Encore",
             description = "Start a second read of a book you've finished.",
-            icon = Icons.Filled.Replay,
+            icon = Icons.Rounded.Replay,
             tier = "SILVER",
             unit = "re-read",
             measure = { input -> if (input.books.any { it.readCount >= 1 }) 1 else 0 }
@@ -234,7 +234,7 @@ object BadgeEngine {
             id = "series_completer",
             title = "Saga Seeker",
             description = "Finish 3 books from the same series.",
-            icon = Icons.Filled.CollectionsBookmark,
+            icon = Icons.Rounded.CollectionsBookmark,
             tier = "GOLD",
             target = 3,
             unit = "books",
@@ -251,7 +251,7 @@ object BadgeEngine {
             id = "hundred_hours",
             title = "Deep Diver",
             description = "Spend 100 hours reading.",
-            icon = Icons.Filled.HourglassBottom,
+            icon = Icons.Rounded.HourglassBottom,
             tier = "PLATINUM",
             target = 100,
             unit = "hours",
@@ -263,7 +263,7 @@ object BadgeEngine {
             id = "ten_thousand_pages",
             title = "Ten Thousand",
             description = "Read 10,000 pages in total.",
-            icon = Icons.Filled.Landscape,
+            icon = Icons.Rounded.Landscape,
             tier = "PLATINUM",
             target = 10_000,
             unit = "pages",
@@ -351,22 +351,22 @@ object BadgeEngine {
     )
 
     private val CHALLENGES = listOf(
-        Challenge("days", "Every Day Counts", "Read on 20 different days this month.", Icons.Filled.EventAvailable, 20, "days") {
+        Challenge("days", "Every Day Counts", "Read on 20 different days this month.", Icons.Rounded.EventAvailable, 20, "days") {
             StreakEngine.pagesByDay(it.sessions, it.zone, it.dayStartsAtHour).size
         },
-        Challenge("pages", "Page Turner", "Read 600 pages this month.", Icons.Filled.AutoStories, 600, "pages") { month ->
+        Challenge("pages", "Page Turner", "Read 600 pages this month.", Icons.Rounded.AutoStories, 600, "pages") { month ->
             month.sessions.filter(StreakEngine::isReading).sumOf { it.pagesRead }
         },
-        Challenge("books", "Double Feature", "Finish 2 books this month.", Icons.Filled.LibraryBooks, 2, "books") {
+        Challenge("books", "Double Feature", "Finish 2 books this month.", Icons.Rounded.LibraryBooks, 2, "books") {
             it.booksFinished
         },
-        Challenge("hours", "Ten Hour Club", "Spend 10 hours reading this month.", Icons.Filled.Schedule, 10, "hours") { month ->
+        Challenge("hours", "Ten Hour Club", "Spend 10 hours reading this month.", Icons.Rounded.Schedule, 10, "hours") { month ->
             (AnalyticsEngine.timedSessions(month.sessions).sumOf { it.endTime - it.startTime } / 3_600_000L).toInt()
         },
-        Challenge("notes", "Note Taker", "Write 10 notes or quotes this month.", Icons.Filled.EditNote, 10, "notes") {
+        Challenge("notes", "Note Taker", "Write 10 notes or quotes this month.", Icons.Rounded.EditNote, 10, "notes") {
             it.notes
         },
-        Challenge("streak", "Week of Fire", "Read 7 days in a row this month.", Icons.Filled.LocalFireDepartment, 7, "days") {
+        Challenge("streak", "Week of Fire", "Read 7 days in a row this month.", Icons.Rounded.LocalFireDepartment, 7, "days") {
             StreakEngine.longestStreak(StreakEngine.pagesByDay(it.sessions, it.zone, it.dayStartsAtHour).keys)
         }
     )

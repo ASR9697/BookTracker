@@ -1,5 +1,8 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+import com.example.booktracker.app.ui.animations.staggeredItems
+
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -32,13 +35,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DocumentScanner
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Spellcheck
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DocumentScanner
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Spellcheck
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -118,13 +121,13 @@ fun VocabularyScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Words") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } }
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back") } }
             )
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { editing = VocabWord() },
-                icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
                 text = { Text("Add word") }
             )
         }
@@ -132,7 +135,7 @@ fun VocabularyScreen(
         if (words.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                 EmptyState(
-                    icon = Icons.Filled.Spellcheck,
+                    icon = Icons.Rounded.Spellcheck,
                     title = "Your words",
                     message = "Met a word you didn't know? Save it with its meaning and the sentence it was in. It comes back in your daily review until it sticks."
                 )
@@ -140,13 +143,14 @@ fun VocabularyScreen(
         } else {
             Row(modifier = Modifier.fillMaxSize().padding(padding)) {
             val side = if (listDetail) 0.dp else windowCentredPadding()
+            val entrance = com.example.booktracker.app.ui.animations.rememberEntranceState()
             LazyColumn(
                 contentPadding = PaddingValues(start = 16.dp + side, end = 16.dp + side, top = 8.dp, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.weight(if (listDetail) 0.45f else 1f).fillMaxHeight()
             ) {
                 item(key = "summary") {
-                    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                    Surface(shape = AppShape.L, color = MaterialTheme.colorScheme.primaryContainer) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
@@ -171,20 +175,20 @@ fun VocabularyScreen(
                             value = query,
                             onValueChange = { query = it },
                             placeholder = { Text("Search words and meanings") },
-                            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                             singleLine = true,
-                            shape = RoundedCornerShape(16.dp),
+                            shape = AppShape.M,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
-                items(shown, key = { it.id }) { word ->
+                staggeredItems(entrance, shown, key = { it.id }, startIndex = 1) { word ->
                     val book = word.bookId?.let { booksById[it] }
                     Surface(
                         onClick = { editing = word },
-                        shape = RoundedCornerShape(18.dp),
+                        shape = AppShape.M,
                         color = MaterialTheme.colorScheme.surfaceContainer,
-                        modifier = Modifier.fillMaxWidth().animateItem()
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(word.word, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -211,7 +215,7 @@ fun VocabularyScreen(
                     val word = editing
                     if (word == null) {
                         EmptyState(
-                            icon = Icons.Filled.Spellcheck,
+                            icon = Icons.Rounded.Spellcheck,
                             title = "Pick a word",
                             message = "Its meaning, the sentence and the book it came from open here to edit."
                         )
@@ -301,7 +305,7 @@ fun WordEditorSheet(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
                 trailingIcon = {
-                    IconButton(onClick = { scanning = true }) { Icon(Icons.Filled.DocumentScanner, contentDescription = "Pick it off the page") }
+                    IconButton(onClick = { scanning = true }) { Icon(Icons.Rounded.DocumentScanner, contentDescription = "Pick it off the page") }
                 },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -325,7 +329,7 @@ fun WordEditorSheet(
                     }
                 ) {
                     if (lookingUp) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    else Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                    else Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Look up meaning")
                 }
@@ -343,7 +347,7 @@ fun WordEditorSheet(
                     val chosen = definition == sense.meaning
                     Surface(
                         onClick = { haptics.tick(); definition = sense.meaning },
-                        shape = RoundedCornerShape(14.dp),
+                        shape = AppShape.S,
                         color = if (chosen) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -514,7 +518,7 @@ private fun WordScanDialog(onDismiss: () -> Unit, onPicked: (word: String, sente
                     onClick = onDismiss,
                     modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(4.dp)
                 ) {
-                    Icon(Icons.Filled.Close, contentDescription = "Close", tint = if (text == null) Color.White else MaterialTheme.colorScheme.onSurface)
+                    Icon(Icons.Rounded.Close, contentDescription = "Close", tint = if (text == null) Color.White else MaterialTheme.colorScheme.onSurface)
                 }
             }
         }

@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -25,10 +27,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.FormatQuote
-import androidx.compose.material.icons.filled.Spellcheck
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.FormatQuote
+import androidx.compose.material.icons.rounded.Spellcheck
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -107,7 +109,7 @@ fun ReviewScreen(
             TopAppBar(
                 title = { Text("Daily review") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back") }
                 },
                 actions = {
                     if (items.isNotEmpty() && index < items.size) {
@@ -126,7 +128,7 @@ fun ReviewScreen(
             when {
                 run == null -> Unit
                 run!!.isEmpty() -> EmptyState(
-                    icon = Icons.Filled.AutoAwesome,
+                    icon = Icons.Rounded.AutoAwesome,
                     title = "Nothing to review today",
                     message = "Save passages in your books or add words you meet, and a few come back here each day so they stick."
                 )
@@ -196,7 +198,7 @@ private fun ReviewCard(
     // A card, not a banner: on a tablet it keeps a readable width in the middle.
     Column(modifier = Modifier.fillMaxHeight().readableWidth(640.dp).padding(16.dp)) {
         Surface(
-            shape = RoundedCornerShape(28.dp),
+            shape = AppShape.XL,
             color = MaterialTheme.colorScheme.surfaceContainer,
             modifier = Modifier.fillMaxWidth().weight(1f)
         ) {
@@ -205,7 +207,7 @@ private fun ReviewCard(
                 verticalArrangement = Arrangement.Center
             ) {
                 if (note != null) {
-                    Icon(Icons.Filled.FormatQuote, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp))
+                    Icon(Icons.Rounded.FormatQuote, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp))
                     Spacer(Modifier.height(8.dp))
                     Text(
                         note.content,
@@ -213,7 +215,7 @@ private fun ReviewCard(
                         fontStyle = FontStyle.Italic
                     )
                 } else if (word != null) {
-                    Icon(Icons.Filled.Spellcheck, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
+                    Icon(Icons.Rounded.Spellcheck, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
                     Spacer(Modifier.height(8.dp))
                     Text(word.word, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
                     if (word.context.isNotBlank()) {
@@ -239,11 +241,11 @@ private fun ReviewCard(
                     Spacer(Modifier.height(24.dp))
                     Surface(
                         onClick = { onOpenBook(book) },
-                        shape = RoundedCornerShape(16.dp),
+                        shape = AppShape.M,
                         color = MaterialTheme.colorScheme.surfaceContainerHigh
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(10.dp)) {
-                            BookCover(book.coverUrl, Modifier.size(width = 32.dp, height = 48.dp))
+                            BookCover(book, Modifier.size(width = 32.dp, height = 48.dp))
                             Spacer(Modifier.width(12.dp))
                             Column {
                                 Text(book.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
@@ -264,7 +266,7 @@ private fun ReviewCard(
         if (!revealed) {
             Button(
                 onClick = { revealed = true },
-                shape = RoundedCornerShape(18.dp),
+                shape = AppShape.M,
                 modifier = Modifier.fillMaxWidth().height(56.dp).navigationBarsPadding()
             ) { Text("Show meaning", fontWeight = FontWeight.SemiBold) }
         } else {
@@ -289,7 +291,7 @@ private fun ReviewCard(
                     FilledTonalButton(
                         onClick = { onGrade(grade) },
                         colors = colors,
-                        shape = RoundedCornerShape(16.dp),
+                        shape = AppShape.M,
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp),
                         modifier = Modifier.weight(1f).height(64.dp)
                     ) {
@@ -320,7 +322,7 @@ private fun ReviewDone(reviewed: Int, onBack: () -> Unit) {
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.fillMaxSize().padding(32.dp)
         ) {
-            Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(56.dp))
+            Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(56.dp))
             Spacer(Modifier.height(16.dp))
             Text("Done for today", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
@@ -331,7 +333,7 @@ private fun ReviewDone(reviewed: Int, onBack: () -> Unit) {
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(24.dp))
-            Button(onClick = onBack, shape = RoundedCornerShape(18.dp)) { Text("Back") }
+            Button(onClick = onBack, shape = AppShape.M) { Text("Back") }
         }
         if (burst) {
             ConfettiExplosion(style = BurstStyle.CONFETTI, onFinished = { burst = false })

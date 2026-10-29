@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import android.Manifest
 import android.os.Build
 import android.text.format.DateFormat
@@ -12,13 +14,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.LibraryBooks
-import androidx.compose.material.icons.filled.NightsStay
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Flag
+import androidx.compose.material.icons.rounded.LibraryBooks
+import androidx.compose.material.icons.rounded.NightsStay
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -95,7 +97,7 @@ fun GoalsScreen(
                 title = { Text("Reading goals") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -111,7 +113,7 @@ fun GoalsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             GoalCard(
-                icon = Icons.Filled.Flag,
+                icon = Icons.Rounded.Flag,
                 title = "Every day",
                 unit = "pages a day",
                 value = dailyGoal,
@@ -124,7 +126,7 @@ fun GoalsScreen(
                 modifier = Modifier.staggeredEntrance(entrance, 0)
             )
             GoalCard(
-                icon = Icons.Filled.CalendarMonth,
+                icon = Icons.Rounded.CalendarMonth,
                 title = "This month",
                 unit = "pages a month",
                 value = monthlyGoalPages,
@@ -136,7 +138,7 @@ fun GoalsScreen(
                 modifier = Modifier.staggeredEntrance(entrance, 1)
             )
             GoalCard(
-                icon = Icons.Filled.LibraryBooks,
+                icon = Icons.Rounded.LibraryBooks,
                 title = "Books this month",
                 unit = "books a month",
                 value = monthlyGoalBooks,
@@ -148,7 +150,7 @@ fun GoalsScreen(
                 modifier = Modifier.staggeredEntrance(entrance, 2)
             )
             GoalCard(
-                icon = Icons.AutoMirrored.Filled.MenuBook,
+                icon = Icons.AutoMirrored.Rounded.MenuBook,
                 title = "This year",
                 unit = "books a year",
                 value = yearlyGoal,
@@ -164,7 +166,7 @@ fun GoalsScreen(
             SettingsSectionTitle("Rules")
             SettingsCard(
                 title = "New day starts at",
-                icon = { Icon(Icons.Filled.NightsStay, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                icon = { Icon(Icons.Rounded.NightsStay, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
             ) {
                 var localHour by remember(dayStartsAtHour) { mutableIntStateOf(dayStartsAtHour) }
                 Text(formatTime(context, localHour, 0), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
@@ -184,7 +186,7 @@ fun GoalsScreen(
 
             SettingsCard(
                 title = "Daily reminder",
-                icon = { Icon(Icons.Filled.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                icon = { Icon(Icons.Rounded.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
             ) {
                 SwitchRow(
                     text = "Remind me to read if I haven't hit my daily goal",
@@ -201,7 +203,7 @@ fun GoalsScreen(
                 if (reminder.enabled) {
                     Spacer(Modifier.height(8.dp))
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
+                        shape = AppShape.S,
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
                         onClick = { showReminderTimePicker = true }
                     ) {
@@ -269,7 +271,7 @@ private fun GoalCard(
     val reached = done >= local
 
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = AppShape.L,
         color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = modifier.fillMaxWidth()
     ) {

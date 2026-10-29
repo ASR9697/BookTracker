@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import com.example.booktracker.app.ui.animations.bounceOnPress
 import com.example.booktracker.app.ui.animations.rememberHaptics
@@ -21,13 +23,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.Flag
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -54,7 +56,7 @@ import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
 import java.util.Locale
 
-private val CoverShape = RoundedCornerShape(10.dp)
+private val CoverShape = AppShape.XS
 
 /**
  * Compact library tile sized for three across on a phone: cover with status,
@@ -114,7 +116,7 @@ fun LibraryGridCard(
                 .fillMaxWidth()
                 .aspectRatio(2f / 3f)
         ) {
-            BookCover(book.coverUrl, Modifier.heroSharedElement("cover-${book.id}").fillMaxSize().clip(CoverShape))
+            BookCover(book, Modifier.heroSharedElement("cover-${book.id}").fillMaxSize().clip(CoverShape))
 
             LoanEngine.activeLoan(book)?.let { loan ->
                 LoanBadge(
@@ -125,7 +127,7 @@ fun LibraryGridCard(
 
             if (rating != null) {
                 CoverPill(Modifier.align(Alignment.TopEnd).padding(4.dp)) {
-                    Icon(Icons.Filled.Star, contentDescription = null, tint = Color(0xFFFFC94D), modifier = Modifier.size(12.dp))
+                    Icon(Icons.Rounded.Star, contentDescription = null, tint = Color(0xFFFFC94D), modifier = Modifier.size(12.dp))
                     Spacer(Modifier.width(2.dp))
                     Text(
                         String.format(Locale.getDefault(), "%.1f", rating),
@@ -207,10 +209,10 @@ private fun libraryStatus(raw: String): BookStatus? = when {
 
 /** To Read is the default state, so it carries no mark; everything else gets one. */
 private fun statusIcon(status: BookStatus?): ImageVector? = when (status) {
-    BookStatus.READING -> Icons.AutoMirrored.Filled.MenuBook
-    BookStatus.FINISHED -> Icons.Filled.EmojiEvents
-    BookStatus.UP_NEXT, BookStatus.SHORTLIST -> Icons.Filled.Schedule
-    BookStatus.PAUSED -> Icons.Filled.Pause
-    BookStatus.DNF, BookStatus.ABANDONED -> Icons.Filled.Flag
+    BookStatus.READING -> Icons.AutoMirrored.Rounded.MenuBook
+    BookStatus.FINISHED -> Icons.Rounded.EmojiEvents
+    BookStatus.UP_NEXT, BookStatus.SHORTLIST -> Icons.Rounded.Schedule
+    BookStatus.PAUSED -> Icons.Rounded.Pause
+    BookStatus.DNF, BookStatus.ABANDONED -> Icons.Rounded.Flag
     BookStatus.TO_READ, null -> null
 }

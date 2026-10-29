@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -9,10 +11,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.Timeline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -83,7 +85,7 @@ fun FinishedScreen(
                 title = { Text("Finished books") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 },
                 scrollBehavior = scrollBehavior
@@ -92,7 +94,7 @@ fun FinishedScreen(
     ) { innerPadding ->
         if (finished.isEmpty() && setAside.isEmpty()) {
             EmptyState(
-                icon = Icons.Filled.EmojiEvents,
+                icon = Icons.Rounded.EmojiEvents,
                 title = "Your trophy shelf is waiting",
                 message = "Finish or set aside a book and it will show here.",
                 modifier = Modifier.padding(innerPadding)
@@ -219,7 +221,7 @@ private fun ShelfSummaryCard(
 ) {
     val scheme = MaterialTheme.colorScheme
     Surface(
-        shape = RoundedCornerShape(24.dp),
+        shape = AppShape.L,
         color = scheme.primaryContainer,
         contentColor = scheme.onPrimaryContainer,
         modifier = modifier.fillMaxWidth()
@@ -255,11 +257,11 @@ private fun ShelfSummaryCard(
                     }
                     Spacer(Modifier.weight(1f))
                     FilledTonalButton(onClick = onOpenJourney, contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)) {
-                        Icon(Icons.Filled.Timeline, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Rounded.Timeline, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("Journey")
                         Spacer(Modifier.width(4.dp))
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
                     }
                 }
             }
@@ -279,7 +281,7 @@ private fun SummaryStat(value: Int, label: String, modifier: Modifier = Modifier
 @Composable
 private fun ShelfRowCard(onClick: () -> Unit, modifier: Modifier, content: @Composable RowScope.() -> Unit) {
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = AppShape.L,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = modifier
             .fillMaxWidth()
@@ -293,7 +295,7 @@ private fun ShelfRowCard(onClick: () -> Unit, modifier: Modifier, content: @Comp
 private fun ShelfCover(book: Book, dimmed: Boolean = false) {
     val shape = MaterialTheme.shapes.small
     BookCover(
-        book.coverUrl,
+        book,
         Modifier
             .heroSharedElement("cover-${book.id}")
             .size(width = 60.dp, height = 90.dp)
@@ -349,7 +351,7 @@ private fun FinishedRow(read: FinishedShelf.Read, zone: ZoneId, onClick: () -> U
                 }
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = onShare, contentPadding = PaddingValues(horizontal = 8.dp)) {
-                    Icon(Icons.Filled.EmojiEvents, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Rounded.EmojiEvents, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
                     Text("Share card", style = MaterialTheme.typography.labelMedium)
                 }

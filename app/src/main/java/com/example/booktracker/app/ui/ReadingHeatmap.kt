@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -12,8 +14,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -182,7 +184,7 @@ fun ReadingHeatmap(
 
             if (fieryDaysCount > 0) {
                 Surface(
-                    shape = RoundedCornerShape(10.dp),
+                    shape = AppShape.XS,
                     color = MaterialTheme.colorScheme.tertiaryContainer,
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f))
                 ) {
@@ -395,7 +397,7 @@ fun ReadingHeatmap(
                     }
 
                     Surface(
-                        shape = RoundedCornerShape(10.dp),
+                        shape = AppShape.XS,
                         color = getIntensityColor(intensity).copy(alpha = 0.2f),
                         border = BorderStroke(1.dp, getIntensityColor(intensity))
                     ) {
@@ -428,7 +430,7 @@ fun ReadingHeatmap(
                                 .bounceClick { onOpenBook?.invoke(book) },
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.35f)),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f)),
-                            shape = RoundedCornerShape(14.dp)
+                            shape = AppShape.S
                         ) {
                             Row(
                                 modifier = Modifier.padding(14.dp),
@@ -442,7 +444,7 @@ fun ReadingHeatmap(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        Icons.Filled.EmojiEvents,
+                                        Icons.Rounded.EmojiEvents,
                                         contentDescription = null,
                                         tint = Color(0xFFFFB300),
                                         modifier = Modifier.size(24.dp)
@@ -452,12 +454,12 @@ fun ReadingHeatmap(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(book.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                                     Text(
-                                        book.authors.firstOrNull() ?: "Unknown Author",
+                                        book.authors.firstOrNull() ?: "Unknown author",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-                                Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -466,7 +468,7 @@ fun ReadingHeatmap(
 
                 // Reading Sessions on this day
                 Text(
-                    "Logged Reading Sessions",
+                    "Reading sessions",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -475,7 +477,7 @@ fun ReadingHeatmap(
                 if (dateSessions.isEmpty()) {
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = AppShape.S,
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                     ) {
                         Text(
@@ -498,7 +500,7 @@ fun ReadingHeatmap(
                                     else Modifier
                                 ),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                            shape = RoundedCornerShape(14.dp)
+                            shape = AppShape.S
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
                                 Row(
@@ -507,7 +509,7 @@ fun ReadingHeatmap(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        book?.title ?: "Reading Session",
+                                        book?.title ?: "Reading session",
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
                                         maxLines = 1,
@@ -515,7 +517,7 @@ fun ReadingHeatmap(
                                         modifier = Modifier.weight(1f)
                                     )
                                     Surface(
-                                        shape = RoundedCornerShape(8.dp),
+                                        shape = AppShape.XS,
                                         color = MaterialTheme.colorScheme.primaryContainer
                                     ) {
                                         Text(
@@ -537,7 +539,7 @@ fun ReadingHeatmap(
                                     if (session.durationSeconds > 0) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Icon(
-                                                Icons.Filled.Timer,
+                                                Icons.Rounded.Timer,
                                                 contentDescription = null,
                                                 modifier = Modifier.size(14.dp),
                                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -554,7 +556,7 @@ fun ReadingHeatmap(
                                     session.environmentTag?.let { tag ->
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Icon(
-                                                Icons.Filled.Tag,
+                                                Icons.Rounded.Tag,
                                                 contentDescription = null,
                                                 modifier = Modifier.size(14.dp),
                                                 tint = MaterialTheme.colorScheme.primary
@@ -577,7 +579,7 @@ fun ReadingHeatmap(
                 if (dateNotes.isNotEmpty()) {
                     Spacer(Modifier.height(14.dp))
                     Text(
-                        "Captured Margin Notes (${dateNotes.size})",
+                        "Margin notes (${dateNotes.size})",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
@@ -589,7 +591,7 @@ fun ReadingHeatmap(
                                 .fillMaxWidth()
                                 .padding(bottom = 8.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = AppShape.S
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 if (note.content.isNotBlank()) {

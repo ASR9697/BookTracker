@@ -60,6 +60,8 @@ data class AppPrefs(
     val monthlyBookBudget: Int = 0,
     /** A notification on the day a wished-for book comes out. */
     val releaseReminders: Boolean = true,
+    /** The first-run welcome has been seen (or skipped, for readers who already had books). */
+    val onboarded: Boolean = false,
     // Appearance
     /** Dark theme between [nocturnalFrom] and [nocturnalTo] whatever the theme choice. */
     val nocturnal: Boolean = false,
@@ -286,6 +288,7 @@ class SettingsRepository(context: Context) {
         val minSessionSeconds = intPreferencesKey("pref_min_session_seconds")
         val monthlyBookBudget = intPreferencesKey("pref_monthly_book_budget")
         val releaseReminders = booleanPreferencesKey("pref_release_reminders")
+        val onboarded = booleanPreferencesKey("pref_onboarded")
         val nocturnal =booleanPreferencesKey("pref_nocturnal")
         val nocturnalFrom = intPreferencesKey("pref_nocturnal_from")
         val nocturnalTo = intPreferencesKey("pref_nocturnal_to")
@@ -319,6 +322,7 @@ class SettingsRepository(context: Context) {
             minSessionSeconds = p[PrefKeys.minSessionSeconds] ?: d.minSessionSeconds,
             monthlyBookBudget = p[PrefKeys.monthlyBookBudget] ?: d.monthlyBookBudget,
             releaseReminders = p[PrefKeys.releaseReminders] ?: d.releaseReminders,
+            onboarded = p[PrefKeys.onboarded] ?: d.onboarded,
             nocturnal = p[PrefKeys.nocturnal] ?: d.nocturnal,
             nocturnalFrom = p[PrefKeys.nocturnalFrom] ?: d.nocturnalFrom,
             nocturnalTo = p[PrefKeys.nocturnalTo] ?: d.nocturnalTo,
@@ -356,6 +360,7 @@ class SettingsRepository(context: Context) {
             p[PrefKeys.minSessionSeconds] = next.minSessionSeconds.coerceIn(0, 600)
             p[PrefKeys.monthlyBookBudget] = next.monthlyBookBudget.coerceAtLeast(0)
             p[PrefKeys.releaseReminders] = next.releaseReminders
+            p[PrefKeys.onboarded] = next.onboarded
             p[PrefKeys.nocturnal] = next.nocturnal
             p[PrefKeys.nocturnalFrom] = next.nocturnalFrom.coerceIn(0, 23)
             p[PrefKeys.nocturnalTo] = next.nocturnalTo.coerceIn(0, 23)

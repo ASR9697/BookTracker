@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
@@ -27,8 +29,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.NoteAdd
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.NoteAdd
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -231,6 +233,8 @@ fun FocusTimerScreen(
     var showCountdownSheet by remember { mutableStateOf(false) }
 
     val haptic = LocalHapticFeedback.current
+
+    val haptics = com.example.booktracker.app.ui.animations.rememberHaptics()
     val accent = rememberCoverAccent(book.coverUrl)
     val background = accent.immersiveBackground(MaterialTheme.colorScheme.surfaceContainerLowest)
     val onBackground = if (background.luminance() > 0.45f) Color.Black else Color.White
@@ -245,7 +249,7 @@ fun FocusTimerScreen(
         onBack()
     }
     val finish = {
-        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        haptics.confirm()
         viewModel.setTimerRunning(false)
         if (sessionCurrentPage != book.currentPage) {
             lastWrittenPage = sessionCurrentPage
@@ -316,7 +320,7 @@ fun FocusTimerScreen(
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        haptics.confirm()
                         isZenMode = !isZenMode
                     }
                 )
@@ -339,7 +343,7 @@ fun FocusTimerScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TimerIconButton(
-                        icon = Icons.Filled.KeyboardArrowDown,
+                        icon = Icons.Rounded.KeyboardArrowDown,
                         description = if (notStarted) "Close timer" else "Minimize timer",
                         tint = onBackground,
                         container = chrome,
@@ -347,7 +351,7 @@ fun FocusTimerScreen(
                     )
                     Spacer(Modifier.weight(1f))
                     TimerIconButton(
-                        icon = if (noiseType == NoiseType.NONE) Icons.Filled.Headphones else Icons.Filled.GraphicEq,
+                        icon = if (noiseType == NoiseType.NONE) Icons.Rounded.Headphones else Icons.Rounded.GraphicEq,
                         description = "Ambient sounds",
                         tint = onBackground,
                         container = if (noiseType == NoiseType.NONE) chrome else onBackground.copy(alpha = 0.24f),
@@ -355,12 +359,12 @@ fun FocusTimerScreen(
                     )
                     Spacer(Modifier.width(8.dp))
                     TimerIconButton(
-                        icon = Icons.Filled.Bedtime,
+                        icon = Icons.Rounded.Bedtime,
                         description = "Zen mode",
                         tint = onBackground,
                         container = chrome,
                         onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            haptics.confirm()
                             isZenMode = true
                         }
                     )
@@ -378,7 +382,7 @@ fun FocusTimerScreen(
                                     modifier = Modifier.padding(horizontal = 16.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                                    Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(20.dp))
                                     Spacer(Modifier.width(6.dp))
                                     Text("Done", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                                 }
@@ -471,7 +475,7 @@ fun FocusTimerScreen(
                         background = background,
                         glow = if (isRunning) breath else 0f,
                         onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            haptics.confirm()
                             if (countdownDone) finish() else viewModel.setTimerRunning(!isRunning)
                         }
                     )
@@ -488,7 +492,7 @@ fun FocusTimerScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         if (notStarted || mode == TimerMode.COUNTDOWN) {
                             TimerChip(
-                                icon = if (mode == TimerMode.STOPWATCH) Icons.Filled.Timer else Icons.Filled.HourglassBottom,
+                                icon = if (mode == TimerMode.STOPWATCH) Icons.Rounded.Timer else Icons.Rounded.HourglassBottom,
                                 label = countdownLabel,
                                 tint = onBackground,
                                 enabled = notStarted,
@@ -497,7 +501,7 @@ fun FocusTimerScreen(
                         }
                         // A page goal can be set or changed at any point in the session.
                         TimerChip(
-                            icon = Icons.Filled.Flag,
+                            icon = Icons.Rounded.Flag,
                             label = when {
                                 pageTarget == null -> "Page goal"
                                 goalReached -> "Goal reached"
@@ -515,7 +519,7 @@ fun FocusTimerScreen(
 
             AnimatedVisibility(visible = !isZenMode, enter = fadeIn(), exit = fadeOut()) {
                 Surface(
-                    shape = RoundedCornerShape(24.dp),
+                    shape = AppShape.L,
                     color = onBackground.copy(alpha = 0.08f),
                     border = androidx.compose.foundation.BorderStroke(1.dp, onBackground.copy(alpha = 0.14f)),
                     modifier = Modifier.fillMaxWidth()
@@ -524,7 +528,7 @@ fun FocusTimerScreen(
                         modifier = Modifier.padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        BookCover(book.coverUrl, Modifier.size(width = 64.dp, height = 96.dp))
+                        BookCover(book, Modifier.heroSharedElement("cover-${book.id}").size(width = 64.dp, height = 96.dp))
                         Spacer(Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
@@ -555,7 +559,7 @@ fun FocusTimerScreen(
                                     enabled = sessionCurrentPage > 0,
                                     modifier = Modifier.size(32.dp)
                                 ) {
-                                    Icon(Icons.Filled.Remove, contentDescription = "Page back", tint = onBackground, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Rounded.Remove, contentDescription = "Page back", tint = onBackground, modifier = Modifier.size(18.dp))
                                 }
                                 Text(
                                     if (book.totalPages > 0) "p. $sessionCurrentPage / ${book.totalPages}" else "p. $sessionCurrentPage",
@@ -572,7 +576,7 @@ fun FocusTimerScreen(
                                     enabled = sessionCurrentPage < maxPage,
                                     modifier = Modifier.size(32.dp)
                                 ) {
-                                    Icon(Icons.Filled.Add, contentDescription = "Page forward", tint = onBackground, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Rounded.Add, contentDescription = "Page forward", tint = onBackground, modifier = Modifier.size(18.dp))
                                 }
                             }
                             Text(
@@ -595,7 +599,7 @@ fun FocusTimerScreen(
                             ),
                             modifier = Modifier.size(52.dp)
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.NoteAdd, contentDescription = "Add a note")
+                            Icon(Icons.AutoMirrored.Rounded.NoteAdd, contentDescription = "Add a note")
                         }
                     }
                 }
@@ -692,13 +696,13 @@ fun FocusTimerScreen(
                 ListItem(
                     headlineContent = { Text("No countdown") },
                     supportingContent = { Text("Count up until you stop") },
-                    leadingContent = { Icon(Icons.Filled.Timer, contentDescription = null) },
+                    leadingContent = { Icon(Icons.Rounded.Timer, contentDescription = null) },
                     trailingContent = {
-                        if (mode == TimerMode.STOPWATCH) Icon(Icons.Filled.Check, contentDescription = "Selected")
+                        if (mode == TimerMode.STOPWATCH) Icon(Icons.Rounded.Check, contentDescription = "Selected")
                     },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(AppShape.M)
                         .clickable {
                             viewModel.setTimerMode(TimerMode.STOPWATCH)
                             showCountdownSheet = false
@@ -755,7 +759,7 @@ fun FocusTimerScreen(
                     sounds.forEach { (type, meta) ->
                         val isSelected = noiseType == type
                         Surface(
-                            shape = RoundedCornerShape(16.dp),
+                            shape = AppShape.M,
                             color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -783,7 +787,7 @@ fun FocusTimerScreen(
                                     )
                                 }
                                 if (isSelected) {
-                                    Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
                         }
@@ -848,7 +852,7 @@ private fun TimerChip(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(if (filled) Icons.Filled.Check else icon, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(if (filled) Icons.Rounded.Check else icon, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }
@@ -937,7 +941,7 @@ private fun PickUpCard(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = AppShape.L,
         color = tint.copy(alpha = 0.08f),
         contentColor = tint,
         modifier = modifier.widthIn(max = 420.dp).fillMaxWidth()
@@ -999,7 +1003,7 @@ private fun StillReadingCard(
 ) {
     AnimatedVisibility(visible = secondsLeft != null, enter = fadeIn(), exit = fadeOut(), modifier = modifier) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = AppShape.L,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             contentColor = MaterialTheme.colorScheme.onSurface,
             shadowElevation = 6.dp,
@@ -1100,9 +1104,9 @@ private fun PlayButton(
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = when {
-                        countdownDone -> Icons.Filled.Check
-                        isRunning -> Icons.Filled.Pause
-                        else -> Icons.Filled.PlayArrow
+                        countdownDone -> Icons.Rounded.Check
+                        isRunning -> Icons.Rounded.Pause
+                        else -> Icons.Rounded.PlayArrow
                     },
                     contentDescription = when {
                         countdownDone -> "Save session"

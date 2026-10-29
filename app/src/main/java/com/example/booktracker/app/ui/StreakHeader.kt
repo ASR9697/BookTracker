@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -7,10 +9,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -61,7 +63,7 @@ fun StreakHeader(streak: StreakEngine.StreakInfo, modifier: Modifier = Modifier)
 @Composable
 private fun StreakHero(streak: StreakEngine.StreakInfo) {
     val shown by animateCountUp(streak.currentStreak)
-    Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
+    Surface(shape = AppShape.L, color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.fillMaxWidth().padding(24.dp)
@@ -89,7 +91,7 @@ private fun StreakHero(streak: StreakEngine.StreakInfo) {
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                 ) {
                     Icon(
-                        if (streak.goalMetToday) Icons.Filled.CheckCircle else Icons.Filled.LocalFireDepartment,
+                        if (streak.goalMetToday) Icons.Rounded.CheckCircle else Icons.Rounded.LocalFireDepartment,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(16.dp)
@@ -123,13 +125,13 @@ private fun MonthCalendar(streak: StreakEngine.StreakInfo) {
     val firstActive = remember(streak.activeDays) { streak.activeDays.minOrNull()?.let(YearMonth::from) }
     val readDays = streak.activeDays.count { YearMonth.from(it) == month }
 
-    Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
+    Surface(shape = AppShape.L, color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(
                     onClick = { haptics.tick(); month = month.minusMonths(1) },
                     enabled = firstActive != null && month > firstActive
-                ) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous month") }
+                ) { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = "Previous month") }
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                     Text(
                         "${month.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${month.year}",
@@ -145,7 +147,7 @@ private fun MonthCalendar(streak: StreakEngine.StreakInfo) {
                 IconButton(
                     onClick = { haptics.tick(); month = month.plusMonths(1) },
                     enabled = month < thisMonth
-                ) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next month") }
+                ) { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = "Next month") }
             }
             Spacer(Modifier.height(8.dp))
             Row {
@@ -205,7 +207,7 @@ private fun MonthCalendar(streak: StreakEngine.StreakInfo) {
 private fun StreakRuns(runs: List<StreakEngine.StreakRun>, streak: StreakEngine.StreakInfo) {
     val longest = remember(runs) { runs.sortedByDescending { it.length }.take(RUNS_SHOWN) }
     val maxLength = longest.first().length
-    Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
+    Surface(shape = AppShape.L, color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Longest streaks", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             longest.forEach { run ->

@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -20,9 +22,9 @@ import java.util.Locale
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -145,12 +147,12 @@ fun ProfileScreen(
                 var newName by remember { mutableStateOf(userName) }
                 AlertDialog(
                     onDismissRequest = { showNameDialog = false },
-                    title = { Text("Edit Profile") },
+                    title = { Text("Edit profile") },
                     text = {
                         OutlinedTextField(
                             value = newName,
                             onValueChange = { newName = it },
-                            label = { Text("Display Name") },
+                            label = { Text("Display name") },
                             singleLine = true
                         )
                     },
@@ -210,7 +212,7 @@ fun ProfileScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Filled.PhotoCamera,
+                            Icons.Rounded.PhotoCamera,
                             contentDescription = "Change profile picture",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(14.dp)
@@ -233,7 +235,7 @@ fun ProfileScreen(
                         )
                         Spacer(Modifier.width(6.dp))
                         Icon(
-                            Icons.Filled.Edit,
+                            Icons.Rounded.Edit,
                             contentDescription = "Edit name",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
@@ -250,14 +252,14 @@ fun ProfileScreen(
                     if (yearlyGoal > 0) {
                         Spacer(Modifier.height(4.dp))
                         HeaderLine(
-                            icon = Icons.Filled.Flag,
+                            icon = Icons.Rounded.Flag,
                             text = "$finishedThisYear / $yearlyGoal books in ${today.year}" +
                                 (goalPace?.let { " · $it" } ?: "")
                         )
                     }
                     if (trackingSince != null) {
                         Spacer(Modifier.height(2.dp))
-                        HeaderLine(icon = Icons.Filled.CalendarToday, text = "Tracking since $trackingSince")
+                        HeaderLine(icon = Icons.Rounded.CalendarToday, text = "Tracking since $trackingSince")
                     }
                 }
             }
@@ -266,7 +268,7 @@ fun ProfileScreen(
         // Lifetime numbers, one compact card instead of four big tiles.
         item {
             Card(
-                shape = RoundedCornerShape(20.dp),
+                shape = AppShape.L,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
                 modifier = Modifier.fillMaxWidth().staggeredEntrance(entrance, 1)
             ) {
@@ -276,7 +278,7 @@ fun ProfileScreen(
                 ) {
                     Row {
                         StatTile(
-                            icon = Icons.Filled.LocalFireDepartment,
+                            icon = Icons.Rounded.LocalFireDepartment,
                             tint = MaterialTheme.colorScheme.tertiary,
                             count = streak,
                             flameStreak = streak,
@@ -284,7 +286,7 @@ fun ProfileScreen(
                             modifier = Modifier.weight(1f).bounceClick { onOpenStreak() }
                         )
                         StatTile(
-                            icon = Icons.AutoMirrored.Filled.MenuBook,
+                            icon = Icons.AutoMirrored.Rounded.MenuBook,
                             tint = MaterialTheme.colorScheme.secondary,
                             count = completedBooks.size,
                             label = if (completedBooks.size == 1) "book finished" else "books finished",
@@ -293,7 +295,7 @@ fun ProfileScreen(
                     }
                     Row {
                         StatTile(
-                            icon = Icons.Filled.Layers,
+                            icon = Icons.Rounded.Layers,
                             tint = MaterialTheme.colorScheme.primary,
                             count = pagesRead,
                             format = { "%,d".format(it) },
@@ -301,7 +303,7 @@ fun ProfileScreen(
                             modifier = Modifier.weight(1f)
                         )
                         StatTile(
-                            icon = Icons.Filled.Schedule,
+                            icon = Icons.Rounded.Schedule,
                             tint = MaterialTheme.colorScheme.primary,
                             count = totalMinutes.toInt(),
                             format = { AnalyticsEngine.formatMinutes(it.toLong()) },
@@ -316,7 +318,7 @@ fun ProfileScreen(
         // Wrapped stays hidden until there is a year worth sharing.
         if (hasYearToReview) item {
             Card(
-                shape = RoundedCornerShape(16.dp),
+                shape = AppShape.M,
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                     contentColor = MaterialTheme.colorScheme.onTertiaryContainer
@@ -338,7 +340,7 @@ fun ProfileScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Filled.AutoAwesome,
+                            Icons.Rounded.AutoAwesome,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onTertiary
                         )
@@ -355,7 +357,7 @@ fun ProfileScreen(
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+                    Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null)
                 }
             }
         }
@@ -368,7 +370,7 @@ fun ProfileScreen(
 
         item {
             Card(
-                shape = RoundedCornerShape(16.dp),
+                shape = AppShape.M,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
                 modifier = Modifier.fillMaxWidth().staggeredEntrance(entrance, 4)
             ) {
@@ -385,7 +387,7 @@ fun ProfileScreen(
 
         if (readingBooks.isNotEmpty()) item {
             Card(
-                shape = RoundedCornerShape(16.dp),
+                shape = AppShape.M,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
                 modifier = Modifier.fillMaxWidth().staggeredEntrance(entrance, 5)
             ) {
@@ -422,42 +424,42 @@ fun ProfileScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = AppShape.M
                 ) {
                     Column {
                         SettingsRow(
-                            icon = Icons.Filled.History,
-                            label = "Reading History",
+                            icon = Icons.Rounded.History,
+                            label = "Reading history",
                             onClick = onOpenHistory
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         SettingsRow(
-                            icon = Icons.Filled.DoneAll,
-                            label = "Finished & Abandoned",
+                            icon = Icons.Rounded.DoneAll,
+                            label = "Finished & abandoned",
                             onClick = onOpenFinished
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         SettingsRow(
-                            icon = Icons.Filled.Flag,
+                            icon = Icons.Rounded.Flag,
                             label = "Reading goals",
                             onClick = onOpenSettings
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         SettingsRow(
-                            icon = Icons.Filled.Event,
-                            label = "Reading Planner",
+                            icon = Icons.Rounded.Event,
+                            label = "Reading planner",
                             onClick = onOpenPlanner
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         SettingsRow(
-                            icon = Icons.Filled.BookmarkAdd,
+                            icon = Icons.Rounded.BookmarkAdd,
                             label = "Wishlist",
                             onClick = onOpenWishlist
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         SettingsRow(
-                            icon = Icons.Filled.Share,
-                            label = "Export Knowledge Base (.md)",
+                            icon = Icons.Rounded.Share,
+                            label = "Export notes as Markdown",
                             onClick = { MarkdownExporter.exportToMarkdown(context, books, notes) }
                         )
                     }
@@ -512,13 +514,13 @@ private fun AchievementsTeaser(statuses: List<BadgeStatus>, challenge: BadgeStat
     val nextUp = remember(statuses) { BadgeEngine.nextUp(statuses) }
 
     Card(
-        shape = RoundedCornerShape(20.dp),
+        shape = AppShape.L,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         modifier = Modifier.fillMaxWidth().bounceClick(onClick = onClick)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.EmojiEvents, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(8.dp))
                 Text(
                     "Achievements",
@@ -532,7 +534,7 @@ private fun AchievementsTeaser(statuses: List<BadgeStatus>, challenge: BadgeStat
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold
                 )
-                Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             if (earned.isNotEmpty()) {
@@ -685,14 +687,14 @@ private fun AvatarPickerSheet(
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
             )
             SettingsRow(
-                icon = Icons.Filled.PhotoLibrary,
+                icon = Icons.Rounded.PhotoLibrary,
                 label = "Choose a photo",
                 onClick = {
                     photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }
             )
             if (avatar.isNotBlank()) {
-                SettingsRow(icon = Icons.Filled.TextFields, label = "Use my initial", onClick = onUseInitial)
+                SettingsRow(icon = Icons.Rounded.TextFields, label = "Use my initial", onClick = onUseInitial)
             }
             if (covers.isNotEmpty()) {
                 Text(
@@ -708,7 +710,7 @@ private fun AvatarPickerSheet(
                     items(covers, key = { it.id }) { book ->
                         val selected = book.id == chosenCover
                         BookCover(
-                            book.coverUrl,
+                            book,
                             Modifier
                                 .size(width = 64.dp, height = 96.dp)
                                 .then(
@@ -742,7 +744,7 @@ private fun ReadingRow(book: Book, sessions: List<Session>, onClick: () -> Unit)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        BookCover(book.coverUrl, Modifier.heroSharedElement("cover-${book.id}").size(width = 40.dp, height = 60.dp))
+        BookCover(book, Modifier.heroSharedElement("cover-${book.id}").size(width = 40.dp, height = 60.dp))
         Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -787,6 +789,6 @@ fun SettingsRow(
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.width(16.dp))
         Text(label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-        Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

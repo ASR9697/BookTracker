@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,10 +16,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DragIndicator
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.rounded.DragIndicator
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +55,7 @@ import com.example.booktracker.app.data.HomeLayout
 import com.example.booktracker.app.data.HomeSection
 import kotlin.math.abs
 
-private val RowShape = RoundedCornerShape(16.dp)
+private val RowShape = AppShape.M
 private val RowSpacing = 8.dp
 
 /**
@@ -108,7 +110,7 @@ fun EditHomeScreen(
         SectionRow(
             title = "Current book",
             description = "Always first on Home",
-            leading = { Icon(Icons.Filled.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.outline) },
+            leading = { Icon(Icons.Rounded.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.outline) },
             trailing = {},
             modifier = Modifier.alpha(0.6f)
         )
@@ -125,7 +127,7 @@ fun EditHomeScreen(
                         elevated = isDragging,
                         leading = {
                             Icon(
-                                Icons.Filled.DragIndicator,
+                                Icons.Rounded.DragIndicator,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -133,7 +135,7 @@ fun EditHomeScreen(
                         trailing = {
                             IconButton(onClick = { onLayoutChange(current.copy(order = order).toggle(section)) }) {
                                 Icon(
-                                    if (hidden) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                    if (hidden) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
                                     contentDescription = if (hidden) "Show ${section.title}" else "Hide ${section.title}",
                                     tint = if (hidden) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
                                 )

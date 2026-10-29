@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget picker preview for the Year in pixels widget (sample pattern). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_preview_bg"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="12dp"
+    tools:ignore="HardcodedText">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="6dp"
+        android:text="Your weeks in reading"
+        android:textColor="#FFF4EDE1"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal">
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px0" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px1" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px1" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px0" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal">
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px2" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px0" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px1" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px1" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px1" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal">
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px0" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px2" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px0" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px2" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px1" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px1" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal">
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px0" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px2" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px0" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px2" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px2" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal">
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px1" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px0" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px0" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px2" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px2" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal">
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px0" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px1" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px1" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px0" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal">
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px2" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px0" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px1" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px1" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px1" />
+            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:layout_margin="1.5dp" android:contentDescription="@null" android:src="@drawable/widget_preview_px3" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

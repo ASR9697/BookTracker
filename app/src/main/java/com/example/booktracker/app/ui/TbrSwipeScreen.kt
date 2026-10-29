@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -12,13 +14,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.BookmarkAdded
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.rounded.BookmarkAdded
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.MenuBook
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -80,7 +82,7 @@ fun TbrSwipeScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -95,7 +97,7 @@ fun TbrSwipeScreen(
         ) {
             if (remainingBooks.isEmpty()) {
                 Surface(
-                    shape = RoundedCornerShape(32.dp),
+                    shape = AppShape.XL,
                     color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.7f),
                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
                     modifier = Modifier
@@ -114,7 +116,7 @@ fun TbrSwipeScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                Icons.Default.CheckCircle,
+                                Icons.Rounded.CheckCircle,
                                 contentDescription = null,
                                 modifier = Modifier.size(44.dp),
                                 tint = MaterialTheme.colorScheme.primary
@@ -137,7 +139,7 @@ fun TbrSwipeScreen(
                         Spacer(Modifier.height(28.dp))
                         Button(
                             onClick = onBack,
-                            shape = RoundedCornerShape(16.dp),
+                            shape = AppShape.M,
                             modifier = Modifier.height(48.dp)
                         ) {
                             Text("Back to library", fontWeight = FontWeight.Bold)
@@ -322,7 +324,7 @@ fun TinderCard(
                 // 1. Right Drag: SHORTLIST (Green)
                 SwipeStampBadge(
                     text = "SHORTLIST",
-                    icon = Icons.Default.BookmarkAdded,
+                    icon = Icons.Rounded.BookmarkAdded,
                     color = Color(0xFF22C55E),
                     alpha = rightRatio,
                     rotation = -14f,
@@ -334,7 +336,7 @@ fun TinderCard(
                 // 2. Left Drag: PASS (Crimson)
                 SwipeStampBadge(
                     text = "PASS",
-                    icon = Icons.Default.Close,
+                    icon = Icons.Rounded.Close,
                     color = Color(0xFFEF4444),
                     alpha = leftRatio,
                     rotation = 14f,
@@ -346,7 +348,7 @@ fun TinderCard(
                 // 3. Up Drag: READ NOW (Electric Sky)
                 SwipeStampBadge(
                     text = "START READING",
-                    icon = Icons.AutoMirrored.Filled.MenuBook,
+                    icon = Icons.AutoMirrored.Rounded.MenuBook,
                     color = Color(0xFF0EA5E9),
                     alpha = upRatio,
                     rotation = 0f,
@@ -402,7 +404,7 @@ fun SwipeStampBadge(
     val scale = 0.85f + (0.25f * alpha.coerceIn(0f, 1f))
     Surface(
         color = color.copy(alpha = 0.16f * alpha),
-        shape = RoundedCornerShape(16.dp),
+        shape = AppShape.M,
         border = androidx.compose.foundation.BorderStroke(3.5.dp, color.copy(alpha = alpha)),
         modifier = modifier
             .graphicsLayer {
@@ -464,7 +466,7 @@ fun TbrActionControls(
             )
         ) {
             Icon(
-                Icons.Default.Close,
+                Icons.Rounded.Close,
                 contentDescription = "Skip for now",
                 modifier = Modifier.size(26.dp)
             )
@@ -483,7 +485,7 @@ fun TbrActionControls(
             )
         ) {
             Icon(
-                Icons.AutoMirrored.Filled.MenuBook,
+                Icons.AutoMirrored.Rounded.MenuBook,
                 contentDescription = "Start Reading",
                 modifier = Modifier.size(32.dp)
             )
@@ -502,7 +504,7 @@ fun TbrActionControls(
             )
         ) {
             Icon(
-                Icons.Default.BookmarkAdded,
+                Icons.Rounded.BookmarkAdded,
                 contentDescription = "Add to shortlist",
                 modifier = Modifier.size(26.dp)
             )
@@ -514,7 +516,7 @@ fun TbrActionControls(
 fun SwipeCard(book: Book, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(26.dp),
+        shape = AppShape.XL,
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
     ) {
@@ -550,7 +552,7 @@ fun SwipeCard(book: Book, modifier: Modifier = Modifier) {
                         modifier = Modifier.padding(bottom = 120.dp)
                     ) {
                         Icon(
-                            Icons.AutoMirrored.Filled.MenuBook,
+                            Icons.AutoMirrored.Rounded.MenuBook,
                             contentDescription = null,
                             tint = Color.White.copy(alpha = 0.35f),
                             modifier = Modifier.size(56.dp)
@@ -591,7 +593,7 @@ fun SwipeCard(book: Book, modifier: Modifier = Modifier) {
             ) {
                 Surface(
                     color = Color.Black.copy(alpha = 0.55f),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = AppShape.S,
                     border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
                 ) {
                     Text(
@@ -604,7 +606,7 @@ fun SwipeCard(book: Book, modifier: Modifier = Modifier) {
 
                 Surface(
                     color = Color.Black.copy(alpha = 0.55f),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = AppShape.S,
                     border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
                 ) {
                     Text(
@@ -663,7 +665,7 @@ fun SwipeCard(book: Book, modifier: Modifier = Modifier) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            Icons.Default.Star,
+                            Icons.Rounded.Star,
                             contentDescription = null,
                             tint = Color(0xFFFBBF24),
                             modifier = Modifier.size(16.dp)
@@ -687,7 +689,7 @@ fun SwipeCard(book: Book, modifier: Modifier = Modifier) {
                         book.genres.take(3).forEach { genre ->
                             Surface(
                                 color = Color.White.copy(alpha = 0.18f),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = AppShape.S,
                                 border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.White.copy(alpha = 0.25f))
                             ) {
                                 Text(

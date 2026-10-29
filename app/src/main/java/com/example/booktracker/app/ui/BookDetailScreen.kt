@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.material3.TextButton
 import coil3.request.allowHardware
 import coil3.imageLoader
@@ -25,28 +27,28 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Draw
-import androidx.compose.material.icons.filled.DocumentScanner
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.MenuBook
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Draw
+import androidx.compose.material.icons.rounded.DocumentScanner
+import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.outlined.StarBorder
-import androidx.compose.material.icons.filled.Watch
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Translate
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.rounded.Watch
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Translate
+import androidx.compose.material.icons.rounded.Flag
+import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -83,9 +85,9 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.material.icons.filled.TabletAndroid
-import androidx.compose.material.icons.filled.Headphones
-import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.rounded.TabletAndroid
+import androidx.compose.material.icons.rounded.Headphones
+import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.input.KeyboardType
@@ -116,36 +118,36 @@ import java.time.format.TextStyle
 import java.util.Locale
 import kotlin.math.roundToInt
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.material.icons.filled.StarRate
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.AutoStories
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.FormatListNumbered
-import androidx.compose.material.icons.automirrored.filled.LibraryBooks
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.EditNote
-import androidx.compose.material.icons.filled.CenterFocusStrong
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.FormatQuote
-import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.Help
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PlayCircleOutline
-import androidx.compose.material.icons.filled.PostAdd
-import androidx.compose.material.icons.filled.Replay
-import androidx.compose.material.icons.filled.Sell
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.rounded.StarRate
+import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.rounded.AutoStories
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.FormatListNumbered
+import androidx.compose.material.icons.automirrored.rounded.LibraryBooks
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.EditNote
+import androidx.compose.material.icons.rounded.CenterFocusStrong
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.FormatQuote
+import androidx.compose.material.icons.rounded.Lightbulb
+import androidx.compose.material.icons.rounded.Help
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Bookmark
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.PlayCircleOutline
+import androidx.compose.material.icons.rounded.PostAdd
+import androidx.compose.material.icons.rounded.Replay
+import androidx.compose.material.icons.rounded.Sell
+import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.HorizontalDivider
@@ -165,7 +167,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
@@ -486,7 +488,7 @@ fun BookDetailScreen(
                         item {
                             SectionItem {
                                 Surface(
-                                    shape = RoundedCornerShape(20.dp),
+                                    shape = AppShape.L,
                                     color = MaterialTheme.colorScheme.surfaceContainerLow,
                                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)),
                                     modifier = Modifier
@@ -505,7 +507,7 @@ fun BookDetailScreen(
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Icon(
-                                                Icons.Filled.Flag,
+                                                Icons.Rounded.Flag,
                                                 contentDescription = null,
                                                 tint = MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier.size(22.dp)
@@ -571,14 +573,14 @@ fun BookDetailScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        Icons.Filled.Sell,
+                                        Icons.Rounded.Sell,
                                         contentDescription = null,
                                         modifier = Modifier.size(18.dp),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     book.genres.forEach { genre ->
                                         Surface(
-                                            shape = RoundedCornerShape(10.dp),
+                                            shape = AppShape.XS,
                                             color = MaterialTheme.colorScheme.surfaceContainerHigh,
                                             contentColor = MaterialTheme.colorScheme.onSurface
                                         ) {
@@ -598,7 +600,7 @@ fun BookDetailScreen(
                         item {
                                 SectionItem {
                                     Surface(
-                                        shape = RoundedCornerShape(16.dp),
+                                        shape = AppShape.M,
                                         color = if (loanStatus.urgency == LoanEngine.LoanUrgency.OVERDUE)
                                             MaterialTheme.colorScheme.errorContainer
                                         else
@@ -616,7 +618,7 @@ fun BookDetailScreen(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Icon(
-                                                if (loanStatus.urgency == LoanEngine.LoanUrgency.OVERDUE) Icons.Filled.Warning else Icons.Filled.Schedule,
+                                                if (loanStatus.urgency == LoanEngine.LoanUrgency.OVERDUE) Icons.Rounded.Warning else Icons.Rounded.Schedule,
                                                 contentDescription = null,
                                                 modifier = Modifier.size(20.dp)
                                             )
@@ -683,7 +685,7 @@ fun BookDetailScreen(
                         item {
                             SectionItem {
                                 Surface(
-                                    shape = RoundedCornerShape(20.dp),
+                                    shape = AppShape.L,
                                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
                                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
                                     modifier = Modifier
@@ -703,7 +705,7 @@ fun BookDetailScreen(
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Icon(
-                                                Icons.Filled.EmojiEvents,
+                                                Icons.Rounded.EmojiEvents,
                                                 contentDescription = null,
                                                 tint = MaterialTheme.colorScheme.onPrimary,
                                                 modifier = Modifier.size(24.dp)
@@ -726,7 +728,7 @@ fun BookDetailScreen(
                                             )
                                         }
                                         Icon(
-                                            Icons.Filled.Share,
+                                            Icons.Rounded.Share,
                                             contentDescription = "Share",
                                             tint = MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.size(22.dp)
@@ -763,13 +765,13 @@ fun BookDetailScreen(
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        "Session History",
+                                        "Session history",
                                         style = MaterialTheme.typography.headlineSmall,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.weight(1f)
                                     )
                                     FilledTonalButton(onClick = { showLogSession = true }) {
-                                        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(Modifier.width(6.dp))
                                         Text("Log")
                                     }
@@ -792,7 +794,7 @@ fun BookDetailScreen(
                             SectionItem {
                                 Card(
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                                    shape = RoundedCornerShape(20.dp),
+                                    shape = AppShape.L,
                                     modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
                                 ) {
                                     Column(
@@ -800,7 +802,7 @@ fun BookDetailScreen(
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
                                         Icon(
-                                            Icons.Filled.History,
+                                            Icons.Rounded.History,
                                             contentDescription = null,
                                             modifier = Modifier.size(48.dp),
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
@@ -849,7 +851,7 @@ fun BookDetailScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        "Notes & Quotes",
+                                        "Notes & quotes",
                                         style = MaterialTheme.typography.headlineSmall,
                                         fontWeight = FontWeight.Bold
                                     )
@@ -864,7 +866,7 @@ fun BookDetailScreen(
                                                 .size(36.dp)
                                         ) {
                                             Icon(
-                                                Icons.Filled.CenterFocusStrong,
+                                                Icons.Rounded.CenterFocusStrong,
                                                 contentDescription = "Handwrite a note",
                                                 modifier = Modifier.size(18.dp),
                                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -877,7 +879,7 @@ fun BookDetailScreen(
                                                 .size(36.dp)
                                         ) {
                                             Icon(
-                                                Icons.Filled.DocumentScanner,
+                                                Icons.Rounded.DocumentScanner,
                                                 contentDescription = "Scan passage",
                                                 modifier = Modifier.size(18.dp),
                                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -890,7 +892,7 @@ fun BookDetailScreen(
                                                 .size(36.dp)
                                         ) {
                                             Icon(
-                                                Icons.Filled.Add,
+                                                Icons.Rounded.Add,
                                                 contentDescription = "Add note",
                                                 modifier = Modifier.size(18.dp),
                                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -921,7 +923,7 @@ fun BookDetailScreen(
                             SectionItem {
                                 Card(
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                                    shape = RoundedCornerShape(20.dp),
+                                    shape = AppShape.L,
                                     modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
                                 ) {
                                     Column(
@@ -929,7 +931,7 @@ fun BookDetailScreen(
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
                                         Icon(
-                                            Icons.Filled.Bookmark,
+                                            Icons.Rounded.Bookmark,
                                             contentDescription = null,
                                             modifier = Modifier.size(48.dp),
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
@@ -1011,7 +1013,7 @@ fun BookDetailScreen(
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
+                        Icons.AutoMirrored.Rounded.ArrowBack,
                         contentDescription = "Back",
                         tint = barContent
                     )
@@ -1020,14 +1022,14 @@ fun BookDetailScreen(
             actions = {
                 IconButton(onClick = onToggleFavorite) {
                     Icon(
-                        imageVector = if (book.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        imageVector = if (book.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                         contentDescription = if (book.isFavorite) "Remove from favorites" else "Add to favorites",
                         tint = barContent
                     )
                 }
                 Box {
                     IconButton(onClick = { showOverflow = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = barContent)
+                        Icon(Icons.Rounded.MoreVert, contentDescription = "More", tint = barContent)
                     }
                     androidx.compose.material3.DropdownMenu(
                         expanded = showOverflow,
@@ -1035,7 +1037,7 @@ fun BookDetailScreen(
                     ) {
                         androidx.compose.material3.DropdownMenuItem(
                             text = { Text("Edit details") },
-                            leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                            leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                             onClick = {
                                 showOverflow = false
                                 showEditDetails = true
@@ -1043,7 +1045,7 @@ fun BookDetailScreen(
                         )
                         androidx.compose.material3.DropdownMenuItem(
                             text = { Text("Change status") },
-                            leadingIcon = { Icon(Icons.Filled.Bookmark, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                            leadingIcon = { Icon(Icons.Rounded.Bookmark, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                             onClick = {
                                 showOverflow = false
                                 showStatusPicker = true
@@ -1051,7 +1053,7 @@ fun BookDetailScreen(
                         )
                         androidx.compose.material3.DropdownMenuItem(
                             text = { Text("Log a reading session") },
-                            leadingIcon = { Icon(Icons.Filled.History, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                            leadingIcon = { Icon(Icons.Rounded.History, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                             onClick = {
                                 showOverflow = false
                                 showLogSession = true
@@ -1059,10 +1061,10 @@ fun BookDetailScreen(
                         )
                         if (book.status == BookStatus.FINISHED.name) {
                             androidx.compose.material3.DropdownMenuItem(
-                                text = { Text("Victory Card") },
+                                text = { Text("Victory card") },
                                 leadingIcon = {
                                     Icon(
-                                        Icons.Filled.EmojiEvents,
+                                        Icons.Rounded.EmojiEvents,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary
                                     )
@@ -1074,10 +1076,10 @@ fun BookDetailScreen(
                             )
                         }
                         androidx.compose.material3.DropdownMenuItem(
-                            text = { Text(if (activeLoan != null) "Manage Loan" else "Record Loan / Borrow") },
+                            text = { Text(if (activeLoan != null) "Manage loan" else "Record Loan / Borrow") },
                             leadingIcon = {
                                 Icon(
-                                    Icons.AutoMirrored.Filled.MenuBook,
+                                    Icons.AutoMirrored.Rounded.MenuBook,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary
                                 )
@@ -1091,7 +1093,7 @@ fun BookDetailScreen(
                             text = { Text("Delete from library") },
                             leadingIcon = {
                                 Icon(
-                                    Icons.Filled.Delete,
+                                    Icons.Rounded.Delete,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.error
                                 )
@@ -1169,17 +1171,17 @@ fun BookDetailScreen(
     }
 
     noteToDelete?.let { note ->
-        AlertDialog(
-            onDismissRequest = { noteToDelete = null },
-            title = { Text("Delete this note?") },
-            text = { Text(note.content.take(140) + if (note.content.length > 140) "…" else "") },
-            confirmButton = {
-                TextButton(onClick = {
-                    onDeleteNote(note.id)
-                    noteToDelete = null
-                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+        ActionSheet(
+            onDismiss = { noteToDelete = null },
+            icon = Icons.Rounded.Delete,
+            title = "Delete this note?",
+            message = note.content.take(140) + if (note.content.length > 140) "…" else "",
+            confirmLabel = "Delete",
+            onConfirm = {
+                onDeleteNote(note.id)
+                noteToDelete = null
             },
-            dismissButton = { TextButton(onClick = { noteToDelete = null }) { Text("Cancel") } }
+            destructive = true
         )
     }
 
@@ -1309,23 +1311,17 @@ fun BookDetailScreen(
     }
 
     sessionToDelete?.let { session ->
-        AlertDialog(
-            onDismissRequest = { sessionToDelete = null },
-            title = { Text("Delete Session") },
-            text = { Text("Are you sure you want to delete this reading session? This cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    onDeleteSession(session)
-                    sessionToDelete = null
-                }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
-                }
+        ActionSheet(
+            onDismiss = { sessionToDelete = null },
+            icon = Icons.Rounded.Delete,
+            title = "Delete this session?",
+            message = "Its time and pages come out of your stats. This can't be undone.",
+            confirmLabel = "Delete",
+            onConfirm = {
+                onDeleteSession(session)
+                sessionToDelete = null
             },
-            dismissButton = {
-                TextButton(onClick = { sessionToDelete = null }) {
-                    Text("Cancel")
-                }
-            }
+            destructive = true
         )
     }
 }
@@ -1370,7 +1366,7 @@ private fun DetailHeader(
             Spacer(Modifier.height(20.dp))
 
             Row(verticalAlignment = Alignment.Top) {
-                BookCover(book.coverUrl, Modifier.heroSharedElement("cover-${book.id}").size(width = 96.dp, height = 146.dp))
+                BookCover(book, Modifier.heroSharedElement("cover-${book.id}").size(width = 96.dp, height = 146.dp))
                 Spacer(Modifier.width(20.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     if (book.authors.isNotEmpty()) {
@@ -1442,7 +1438,7 @@ private fun ActionPill(
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = if (ended) onReadAgain else onStartReading, modifier = Modifier.size(56.dp)) {
                 Icon(
-                    if (ended) Icons.Filled.Replay else Icons.Filled.PlayCircleOutline,
+                    if (ended) Icons.Rounded.Replay else Icons.Rounded.PlayCircleOutline,
                     contentDescription = if (ended) "Read again" else "Start reading timer",
                     modifier = Modifier.size(26.dp),
                     tint = MaterialTheme.colorScheme.primary
@@ -1456,7 +1452,7 @@ private fun ActionPill(
             )
             IconButton(onClick = onAddNote, modifier = Modifier.size(56.dp)) {
                 Icon(
-                    Icons.Filled.PostAdd,
+                    Icons.Rounded.PostAdd,
                     contentDescription = "Add a note",
                     modifier = Modifier.size(26.dp),
                     tint = MaterialTheme.colorScheme.primary
@@ -1486,7 +1482,7 @@ private fun StatusPill(status: String, onClick: () -> Unit) {
                 fontWeight = FontWeight.Bold
             )
             Icon(
-                androidx.compose.material.icons.Icons.Filled.ArrowDropDown,
+                androidx.compose.material.icons.Icons.Rounded.ArrowDropDown,
                 contentDescription = "Change status",
                 modifier = Modifier.size(18.dp)
             )
@@ -1521,33 +1517,32 @@ private fun StatusPickerDialog(
         BookStatus.FINISHED to "Read to the end",
         BookStatus.DNF to "Stopped partway"
     )
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Book status") },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                options.forEach { (status, hint) ->
-                    val selected = current.equals(status.name, ignoreCase = true)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { onSelect(status) }
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        androidx.compose.material3.RadioButton(selected = selected, onClick = { onSelect(status) })
-                        Spacer(Modifier.width(8.dp))
-                        Column {
-                            Text(statusLabel(status.name), style = MaterialTheme.typography.bodyLarge)
-                            Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
+    ActionSheet(
+        onDismiss = onDismiss,
+        icon = Icons.AutoMirrored.Rounded.MenuBook,
+        title = "Where is this book?",
+        dismissLabel = "Close"
+    ) {
+        options.forEach { (status, hint) ->
+            val selected = current.equals(status.name, ignoreCase = true)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(AppShape.M)
+                    .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                    .clickable { onSelect(status) }
+                    .padding(vertical = 6.dp, horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                androidx.compose.material3.RadioButton(selected = selected, onClick = { onSelect(status) })
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Text(statusLabel(status.name), style = MaterialTheme.typography.titleSmall)
+                    Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } }
-    )
+        }
+    }
 }
 
 @Composable
@@ -1583,7 +1578,7 @@ private fun AboutCard(book: Book) {
             onClick = { readAloud.toggle(FormatAdaptabilityLayer.readAloudText(book)) }
         ) {
             Icon(
-                if (speaking) Icons.Filled.Stop else Icons.AutoMirrored.Filled.VolumeUp,
+                if (speaking) Icons.Rounded.Stop else Icons.AutoMirrored.Rounded.VolumeUp,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp)
             )
@@ -1599,7 +1594,7 @@ private fun AboutCard(book: Book) {
 private fun FormatCard(book: Book, onSetFormat: (String) -> Unit) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-        shape = RoundedCornerShape(24.dp),
+        shape = AppShape.L,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -1622,10 +1617,10 @@ private fun FormatCard(book: Book, onSetFormat: (String) -> Unit) {
                     rowFormats.forEach { format ->
                         val isSelected = book.format.name.equals(format, ignoreCase = true)
                         val icon = when (format) {
-                            "Paperback" -> Icons.AutoMirrored.Filled.MenuBook
-                            "Hardcover" -> Icons.AutoMirrored.Filled.LibraryBooks
-                            "E-book" -> Icons.Filled.TabletAndroid
-                            else -> Icons.Filled.Headphones
+                            "Paperback" -> Icons.AutoMirrored.Rounded.MenuBook
+                            "Hardcover" -> Icons.AutoMirrored.Rounded.LibraryBooks
+                            "E-book" -> Icons.Rounded.TabletAndroid
+                            else -> Icons.Rounded.Headphones
                         }
                         androidx.compose.material3.FilterChip(
                             selected = isSelected,
@@ -1669,7 +1664,7 @@ private fun OwnershipCard(
     }
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-        shape = RoundedCornerShape(24.dp),
+        shape = AppShape.L,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -1725,12 +1720,12 @@ private fun OwnershipCard(
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilledTonalButton(onClick = { gettingIt = true }) {
-                        Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("Got it")
                     }
                     OutlinedButton(onClick = { editingWish = true }) {
-                        Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Rounded.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("Details")
                     }
@@ -1794,32 +1789,32 @@ private fun BookStatsCard(book: Book, completed: List<Session>, allSessions: Lis
 
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(24.dp),
+        shape = AppShape.L,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 20.dp)) {
-                Icon(Icons.Filled.BarChart, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Rounded.BarChart, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.width(8.dp))
                 Text("YOUR READING STATS", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatCell(Icons.Filled.Schedule, timeLabel, "Total Time", Modifier.weight(1f))
-                StatCell(Icons.Filled.AutoStories, pagesFromSessions.toString(), "Pages Read", Modifier.weight(1f))
+                StatCell(Icons.Rounded.Schedule, timeLabel, "Total time", Modifier.weight(1f))
+                StatCell(Icons.Rounded.AutoStories, pagesFromSessions.toString(), "Pages read", Modifier.weight(1f))
             }
             Spacer(Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatCell(Icons.Filled.Speed, speedLabel, "Reading Pace", Modifier.weight(1f))
-                StatCell(Icons.Filled.Timer, etaLabel, if (etaLabel == "Finished") "Status" else "Time Left", Modifier.weight(1f))
+                StatCell(Icons.Rounded.Speed, speedLabel, "Reading pace", Modifier.weight(1f))
+                StatCell(Icons.Rounded.Timer, etaLabel, if (etaLabel == "Finished") "Status" else "Time left", Modifier.weight(1f))
             }
 
             val prediction = AnalyticsEngine.predictCompletionDate(book, completed, allSessions)
             if (prediction != null) {
                 Spacer(Modifier.height(16.dp))
                 Surface(
-                    shape = RoundedCornerShape(16.dp),
+                    shape = AppShape.M,
                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
                     modifier = Modifier.fillMaxWidth()
@@ -1836,7 +1831,7 @@ private fun BookStatsCard(book: Book, completed: List<Session>, allSessions: Lis
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                Icons.Filled.Flag,
+                                Icons.Rounded.Flag,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
@@ -1869,7 +1864,7 @@ private fun BookStatsCard(book: Book, completed: List<Session>, allSessions: Lis
 private fun StatCell(icon: androidx.compose.ui.graphics.vector.ImageVector, value: String, label: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer, AppShape.M)
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -1910,14 +1905,14 @@ private fun ReadingStreakCard(
 
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(24.dp),
+        shape = AppShape.L,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.LocalFireDepartment, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.LocalFireDepartment, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("READING STREAK", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -2033,7 +2028,7 @@ private fun NoteSortToggle(current: NoteSort, onChange: (NoteSort) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
             ) {
-                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, modifier = Modifier.size(16.dp))
+                Icon(Icons.AutoMirrored.Rounded.Sort, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(current.label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
             }
@@ -2051,7 +2046,7 @@ private fun NoteSortToggle(current: NoteSort, onChange: (NoteSort) -> Unit) {
                     },
                     trailingIcon = {
                         if (option == current) {
-                            Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                         }
                     }
                 )
@@ -2088,7 +2083,7 @@ private fun NoteCard(
     Card(
         onClick = onEdit,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-        shape = RoundedCornerShape(24.dp),
+        shape = AppShape.L,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp)
     ) {
@@ -2102,7 +2097,7 @@ private fun NoteCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    Icons.Filled.Bookmark,
+                    Icons.Rounded.Bookmark,
                     contentDescription = null,
                     modifier = Modifier.size(14.dp),
                     tint = MaterialTheme.colorScheme.onPrimaryContainer
@@ -2168,7 +2163,7 @@ private fun NoteCard(
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            if (note.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                            if (note.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                             contentDescription = if (note.isFavorite) "Remove from favorites" else "Add to favorites",
                             modifier = Modifier.size(18.dp),
                             tint = if (note.isFavorite) MaterialTheme.colorScheme.primary
@@ -2184,7 +2179,7 @@ private fun NoteCard(
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            Icons.Filled.ContentCopy,
+                            Icons.Rounded.ContentCopy,
                             contentDescription = "Copy note",
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -2197,7 +2192,7 @@ private fun NoteCard(
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            Icons.Filled.Share,
+                            Icons.Rounded.Share,
                             contentDescription = "Share quote",
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -2206,7 +2201,7 @@ private fun NoteCard(
                     if (note.content.isNotBlank()) {
                         IconButton(onClick = onTranslate, modifier = Modifier.size(36.dp)) {
                             Icon(
-                                Icons.Filled.Translate,
+                                Icons.Rounded.Translate,
                                 contentDescription = "Translate note",
                                 modifier = Modifier.size(18.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -2216,7 +2211,7 @@ private fun NoteCard(
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
                         Icon(
-                            Icons.Filled.Delete,
+                            Icons.Rounded.Delete,
                             contentDescription = "Delete note",
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.error
@@ -2238,11 +2233,11 @@ private fun MetadataChips(book: Book) {
             .padding(horizontal = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        MetaChip(Icons.AutoMirrored.Filled.LibraryBooks, "Book type", book.format.name)
-        MetaChip(Icons.Filled.Bookmark, "Progress unit", book.progressUnit.name)
+        MetaChip(Icons.AutoMirrored.Rounded.LibraryBooks, "Book type", book.format.name)
+        MetaChip(Icons.Rounded.Bookmark, "Progress unit", book.progressUnit.name)
         if (book.totalPages > 0) {
             MetaChip(
-                Icons.Filled.AutoStories,
+                Icons.Rounded.AutoStories,
                 "Total ${FormatAdaptabilityLayer.getDisplayUnit(book).lowercase()}",
                 "${FormatAdaptabilityLayer.unitAbbrev(book)} ${book.totalPages}"
             )
@@ -2254,8 +2249,8 @@ private fun MetadataChips(book: Book) {
 private fun MetaChip(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String) {
     Column(
         modifier = Modifier
-            .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(18.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f), RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow, AppShape.M)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f), AppShape.M)
             .padding(horizontal = 18.dp, vertical = 14.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2306,8 +2301,8 @@ private fun ProgressAndDaysRow(
         Box(
             modifier = Modifier
                 .weight(1f)
-                .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(20.dp))
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerLow, AppShape.L)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f), AppShape.L)
                 .clickable(onClick = onEditProgress)
         ) {
             // Bookmark ribbon whose fill mirrors how far through the book you are.
@@ -2338,7 +2333,7 @@ private fun ProgressAndDaysRow(
                     }
                     Spacer(Modifier.width(6.dp))
                     Icon(
-                        Icons.Filled.Edit,
+                        Icons.Rounded.Edit,
                         contentDescription = "Edit progress",
                         modifier = Modifier.size(14.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -2367,8 +2362,8 @@ private fun ProgressAndDaysRow(
         Column(
             modifier = Modifier
                 .weight(1f)
-                .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(20.dp))
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerLow, AppShape.L)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f), AppShape.L)
                 .padding(20.dp)
         ) {
             Text(
@@ -2395,14 +2390,14 @@ private fun CollectionsCard(collections: List<String>, onEdit: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
-            .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(20.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow, AppShape.L)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f), AppShape.L)
             .clickable(onClick = onEdit)
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            Icons.Filled.Folder,
+            Icons.Rounded.Folder,
             contentDescription = null,
             modifier = Modifier.size(20.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -2507,7 +2502,7 @@ private fun CollectionPickerDialog(
                         },
                         enabled = newName.isNotBlank()
                     ) {
-                        Icon(Icons.Filled.Add, contentDescription = "Add collection")
+                        Icon(Icons.Rounded.Add, contentDescription = "Add collection")
                     }
                 }
             }
@@ -2534,16 +2529,16 @@ private fun SessionRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 6.dp)
-            .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(20.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha=0.2f), RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow, AppShape.L)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha=0.2f), AppShape.L)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(
             modifier = Modifier
                 .size(48.dp)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(12.dp))
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha=0.3f), RoundedCornerShape(12.dp)),
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest, AppShape.S)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha=0.3f), AppShape.S),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -2572,7 +2567,7 @@ private fun SessionRow(
                             .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha=0.1f), RoundedCornerShape(6.dp))
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                        Icon(Icons.Filled.Speed, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.7f))
+                        Icon(Icons.Rounded.Speed, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.7f))
                         Spacer(Modifier.width(6.dp))
                         Text("${(session.pagesRead * 60L / durationMinutes)} p/h", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.7f))
                     }
@@ -2580,7 +2575,7 @@ private fun SessionRow(
                 }
                 if (session.environmentTag.isNotBlank()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Lightbulb, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.7f))
+                        Icon(Icons.Rounded.Lightbulb, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.7f))
                         Spacer(Modifier.width(6.dp))
                         Text(session.environmentTag, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.7f))
                     }
@@ -2588,7 +2583,7 @@ private fun SessionRow(
                 if (session.deviceSource == "watch") {
                     Spacer(Modifier.width(12.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Watch, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.7f))
+                        Icon(Icons.Rounded.Watch, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.7f))
                     }
                 }
             }
@@ -2596,10 +2591,10 @@ private fun SessionRow(
         
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Rounded.Edit, contentDescription = "Edit", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
+                Icon(Icons.Rounded.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
             }
         }
     }
@@ -2618,7 +2613,7 @@ private fun EditSessionDialog(
     
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Session") },
+        title = { Text("Edit session") },
         text = {
             Column {
                 OutlinedTextField(
@@ -2702,7 +2697,7 @@ private fun LedgerCard(book: Book, onSetPurchases: (List<com.example.booktracker
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            log.vendor.takeIf { it.isNotBlank() } ?: "Unknown Vendor",
+                            log.vendor.takeIf { it.isNotBlank() } ?: "Store not noted",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -2731,7 +2726,7 @@ private fun LedgerCard(book: Book, onSetPurchases: (List<com.example.booktracker
         }
         
         TextButton(onClick = { editing = -1 }, contentPadding = PaddingValues(horizontal = 0.dp)) {
-            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
             Text(if (book.purchaseLog.isEmpty()) "Add purchase" else "Add another purchase")
         }
@@ -2742,7 +2737,7 @@ private fun LedgerCard(book: Book, onSetPurchases: (List<com.example.booktracker
         
         if (book.loanRecord.isNotEmpty()) {
             Text(
-                "Loan Records",
+                "Loans",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.tertiary
@@ -2796,7 +2791,7 @@ private fun DetailCard(title: String, content: @Composable () -> Unit) {
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        shape = RoundedCornerShape(24.dp),
+        shape = AppShape.L,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
     ) {

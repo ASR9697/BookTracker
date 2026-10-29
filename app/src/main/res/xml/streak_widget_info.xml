@@ -12,6 +12,7 @@
     android:targetCellHeight="2"
     android:description="@string/streak_widget_description"
     android:previewImage="@mipmap/ic_launcher"
+    android:previewLayout="@layout/widget_preview_streak"
     android:initialLayout="@layout/glance_default_loading_layout"
     tools:ignore="UnusedAttribute">
 </appwidget-provider>

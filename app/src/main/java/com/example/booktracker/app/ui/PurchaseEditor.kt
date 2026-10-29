@@ -1,13 +1,15 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -93,7 +95,7 @@ fun PurchaseEditorDialog(
                     )
                 }
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = AppShape.S,
                     color = MaterialTheme.colorScheme.surfaceContainerHighest,
                     onClick = { pickingDate = true }
                 ) {
@@ -101,7 +103,7 @@ fun PurchaseEditorDialog(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)
                     ) {
-                        Icon(Icons.Filled.CalendarToday, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Rounded.CalendarToday, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(10.dp))
                         Text("Bought on", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                         Text(formatPurchaseDate(date), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
@@ -181,7 +183,7 @@ fun PurchaseSection(
 
     Column(modifier = modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.ShoppingBag, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+            Icon(Icons.Rounded.ShoppingBag, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text("Purchase", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.width(6.dp))
@@ -203,7 +205,7 @@ fun PurchaseSection(
             }
         }
         TextButton(onClick = { editing = -1 }, contentPadding = PaddingValues(horizontal = 0.dp)) {
-            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
             Text(if (purchases.isEmpty()) "Add where and what you paid" else "Add another purchase")
         }

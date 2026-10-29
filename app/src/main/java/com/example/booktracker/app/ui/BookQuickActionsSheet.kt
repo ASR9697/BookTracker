@@ -6,13 +6,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.automirrored.filled.NoteAdd
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.BookmarkAdd
-import androidx.compose.material.icons.filled.BookmarkRemove
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.automirrored.rounded.NoteAdd
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.BookmarkAdd
+import androidx.compose.material.icons.rounded.BookmarkRemove
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -63,7 +63,7 @@ fun BookQuickActionsSheet(
                 modifier = Modifier.padding(horizontal = 24.dp)
             ) {
                 BookCover(
-                    book.coverUrl,
+                    book,
                     Modifier
                         .size(width = 72.dp, height = 108.dp)
                         .graphicsLayer {
@@ -87,21 +87,21 @@ fun BookQuickActionsSheet(
                 }
             }
             Spacer(Modifier.height(16.dp))
-            SettingsRow(icon = Icons.AutoMirrored.Filled.OpenInNew, label = "Open book", onClick = { onDismiss(); onOpen() })
+            SettingsRow(icon = Icons.AutoMirrored.Rounded.OpenInNew, label = "Open book", onClick = { onDismiss(); onOpen() })
             onStartReading?.let { start ->
                 SettingsRow(
-                    icon = if (isReading) Icons.Filled.PlayArrow else Icons.AutoMirrored.Filled.MenuBook,
+                    icon = if (isReading) Icons.Rounded.PlayArrow else Icons.AutoMirrored.Rounded.MenuBook,
                     label = if (isReading) "Read now" else "Start reading",
                     onClick = { onDismiss(); start() }
                 )
             }
             onAddNote?.let { add ->
-                SettingsRow(icon = Icons.AutoMirrored.Filled.NoteAdd, label = "Add a note", onClick = { onDismiss(); add() })
+                SettingsRow(icon = Icons.AutoMirrored.Rounded.NoteAdd, label = "Add a note", onClick = { onDismiss(); add() })
             }
             onToggleWishlist?.let { toggle ->
                 val wished = book.ownership == com.example.booktracker.shared.models.Ownership.WISHLIST
                 SettingsRow(
-                    icon = if (wished) Icons.Filled.BookmarkRemove else Icons.Filled.BookmarkAdd,
+                    icon = if (wished) Icons.Rounded.BookmarkRemove else Icons.Rounded.BookmarkAdd,
                     label = if (wished) "Remove from wishlist" else "Add to wishlist",
                     onClick = { haptics.confirm(); onDismiss(); toggle() }
                 )
@@ -142,7 +142,7 @@ fun BookQuickActionsSheet(
                         .clickable { haptics.reject(); onDismiss(); delete() }
                         .padding(16.dp)
                 ) {
-                    Icon(Icons.Filled.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                    Icon(Icons.Rounded.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.width(16.dp))
                     Text("Delete", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
                 }

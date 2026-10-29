@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.activity.compose.BackHandler
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -47,31 +49,31 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.rounded.MenuBook
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Insights
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Style
-import androidx.compose.material.icons.filled.AutoStories
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Insights
+import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.QrCodeScanner
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Style
+import androidx.compose.material.icons.rounded.AutoStories
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Timeline
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -94,7 +96,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -141,11 +143,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.border
 import coil3.compose.AsyncImage
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.ViewColumn
+import androidx.compose.material.icons.automirrored.rounded.Sort
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.ViewColumn
 import com.example.booktracker.app.ui.animations.bounceOnPress
 import com.example.booktracker.app.ui.animations.shimmer
 import com.example.booktracker.app.ui.animations.Motion
@@ -185,11 +187,11 @@ const val ADD_BOOK_ACTION = "action/addBook"
 
 /** The five main sections, in bottom-bar order. */
 private val MainTabs = listOf(
-    NavTab("home", "Home", Icons.Filled.AutoStories),
-    NavTab("library", "Library", Icons.AutoMirrored.Filled.MenuBook),
-    NavTab("memorize", "Notes", Icons.Filled.Style),
-    NavTab("stats", "Stats", Icons.Filled.Insights),
-    NavTab("profile", "Profile", Icons.Filled.Person)
+    NavTab("home", "Home", Icons.Rounded.AutoStories),
+    NavTab("library", "Library", Icons.AutoMirrored.Rounded.MenuBook),
+    NavTab("memorize", "Notes", Icons.Rounded.Style),
+    NavTab("stats", "Stats", Icons.Rounded.Insights),
+    NavTab("profile", "Profile", Icons.Rounded.Person)
 )
 
 enum class LibrarySort(val label: String) {
@@ -473,7 +475,7 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
                 ExtendedFloatingActionButton(
                     onClick = { showAddDialog = true },
                     expanded = currentRoute != "home" || homeAtTop,
-                    icon = { Icon(Icons.Filled.Add, contentDescription = "Add book") },
+                    icon = { Icon(Icons.Rounded.Add, contentDescription = "Add book") },
                     text = { Text("Add book") },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
@@ -501,7 +503,7 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         ) {
-                            Icon(Icons.Filled.Add, contentDescription = "Add book")
+                            Icon(Icons.Rounded.Add, contentDescription = "Add book")
                         }
                     }
                 ) {
@@ -525,7 +527,7 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
                     Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp)) {
                         ExtendedFloatingActionButton(
                             onClick = { showAddDialog = true },
-                            icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                            icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
                             text = { Text("Add book") },
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -544,13 +546,13 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
                         androidx.compose.material3.NavigationDrawerItem(
                             selected = false,
                             onClick = { navController.navigate("review") { launchSingleTop = true } },
-                            icon = { Icon(Icons.Filled.Style, contentDescription = null) },
+                            icon = { Icon(Icons.Rounded.Style, contentDescription = null) },
                             label = { Text("Daily review") }
                         )
                         androidx.compose.material3.NavigationDrawerItem(
                             selected = false,
                             onClick = { navController.navigate("settings") { launchSingleTop = true } },
-                            icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                            icon = { Icon(Icons.Rounded.Settings, contentDescription = null) },
                             label = { Text("Settings") }
                         )
                     }
@@ -692,7 +694,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                                 Box(modifier = Modifier.weight(0.58f).fillMaxHeight()) {
                                                                     if (paneBookId == null) {
                                                                         EmptyState(
-                                                                            icon = Icons.AutoMirrored.Filled.MenuBook,
+                                                                            icon = Icons.AutoMirrored.Rounded.MenuBook,
                                                                             title = "Pick a book",
                                                                             message = "Its page opens here, right beside your library."
                                                                         )
@@ -1426,6 +1428,31 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
         }
     }
 
+    val showWelcome by viewModel.showWelcome.collectAsState()
+    if (showWelcome) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = {},
+            properties = androidx.compose.ui.window.DialogProperties(
+                usePlatformDefaultWidth = false,
+                dismissOnBackPress = false,
+                dismissOnClickOutside = false,
+                decorFitsSystemWindows = false
+            )
+        ) {
+            val welcomeName by viewModel.userName.collectAsState()
+            val welcomeGoal by viewModel.dailyGoal.collectAsState()
+            WelcomeScreen(
+                initialName = welcomeName,
+                initialGoal = welcomeGoal,
+                onSetName = viewModel::setUserName,
+                onSetGoal = viewModel::setDailyGoal,
+                onScanBook = { openScanner() },
+                onSearchBook = { showAddDialog = true },
+                onFinish = viewModel::finishWelcome
+            )
+        }
+    }
+
     if (showAddDialog) {
         // A search opened from the wishlist comes with its query; it's used once.
         androidx.compose.runtime.DisposableEffect(Unit) { onDispose { addQuery = "" } }
@@ -1537,7 +1564,7 @@ fun WeekBubbles(streak: StreakEngine.StreakInfo, modifier: Modifier = Modifier) 
                 ) {
                     if (isActive) {
                         Icon(
-                            Icons.Filled.LocalFireDepartment,
+                            Icons.Rounded.LocalFireDepartment,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(16.dp)
@@ -1694,7 +1721,7 @@ fun LibraryScreen(
                 selected = showFavoritesOnly,
                 onClick = { showFavoritesOnly = !showFavoritesOnly },
                 label = { Text("Favorites") },
-                leadingIcon = { Icon(Icons.Filled.Favorite, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                leadingIcon = { Icon(Icons.Rounded.Favorite, contentDescription = null, modifier = Modifier.size(16.dp)) },
                 colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
                     selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
                     selectedLabelColor = MaterialTheme.colorScheme.onTertiaryContainer
@@ -1726,7 +1753,7 @@ fun LibraryScreen(
                         leadingIcon = selectedOwnership?.let { o ->
                             { Icon(o.icon, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         },
-                        trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        trailingIcon = { Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
                         shape = CircleShape
                     )
                     DropdownMenu(expanded = showOwnershipMenu, onDismissRequest = { showOwnershipMenu = false }) {
@@ -1746,7 +1773,7 @@ fun LibraryScreen(
                                     showOwnershipMenu = false
                                 },
                                 trailingIcon = {
-                                    if (ownership == selectedOwnership) Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    if (ownership == selectedOwnership) Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                                 }
                             )
                         }
@@ -1761,7 +1788,7 @@ fun LibraryScreen(
                         selected = selectedFormat != null,
                         onClick = { showFormatMenu = true },
                         label = { Text(selectedFormat?.name ?: "Format") },
-                        trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        trailingIcon = { Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
                         shape = CircleShape
                     )
                     DropdownMenu(expanded = showFormatMenu, onDismissRequest = { showFormatMenu = false }) {
@@ -1780,7 +1807,7 @@ fun LibraryScreen(
                                     showFormatMenu = false
                                 },
                                 trailingIcon = {
-                                    if (format == selectedFormat) Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    if (format == selectedFormat) Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                                 }
                             )
                         }
@@ -1800,7 +1827,7 @@ fun LibraryScreen(
                     onClick = { showSortMenu = true },
                     label = { Text(sortOrder.label, maxLines = 1) },
                     leadingIcon = {
-                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.AutoMirrored.Rounded.Sort, contentDescription = null, modifier = Modifier.size(16.dp))
                     },
                     shape = CircleShape
                 )
@@ -1813,7 +1840,7 @@ fun LibraryScreen(
                                 showSortMenu = false
                             },
                             trailingIcon = {
-                                if (option == sortOrder) Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                                if (option == sortOrder) Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                             }
                         )
                     }
@@ -1833,7 +1860,7 @@ fun LibraryScreen(
                             )
                         },
                         leadingIcon = {
-                            Icon(Icons.Filled.Folder, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Rounded.Folder, contentDescription = null, modifier = Modifier.size(16.dp))
                         },
                         shape = CircleShape
                     )
@@ -1853,7 +1880,7 @@ fun LibraryScreen(
                                     showCollectionMenu = false
                                 },
                                 trailingIcon = {
-                                    if (name == selectedCollection) Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    if (name == selectedCollection) Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                                 }
                             )
                         }
@@ -1866,19 +1893,19 @@ fun LibraryScreen(
                 viewMode = if (viewMode == LibraryViewMode.GRID) LibraryViewMode.BOOKSHELF else LibraryViewMode.GRID
             }) {
                 Icon(
-                    if (viewMode == LibraryViewMode.GRID) Icons.Filled.ViewColumn else Icons.Filled.GridView,
+                    if (viewMode == LibraryViewMode.GRID) Icons.Rounded.ViewColumn else Icons.Rounded.GridView,
                     contentDescription = if (viewMode == LibraryViewMode.GRID) "Show as bookshelf" else "Show as grid"
                 )
             }
             // Less common actions get words, not unexplained icons.
             Box {
                 IconButton(onClick = { showMoreMenu = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "More library actions")
+                    Icon(Icons.Rounded.MoreVert, contentDescription = "More library actions")
                 }
                 DropdownMenu(expanded = showMoreMenu, onDismissRequest = { showMoreMenu = false }) {
                     DropdownMenuItem(
                         text = { Text("Sort your to-read pile") },
-                        leadingIcon = { Icon(Icons.Filled.Style, contentDescription = null) },
+                        leadingIcon = { Icon(Icons.Rounded.Style, contentDescription = null) },
                         onClick = {
                             showMoreMenu = false
                             onCurationClick()
@@ -1886,7 +1913,7 @@ fun LibraryScreen(
                     )
                     DropdownMenuItem(
                         text = { Text("Open an EPUB file") },
-                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null) },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Rounded.MenuBook, contentDescription = null) },
                         onClick = {
                             showMoreMenu = false
                             epubPickerLauncher.launch("application/epub+zip")
@@ -1902,7 +1929,7 @@ fun LibraryScreen(
                     // Library is completely empty
                     Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                         androidx.compose.material3.Surface(
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(32.dp),
+                            shape = AppShape.XL,
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                             modifier = Modifier.animateContentSize()
                         ) {
@@ -1911,7 +1938,7 @@ fun LibraryScreen(
                                 modifier = Modifier.padding(32.dp)
                             ) {
                                 Icon(
-                                    Icons.AutoMirrored.Filled.MenuBook,
+                                    Icons.AutoMirrored.Rounded.MenuBook,
                                     contentDescription = null,
                                     modifier = Modifier.size(64.dp),
                                     tint = MaterialTheme.colorScheme.primary
@@ -1937,7 +1964,7 @@ fun LibraryScreen(
                                         onClick = onScan,
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Icon(Icons.Filled.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Rounded.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(Modifier.width(8.dp))
                                         Text("Scan")
                                     }
@@ -1945,7 +1972,7 @@ fun LibraryScreen(
                                         onClick = onSearch,
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(Modifier.width(8.dp))
                                         Text("Search")
                                     }
@@ -1957,7 +1984,7 @@ fun LibraryScreen(
                     // Filter resulted in no books matching
                     Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                         androidx.compose.material3.Surface(
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(32.dp),
+                            shape = AppShape.XL,
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                             modifier = Modifier.animateContentSize()
                         ) {
@@ -1966,7 +1993,7 @@ fun LibraryScreen(
                                 modifier = Modifier.padding(32.dp)
                             ) {
                                 Icon(
-                                    Icons.AutoMirrored.Filled.MenuBook,
+                                    Icons.AutoMirrored.Rounded.MenuBook,
                                     contentDescription = null,
                                     modifier = Modifier.size(56.dp),
                                     tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
@@ -1991,7 +2018,7 @@ fun LibraryScreen(
                                         showLoansOnly = false
                                     }
                                 ) {
-                                    Icon(Icons.Filled.Close, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Rounded.Close, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.width(8.dp))
                                     Text("Reset Filters")
                                 }
@@ -2041,56 +2068,7 @@ fun LibraryScreen(
     }
 }
 
-/**
- * Book cover from a URL, with a neutral book-glyph placeholder for missing or
- * still-loading covers (manually added books have no cover URL).
- */
-@Composable
-fun BookCover(url: String, modifier: Modifier = Modifier) {
-    val shape = MaterialTheme.shapes.small
-    if (url.isBlank()) {
-        Box(
-            modifier = modifier
-                .clip(shape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.AutoMirrored.Filled.MenuBook,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    } else {
-        // A shimmer holds the cover's place while it loads, then the image fades in over it.
-        var state by remember(url) { mutableStateOf<coil3.compose.AsyncImagePainter.State>(coil3.compose.AsyncImagePainter.State.Empty) }
-        val context = coil3.compose.LocalPlatformContext.current
-        val request = remember(url, context) {
-            coil3.request.ImageRequest.Builder(context).data(url).crossfade(true).build()
-        }
-        Box(
-            modifier = modifier
-                .clip(shape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
-        ) {
-            when (state) {
-                is coil3.compose.AsyncImagePainter.State.Loading, coil3.compose.AsyncImagePainter.State.Empty ->
-                    Box(Modifier.matchParentSize().shimmer())
-                is coil3.compose.AsyncImagePainter.State.Error ->
-                    Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                else -> Unit
-            }
-            AsyncImage(
-                model = request,
-                contentDescription = null,
-                onState = { state = it },
-                modifier = Modifier.matchParentSize(),
-                contentScale = ContentScale.Crop
-            )
-        }
-    }
-}
+// BookCover lives in BookCover.kt.
 
 private fun formatElapsed(millis: Long): String {
     val totalSeconds = millis.coerceAtLeast(0) / 1_000
@@ -2113,7 +2091,7 @@ private fun SubScreen(title: String, onBack: () -> Unit, content: @Composable ()
             title = { Text(title) },
             navigationIcon = {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                 }
             }
         )
@@ -2138,7 +2116,7 @@ fun TimerMiniPlayer(
         modifier = modifier
             .fillMaxWidth()
             .height(76.dp),
-        shape = RoundedCornerShape(24.dp),
+        shape = AppShape.L,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
@@ -2150,7 +2128,7 @@ fun TimerMiniPlayer(
                 .padding(start = 12.dp, end = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            BookCover(book.coverUrl, Modifier.size(width = 36.dp, height = 52.dp))
+            BookCover(book, Modifier.size(width = 36.dp, height = 52.dp))
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -2173,7 +2151,7 @@ fun TimerMiniPlayer(
                 )
             }
             IconButton(onClick = onEnd) {
-                Icon(Icons.Filled.Close, contentDescription = "End session", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Rounded.Close, contentDescription = "End session", tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (isCountdownDone) {
                 FilledTonalButton(onClick = onSave) { Text("Save") }
@@ -2183,7 +2161,7 @@ fun TimerMiniPlayer(
                     modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
-                        imageVector = if (isRunning) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        imageVector = if (isRunning) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                         contentDescription = if (isRunning) "Pause timer" else "Resume timer"
                     )
                 }

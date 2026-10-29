@@ -1,5 +1,7 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.ui.theme.AppShape
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.tween
@@ -23,8 +25,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -81,7 +83,7 @@ fun PageDial(
 
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            FilledTonalIconButton(onClick = { set(value - 1) }) { Icon(Icons.Filled.Remove, contentDescription = "Less") }
+            FilledTonalIconButton(onClick = { set(value - 1) }) { Icon(Icons.Rounded.Remove, contentDescription = "Less") }
             Spacer(Modifier.width(16.dp))
             if (typing) {
                 OutlinedTextField(
@@ -98,7 +100,7 @@ fun PageDial(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(width = 128.dp, height = 96.dp)
-                        .clip(RoundedCornerShape(24.dp))
+                        .clip(AppShape.L)
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                         .clickable { typing = true }
                         .pointerInput(range) {
@@ -129,7 +131,7 @@ fun PageDial(
                 }
             }
             Spacer(Modifier.width(16.dp))
-            FilledTonalIconButton(onClick = { set(value + 1) }) { Icon(Icons.Filled.Add, contentDescription = "More") }
+            FilledTonalIconButton(onClick = { set(value + 1) }) { Icon(Icons.Rounded.Add, contentDescription = "More") }
         }
         Spacer(Modifier.height(6.dp))
         Text(
