@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.AssistChip
@@ -180,6 +181,10 @@ enum class BookDetailTab(val label: String) {
 private val dateFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
 private val noteStampFormatter = DateTimeFormatter.ofPattern("M/d/yyyy h:mm a")
 
+/** Narrowest window that splits the book page into a fixed header and scrolling tabs. */
+private val TWO_PANE_MIN_WIDTH = 840.dp
+private val HEADER_PANE_WIDTH = 400.dp
+
 @Composable
 private fun SectionItem(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Box(
@@ -295,6 +300,10 @@ fun BookDetailScreen(
     onFinish: (Map<String, Float>, String?) -> Unit,
     onRecordLoan: (LoanRecord) -> Unit = {},
     onMarkLoanReturned: () -> Unit = {},
+    onSaveWord: (com.example.booktracker.shared.models.VocabWord) -> Unit = {},
+    onSetAudiobook: (minutes: Int, speed: Float) -> Unit = { _, _ -> },
+    onLogListening: (minutes: Int) -> Unit = {},
+    onSetAudioPosition: (position: Int) -> Unit = {},
     onBack: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(BookDetailTab.OVERVIEW) }
@@ -317,6 +326,7 @@ fun BookDetailScreen(
     var showLogSession by remember { mutableStateOf(false) }
     var noteToEdit by remember { mutableStateOf<MarginNote?>(null) }
     var noteToDelete by remember { mutableStateOf<MarginNote?>(null) }
+    var noteToTranslate by remember { mutableStateOf<MarginNote?>(null) }
     // Offer the finish prompt once per arrival at the last page, not on every recomposition.
     var finishPromptHandled by remember { mutableStateOf(false) }
     val activeLoan = remember(book?.loanRecord) { book?.let { LoanEngine.activeLoan(it) } }
@@ -325,6 +335,16 @@ fun BookDetailScreen(
     // On a re-read, notes written before it began are memories to bring back.
     val readStart = remember(book, sessions) { book?.let { com.example.booktracker.app.analytics.RereadMemories.currentReadStart(it, sessions) } }
     val earlierNotes = remember(notes, readStart) { readStart?.let { start -> notes.filter { it.timestamp < start } }.orEmpty() }
+
+    noteToTranslate?.let { note ->
+        TranslateSheet(
+            passage = JournalingEngine.render(note.content).text,
+            bookId = note.bookId,
+            page = note.pageNumber,
+            onSaveWord = onSaveWord,
+            onDismiss = { noteToTranslate = null }
+        )
+    }
 
     if (showLoanDialog && book != null) {
         LoanRecordDialog(
@@ -375,7 +395,9 @@ fun BookDetailScreen(
                 showOcr = false
                 ocrDraft = text
                 showAddNote = true
-            }
+            },
+            bookId = book.id,
+            onSaveWord = onSaveWord
         )
         return
     }
@@ -396,27 +418,43 @@ fun BookDetailScreen(
     // The cover tints the header only; tabs, buttons and highlights keep the app's
     // one accent so every screen reads as the same app.
     MaterialTheme(colorScheme = MaterialTheme.colorScheme) {
-        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        // Wide windows (a landscape tablet, not the library's side pane): the header
+        // stays put on the left while the tabs scroll on the right.
+        val twoPane = maxWidth >= TWO_PANE_MIN_WIDTH
 
+        // Compact colour-washed header: title on top, small cover at the left,
+        // imprint details beside it, and the action pill straddling its edge.
+        val header: @Composable () -> Unit = {
+            DetailHeader(
+                book = book,
+                headerColor = headerColor,
+                onStartReading = onStartReading,
+                onReadAgain = onReadAgain,
+                onAddNote = { showAddNote = true },
+                onStatusClick = { showStatusPicker = true }
+            )
+        }
+
+        Row(modifier = Modifier.fillMaxSize()) {
+        if (twoPane) {
+            Column(
+                modifier = Modifier
+                    .width(HEADER_PANE_WIDTH)
+                    .fillMaxHeight()
+                    .verticalScroll(rememberScrollState())
+            ) { header() }
+        }
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 120.dp)
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+            // In two panes the top bar sits over the tabs, so they start below it.
+            contentPadding = PaddingValues(top = if (twoPane) 72.dp else 0.dp, bottom = 120.dp)
         ) {
-            // Compact colour-washed header: title on top, small cover at the left,
-            // imprint details beside it, and the action pill straddling its edge.
-            item {
-                DetailHeader(
-                    book = book,
-                    headerColor = headerColor,
-                    onStartReading = onStartReading,
-                    onReadAgain = onReadAgain,
-                    onAddNote = { showAddNote = true },
-                    onStatusClick = { showStatusPicker = true }
-                )
+            if (!twoPane) {
+                item { header() }
+                item { Spacer(Modifier.height(12.dp)) }
             }
-
-            item { Spacer(Modifier.height(12.dp)) }
 
             item {
                 BookDetailTabRow(
@@ -610,6 +648,9 @@ fun BookDetailScreen(
                     }
 
                     item { SectionItem { FormatCard(book, onSetFormat) } }
+                    if (book.format != com.example.booktracker.shared.models.BookFormat.Audiobook && book.totalPages > 0) {
+                        item { SectionItem { TandemCard(book, onSetAudiobook, onLogListening, onSetAudioPosition) } }
+                    }
                     item { SectionItem { OwnershipCard(book, onSetOwnership) } }
 
                     if (book.status == BookStatus.READING.name) {
@@ -924,7 +965,8 @@ fun BookDetailScreen(
                                     onEdit = { noteToEdit = note },
                                     onDelete = { noteToDelete = note },
                                     onToggleFavorite = { onToggleNoteFavorite(note.id) },
-                                    onShare = { noteToShare = note }
+                                    onShare = { noteToShare = note },
+                                    onTranslate = { noteToTranslate = note }
                                 )
                             }
                         }
@@ -937,10 +979,12 @@ fun BookDetailScreen(
                 }
             }
         }
-        
-        // Transparent over the header, then fading in once it scrolls away.
-        val headerScrolled by remember {
-            derivedStateOf { listState.firstVisibleItemIndex > 0 }
+        }
+
+        // Transparent over the header, then fading in once it scrolls away. In two
+        // panes the header never scrolls away, so the bar is solid from the start.
+        val headerScrolled by remember(twoPane) {
+            derivedStateOf { twoPane || listState.firstVisibleItemIndex > 0 }
         }
         val barColor by androidx.compose.animation.animateColorAsState(
             if (headerScrolled) MaterialTheme.colorScheme.background else headerColor,
@@ -1971,7 +2015,8 @@ private fun NoteCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onToggleFavorite: () -> Unit,
-    onShare: (MarginNote) -> Unit
+    onShare: (MarginNote) -> Unit,
+    onTranslate: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
@@ -2033,7 +2078,7 @@ private fun NoteCard(
                 if (note.content.isNotBlank()) {
                     Text(
                         JournalingEngine.render(note.content),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = noteTextStyle(),
                         lineHeight = androidx.compose.ui.unit.TextUnit(24f, androidx.compose.ui.unit.TextUnitType.Sp)
                     )
                 }
@@ -2093,6 +2138,16 @@ private fun NoteCard(
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                    if (note.content.isNotBlank()) {
+                        IconButton(onClick = onTranslate, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                Icons.Filled.Translate,
+                                contentDescription = "Translate note",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {

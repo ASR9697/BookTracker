@@ -89,7 +89,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     implementation("androidx.navigation:navigation-compose:2.8.8")
     implementation("androidx.datastore:datastore-preferences:1.1.7")
-    implementation("androidx.compose.material3:material3-window-size-class")
+    // Foldable postures: the reading timer splits at the hinge when half-open (tabletop).
+    implementation("androidx.window:window:1.3.0")
     implementation("androidx.palette:palette-ktx:1.0.0")
 
     implementation("androidx.core:core-splashscreen:1.0.1")
@@ -113,6 +114,16 @@ dependencies {
     // downloads a small per-language model at first use. 19.x ships native code
     // aligned for 16 KB page sizes, which Google Play requires.
     implementation("com.google.mlkit:digital-ink-recognition:19.0.0")
+    // "Clean page" capture: corner detection, perspective fix and shadow/finger
+    // removal. The scanner UI and model live in Play services, not the APK.
+    implementation("com.google.android.gms:play-services-mlkit-document-scanner:16.0.0")
+    // On-device translation and language detection for foreign passages. Free +
+    // keyless; each language pair downloads a ~30 MB model on first use.
+    implementation("com.google.mlkit:translate:17.0.3")
+    implementation("com.google.mlkit:language-id:17.0.6")
+    // Drive sync sign-in: Google's AuthorizationClient for the drive.appdata scope.
+    // Drive itself is called over plain HTTPS (sync/DriveClient.kt), no Drive SDK.
+    implementation("com.google.android.gms:play-services-auth:21.3.0")
 
     // App lock (fingerprint / face / screen lock)
     implementation("androidx.biometric:biometric:1.2.0-alpha05")

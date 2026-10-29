@@ -66,7 +66,12 @@ fun ProgressPickerSheet(
     book: Book,
     initialPage: Int,
     onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit
+    onConfirm: (Int) -> Unit,
+    /** Set when logging a session: adds quick steps from it and a live "+N pages" line. */
+    sessionStartPage: Int? = null,
+    sessionSeconds: Int = 0,
+    /** Opens straight onto the page scanner. */
+    startWithScan: Boolean = false
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val haptic = LocalHapticFeedback.current
@@ -75,7 +80,7 @@ fun ProgressPickerSheet(
 
     var keyboardMode by remember { mutableStateOf(false) }
     var selected by remember { mutableIntStateOf(initialPage.coerceIn(0, maxPage)) }
-    var scanning by remember { mutableStateOf(false) }
+    var scanning by remember { mutableStateOf(startWithScan) }
     // Bumped when a scan sets the page, so the wheel re-centres on it.
     var wheelKey by remember { mutableIntStateOf(0) }
 
@@ -139,15 +144,36 @@ fun ProgressPickerSheet(
             }
             }
 
+            if (sessionStartPage != null) {
+                Spacer(Modifier.height(12.dp))
+                // Steps count from where the session began, not from the wheel.
+                Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+                    listOf(0, 5, 10, 20).forEach { step ->
+                        val page = (sessionStartPage + step).coerceIn(0, maxPage)
+                        TickFilterChip(
+                            selected = selected == page,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                selected = page
+                                wheelKey++
+                            },
+                            label = { Text(if (step == 0) "Same page" else "+$step") }
+                        )
+                    }
+                }
+            }
+
             Spacer(Modifier.height(16.dp))
 
             if (keyboardMode) {
-                KeyboardEntry(
-                    book = book,
-                    maxPage = maxPage,
-                    value = selected,
-                    onValueChange = { selected = it }
-                )
+                key(wheelKey) {
+                    KeyboardEntry(
+                        book = book,
+                        maxPage = maxPage,
+                        value = selected,
+                        onValueChange = { selected = it }
+                    )
+                }
             } else {
                 key(wheelKey) {
                     PageWheel(
@@ -158,6 +184,26 @@ fun ProgressPickerSheet(
                         onSelected = { selected = it }
                     )
                 }
+            }
+
+            if (sessionStartPage != null) {
+                val delta = selected - sessionStartPage
+                val pace = com.example.booktracker.app.analytics.AnalyticsEngine.formatSessionPpm(
+                    com.example.booktracker.app.analytics.AnalyticsEngine.sessionSpeedPpm(delta, sessionSeconds)
+                )
+                val word = FormatAdaptabilityLayer.getDisplayUnit(book).lowercase().let { if (abs(delta) == 1) it.trimEnd('s') else it }
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    when {
+                        delta > 0 && pace != null -> "+$delta $word this session · $pace"
+                        delta > 0 -> "+$delta $word this session"
+                        delta == 0 -> "Same ${word.trimEnd('s')} as you started on"
+                        else -> "${-delta} $word back from where you started"
+                    },
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (delta > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             Spacer(Modifier.height(20.dp))

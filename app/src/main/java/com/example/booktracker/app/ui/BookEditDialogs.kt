@@ -1,6 +1,7 @@
 package com.example.booktracker.app.ui
 
 import android.graphics.Bitmap
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.launch
@@ -19,6 +20,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -48,6 +50,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.booktracker.app.camera.rememberPageScanner
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.Creator
@@ -102,6 +105,24 @@ fun EditBookDialog(
             coverUrl = "file://${file.absolutePath}"
         }
     }
+
+    // A flattened, de-shadowed photo of the real cover, copied out of the scanner's cache.
+    val scanCover = rememberPageScanner(
+        pageLimit = 1,
+        onScanned = { pages ->
+            pages.firstOrNull()?.let { uri ->
+                val dir = File(context.filesDir, "covers").apply { mkdirs() }
+                val file = File(dir, "cover_${UUID.randomUUID()}.jpg")
+                val copied = runCatching {
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        FileOutputStream(file).use { input.copyTo(it) }
+                    }
+                }.getOrNull() != null
+                if (copied) coverUrl = "file://${file.absolutePath}"
+            }
+        },
+        onError = { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+    )
 
     val pagesInt = totalPages.toIntOrNull()
     val titleValid = title.isNotBlank()
@@ -165,6 +186,9 @@ fun EditBookDialog(
                     )
                     IconButton(onClick = { takePicture.launch() }) {
                         Icon(Icons.Filled.PhotoCamera, contentDescription = "Take a cover photo")
+                    }
+                    IconButton(onClick = scanCover) {
+                        Icon(Icons.Filled.Crop, contentDescription = "Scan the cover flat")
                     }
                 }
                 if (coverUrl.isNotBlank()) {

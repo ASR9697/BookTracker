@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -192,7 +193,8 @@ private fun ReviewCard(
     var revealed by remember(item.id) { mutableStateOf(item.kind == ReviewKind.NOTE) }
     val book = (note?.bookId ?: word?.bookId)?.let { booksById[it] }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    // A card, not a banner: on a tablet it keeps a readable width in the middle.
+    Column(modifier = Modifier.fillMaxHeight().readableWidth(640.dp).padding(16.dp)) {
         Surface(
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surfaceContainer,

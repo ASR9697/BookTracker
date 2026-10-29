@@ -37,7 +37,9 @@ fun ProgressRingCover(
     ringColor: Color = Color.Unspecified,
     modifier: Modifier = Modifier,
     /** Where the ring starts on first show, e.g. the page a session began on; null starts at [progress]. */
-    startProgress: Float? = null
+    startProgress: Float? = null,
+    /** Dims the ring before this point, so the stretch after it (one session) stands out. */
+    highlightFrom: Float? = null
 ) {
     val target = progress.coerceIn(0f, 1f)
     val ring = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable((startProgress ?: target).coerceIn(0f, 1f)) }
@@ -71,11 +73,23 @@ fun ProgressRingCover(
                 size = arcSize,
                 style = Stroke(width = strokePx, cap = StrokeCap.Round)
             )
-            if (animated > 0f) {
+            val split = highlightFrom?.coerceIn(0f, animated)
+            if (split != null && split > 0f) {
+                drawArc(
+                    color = resolvedRing.copy(alpha = 0.4f),
+                    startAngle = -90f,
+                    sweepAngle = 360f * split,
+                    useCenter = false,
+                    topLeft = Offset(inset, inset),
+                    size = arcSize,
+                    style = Stroke(width = strokePx, cap = StrokeCap.Round)
+                )
+            }
+            if (animated > (split ?: 0f)) {
                 drawArc(
                     color = resolvedRing,
-                    startAngle = -90f,
-                    sweepAngle = 360f * animated,
+                    startAngle = -90f + 360f * (split ?: 0f),
+                    sweepAngle = 360f * (animated - (split ?: 0f)),
                     useCenter = false,
                     topLeft = Offset(inset, inset),
                     size = arcSize,

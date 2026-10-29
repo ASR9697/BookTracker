@@ -7,6 +7,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -27,6 +28,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -75,8 +78,6 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.windowsizeclass.WindowSizeClass
-import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -92,6 +93,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
@@ -129,7 +131,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -171,6 +175,13 @@ enum class LibraryViewMode { GRID, BOOKSHELF }
 
 /** The one destination that hosts the five main sections in a pager. */
 private const val MAIN_ROUTE = "main"
+// `page` is optional: the timer passes its live page, every other entry uses the book's.
+private const val SESSION_SAVE_ROUTE = "session_save/{bookId}?page={page}"
+/** How soon after one session another must start for the save screen to offer joining them. */
+private const val JOIN_WINDOW_MILLIS = 30 * 60_000L
+
+/** Not a screen: asks the app to open the Add book dialog (the Ctrl+N shortcut). */
+const val ADD_BOOK_ACTION = "action/addBook"
 
 /** The five main sections, in bottom-bar order. */
 private val MainTabs = listOf(
@@ -197,16 +208,21 @@ enum class LibrarySort(val label: String) {
  * Compose directly go quiet too.
  */
 @Composable
-fun BookTrackerApp(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeClass? = null) {
+fun BookTrackerApp(viewModel: BookTrackerViewModel) {
     val haptics by viewModel.hapticsEnabled.collectAsState()
     val reduceMotion by viewModel.reduceMotion.collectAsState()
     val systemHaptics = LocalHapticFeedback.current
+    // The window's width, not the screen's: split-screen on a tablet gets the phone layout.
+    val widthTier = WidthTier.forWidth(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp)
+    val prefs by viewModel.prefs.collectAsState()
     CompositionLocalProvider(
+        LocalAppPrefs provides prefs,
         com.example.booktracker.app.ui.animations.LocalAppFeel provides
             com.example.booktracker.app.ui.animations.AppFeel(reduceMotion = reduceMotion, haptics = haptics),
-        LocalHapticFeedback provides if (haptics) systemHaptics else SilentHaptics
+        LocalHapticFeedback provides if (haptics) systemHaptics else SilentHaptics,
+        LocalWidthTier provides widthTier
     ) {
-        BookTrackerAppContent(viewModel, windowSizeClass)
+        BookTrackerAppContent(viewModel)
     }
 }
 
@@ -216,7 +232,7 @@ private object SilentHaptics : androidx.compose.ui.hapticfeedback.HapticFeedback
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 @Composable
-private fun BookTrackerAppContent(viewModel: BookTrackerViewModel, windowSizeClass: WindowSizeClass? = null) {
+private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
     val books by viewModel.books.collectAsState()
     val streak by viewModel.streak.collectAsState()
     val readingBooks = books
@@ -260,6 +276,11 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel, windowSizeCla
     val currentRoute = if (onMain) TAB_ORDER[mainPager.currentPage] else navRoute
 
     val isTopLevelRoute = currentRoute in TOP_LEVEL_ROUTES
+    // Phones: floating bottom bar. Tablets: a rail. Big windows: a labelled side drawer.
+    val widthTier = LocalWidthTier.current
+    val showBottomNav = isTopLevelRoute && widthTier == WidthTier.COMPACT
+    val showRail = isTopLevelRoute && (widthTier == WidthTier.MEDIUM || widthTier == WidthTier.EXPANDED)
+    val showDrawer = isTopLevelRoute && widthTier == WidthTier.LARGE
     val openScanner: () -> Unit = { navController.navigate("scanner") { launchSingleTop = true } }
     val tabScope = rememberCoroutineScope()
     val navigateTopLevel: (String) -> Unit = { route ->
@@ -277,6 +298,12 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel, windowSizeCla
     }
     // The shelf's preview card sits where the Add button would; the button steps aside for it.
     var libraryOverlayOpen by remember { mutableStateOf(false) }
+    // Tablets show a tapped book beside the library instead of on top of it.
+    val libraryListDetail = widthTier.atLeastExpanded
+    var libraryPaneBookId by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
+    val openBookFromLibrary: (Book) -> Unit = { book ->
+        if (libraryListDetail) libraryPaneBookId = book.id else navController.navigate("book/${book.id}")
+    }
 
     // A finished countdown opens the save screen wherever the reader is. The event
     // is replayed until consumed, so it also fires on returning to the app.
@@ -284,7 +311,7 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel, windowSizeCla
         com.example.booktracker.app.data.ServiceLocator.timerExpiredEvents.collect {
             val bookId = com.example.booktracker.app.data.ServiceLocator.timerBookId.value
             com.example.booktracker.app.data.ServiceLocator.consumeTimerExpired()
-            if (bookId != null && navController.currentDestination?.route != "session_save/{bookId}") {
+            if (bookId != null && navController.currentDestination?.route != SESSION_SAVE_ROUTE) {
                 navController.navigate("session_save/$bookId") { launchSingleTop = true }
             }
         }
@@ -296,7 +323,9 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel, windowSizeCla
         val route = pendingRoute ?: return@LaunchedEffect
         viewModel.consumeRoute()
         androidx.compose.runtime.withFrameNanos { } // let the nav graph attach first
-        if (route in TAB_ORDER) {
+        if (route == ADD_BOOK_ACTION) {
+            showAddDialog = true
+        } else if (route in TAB_ORDER) {
             navigateTopLevel(route)
         } else {
             if (navController.currentDestination?.route != MAIN_ROUTE) navController.popBackStack(MAIN_ROUTE, inclusive = false)
@@ -341,36 +370,39 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel, windowSizeCla
         )
     }
 
+    // On phones Home's sky runs up behind a see-through bar; the other sections sit below a bar
+    // that tucks away as their content scrolls up and returns when it scrolls back.
+    val barOverlaysContent = onMain && widthTier == WidthTier.COMPACT
+    val homeOverSky = barOverlaysContent && currentRoute == "home"
+    val barScroll = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val barUserName by viewModel.userName.collectAsState()
+    val homeFadePx = with(LocalDensity.current) { HOME_HEADER_FADE_DP.dp.toPx() }
+    LaunchedEffect(currentRoute) {
+        // Every section starts with the bar showing.
+        val from = barScroll.state.heightOffset
+        if (from != 0f) {
+            animate(from, 0f, animationSpec = tween(Motion.MEDIUM)) { value, _ -> barScroll.state.heightOffset = value }
+        }
+    }
+    val appName = androidx.compose.ui.res.stringResource(com.example.booktracker.app.R.string.app_name)
+    val barTitle = when {
+        currentRoute == "home" -> if (homeOverSky) greeting(barUserName) else appName
+        else -> MainTabs.firstOrNull { it.route == currentRoute }?.label ?: appName
+    }
+
     Scaffold(
+        modifier = if (homeOverSky) Modifier else Modifier.nestedScroll(barScroll.nestedScrollConnection),
         topBar = {
             if (isTopLevelRoute) {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Text(
-                            androidx.compose.ui.res.stringResource(com.example.booktracker.app.R.string.app_name),
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { navController.navigate("search") }) {
-                            Icon(Icons.Filled.Search, contentDescription = "Search library")
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = openScanner) {
-                            Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan ISBN")
-                        }
-                        // Settings sit behind the gear on Profile.
-                        androidx.compose.animation.AnimatedVisibility(visible = currentRoute == "profile") {
-                            IconButton(onClick = { navController.navigate("settings") { launchSingleTop = true } }) {
-                                Icon(Icons.Filled.Settings, contentDescription = "Settings")
-                            }
-                        }
-                    },
-                    colors = androidx.compose.material3.TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-                        scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
-                    )
+                AppTopBar(
+                    title = barTitle,
+                    overSky = homeOverSky,
+                    skyFade = { (homeScroll.value / homeFadePx).coerceIn(0f, 1f) },
+                    scrollBehavior = if (homeOverSky) null else barScroll,
+                    showSettings = currentRoute == "profile",
+                    onSearch = { navController.navigate("search") },
+                    onScan = openScanner,
+                    onSettings = { navController.navigate("settings") { launchSingleTop = true } }
                 )
             }
         },
@@ -416,7 +448,7 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel, windowSizeCla
                     }
                 }
 
-                if (isTopLevelRoute && windowSizeClass?.widthSizeClass != WindowWidthSizeClass.Expanded) {
+                if (showBottomNav) {
                     FloatingNavBar(
                         tabs = MainTabs,
                         position = {
@@ -430,8 +462,10 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel, windowSizeCla
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
+            // On tablets the rail or drawer carries Add book instead.
             androidx.compose.animation.AnimatedVisibility(
-                visible = currentRoute == "home" || (currentRoute == "library" && !libraryOverlayOpen),
+                visible = widthTier == WidthTier.COMPACT &&
+                    (currentRoute == "home" || (currentRoute == "library" && !libraryOverlayOpen)),
                 enter = androidx.compose.animation.scaleIn(Motion.press()) + fadeIn(),
                 exit = androidx.compose.animation.scaleOut(tween(Motion.SHORT)) + fadeOut(tween(Motion.SHORT))
             ) {
@@ -446,43 +480,79 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel, windowSizeCla
             }
         }
     ) { innerPadding ->
-        Row(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            if (isTopLevelRoute && windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
+        val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+        // The bar's own height, kept out of the Row while it floats over Home.
+        val barHeight = innerPadding.calculateTopPadding()
+        Row(
+            modifier = Modifier.fillMaxSize().padding(
+                start = innerPadding.calculateStartPadding(layoutDirection),
+                top = if (barOverlaysContent) 0.dp else barHeight,
+                end = innerPadding.calculateEndPadding(layoutDirection),
+                bottom = innerPadding.calculateBottomPadding()
+            )
+        ) {
+            if (showRail) {
                 NavigationRail(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.85f)
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.85f),
+                    header = {
+                        androidx.compose.material3.FloatingActionButton(
+                            onClick = { showAddDialog = true },
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ) {
+                            Icon(Icons.Filled.Add, contentDescription = "Add book")
+                        }
+                    }
                 ) {
                     Spacer(Modifier.weight(1f))
-                    NavigationRailItem(
-                        selected = currentRoute == "home",
-                        onClick = { navigateTopLevel("home") },
-                        icon = { Icon(Icons.Filled.AutoStories, contentDescription = "Home") },
-                        label = { Text("Home") }
-                    )
-                    NavigationRailItem(
-                        selected = currentRoute == "library",
-                        onClick = { navigateTopLevel("library") },
-                        icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Library") },
-                        label = { Text("Library") }
-                    )
-                    NavigationRailItem(
-                        selected = currentRoute == "memorize",
-                        onClick = { navigateTopLevel("memorize") },
-                        icon = { Icon(Icons.Filled.Style, contentDescription = "Notes") },
-                        label = { Text("Notes") }
-                    )
-                    NavigationRailItem(
-                        selected = currentRoute == "stats",
-                        onClick = { navigateTopLevel("stats") },
-                        icon = { Icon(Icons.Filled.Insights, contentDescription = "Stats") },
-                        label = { Text("Stats") }
-                    )
-                    NavigationRailItem(
-                        selected = currentRoute == "profile",
-                        onClick = { navigateTopLevel("profile") },
-                        icon = { Icon(Icons.Filled.Person, contentDescription = "Profile") },
-                        label = { Text("Profile") }
-                    )
+                    MainTabs.forEach { tab ->
+                        NavigationRailItem(
+                            selected = currentRoute == tab.route,
+                            onClick = { navigateTopLevel(tab.route) },
+                            icon = { Icon(tab.icon, contentDescription = tab.label) },
+                            label = { Text(tab.label) }
+                        )
+                    }
                     Spacer(Modifier.weight(1f))
+                }
+            }
+            if (showDrawer) {
+                androidx.compose.material3.PermanentDrawerSheet(
+                    modifier = Modifier.width(248.dp),
+                    drawerContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.85f)
+                ) {
+                    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp)) {
+                        ExtendedFloatingActionButton(
+                            onClick = { showAddDialog = true },
+                            icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                            text = { Text("Add book") },
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.padding(start = 4.dp, bottom = 20.dp)
+                        )
+                        MainTabs.forEach { tab ->
+                            androidx.compose.material3.NavigationDrawerItem(
+                                selected = currentRoute == tab.route,
+                                onClick = { navigateTopLevel(tab.route) },
+                                icon = { Icon(tab.icon, contentDescription = null) },
+                                label = { Text(tab.label) },
+                                modifier = Modifier.padding(vertical = 2.dp)
+                            )
+                        }
+                        androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                        androidx.compose.material3.NavigationDrawerItem(
+                            selected = false,
+                            onClick = { navController.navigate("review") { launchSingleTop = true } },
+                            icon = { Icon(Icons.Filled.Style, contentDescription = null) },
+                            label = { Text("Daily review") }
+                        )
+                        androidx.compose.material3.NavigationDrawerItem(
+                            selected = false,
+                            onClick = { navController.navigate("settings") { launchSingleTop = true } },
+                            icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                            label = { Text("Settings") }
+                        )
+                    }
                 }
             }
             Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
@@ -508,7 +578,9 @@ androidx.compose.animation.SharedTransitionLayout {
                                                 key = { TAB_ORDER[it] },
                                                 modifier = Modifier.fillMaxSize()
                                             ) { page ->
-                                                Box(Modifier.fillMaxSize().pagerDepth(mainPager, page, reduceMotion)) {
+                                                // Home reaches up under the bar; the rest start below it.
+                                                val pageTop = if (barOverlaysContent && TAB_ORDER[page] != "home") barHeight else 0.dp
+                                                Box(Modifier.fillMaxSize().pagerDepth(mainPager, page, reduceMotion).padding(top = pageTop)) {
                                                 // Only the settled page may own cover animations; see LocalHeroEnabled.
                                                 androidx.compose.runtime.CompositionLocalProvider(LocalHeroEnabled provides (page == mainPager.settledPage)) {
                                                 when (TAB_ORDER[page]) {
@@ -524,6 +596,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                 reviewStarted = homeReviewStates.isNotEmpty(),
                                                 onOpenReview = { navController.navigate("review") { launchSingleTop = true } },
                                                 scrollState = homeScroll,
+                                                behindBar = barOverlaysContent,
                                                 layout = homeLayout,
                                                 onEditHome = { navController.navigate("editHome") },
                                                 onOpenOwnership = { navController.navigate("owned/${it.name}") },
@@ -577,22 +650,61 @@ androidx.compose.animation.SharedTransitionLayout {
                                             )
                                         }
                                                     "library" -> {
-                                                        LibraryScreen(
-                                                            books = books,
-                                                            onDelete = onDeleteWithUndo,
-                                                            onOpenBook = { navController.navigate("book/${it.id}") },
-                                                            onStartReading = { navController.navigate("focus/${it.id}") },
-                                                            onCurationClick = { navController.navigate("tbr_swipe") },
-                                                            onReadEpub = { uri -> 
-                                                                navController.navigate("epubReader/${Uri.encode(uri.toString())}") 
-                                                            },
-                                                            onSearch = { navController.navigate("search") },
-                                                            onScan = openScanner,
-                                                            onChangeStatus = { book, status -> viewModel.changeStatus(book, status) },
-                                                            onSaveNote = { book, page, text, type, images -> viewModel.addNote(book.id, page, text, type, images) },
-                                                            onOverlayChange = { libraryOverlayOpen = it }
-                                                        )
-            
+                                                        val library: @Composable () -> Unit = {
+                                                            LibraryScreen(
+                                                                books = books,
+                                                                onDelete = onDeleteWithUndo,
+                                                                onOpenBook = openBookFromLibrary,
+                                                                onStartReading = { navController.navigate("focus/${it.id}") },
+                                                                onCurationClick = { navController.navigate("tbr_swipe") },
+                                                                onReadEpub = { uri ->
+                                                                    navController.navigate("epubReader/${Uri.encode(uri.toString())}")
+                                                                },
+                                                                onSearch = { navController.navigate("search") },
+                                                                onScan = openScanner,
+                                                                onChangeStatus = { book, status -> viewModel.changeStatus(book, status) },
+                                                                onSaveNote = { book, page, text, type, images -> viewModel.addNote(book.id, page, text, type, images) },
+                                                                onOverlayChange = { libraryOverlayOpen = it }
+                                                            )
+                                                        }
+                                                        if (!libraryListDetail) {
+                                                            library()
+                                                        } else {
+                                                            // A book that was deleted (or never loaded) leaves the pane empty.
+                                                            val paneBookId = libraryPaneBookId?.takeIf { id -> books.any { it.id == id } }
+                                                            BackHandler(enabled = paneBookId != null && page == mainPager.currentPage) {
+                                                                libraryPaneBookId = null
+                                                            }
+                                                            Row(modifier = Modifier.fillMaxSize()) {
+                                                                Box(modifier = Modifier.weight(0.42f).fillMaxHeight()) { library() }
+                                                                androidx.compose.material3.VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                                                                Box(modifier = Modifier.weight(0.58f).fillMaxHeight()) {
+                                                                    if (paneBookId == null) {
+                                                                        EmptyState(
+                                                                            icon = Icons.AutoMirrored.Filled.MenuBook,
+                                                                            title = "Pick a book",
+                                                                            message = "Its page opens here, right beside your library."
+                                                                        )
+                                                                    } else {
+                                                                        // The grid's covers are still on screen, so the pane's cover must not claim the same hero key.
+                                                                        androidx.compose.runtime.key(paneBookId) {
+                                                                            CompositionLocalProvider(LocalHeroEnabled provides false) {
+                                                                                BookDetailRoute(
+                                                                                    bookId = paneBookId,
+                                                                                    viewModel = viewModel,
+                                                                                    books = books,
+                                                                                    streak = streak,
+                                                                                    snackbarHostState = snackbarHostState,
+                                                                                    onDeleteWithUndo = onDeleteWithUndo,
+                                                                                    onStartReading = { id -> navController.navigate("focus/$id") },
+                                                                                    onBack = { libraryPaneBookId = null }
+                                                                                )
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
                                         }
                                                     "memorize" -> {
                                                         val notes by viewModel.allNotes.collectAsState()
@@ -703,7 +815,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                 )
                                             } else {
                                                 androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-                                                    columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(minSize = 100.dp),
+                                                    columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(minSize = coverTileMinWidth()),
                                                     contentPadding = PaddingValues(16.dp),
                                                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                                                     verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -833,89 +945,18 @@ androidx.compose.animation.SharedTransitionLayout {
                                             )
                                         }
                                     }
-                                    composable("book/{bookId}") { 
-                                        entry ->
-androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
-                                                        val bookId = entry.arguments?.getString("bookId").orEmpty()
-                                                        val sessions by remember(bookId) { viewModel.sessionsFor(bookId) }
-                                                            .collectAsState(initial = emptyList())
-                                                        val notes by remember(bookId) { viewModel.notesFor(bookId) }
-                                                            .collectAsState(initial = emptyList())
-                                                        val allSessions by viewModel.completedSessions.collectAsState()
-                                                        BookDetailScreen(
-                                                            book = books.find { it.id == bookId },
-                                                            sessions = sessions,
-                                                            allSessions = allSessions,
-                                                            streak = streak,
-                                                            notes = notes,
-                                                            onAddNote = { page, text, type, images -> viewModel.addNote(bookId, page, text, type, images) },
-                                                            onUpdateNote = viewModel::updateNote,
-                                                            onDeleteNote = viewModel::deleteNote,
-                                                            onToggleNoteFavorite = viewModel::toggleNoteFavorite,
-                                                            onSaveDetails = viewModel::updateBookDetails,
-                                                            onChangeStatus = { status ->
-                                                                books.find { it.id == bookId }?.let { viewModel.changeStatus(it, status) }
-                                                            },
-                                                            onMarkDnf = { percent, reason ->
-                                                                books.find { it.id == bookId }?.let { viewModel.markDnf(it, percent, reason) }
-                                                            },
-                                                            onLogSession = { startPage, endPage, minutes, endTime ->
-                                                                viewModel.logManualSession(bookId, startPage, endPage, minutes, endTime)
-                                                                scope.launch {
-                                                                    snackbarHostState.currentSnackbarData?.dismiss()
-                                                                    snackbarHostState.showSnackbar("Reading session logged")
-                                                                }
-                                                            },
-                                                            onSetProgress = { page ->
-                                                                books.find { it.id == bookId }?.let { viewModel.setProgress(it, page) }
-                                                            },
-                                                            onSetCollections = { collections ->
-                                                                books.find { it.id == bookId }?.let { viewModel.setCollections(it, collections) }
-                                                            },
-                                                            allCollections = remember(books) {
-                                                                books.flatMap { it.classification.collections }.distinct().sorted()
-                                                            },
-                                                            onSetFormat = { format ->
-                                                                books.find { it.id == bookId }?.let { viewModel.setFormat(it, format) }
-                                                            },
-                                                            onSetOwnership = { ownership ->
-                                                                books.find { it.id == bookId }?.let { viewModel.setOwnership(it, ownership) }
-                                                            },
-                                                            onSetPurchases = { purchases ->
-                                                                books.find { it.id == bookId }?.let { viewModel.setPurchases(it, purchases) }
-                                                            },
-                                                            onSetFinishBy = { finishBy ->
-                                                                books.find { it.id == bookId }?.let { viewModel.setFinishBy(it, finishBy) }
-                                                            },
-                                                            onDelete = {
-                                                                books.find { it.id == bookId }?.let { onDeleteWithUndo(it) }
-                                                                navController.popBackStack()
-                                                            },
-                                                            onStartReading = {
-                                                                navController.navigate("focus/$bookId")
-                                                            },
-                                                            onReadAgain = {
-                                                                books.find { it.id == bookId }?.let { viewModel.readAgain(it) }
-                                                            },
-                                                            onEditSession = { session, newUnits ->
-                                                                viewModel.updateSession(session.copy(pagesRead = newUnits))
-                                                            },
-                                                            onDeleteSession = viewModel::deleteSession,
-                                                            onToggleFavorite = {
-                                                                books.find { it.id == bookId }?.let { viewModel.toggleFavorite(it) }
-                                                            },
-                                                            onFinish = { rating, review ->
-                                                                books.find { it.id == bookId }?.let { viewModel.finishBook(it, rating, review) }
-                                                            },
-                                                            onRecordLoan = { loan ->
-                                                                books.find { it.id == bookId }?.let { viewModel.recordLoan(it, loan) }
-                                                            },
-                                                            onMarkLoanReturned = {
-                                                                books.find { it.id == bookId }?.let { viewModel.markLoanReturned(it) }
-                                                            },
-                                                            onBack = { navController.popBackStack() }
-                                                        )
-            
+                                    composable("book/{bookId}") { entry ->
+                                        androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
+                                            BookDetailRoute(
+                                                bookId = entry.arguments?.getString("bookId").orEmpty(),
+                                                viewModel = viewModel,
+                                                books = books,
+                                                streak = streak,
+                                                snackbarHostState = snackbarHostState,
+                                                onDeleteWithUndo = onDeleteWithUndo,
+                                                onStartReading = { id -> navController.navigate("focus/$id") },
+                                                onBack = { navController.popBackStack() }
+                                            )
                                         }
                                     }
                                     composable("history") {
@@ -948,7 +989,24 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                         val hapticsOn by viewModel.hapticsEnabled.collectAsState()
                                                         val calmMotion by viewModel.reduceMotion.collectAsState()
                                                         val screenOn by viewModel.keepScreenOn.collectAsState()
+                                                        val settingsPrefs by viewModel.prefs.collectAsState()
+                                                        val driveConnected by viewModel.driveSyncEnabled.collectAsState()
+                                                        val finishedBooks = remember(books) { books.filter(com.example.booktracker.app.analytics.FinishedShelf::isFinished) }
                                                         SettingsScreen(
+                                                            prefs = settingsPrefs,
+                                                            onPrefsChange = viewModel::updatePrefs,
+                                                            dailyGoal = goal,
+                                                            yearlyGoal = yearly,
+                                                            reminder = reminder,
+                                                            finishedCount = finishedBooks.size,
+                                                            readingSinceYear = finishedBooks.minOfOrNull { it.completedAt }?.let {
+                                                                java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).year
+                                                            },
+                                                            driveConnected = driveConnected,
+                                                            onOpenGoals = { navController.navigate("goals") { launchSingleTop = true } },
+                                                            onExportCsv = { uri, onDone -> viewModel.exportCsv(context, uri, onDone) },
+                                                            onBackupNow = { onDone -> viewModel.backupNow(context, onDone) },
+                                                            onDeleteAll = { onDone -> viewModel.deleteAllData(context, onDone) },
                                                             userName = userName,
                                                             dndDuringSession = dnd,
                                                             hapticsEnabled = hapticsOn,
@@ -973,6 +1031,21 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                             onImportBackup = { uri, onDone -> viewModel.importBackup(context, uri, onDone) },
                                                             onOpenPrivacyPolicy = { navController.navigate("privacy") },
                                                             onEditHome = { navController.navigate("editHome") },
+                                                            driveSync = {
+                                                                val driveEnabled by viewModel.driveSyncEnabled.collectAsState()
+                                                                val driveLastSync by viewModel.driveLastSync.collectAsState()
+                                                                val driveState by viewModel.driveSync.collectAsState()
+                                                                DriveSyncCard(
+                                                                    enabled = driveEnabled,
+                                                                    lastSync = driveLastSync,
+                                                                    state = driveState,
+                                                                    onSync = viewModel::syncDrive,
+                                                                    onConsentShown = viewModel::driveConsentShown,
+                                                                    onConsentResult = viewModel::onDriveConsent,
+                                                                    onDisconnect = viewModel::disconnectDrive,
+                                                                    onDismissStatus = viewModel::clearDriveStatus
+                                                                )
+                                                            },
                                                             onBack = { navController.popBackStack() }
                                                         )
             
@@ -1051,8 +1124,10 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                     }
                                     composable("journey_map") {
                                         androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
+                                            val journeySessions by viewModel.completedSessions.collectAsState()
                                             com.example.booktracker.app.ui.ReadingJourneyMap(
                                                 books = books,
+                                                sessions = journeySessions,
                                                 onBack = { navController.popBackStack() },
                                                 onOpenBook = { navController.navigate("book/${it.id}") }
                                             )
@@ -1079,8 +1154,8 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                                     viewModel = viewModel,
                                                                     book = book,
                                                                     onBack = { navController.popBackStack() },
-                                                                    onSaveSession = {
-                                                                        navController.navigate("session_save/$bookId") { launchSingleTop = true }
+                                                                    onSaveSession = { endPage ->
+                                                                        navController.navigate("session_save/$bookId?page=$endPage") { launchSingleTop = true }
                                                                     },
                                                                     onAddNote = { page, text, type, images -> viewModel.addNote(bookId, page, text, type, images) }
                                                                 )
@@ -1089,14 +1164,30 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
             
                                         }
                                     }
-                                    composable("session_save/{bookId}") { 
+                                    composable(
+                                        SESSION_SAVE_ROUTE,
+                                        arguments = listOf(
+                                            androidx.navigation.navArgument("page") {
+                                                type = androidx.navigation.NavType.IntType
+                                                defaultValue = -1
+                                            }
+                                        )
+                                    ) {
                                         entry ->
 androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
                                                         val bookId = entry.arguments?.getString("bookId").orEmpty()
+                                                        val handedPage = entry.arguments?.getInt("page") ?: -1
                                                         val book = books.find { it.id == bookId }
                                                         val openSession by viewModel.openSession.collectAsState()
                                                         val activeSeconds by com.example.booktracker.app.data.ServiceLocator
                                                             .activeReadingSeconds.collectAsState()
+                                                        val saveSessions by viewModel.completedSessions.collectAsState()
+                                                        val savePrefs = LocalAppPrefs.current
+                                                        // Reviewing a session stops its clock, whichever way the reader got here
+                                                        // (timer, notification, widget), so the time can't drift while they edit.
+                                                        LaunchedEffect(bookId) {
+                                                            if (com.example.booktracker.app.data.ServiceLocator.timerBookId.value == bookId) viewModel.setTimerRunning(false)
+                                                        }
                                                         if (book != null) {
                                                             // Prefer the timer's measured reading time; fall back to the
                                                             // open session's wall clock for progress logged without a timer.
@@ -1104,32 +1195,45 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                             val start = session?.startTime ?: System.currentTimeMillis()
                                                             val duration = if (activeSeconds > 0) activeSeconds
                                                             else ((System.currentTimeMillis() - start) / 1000L).toInt().coerceAtLeast(0)
+                                                            // A session of this book that ended shortly before this one began,
+                                                            // likely the same sitting interrupted.
+                                                            val previous = remember(saveSessions, bookId, start) {
+                                                                saveSessions
+                                                                    .filter { it.bookId == bookId && it.endTime in (start - JOIN_WINDOW_MILLIS)..start }
+                                                                    .maxByOrNull { it.endTime }
+                                                            }
 
                                                             SessionSaveScreen(
                                                                 book = book,
                                                                 initialStartTime = start,
                                                                 initialDurationSeconds = duration,
-                                                                initialPage = book.currentPage,
+                                                                initialPage = if (handedPage >= 0) handedPage else book.currentPage,
                                                                 sessionStartPage = session?.startPage ?: book.currentPage,
                                                                 onBack = { navController.popBackStack() },
                                                                 onDiscard = {
                                                                     viewModel.discardOpenSession(bookId)
-                                                                    navController.popBackStack("home", inclusive = false)
+                                                                    navigateTopLevel("home")
                                                                 },
-                                                                onSave = { endPage, tag, startTime, endTime, status ->
+                                                                previousSession = previous,
+                                                                minSessionSeconds = savePrefs.minSessionSeconds,
+                                                                scanFirst = savePrefs.scanOnFinish,
+                                                                onSave = { draft ->
                                                                     viewModel.saveSession(
                                                                         book = book,
-                                                                        endPage = endPage,
-                                                                        environmentTag = tag,
-                                                                        startTime = startTime,
-                                                                        endTime = endTime,
-                                                                        newStatus = status
+                                                                        endPage = draft.endPage,
+                                                                        environmentTag = draft.tag,
+                                                                        startTime = draft.startTime,
+                                                                        endTime = draft.endTime,
+                                                                        newStatus = draft.status,
+                                                                        focus = draft.focus,
+                                                                        quote = draft.quote,
+                                                                        mergeWithId = draft.mergeWithId
                                                                     ) {
                                                                         navController.navigate("session_result/$bookId") {
                                                                             popUpTo(MAIN_ROUTE) { inclusive = false }
                                                                         }
                                                                     }
-                                                                    pendingOutcome = status?.takeIf {
+                                                                    pendingOutcome = draft.status?.takeIf {
                                                                         it == BookStatus.FINISHED || it == BookStatus.DNF
                                                                     }?.let { bookId to it }
                                                                 }
@@ -1147,6 +1251,7 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                         val allSessions by viewModel.completedSessions.collectAsState()
                                                         val resultNotes by remember(bookId) { viewModel.notesFor(bookId) }
                                                             .collectAsState(initial = emptyList())
+                                                        val resultBadges by viewModel.badgeStatuses.collectAsState()
                                                         val current = result
                                                         if (book != null && current != null) {
                                                             SessionResultScreen(
@@ -1154,10 +1259,12 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                                 result = current,
                                                                 allSessions = allSessions,
                                                                 notes = resultNotes,
-                                                                onDone = {
-                                                                    viewModel.clearSessionResult()
-                                                                    navController.popBackStack("home", inclusive = false)
-                                                                }
+                                                                streak = streak,
+                                                                badges = resultBadges,
+                                                                onAddNote = { page, text, type, images -> viewModel.addNote(bookId, page, text, type, images) },
+                                                                // The result is left in place: clearing it blanked this
+                                                                // screen mid-exit, and the next save replaces it anyway.
+                                                                onDone = { navigateTopLevel("home") }
                                                             )
                                                         }
             
@@ -1324,7 +1431,7 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
 @Composable
 fun WeekBubbles(streak: StreakEngine.StreakInfo, modifier: Modifier = Modifier) {
     val today = streak.today
-    val monday = today.minusDays(today.dayOfWeek.value - 1L)
+    val monday = today.startOfWeek(LocalAppPrefs.current.weekStart)
     val locale = java.util.Locale.getDefault()
     Row(
         modifier = modifier,
@@ -1837,8 +1944,8 @@ fun LibraryScreen(
                     )
                 } else {
                     androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-                        // Three across on a phone, more on wider screens.
-                        columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(minSize = 100.dp),
+                        // Three across on a phone; bigger covers on tablets.
+                        columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(minSize = coverTileMinWidth()),
                         contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 88.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp),

@@ -95,6 +95,7 @@ fun LibraryGridCard(
         modifier = modifier
             .bounceOnPress(press)
             .clip(CoverShape)
+            .onSecondaryClick { menuOpen = true }
             .combinedClickable(
                 interactionSource = press,
                 indication = null,

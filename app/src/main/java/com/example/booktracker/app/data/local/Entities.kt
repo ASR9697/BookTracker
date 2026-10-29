@@ -39,7 +39,10 @@ data class BookEntity(
     /** [Ownership] name; null on rows from before version 10 that had no purchase. */
     val ownership: String? = null,
     val finishBy: Long? = null,
-    val readStartedAt: Long? = null
+    val readStartedAt: Long? = null,
+    // Nullable so rows from before version 14 need no SQL default.
+    val audioMinutes: Int? = null,
+    val audioSpeed: Float? = null
 )
 
 /** One row per highlight or word in spaced review; [kind] is a [ReviewKind] name. */
@@ -88,7 +91,8 @@ data class SessionEntity(
     val endPage: Int,
     val pagesRead: Int,
     val environmentTag: String,
-    val zoneId: String? = null
+    val zoneId: String? = null,
+    val focus: Int? = null
 )
 
 @Entity(

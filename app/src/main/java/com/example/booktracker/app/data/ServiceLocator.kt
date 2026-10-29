@@ -27,6 +27,17 @@ object ServiceLocator {
     val elapsedSeconds = kotlinx.coroutines.flow.MutableStateFlow(0)
     val customWorkMinutes = kotlinx.coroutines.flow.MutableStateFlow<Int?>(null)
     val activeReadingSeconds = kotlinx.coroutines.flow.MutableStateFlow(0)
+    /** The page this session aims to reach; null without a page goal. */
+    val sessionPageTarget = kotlinx.coroutines.flow.MutableStateFlow<Int?>(null)
+    /** When the running clock was last paused; null while it runs or before it starts. */
+    val timerPausedAt = kotlinx.coroutines.flow.MutableStateFlow<Long?>(null)
+
+    /** The one place the clock starts and stops, so the pause time is always recorded. */
+    fun setTimerRunning(running: Boolean) {
+        if (timerIsRunning.value && !running) timerPausedAt.value = System.currentTimeMillis()
+        if (running) timerPausedAt.value = null
+        timerIsRunning.value = running
+    }
 
     /** True while MainActivity is started; the timer only alerts when the reader has left the app. */
     val appInForeground = kotlinx.coroutines.flow.MutableStateFlow(false)
@@ -71,6 +82,12 @@ object ServiceLocator {
                 settings(context)
             ).also { dndManager = it }
         }
+
+    /** Empties the library: every table, cover and note photo, and Drive sync's merge base. Preferences stay. */
+    suspend fun wipeLibrary(context: Context) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        db(context).clearAllTables()
+        listOf("covers", NoteImageStore.DIR, "sync").forEach { java.io.File(context.filesDir, it).deleteRecursively() }
+    }
 
     private fun db(context: Context): AppDatabase =
         database ?: synchronized(this) {

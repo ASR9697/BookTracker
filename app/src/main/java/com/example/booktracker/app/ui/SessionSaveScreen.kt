@@ -27,6 +27,12 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.CenterFocusStrong
+import androidx.compose.material.icons.automirrored.filled.CallMerge
+import com.example.booktracker.shared.models.Session
+import androidx.compose.material.icons.filled.FormatQuote
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.example.booktracker.app.analytics.AnalyticsEngine
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
@@ -96,7 +102,13 @@ fun SessionSaveScreen(
     sessionStartPage: Int,
     onDiscard: () -> Unit,
     onBack: () -> Unit,
-    onSave: (endPage: Int, tag: String, startTime: Long, endTime: Long, status: BookStatus?) -> Unit
+    onSave: (SessionDraft) -> Unit,
+    /** A session of this book that ended a little earlier; offered as one to join onto. */
+    previousSession: Session? = null,
+    /** Shorter than this with no pages read asks before saving; 0 never asks. */
+    minSessionSeconds: Int = 0,
+    /** Open the camera on the page number rather than the page wheel. */
+    scanFirst: Boolean = false
 ) {
     val zone = remember { ZoneId.systemDefault() }
     val haptic = LocalHapticFeedback.current
@@ -112,6 +124,11 @@ fun SessionSaveScreen(
     var durationSeconds by remember { mutableIntStateOf(initialDurationSeconds) }
     var status by remember { mutableStateOf<BookStatus?>(null) }
     var tag by remember { mutableStateOf("") }
+    var focus by remember { mutableIntStateOf(0) }
+    var quote by remember { mutableStateOf("") }
+    var joinPrevious by remember { mutableStateOf(false) }
+    var showTooShort by remember { mutableStateOf(false) }
+    var scanOnOpen by remember { mutableStateOf(false) }
 
     var endDateTime by remember {
         mutableStateOf(
@@ -124,6 +141,16 @@ fun SessionSaveScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var showPagePicker by remember { mutableStateOf(false) }
+    // The page is the one thing the timer can't know, so ask for it on arrival, once.
+    var askedForPage by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        if (!askedForPage) {
+            askedForPage = true
+            kotlinx.coroutines.delay(250)
+            scanOnOpen = scanFirst
+            showPagePicker = true
+        }
+    }
     var showDurationEditor by remember { mutableStateOf(false) }
     var showDiscardConfirm by remember { mutableStateOf(false) }
     var showTagPicker by remember { mutableStateOf(false) }
@@ -133,6 +160,26 @@ fun SessionSaveScreen(
     val complete = book.totalPages > 0 && endPage >= book.totalPages
 
     val effectiveStatus = status ?: if (complete) BookStatus.FINISHED else BookStatus.READING
+
+    val commit = {
+        saveHaptics.confirm()
+        val end = endDateTime.atZone(zone).toInstant().toEpochMilli()
+        val start = end - durationSeconds * 1000L
+        onSave(
+            SessionDraft(
+                endPage = endPage,
+                tag = tag,
+                startTime = start,
+                endTime = end,
+                status = effectiveStatus,
+                focus = focus,
+                quote = quote,
+                mergeWithId = previousSession?.id?.takeIf { joinPrevious }
+            )
+        )
+    }
+    val tooShort = minSessionSeconds > 0 && durationSeconds < minSessionSeconds &&
+        endPage <= sessionStartPage && !joinPrevious
 
     Scaffold(
         topBar = {
@@ -197,12 +244,7 @@ fun SessionSaveScreen(
                     }
                     Spacer(Modifier.width(8.dp))
                     Button(
-                        onClick = {
-                            saveHaptics.confirm()
-                            val end = endDateTime.atZone(zone).toInstant().toEpochMilli()
-                            val start = end - durationSeconds * 1000L
-                            onSave(endPage, tag, start, end, effectiveStatus)
-                        },
+                        onClick = { if (tooShort) showTooShort = true else commit() },
                         shape = RoundedCornerShape(50),
                         modifier = Modifier.padding(end = 12.dp)
                     ) {
@@ -220,6 +262,7 @@ fun SessionSaveScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
+                .readableWidth()
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp)
         ) {
@@ -231,7 +274,7 @@ fun SessionSaveScreen(
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Please check the contents to be saved.",
+                "Check the page you stopped on, then save.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -274,7 +317,7 @@ fun SessionSaveScreen(
             } else null
             val remainingEtaText = remember(remainingMinutes) { AnalyticsEngine.formatEstimatedTime(remainingMinutes) }
 
-            if (deltaPages > 0 && durationSeconds >= 60 && sessionSpeedText != null) {
+            if (deltaPages > 0) {
                 Spacer(Modifier.height(12.dp))
                 Surface(
                     shape = RoundedCornerShape(16.dp),
@@ -295,7 +338,8 @@ fun SessionSaveScreen(
                         Spacer(Modifier.width(12.dp))
                         Column {
                             Text(
-                                "+$deltaPages $unit at $sessionSpeedText",
+                                if (sessionSpeedText != null) "+$deltaPages $unit at $sessionSpeedText"
+                                else "+$deltaPages $unit this session",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
@@ -328,6 +372,46 @@ fun SessionSaveScreen(
                 label = "Where you read",
                 value = tag.ifBlank { "Not set" },
                 onClick = { showTagPicker = true }
+            )
+
+            if (previousSession != null) {
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(20.dp))
+                        .clickable { joinPrevious = !joinPrevious }
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.CallMerge, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                    Spacer(Modifier.width(20.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        val endedAt = Instant.ofEpochMilli(previousSession.endTime).atZone(zone).toLocalTime().format(saveTimeFormat)
+                        Text("Join your $endedAt session", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(
+                            "${AnalyticsEngine.formatMinutes(previousSession.durationSeconds / 60L)}, $unit ${previousSession.startPage} → ${previousSession.endPage}. Saved as one session.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    androidx.compose.material3.Switch(checked = joinPrevious, onCheckedChange = { joinPrevious = it })
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            FocusPicker(focus) { focus = if (focus == it) 0 else it }
+
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = quote,
+                onValueChange = { quote = it.take(1000) },
+                label = { Text("A line worth keeping (optional)") },
+                supportingText = { Text("Saved as a note on $unit $endPage") },
+                leadingIcon = { Icon(Icons.Filled.FormatQuote, contentDescription = null) },
+                minLines = 2,
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth()
             )
 
             if (complete && status != BookStatus.DNF) {
@@ -402,11 +486,38 @@ fun SessionSaveScreen(
         ProgressPickerSheet(
             book = book,
             initialPage = endPage,
-            onDismiss = { showPagePicker = false },
+            sessionStartPage = sessionStartPage,
+            sessionSeconds = durationSeconds,
+            startWithScan = scanOnOpen,
+            onDismiss = {
+                showPagePicker = false
+                scanOnOpen = false
+            },
             onConfirm = {
                 endPage = it
                 if (book.totalPages > 0 && it >= book.totalPages) status = BookStatus.FINISHED
                 showPagePicker = false
+                scanOnOpen = false
+            }
+        )
+    }
+
+    if (showTooShort) {
+        AlertDialog(
+            onDismissRequest = { showTooShort = false },
+            title = { Text("Only ${formatShort(durationSeconds)}, with no pages") },
+            text = { Text("Sessions this short are usually started by accident. Keep it anyway, or let it go?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showTooShort = false
+                    commit()
+                }) { Text("Save anyway") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showTooShort = false
+                    onDiscard()
+                }) { Text("Discard", color = MaterialTheme.colorScheme.error) }
             }
         )
     }
@@ -479,6 +590,75 @@ fun SessionSaveScreen(
                 TextButton(onClick = { showDiscardConfirm = false }) { Text("Keep") }
             }
         )
+    }
+}
+
+/** What the reader confirmed on the save screen. */
+data class SessionDraft(
+    val endPage: Int,
+    val tag: String,
+    val startTime: Long,
+    val endTime: Long,
+    val status: BookStatus?,
+    val focus: Int,
+    val quote: String,
+    /** The earlier session to join this one onto, when the reader chose to. */
+    val mergeWithId: String?
+)
+
+private fun formatShort(seconds: Int): String =
+    if (seconds < 60) "${seconds}s" else "${seconds / 60} min"
+
+internal fun focusLabel(level: Int): String = when (level) {
+    1 -> "Distracted"
+    2 -> "Restless"
+    3 -> "Steady"
+    4 -> "Focused"
+    5 -> "Deep focus"
+    else -> "Not rated"
+}
+
+/** Five steps from distracted to deep focus; tapping the chosen one clears it. */
+@Composable
+private fun FocusPicker(focus: Int, onPick: (Int) -> Unit) {
+    val haptic = LocalHapticFeedback.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(20.dp))
+            .padding(horizontal = 20.dp, vertical = 18.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.CenterFocusStrong, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+            Spacer(Modifier.width(20.dp))
+            Column {
+                Text("How focused were you?", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(focusLabel(focus), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            (1..5).forEach { level ->
+                val on = level <= focus
+                Surface(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onPick(level)
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp)
+                        .semantics { contentDescription = focusLabel(level) }
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("$level", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -149,7 +149,7 @@ private fun MonthCalendar(streak: StreakEngine.StreakInfo) {
             }
             Spacer(Modifier.height(8.dp))
             Row {
-                DayOfWeek.entries.forEach { day ->
+                weekDays(LocalAppPrefs.current.weekStart).forEach { day ->
                     Text(
                         day.getDisplayName(TextStyle.NARROW, Locale.getDefault()),
                         style = MaterialTheme.typography.labelSmall,
@@ -160,7 +160,7 @@ private fun MonthCalendar(streak: StreakEngine.StreakInfo) {
                 }
             }
             Spacer(Modifier.height(6.dp))
-            val leading = month.atDay(1).dayOfWeek.value - 1
+            val leading = leadingDays(month.atDay(1), LocalAppPrefs.current.weekStart)
             val cells = leading + month.lengthOfMonth()
             (0 until (cells + 6) / 7).forEach { week ->
                 Row {

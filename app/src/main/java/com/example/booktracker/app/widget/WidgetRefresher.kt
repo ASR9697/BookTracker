@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
@@ -21,7 +22,7 @@ import kotlinx.coroutines.launch
 object WidgetRefresher {
 
     private fun widgets(): List<GlanceAppWidget> =
-        listOf(ReadingWidget(), StreakWidget(), QuoteWidget(), PixelsWidget(), UpNextWidget())
+        listOf(ReadingWidget(), SessionWidget(), StreakWidget(), QuoteWidget(), PixelsWidget(), UpNextWidget())
 
     @OptIn(FlowPreview::class)
     fun start(context: Context, scope: CoroutineScope) {
@@ -36,9 +37,12 @@ object WidgetRefresher {
             settings.dayStartsAtHour,
             settings.appPalette,
             settings.useDynamicColor,
+            settings.prefs.map { listOf(it.hideTitles, it.weekStart, it.showTimeLeft) },
             ServiceLocator.timerBookId,
             ServiceLocator.timerIsRunning,
-            ServiceLocator.timerMode
+            ServiceLocator.timerMode,
+            ServiceLocator.sessionPageTarget,
+            repository.observeOpenSession()
         )
         scope.launch {
             combine(watched) { it.toList() }

@@ -13,4 +13,6 @@
     <string name="pixels_widget_description">Your recent weeks of reading as a heatmap</string>
     <string name="upnext_widget_label">Up next</string>
     <string name="upnext_widget_description">The next books on your pile; tap one to start it</string>
+    <string name="session_widget_label">Reading session</string>
+    <string name="session_widget_description">Your session live: the clock, pages this session and your page goal, with pause, +1 and finish</string>
 </resources>

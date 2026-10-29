@@ -11,6 +11,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.graphicsLayer
@@ -38,6 +39,9 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -89,6 +93,8 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -125,6 +131,9 @@ private const val FRESH_LOG_WINDOW_MS = 5 * 60_000L
  * on top as a swipeable carousel; streak, today, the year and the to-read queue
  * follow as tiles, each opening the screen with the detail.
  */
+/** How tall the sky behind the greeting is, below the app bar. */
+private val SKY_HEIGHT = 200.dp
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeDashboard(
@@ -157,6 +166,7 @@ fun HomeDashboard(
     reviewStarted: Boolean = false,
     onOpenReview: () -> Unit = {},
     scrollState: ScrollState = rememberScrollState(),
+    behindBar: Boolean = false,
     banner: @Composable () -> Unit = {}
 ) {
     val zone = remember { ZoneId.systemDefault() }
@@ -212,32 +222,10 @@ fun HomeDashboard(
             .take(12)
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(bottom = 96.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            TimeOfDaySky(modifier = Modifier.matchParentSize())
-            Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 8.dp)) {
-                Text(
-                    greeting(userName),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    subtitle(readingBooks.isEmpty()),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+    // Landscape tablets: the current book and sections in two columns instead of one long scroll.
+    val twoColumns = LocalWidthTier.current.atLeastExpanded
 
-        banner()
-
+    val currentBooks: @Composable () -> Unit = {
         if (readingBooks.isEmpty()) {
             NothingInProgressCard(
                 hasBooks = books.isNotEmpty(),
@@ -292,9 +280,10 @@ fun HomeDashboard(
                 }
             }
         }
+    }
 
-        // Reader-ordered sections; the greeting and current book above stay fixed.
-        for ((sectionIndex, section) in layout.visible.withIndex()) key(section) {
+    // One of the reader-ordered sections; the greeting and current book above stay fixed.
+    val sectionContent: @Composable (Int, HomeSection) -> Unit = { sectionIndex, section ->
             Box(modifier = Modifier.staggeredEntrance(entrance, sectionIndex + 1)) {
             when (section) {
                 HomeSection.STREAK -> {
@@ -452,6 +441,7 @@ fun HomeDashboard(
                                             .width(84.dp)
                                             .bounceOnPress(press)
                                             .clip(RoundedCornerShape(12.dp))
+                                            .onSecondaryClick { bookForActions = book }
                                             .combinedClickable(
                                                 interactionSource = press,
                                                 indication = null,
@@ -543,6 +533,86 @@ fun HomeDashboard(
                 }
             }
             }
+    }
+
+    // With the bar floating over Home, the sky and greeting start at the top of the screen.
+    val barInset = if (behindBar) WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp else 0.dp
+    val density = LocalDensity.current
+    val fadePx = with(density) { HOME_HEADER_FADE_DP.dp.toPx() }
+    val skyGonePx = with(density) { (barInset + SKY_HEIGHT).toPx() * 2f }
+    val skyOnScreen by remember { derivedStateOf { scrollState.value < skyGonePx } }
+
+    Box(modifier = modifier.fillMaxSize()) {
+    // Behind the scrolling content, moving at half its speed and fading as it leaves.
+    if (LocalAppPrefs.current.homeSky) TimeOfDaySky(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(barInset + SKY_HEIGHT)
+            .graphicsLayer {
+                translationY = -scrollState.value * 0.5f
+                alpha = 1f - (scrollState.value / skyGonePx).coerceIn(0f, 1f)
+            },
+        bodyTop = barInset + 24.dp,
+        active = LocalHeroEnabled.current && skyOnScreen
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(bottom = 96.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Scrolls slower than the cards and shrinks away; on phones the bar's title takes over.
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer {
+                    val f = (scrollState.value / fadePx).coerceIn(0f, 1f)
+                    translationY = scrollState.value * 0.35f
+                    alpha = if (behindBar) 1f - f else 1f
+                    scaleX = 1f - 0.08f * f
+                    scaleY = scaleX
+                    transformOrigin = TransformOrigin(0f, 0.5f)
+                }
+                .padding(start = 20.dp, end = 20.dp, top = barInset + (if (behindBar) 8.dp else 12.dp), bottom = 8.dp)
+        ) {
+            Text(
+                greeting(userName),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.staggeredEntrance(entrance, 0)
+            )
+            Text(
+                subtitle(readingBooks.isEmpty()),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.staggeredEntrance(entrance, 1)
+            )
+        }
+
+        Box(modifier = if (twoColumns) Modifier.fillMaxWidth() else Modifier.readableWidth()) { banner() }
+
+        val sections = layout.visible.withIndex().toList()
+        if (twoColumns) {
+            // Alternate sections between the columns so neither runs much longer than the other.
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    currentBooks()
+                    sections.filter { it.index % 2 == 1 }.forEach { (i, section) -> key(section) { sectionContent(i, section) } }
+                }
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    sections.filter { it.index % 2 == 0 }.forEach { (i, section) -> key(section) { sectionContent(i, section) } }
+                }
+            }
+        } else {
+            Column(modifier = Modifier.readableWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                currentBooks()
+                sections.forEach { (i, section) -> key(section) { sectionContent(i, section) } }
+            }
         }
 
         TextButton(
@@ -568,7 +638,7 @@ fun HomeDashboard(
             visible = celebrating,
             enter = slideInVertically(tween(Motion.MEDIUM, easing = Motion.EmphasizedDecelerate)) { -it } + fadeIn(),
             exit = fadeOut(tween(Motion.MEDIUM)),
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp)
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = barInset + 8.dp)
         ) {
             Surface(
                 shape = RoundedCornerShape(50),
@@ -772,7 +842,7 @@ private fun CurrentBookCard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                    } else etaText?.let {
+                    } else etaText?.takeIf { LocalAppPrefs.current.showTimeLeft }?.let {
                         Text(
                             "About $it",
                             style = MaterialTheme.typography.labelSmall,
@@ -1021,7 +1091,7 @@ private fun MonthBars(pages: IntArray, currentMonth: Int) {
     }
 }
 
-private fun greeting(userName: String): String {
+internal fun greeting(userName: String): String {
     val first = userName.trim().split(" ").firstOrNull().orEmpty()
     if (first.isNotEmpty() && !first.equals("Reader", ignoreCase = true)) return "Hi, $first"
     val hour = LocalTime.now().hour

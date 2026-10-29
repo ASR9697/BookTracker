@@ -122,7 +122,7 @@ fun HistoryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp + windowCentredPadding(), vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (header != null) item(key = "overview") { header() }

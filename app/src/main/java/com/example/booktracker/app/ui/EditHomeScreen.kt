@@ -95,6 +95,7 @@ fun EditHomeScreen(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .readableWidth()
             .padding(16.dp)
     ) {
         Text(

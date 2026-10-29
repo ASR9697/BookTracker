@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -56,8 +57,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -103,6 +106,7 @@ fun VocabularyScreen(
 ) {
     var editing by remember { mutableStateOf<VocabWord?>(null) }
     var query by remember { mutableStateOf("") }
+    val listDetail = LocalWidthTier.current.atLeastExpanded
     val booksById = remember(books) { books.associateBy { it.id } }
     val shown = remember(words, query) {
         val q = query.trim().lowercase()
@@ -134,10 +138,12 @@ fun VocabularyScreen(
                 )
             }
         } else {
+            Row(modifier = Modifier.fillMaxSize().padding(padding)) {
+            val side = if (listDetail) 0.dp else windowCentredPadding()
             LazyColumn(
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+                contentPadding = PaddingValues(start = 16.dp + side, end = 16.dp + side, top = 8.dp, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.fillMaxSize().padding(padding)
+                modifier = Modifier.weight(if (listDetail) 0.45f else 1f).fillMaxHeight()
             ) {
                 item(key = "summary") {
                     Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.primaryContainer) {
@@ -199,10 +205,38 @@ fun VocabularyScreen(
                     }
                 }
             }
+            if (listDetail) {
+                VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                Box(modifier = Modifier.weight(0.55f).fillMaxHeight()) {
+                    val word = editing
+                    if (word == null) {
+                        EmptyState(
+                            icon = Icons.Filled.Spellcheck,
+                            title = "Pick a word",
+                            message = "Its meaning, the sentence and the book it came from open here to edit."
+                        )
+                    } else {
+                        // Keyed so picking another word starts its editor fresh.
+                        key(word.id.ifBlank { "new" }) {
+                            WordEditorSheet(
+                                initial = word,
+                                books = books,
+                                onDismiss = { editing = null },
+                                onSave = { onSave(it); editing = null },
+                                onDelete = if (word.id.isNotBlank()) ({ onDelete(word); editing = null }) else null,
+                                asPane = true
+                            )
+                        }
+                    }
+                }
+            }
+            }
         }
     }
 
-    editing?.let { word ->
+    // On a tablet the editor lives in the right pane once there is a list to sit beside.
+    val inPane = listDetail && words.isNotEmpty()
+    editing?.takeIf { !inPane }?.let { word ->
         WordEditorSheet(
             initial = word,
             books = books,
@@ -221,7 +255,9 @@ fun WordEditorSheet(
     books: List<Book>,
     onDismiss: () -> Unit,
     onSave: (VocabWord) -> Unit,
-    onDelete: (() -> Unit)?
+    onDelete: (() -> Unit)?,
+    /** Draw inline (the right pane on a tablet) instead of as a bottom sheet. */
+    asPane: Boolean = false
 ) {
     val scope = rememberCoroutineScope()
     val haptics = rememberHaptics()
@@ -247,13 +283,13 @@ fun WordEditorSheet(
         (reading + listOfNotNull(books.find { it.id == bookId })).distinctBy { it.id }
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    val body: @Composable () -> Unit = {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 24.dp)
+                .padding(top = if (asPane) 16.dp else 0.dp, bottom = 24.dp)
                 .imePadding(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -382,6 +418,14 @@ fun WordEditorSheet(
                     }
                 ) { Text("Save") }
             }
+        }
+    }
+
+    if (asPane) {
+        Box(modifier = Modifier.fillMaxSize()) { body() }
+    } else {
+        ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+            body()
         }
     }
 

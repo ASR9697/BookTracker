@@ -77,7 +77,8 @@ fun AchievementsScreen(
         modifier = modifier
     ) { padding ->
         LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
+            // Two across on a phone, as many as fit at that size on a tablet.
+            columns = if (LocalWidthTier.current == WidthTier.COMPACT) GridCells.Fixed(2) else GridCells.Adaptive(minSize = 180.dp),
             contentPadding = PaddingValues(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),

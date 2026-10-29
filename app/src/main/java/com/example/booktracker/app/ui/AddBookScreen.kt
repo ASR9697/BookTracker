@@ -375,7 +375,8 @@ fun BookPreviewDialog(
 ) {
     var purchases by remember { mutableStateOf(emptyList<com.example.booktracker.shared.models.PurchaseLog>()) }
     var selectedStatus by remember { mutableStateOf(BookStatus.TO_READ) }
-    var selectedFormat by remember { mutableStateOf(com.example.booktracker.shared.models.BookFormat.Paperback) }
+    val defaultFormat = LocalAppPrefs.current.defaultFormat
+    var selectedFormat by remember { mutableStateOf(defaultFormat) }
     var startPage by remember { mutableStateOf("") }
     val startPageInt = startPage.toIntOrNull()
     val startPageError = startPageInt != null && book.pageCount > 0 && startPageInt > book.pageCount
@@ -522,7 +523,8 @@ fun ManualAddBookDialog(
     var publisher by remember { mutableStateOf("") }
     var isbn by remember { mutableStateOf("") }
     var selectedStatus by remember { mutableStateOf(BookStatus.TO_READ) }
-    var selectedFormat by remember { mutableStateOf(com.example.booktracker.shared.models.BookFormat.Paperback) }
+    val defaultFormat = LocalAppPrefs.current.defaultFormat
+    var selectedFormat by remember { mutableStateOf(defaultFormat) }
     
     var purchaseLogs by remember { mutableStateOf(emptyList<com.example.booktracker.shared.models.PurchaseLog>()) }
     var showPurchaseLogForm by remember { mutableStateOf(false) }

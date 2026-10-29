@@ -33,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -65,6 +66,8 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import coil3.compose.AsyncImage
+import com.example.booktracker.app.camera.OcrTextCleaner
+import com.example.booktracker.app.camera.rememberPageScanner
 import com.example.booktracker.app.data.NoteImageStore
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
@@ -229,7 +232,14 @@ fun NotePhotoEditor(
         ActivityResultContracts.PickMultipleVisualMedia(MAX_NOTE_PHOTOS)
     ) { picked -> add(picked) }
 
-    Column {
+    val scanPage = rememberPageScanner(
+        pageLimit = room,
+        onScanned = { pages -> add(pages) },
+        onError = { message = it }
+    )
+
+    // In split-screen, photos can be dragged in straight from Photos or Files.
+    Column(modifier = Modifier.imageDropTarget { dropped -> if (room > 0 && !busy) add(dropped) }) {
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -268,6 +278,11 @@ fun NotePhotoEditor(
                 Icon(Icons.Filled.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("Gallery")
+            }
+            OutlinedButton(enabled = room > 0 && !busy, onClick = scanPage) {
+                Icon(Icons.Filled.Crop, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Clean page")
             }
             if (busy) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
         }
@@ -405,7 +420,7 @@ private suspend fun extractBlocks(context: Context, uri: String): List<String>? 
     val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     try {
         recognizer.process(InputImage.fromFilePath(context, Uri.parse(uri))).await().textBlocks
-            .map { NoteFormatting.unwrapLines(it.text) }
+            .map { OcrTextCleaner.clean(it.text) }
             .filter { it.isNotBlank() }
     } finally {
         recognizer.close()

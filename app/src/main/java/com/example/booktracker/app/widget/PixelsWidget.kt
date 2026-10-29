@@ -72,7 +72,7 @@ class PixelsWidget : GlanceAppWidget() {
             val gridHeight = size.height.value - 32 - 24
             val cell = ((gridHeight - 6 * GAP) / 7).coerceIn(6f, 16f)
             val weeks = ((size.width.value - 32 + GAP) / (cell + GAP)).toInt().coerceIn(4, 53)
-            WidgetArt.pixels(streak.today, weeks, level, colors, (cell * density).toInt(), (GAP * density).toInt())
+            WidgetArt.pixels(streak.today, weeks, level, colors, (cell * density).toInt(), (GAP * density).toInt(), data.weekStart)
         }
         val year = streak.today.year
         val daysThisYear = streak.activeDays.count { it.year == year }
@@ -117,8 +117,10 @@ class PixelsWidget : GlanceAppWidget() {
 
     companion object {
         private const val GAP = 3f
+        // The wider sizes are for tablet home screens, where a widget can span half the screen.
         private val SIZES = setOf(
-            DpSize(180.dp, 110.dp), DpSize(250.dp, 110.dp), DpSize(320.dp, 110.dp), DpSize(320.dp, 180.dp)
+            DpSize(180.dp, 110.dp), DpSize(250.dp, 110.dp), DpSize(320.dp, 110.dp), DpSize(320.dp, 180.dp),
+            DpSize(480.dp, 110.dp), DpSize(480.dp, 180.dp), DpSize(640.dp, 180.dp)
         )
     }
 }

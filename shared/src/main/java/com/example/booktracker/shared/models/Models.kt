@@ -116,7 +116,15 @@ data class Book(
      * When the current re-read began, so notes from earlier reads can resurface.
      * Null on a first read, and on re-reads started before this was stored.
      */
-    val readStartedAt: Long? = null
+    val readStartedAt: Long? = null,
+    /**
+     * Length of the audiobook edition at 1x, in minutes, when the reader follows
+     * the book in print and audio together; 0 when they don't. Pages stay the one
+     * measure of progress and the audio position is derived from them.
+     */
+    val audioMinutes: Int = 0,
+    /** Playback speed the reader listens at (1.0, 1.25, 1.5…). */
+    val audioSpeed: Float = 1f
 ) {
     val authors: List<String> get() = creators.map { it.name }
     val genres: List<String> get() = classification.tags
@@ -162,7 +170,9 @@ data class Session(
      * day stays put after travel. Blank on sessions from before this was stored;
      * those fall back to the phone's current zone.
      */
-    val zoneId: String = ""
+    val zoneId: String = "",
+    /** How focused the reader felt, 1 (distracted) to 5 (deep focus); 0 when not rated. */
+    val focus: Int = 0
 )
 
 enum class NoteType {

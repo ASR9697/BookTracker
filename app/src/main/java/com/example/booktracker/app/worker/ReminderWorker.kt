@@ -28,7 +28,8 @@ class ReminderWorker(
 
     override suspend fun doWork(): Result {
         val settings = ServiceLocator.settings(context)
-        if (!settings.reminder.first().enabled || !Notifications.canPost(context)) {
+        val quiet = settings.prefs.first().isQuiet(java.time.LocalTime.now().hour)
+        if (!settings.reminder.first().enabled || !Notifications.canPost(context) || quiet) {
             return Result.success()
         }
         val dailyGoal = settings.dailyGoal.first()

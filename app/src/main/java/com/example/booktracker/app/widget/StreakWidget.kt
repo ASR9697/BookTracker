@@ -63,7 +63,8 @@ class StreakWidget : GlanceAppWidget() {
             filled = accent,
             empty = look.scheme.surfaceVariant.toArgb(),
             label = look.scheme.onSurfaceVariant.toArgb(),
-            onFilled = look.scheme.onPrimary.toArgb()
+            onFilled = look.scheme.onPrimary.toArgb(),
+            firstDay = data.weekStart
         )
         val status = when {
             streak.goalMetToday && streak.pagesToday >= streak.dailyGoal -> "Goal met today"

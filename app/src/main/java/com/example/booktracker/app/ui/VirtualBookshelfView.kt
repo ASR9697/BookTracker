@@ -376,6 +376,7 @@ private fun BookSpine(book: Book, selected: Boolean, onClick: () -> Unit, onLong
             .clip(shape)
             // Lit from the left, so a flat colour still reads as a rounded spine.
             .background(Brush.horizontalGradient(listOf(lerp(color, Color.White, 0.14f), color, lerp(color, Color.Black, 0.16f))))
+            .onSecondaryClick(onLongClick)
             .combinedClickable(
                 interactionSource = press,
                 indication = null,
@@ -447,6 +448,7 @@ private fun FaceOutCover(
             .graphicsLayer { translationY = lift.toPx() }
             .bounceOnPress(press)
             .shadow(if (selected) 12.dp else 4.dp, MaterialTheme.shapes.small)
+            .onSecondaryClick(onLongClick)
             .combinedClickable(
                 interactionSource = press,
                 indication = null,

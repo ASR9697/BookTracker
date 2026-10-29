@@ -60,6 +60,8 @@ fun QuoteCardDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
+                // A share card, not a banner: on a tablet it stays card-sized.
+                .widthIn(max = 480.dp)
                 .wrapContentHeight(),
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surface,

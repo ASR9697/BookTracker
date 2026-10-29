@@ -86,30 +86,7 @@ object BackupEngine {
             .filter { it.isFile }
             .distinctBy { it.name }
 
-        val json = JSONObject().apply {
-            put("version", FORMAT_VERSION)
-            put("exportedAt", System.currentTimeMillis())
-            put("settings", JSONObject().apply {
-                settings.dailyGoal?.let { put("dailyGoalPages", it) }
-                settings.yearlyGoal?.let { put("yearlyGoalBooks", it) }
-                settings.monthlyGoalPages?.let { put("monthlyGoalPages", it) }
-                settings.monthlyGoalBooks?.let { put("monthlyGoalBooks", it) }
-                settings.dayStartsAtHour?.let { put("dayStartsAtHour", it) }
-                settings.homeLayout?.let { put("homeLayout", it) }
-                settings.avatar?.takeIf { it.startsWith(AvatarStore.COVER_PREFIX) }?.let { put("avatar", it) }
-            })
-            put("books", JSONArray(snapshot.books.map { book ->
-                book.toJson(coverEntry = localCovers[book.id]?.let { COVER_DIR + it.name })
-            }))
-            put("sessions", JSONArray(snapshot.sessions.map { it.toJson() }))
-            put("notes", JSONArray(snapshot.notes.map { note ->
-                note.toJson(imageEntries = note.imageUris.mapNotNull { uri ->
-                    NoteImageStore.localFile(uri)?.takeIf { it.isFile }?.let { NOTE_IMAGE_DIR + it.name }
-                })
-            }))
-            put("words", JSONArray(snapshot.words.map { it.toJson() }))
-            put("reviews", JSONArray(snapshot.reviews.map { it.toJson() }))
-        }
+        val json = encodeDocument(snapshot, settings)
         val output = context.contentResolver.openOutputStream(uri)
             ?: throw IllegalStateException("Cannot open backup destination")
         ZipOutputStream(output.buffered()).use { zip ->
@@ -170,21 +147,75 @@ object BackupEngine {
             }
 
             // Accepts either the .zip we write or a bare .json the user extracted.
-            parse(jsonText ?: bytes.toString(Charsets.UTF_8), restoredCovers, restoredNoteImages)
+            decodeDocument(jsonText ?: bytes.toString(Charsets.UTF_8)) { entry ->
+                restoredCovers[entry] ?: restoredNoteImages[entry]
+            }
         }
 
-    private fun parse(
-        text: String,
-        restoredCovers: Map<String, String>,
-        restoredNoteImages: Map<String, String> = emptyMap()
-    ): Parsed {
+    /**
+     * The library as the versioned JSON document both backups and Drive sync use.
+     * Local cover and note-photo files appear as "covers/<name>" and
+     * "note_images/<name>" entries, so the files can travel next to it.
+     */
+    internal fun encodeDocument(snapshot: LibrarySnapshot, settings: BackupSettings): JSONObject = JSONObject().apply {
+        put("version", FORMAT_VERSION)
+        put("exportedAt", System.currentTimeMillis())
+        put("settings", JSONObject().apply {
+            settings.dailyGoal?.let { put("dailyGoalPages", it) }
+            settings.yearlyGoal?.let { put("yearlyGoalBooks", it) }
+            settings.monthlyGoalPages?.let { put("monthlyGoalPages", it) }
+            settings.monthlyGoalBooks?.let { put("monthlyGoalBooks", it) }
+            settings.dayStartsAtHour?.let { put("dayStartsAtHour", it) }
+            settings.homeLayout?.let { put("homeLayout", it) }
+            settings.avatar?.takeIf { it.startsWith(AvatarStore.COVER_PREFIX) }?.let { put("avatar", it) }
+        })
+        put("books", JSONArray(snapshot.books.map { book ->
+            book.toJson(coverEntry = coverEntry(book))
+        }))
+        put("sessions", JSONArray(snapshot.sessions.map { it.toJson() }))
+        put("notes", JSONArray(snapshot.notes.map { note -> note.toJson(imageEntries = imageEntries(note)) }))
+        put("words", JSONArray(snapshot.words.map { it.toJson() }))
+        put("reviews", JSONArray(snapshot.reviews.map { it.toJson() }))
+    }
+
+    /** "covers/<name>" for a cover photographed on this phone, if its file is still there. */
+    internal fun coverEntry(book: Book): String? =
+        localCoverFile(book.coverUrl)?.takeIf { it.isFile }?.let { COVER_DIR + it.name }
+
+    /** "note_images/<name>" for each of the note's photos whose file is still there. */
+    internal fun imageEntries(note: MarginNote): List<String> = note.imageUris.mapNotNull { uri ->
+        NoteImageStore.localFile(uri)?.takeIf { it.isFile }?.let { NOTE_IMAGE_DIR + it.name }
+    }
+
+    /** Where an entry's file lives (or will live) on this phone, as a "file://" URI; null for anything else. */
+    internal fun localUriForEntry(context: Context, entry: String): String? {
+        val name = File(entry).name.takeIf { it.isNotBlank() } ?: return null
+        return when {
+            entry.startsWith(COVER_DIR) -> "file://${File(File(context.filesDir, "covers"), name).absolutePath}"
+            entry.startsWith(NOTE_IMAGE_DIR) -> "file://${File(NoteImageStore.dir(context), name).absolutePath}"
+            else -> null
+        }
+    }
+
+    /** The entry for a cover or note photo stored on this phone; null for web URLs and anything else. */
+    internal fun entryForLocalUri(uri: String): String? {
+        NoteImageStore.localFile(uri)?.let { return NOTE_IMAGE_DIR + it.name }
+        return localCoverFile(uri)?.takeIf { it.parentFile?.name == "covers" }?.let { COVER_DIR + it.name }
+    }
+
+    /**
+     * Reads a document written by [encodeDocument]. [resolveEntry] maps a file
+     * entry to a local URI; a cover with none keeps its original URL, a note
+     * photo with none is dropped.
+     */
+    internal fun decodeDocument(text: String, resolveEntry: (String) -> String?): Parsed {
         val root = JSONObject(text)
         val settings = root.optJSONObject("settings")
         return Parsed(
             snapshot = LibrarySnapshot(
-                books = root.optJSONArray("books").mapObjects { it.toBook(restoredCovers) },
+                books = root.optJSONArray("books").mapObjects { it.toBook(resolveEntry) },
                 sessions = root.optJSONArray("sessions").mapObjects { it.toSession() },
-                notes = root.optJSONArray("notes").mapObjects { it.toNote(restoredNoteImages) },
+                notes = root.optJSONArray("notes").mapObjects { it.toNote(resolveEntry) },
                 words = root.optJSONArray("words").mapObjects { it.toWord() },
                 reviews = root.optJSONArray("reviews").mapObjects { it.toReviewState() }
             ),
@@ -248,6 +279,10 @@ object BackupEngine {
         review?.let { put("review", it) }
         finishBy?.let { put("finishBy", it) }
         readStartedAt?.let { put("readStartedAt", it) }
+        if (audioMinutes > 0) {
+            put("audioMinutes", audioMinutes)
+            put("audioSpeed", audioSpeed.toDouble())
+        }
         if (purchaseLog.isNotEmpty()) {
             put("purchaseLog", JSONArray(purchaseLog.map { it.toJson() }))
         }
@@ -290,7 +325,7 @@ object BackupEngine {
         isLentOut = optBoolean("isLentOut", false)
     )
 
-    private fun JSONObject.toBook(restoredCovers: Map<String, String>): Book {
+    private fun JSONObject.toBook(resolveEntry: (String) -> String?): Book {
         val creators = optJSONArray("creators")?.let { array ->
             (0 until array.length()).mapNotNull { i ->
                 val obj = array.optJSONObject(i) ?: return@mapNotNull null
@@ -303,7 +338,7 @@ object BackupEngine {
             }
         } ?: optJSONArray("authors").mapStrings().map { Creator(CreatorRole.Author, it) }
 
-        val cover = optString("coverUrl").let { restoredCovers[it] ?: it }
+        val cover = optString("coverUrl").let { resolveEntry(it) ?: it }
         val series = optJSONObject("series")?.let {
             SeriesInfo(
                 isPartOfSeries = it.optBoolean("isPartOfSeries", true),
@@ -347,6 +382,8 @@ object BackupEngine {
             review = if (has("review")) optString("review") else null,
             finishBy = if (has("finishBy")) optLong("finishBy") else null,
             readStartedAt = if (has("readStartedAt")) optLong("readStartedAt") else null,
+            audioMinutes = optInt("audioMinutes", 0),
+            audioSpeed = optDouble("audioSpeed", 1.0).toFloat(),
             purchaseLog = optJSONArray("purchaseLog").mapObjects { it.toPurchaseLog() },
             loanRecord = optJSONArray("loanRecord").mapObjects { it.toLoanRecord() },
             // Backups from before ownership existed: a logged purchase means Owned.
@@ -368,6 +405,7 @@ object BackupEngine {
         put("durationSeconds", durationSeconds)
         put("environmentTag", environmentTag)
         if (zoneId.isNotBlank()) put("zoneId", zoneId)
+        if (focus > 0) put("focus", focus)
     }
 
     private fun JSONObject.toSession(): Session = Session(
@@ -380,7 +418,8 @@ object BackupEngine {
         pagesRead = optInt("pagesRead"),
         durationSeconds = optInt("durationSeconds"),
         environmentTag = optString("environmentTag"),
-        zoneId = optString("zoneId")
+        zoneId = optString("zoneId"),
+        focus = optInt("focus")
     )
 
     private fun MarginNote.toJson(imageEntries: List<String>): JSONObject = JSONObject().apply {
@@ -396,7 +435,7 @@ object BackupEngine {
     }
 
     /** Photos whose files didn't make it into the zip are dropped rather than left dangling. */
-    private fun JSONObject.toNote(restoredImages: Map<String, String>): MarginNote = MarginNote(
+    private fun JSONObject.toNote(resolveEntry: (String) -> String?): MarginNote = MarginNote(
         id = getString("id"),
         bookId = optString("bookId"),
         timestamp = optLong("timestamp"),
@@ -406,7 +445,7 @@ object BackupEngine {
         markdownContent = optString("markdownContent"),
         isFavorite = optBoolean("isFavorite"),
         imageUris = optJSONArray("images")
-            ?.let { arr -> (0 until arr.length()).mapNotNull { restoredImages[arr.optString(it)] } }
+            ?.let { arr -> (0 until arr.length()).mapNotNull { resolveEntry(arr.optString(it)) } }
             .orEmpty()
     )
 

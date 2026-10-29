@@ -13,10 +13,15 @@ object Notifications {
     const val CHANNEL_TIMER = "TimerChannel"
     const val CHANNEL_TIMER_ALERTS = "timer_alerts"
     const val CHANNEL_REMINDERS = "reading_reminders"
+    const val CHANNEL_RECAP = "weekly_recap"
 
     const val ID_TIMER = 1
     const val ID_TIMER_DONE = 2
+    const val ID_GOAL_REACHED = 3
     const val ID_REMINDER = 1001
+    const val ID_STREAK_NUDGE = 1002
+    const val ID_WEEKLY_RECAP = 1003
+    const val ID_REVIEW_REMINDER = 1004
 
     fun ensureChannels(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
@@ -30,7 +35,10 @@ object Notifications {
                     description = "Alerts you when a focus session ends"
                 },
                 NotificationChannel(CHANNEL_REMINDERS, "Reading reminders", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                    description = "A daily nudge to reach your reading goal"
+                    description = "Your daily goal reminder, streak nudges and review reminders"
+                },
+                NotificationChannel(CHANNEL_RECAP, "Weekly recap", NotificationManager.IMPORTANCE_LOW).apply {
+                    description = "Your week in reading, on Sunday evenings"
                 }
             )
         )

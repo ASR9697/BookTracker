@@ -64,7 +64,7 @@ fun PrivacyPolicyScreen(onBack: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp)
+            contentPadding = PaddingValues(horizontal = 24.dp + windowCentredPadding(), vertical = 16.dp)
         ) {
             items(lines) { line ->
                 when {

@@ -22,7 +22,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,7 +51,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.booktracker.app.camera.OcrTextCleaner
 import com.example.booktracker.app.camera.TextRecognitionAnalyzer
+import com.example.booktracker.shared.models.VocabWord
 import java.util.concurrent.Executors
 
 /**
@@ -60,7 +64,9 @@ import java.util.concurrent.Executors
 @Composable
 fun OcrCaptureScreen(
     onClose: () -> Unit,
-    onTextConfirmed: (String) -> Unit
+    onTextConfirmed: (String) -> Unit,
+    bookId: String? = null,
+    onSaveWord: ((VocabWord) -> Unit)? = null
 ) {
     val context = LocalContext.current
     var hasPermission by remember {
@@ -188,7 +194,9 @@ fun OcrCaptureScreen(
 
     if (frozen) {
         OcrConfirmSheet(
-            initialText = liveText,
+            initialText = remember(liveText) { OcrTextCleaner.clean(liveText) },
+            bookId = bookId,
+            onSaveWord = onSaveWord,
             onDismiss = { frozen = false },
             onConfirm = { edited ->
                 onTextConfirmed(edited)
@@ -203,11 +211,28 @@ fun OcrCaptureScreen(
 @Composable
 private fun OcrConfirmSheet(
     initialText: String,
+    bookId: String?,
+    onSaveWord: ((VocabWord) -> Unit)?,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var text by remember { mutableStateOf(initialText) }
+    var translating by remember { mutableStateOf(false) }
+
+    if (translating) {
+        TranslateSheet(
+            passage = text,
+            bookId = bookId,
+            page = 0,
+            onSaveWord = onSaveWord,
+            onDismiss = { translating = false },
+            onUseTranslation = {
+                text = it
+                translating = false
+            }
+        )
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -234,6 +259,14 @@ private fun OcrConfirmSheet(
                 minLines = 4,
                 modifier = Modifier.fillMaxWidth()
             )
+            OutlinedButton(
+                enabled = text.isNotBlank(),
+                onClick = { translating = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Filled.Translate, contentDescription = null)
+                Text("  Translate")
+            }
             Button(
                 enabled = text.isNotBlank(),
                 onClick = { onConfirm(text.trim()) },

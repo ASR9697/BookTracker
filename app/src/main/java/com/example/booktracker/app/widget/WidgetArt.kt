@@ -13,6 +13,9 @@ import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import coil3.toBitmap
+import com.example.booktracker.app.ui.startOfWeek
+import com.example.booktracker.app.ui.weekDays
+import java.time.DayOfWeek
 import java.time.LocalDate
 import kotlin.math.min
 
@@ -55,7 +58,8 @@ object WidgetArt {
         levels: (LocalDate) -> Int,
         colors: IntArray,
         cellPx: Int,
-        gapPx: Int
+        gapPx: Int,
+        firstDay: DayOfWeek = DayOfWeek.MONDAY
     ): Bitmap {
         val width = weeks * cellPx + (weeks - 1) * gapPx
         val height = 7 * cellPx + 6 * gapPx
@@ -63,7 +67,7 @@ object WidgetArt {
         val canvas = Canvas(bitmap)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         val radius = cellPx * 0.25f
-        val monday = today.minusDays(today.dayOfWeek.value - 1L).minusWeeks(weeks - 1L)
+        val monday = today.startOfWeek(firstDay).minusWeeks(weeks - 1L)
         for (week in 0 until weeks) {
             for (day in 0 until 7) {
                 val date = monday.plusDays(week * 7L + day)
@@ -77,7 +81,7 @@ object WidgetArt {
         return bitmap
     }
 
-    /** Monday-to-Sunday dots with day letters, filled on reading days; today gets a ring. */
+    /** A week of dots from [firstDay], with day letters, filled on reading days; today gets a ring. */
     fun weekDots(
         today: LocalDate,
         readDays: Set<LocalDate>,
@@ -85,7 +89,8 @@ object WidgetArt {
         filled: Int,
         empty: Int,
         label: Int,
-        onFilled: Int
+        onFilled: Int,
+        firstDay: DayOfWeek = DayOfWeek.MONDAY
     ): Bitmap {
         val gap = dotPx / 3
         val width = 7 * dotPx + 6 * gap
@@ -97,8 +102,8 @@ object WidgetArt {
             textSize = dotPx * 0.42f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
-        val monday = today.minusDays(today.dayOfWeek.value - 1L)
-        val letters = listOf("M", "T", "W", "T", "F", "S", "S")
+        val monday = today.startOfWeek(firstDay)
+        val letters = weekDays(firstDay).map { it.getDisplayName(java.time.format.TextStyle.NARROW, java.util.Locale.getDefault()) }
         for (i in 0 until 7) {
             val date = monday.plusDays(i.toLong())
             val cx = i * (dotPx + gap) + dotPx / 2f

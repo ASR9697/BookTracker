@@ -130,9 +130,10 @@ fun ProfileScreen(
     }
 
     val entrance = rememberEntranceState()
+    // A wider column than text screens: the profile is tiles and rows, not paragraphs.
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp + windowCentredPadding(max = 840.dp, chrome = navChromeWidth()), vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // Top Section: avatar inside the yearly-goal ring, name, personality

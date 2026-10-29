@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ReviewStateEntity::class,
         VocabWordEntity::class
     ],
-    version = 13,
+    version = 15,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -199,6 +199,21 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** Tandem reading: a book's audiobook length and listening speed. Existing books have none. */
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE books ADD COLUMN audioMinutes INTEGER")
+                db.execSQL("ALTER TABLE books ADD COLUMN audioSpeed REAL")
+            }
+        }
+
+        /** How focused a session felt, rated on the save screen. Earlier sessions are unrated. */
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE sessions ADD COLUMN focus INTEGER")
+            }
+        }
+
         val ALL_MIGRATIONS = arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -211,7 +226,9 @@ abstract class AppDatabase : RoomDatabase() {
             MIGRATION_9_10,
             MIGRATION_10_11,
             MIGRATION_11_12,
-            MIGRATION_12_13
+            MIGRATION_12_13,
+            MIGRATION_13_14,
+            MIGRATION_14_15
         )
     }
 }

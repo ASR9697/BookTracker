@@ -298,7 +298,7 @@ class ReadingWidget : GlanceAppWidget() {
     private fun progressLine(book: Book, data: WidgetSnapshot): String {
         val unit = FormatAdaptabilityLayer.unitAbbrev(book)
         val position = if (book.totalPages > 0) "$unit ${book.currentPage} / ${book.totalPages}" else "$unit ${book.currentPage}"
-        val left = AnalyticsEngine.formatEstimatedTime(
+        val left = if (!data.showTimeLeft) null else AnalyticsEngine.formatEstimatedTime(
             AnalyticsEngine.bookEstimatedMinutesLeft(book, data.sessions.filter { it.bookId == book.id }, data.sessions)
         )
         return if (left != null) "$position · about $left" else position

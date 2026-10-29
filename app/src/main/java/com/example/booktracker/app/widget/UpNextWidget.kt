@@ -128,15 +128,18 @@ class UpNextWidget : GlanceAppWidget() {
     }
 
     companion object {
-        private const val MAX_BOOKS = 6
+        // Enough to fill a tablet-wide widget; a phone-sized one shows as many as fit.
+        private const val MAX_BOOKS = 10
         private const val GAP = 8f
         private val SMALL_W = 44.dp
         private val SMALL_H = 64.dp
         private val LARGE_W = 56.dp
         private val LARGE_H = 84.dp
+        // The wider sizes are for tablet home screens.
         private val SIZES = setOf(
             DpSize(180.dp, 110.dp), DpSize(250.dp, 110.dp), DpSize(320.dp, 110.dp),
-            DpSize(250.dp, 180.dp), DpSize(320.dp, 180.dp)
+            DpSize(250.dp, 180.dp), DpSize(320.dp, 180.dp),
+            DpSize(480.dp, 110.dp), DpSize(480.dp, 180.dp), DpSize(640.dp, 180.dp)
         )
     }
 }

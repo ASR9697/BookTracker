@@ -382,9 +382,10 @@ fun ReadingCalendarView(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceAround
                 ) {
-                    val daysOfWeek = listOf("S", "M", "T", "W", "T", "F", "S")
-                    daysOfWeek.forEachIndexed { idx, day ->
-                        val isWeekend = idx == 0 || idx == 6
+                    val weekStart = LocalAppPrefs.current.weekStart
+                    weekDays(weekStart).forEach { dow ->
+                        val day = dow.getDisplayName(TextStyle.NARROW, Locale.getDefault())
+                        val isWeekend = dow == java.time.DayOfWeek.SATURDAY || dow == java.time.DayOfWeek.SUNDAY
                         Text(
                             text = day,
                             style = MaterialTheme.typography.labelMedium,
@@ -416,8 +417,7 @@ fun ReadingCalendarView(
                 ) { (month, currentViewMode) ->
                     val firstDayOfMonth = month.atDay(1)
                     val daysInMonth = month.lengthOfMonth()
-                    // Sunday = 7 in DayOfWeek, convert to 0-indexed where Sun = 0
-                    val firstDayOffset = firstDayOfMonth.dayOfWeek.value % 7
+                    val firstDayOffset = leadingDays(firstDayOfMonth, LocalAppPrefs.current.weekStart)
 
                     val totalCells = ((firstDayOffset + daysInMonth + 6) / 7) * 7
 

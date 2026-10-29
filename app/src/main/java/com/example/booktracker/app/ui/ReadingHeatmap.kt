@@ -125,13 +125,14 @@ fun ReadingHeatmap(
             .groupBy { Instant.ofEpochMilli(it.timestamp).atZone(zone).toLocalDate() }
     }
 
-    // Up to 52 weeks, aligned to Monday, starting at the first reading week so a
-    // new reader isn't shown months of empty cells before they began.
-    val currentMonday = remember(today) { today.minusDays((today.dayOfWeek.value - 1).toLong()) }
+    // Up to 52 weeks, aligned to the reader's first weekday, starting at the first
+    // reading week so a new reader isn't shown months of empty cells before they began.
+    val weekStart = LocalAppPrefs.current.weekStart
+    val currentMonday = remember(today, weekStart) { today.startOfWeek(weekStart) }
     val totalWeeks = remember(dailyPages, currentMonday) {
         val first = dailyPages.keys.minOrNull()
         val weeks = first?.let {
-            val firstMonday = it.minusDays((it.dayOfWeek.value - 1).toLong())
+            val firstMonday = it.startOfWeek(weekStart)
             java.time.temporal.ChronoUnit.WEEKS.between(firstMonday, currentMonday).toInt() + 1
         } ?: MAX_WEEKS
         weeks.coerceIn(MIN_WEEKS, MAX_WEEKS)

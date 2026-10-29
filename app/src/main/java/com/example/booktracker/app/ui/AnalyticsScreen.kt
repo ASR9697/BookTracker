@@ -2,7 +2,10 @@ package com.example.booktracker.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -75,6 +78,7 @@ fun AnalyticsScreen(
     val velocity = remember(sessions) { AnalyticsEngine.pagesPerHour(sessions) }
     val bestTime = remember(sessions) { AnalyticsEngine.bestTimeOfDay(sessions) }
     val environments = remember(sessions) { AnalyticsEngine.environmentStats(sessions) }
+    val focus = remember(sessions) { com.example.booktracker.app.analytics.FocusInsights.summarize(sessions) }
 
     var showMinutes by remember { mutableStateOf(false) }
 
@@ -146,475 +150,488 @@ fun AnalyticsScreen(
         distribution.toList().sortedByDescending { it.second }
     }
 
-    LazyColumn(
+    // One column on a phone; on a tablet the cards sit side by side, two or three across.
+    LazyVerticalStaggeredGrid(
+        columns = StaggeredGridCells.Adaptive(minSize = 360.dp),
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        verticalItemSpacing = 24.dp,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                // Bookmory Yearly Reading Target with Pace
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
+            // Bookmory Yearly Reading Target with Pace
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Filled.Flag,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("$thisYear Reading Target", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        }
+                        IconButton(onClick = { onEditGoal(GoalType.YEARLY_BOOKS) }) {
+                            Icon(Icons.Filled.Edit, contentDescription = "Edit goal", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // Pacing banner
+                    val paceBg = when (yearlyPace.status) {
+                        GoalEngine.GoalPaceStatus.AHEAD -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                        GoalEngine.GoalPaceStatus.BEHIND -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                        GoalEngine.GoalPaceStatus.ON_TRACK -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+                    }
+                    val paceContentColor = when (yearlyPace.status) {
+                        GoalEngine.GoalPaceStatus.AHEAD -> MaterialTheme.colorScheme.onPrimaryContainer
+                        GoalEngine.GoalPaceStatus.BEHIND -> MaterialTheme.colorScheme.onErrorContainer
+                        GoalEngine.GoalPaceStatus.ON_TRACK -> MaterialTheme.colorScheme.onSecondaryContainer
+                    }
+                    val paceIcon = when (yearlyPace.status) {
+                        GoalEngine.GoalPaceStatus.AHEAD -> Icons.AutoMirrored.Filled.TrendingUp
+                        GoalEngine.GoalPaceStatus.BEHIND -> Icons.Filled.Schedule
+                        GoalEngine.GoalPaceStatus.ON_TRACK -> Icons.Filled.CheckCircle
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = paceBg,
+                        contentColor = paceContentColor,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Filled.Flag,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text("$thisYear Reading Target", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            }
-                            IconButton(onClick = { onEditGoal(GoalType.YEARLY_BOOKS) }) {
-                                Icon(Icons.Filled.Edit, contentDescription = "Edit goal", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
+                            Icon(paceIcon, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                yearlyPace.message,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
+                    }
 
+                    Spacer(Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(80.dp)) {
+                            val target = (finishedThisYear.toFloat() / yearlyGoal.coerceAtLeast(1)).coerceIn(0f, 1f)
+                            val progress by androidx.compose.animation.core.animateFloatAsState(
+                                targetValue = target,
+                                label = "yearlyProgress"
+                            )
+                            CircularProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier.fillMaxSize(),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                strokeWidth = 8.dp,
+                                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                            )
+                            Text(
+                                "${(target * 100).toInt()}%",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "$finishedThisYear of $yearlyGoal books",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "Day ${yearlyPace.dayOfYear} of ${yearlyPace.totalDaysInYear} · Expected ~${yearlyPace.expectedBooks.roundToInt()} books",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    if (yearlyPace.projectionMessage.isNotEmpty()) {
+                        Spacer(Modifier.height(14.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                         Spacer(Modifier.height(12.dp))
-
-                        // Pacing banner
-                        val paceBg = when (yearlyPace.status) {
-                            GoalEngine.GoalPaceStatus.AHEAD -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                            GoalEngine.GoalPaceStatus.BEHIND -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
-                            GoalEngine.GoalPaceStatus.ON_TRACK -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
-                        }
-                        val paceContentColor = when (yearlyPace.status) {
-                            GoalEngine.GoalPaceStatus.AHEAD -> MaterialTheme.colorScheme.onPrimaryContainer
-                            GoalEngine.GoalPaceStatus.BEHIND -> MaterialTheme.colorScheme.onErrorContainer
-                            GoalEngine.GoalPaceStatus.ON_TRACK -> MaterialTheme.colorScheme.onSecondaryContainer
-                        }
-                        val paceIcon = when (yearlyPace.status) {
-                            GoalEngine.GoalPaceStatus.AHEAD -> Icons.AutoMirrored.Filled.TrendingUp
-                            GoalEngine.GoalPaceStatus.BEHIND -> Icons.Filled.Schedule
-                            GoalEngine.GoalPaceStatus.ON_TRACK -> Icons.Filled.CheckCircle
-                        }
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = paceBg,
-                            contentColor = paceContentColor,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(paceIcon, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Icon(
+                                    Icons.AutoMirrored.Filled.TrendingUp,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
                                 Spacer(Modifier.width(8.dp))
                                 Text(
-                                    yearlyPace.message,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-
-                        Spacer(Modifier.height(16.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(80.dp)) {
-                                val target = (finishedThisYear.toFloat() / yearlyGoal.coerceAtLeast(1)).coerceIn(0f, 1f)
-                                val progress by androidx.compose.animation.core.animateFloatAsState(
-                                    targetValue = target,
-                                    label = "yearlyProgress"
-                                )
-                                CircularProgressIndicator(
-                                    progress = { progress },
-                                    modifier = Modifier.fillMaxSize(),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                                    strokeWidth = 8.dp,
-                                    strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-                                )
-                                Text(
-                                    "${(target * 100).toInt()}%",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            Spacer(Modifier.width(16.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    "$finishedThisYear of $yearlyGoal books",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    "Day ${yearlyPace.dayOfYear} of ${yearlyPace.totalDaysInYear} · Expected ~${yearlyPace.expectedBooks.roundToInt()} books",
+                                    yearlyPace.projectionMessage,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        if (yearlyPace.projectionMessage.isNotEmpty()) {
-                            Spacer(Modifier.height(14.dp))
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                            Spacer(Modifier.height(12.dp))
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.TrendingUp,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(
-                                        yearlyPace.projectionMessage,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Bookmory Monthly Goal with Pages / Books Toggle
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(20.dp).fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "${today.month.name.lowercase().replaceFirstChar { it.uppercase() }} Target",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                TickFilterChip(
-                                    selected = monthlyTargetMode == GoalType.MONTHLY_PAGES,
-                                    onClick = { monthlyTargetMode = GoalType.MONTHLY_PAGES },
-                                    label = { Text("Pages") },
-                                    shape = CircleShape
-                                )
-                                TickFilterChip(
-                                    selected = monthlyTargetMode == GoalType.MONTHLY_BOOKS,
-                                    onClick = { monthlyTargetMode = GoalType.MONTHLY_BOOKS },
-                                    label = { Text("Books") },
-                                    shape = CircleShape
-                                )
-                            }
-                        }
-
-                        Spacer(Modifier.height(16.dp))
-
-                        val isPages = monthlyTargetMode == GoalType.MONTHLY_PAGES
-                        val currentCount = if (isPages) monthlySummary.pagesRead else monthlySummary.booksCompleted
-                        val targetCount = if (isPages) monthlySummary.targetPages else monthlySummary.targetBooks
-                        val monthlyFraction = (currentCount.toFloat() / targetCount.coerceAtLeast(1)).coerceIn(0f, 1f)
-
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(130.dp)) {
-                            val progress by androidx.compose.animation.core.animateFloatAsState(
-                                targetValue = monthlyFraction,
-                                label = "monthlyProgress"
-                            )
-                            CircularProgressIndicator(
-                                progress = { progress },
-                                modifier = Modifier.fillMaxSize(),
-                                color = MaterialTheme.colorScheme.secondary,
-                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                                strokeWidth = 10.dp,
-                                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-                            )
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    "$currentCount",
-                                    style = MaterialTheme.typography.headlineLarge,
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
-                                Text(
-                                    "of $targetCount ${if (isPages) "pages" else "books"}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
                             }
-                        }
-
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            "${monthlySummary.activeDays} active reading day${if (monthlySummary.activeDays == 1) "" else "s"} this month",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedButton(
-                            onClick = { onEditGoal(monthlyTargetMode) },
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Adjust Target")
                         }
                     }
                 }
+            }
 
-                // Seasonal Reading Sprint Challenge
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.fillMaxWidth()
+        }
+
+        item {
+            // Bookmory Monthly Goal with Pages / Books Toggle
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(20.dp).fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    seasonalSprint.season.emoji,
-                                    style = MaterialTheme.typography.titleLarge
-                                )
-                                Spacer(Modifier.width(10.dp))
-                                Column {
-                                    Text(
-                                        seasonalSprint.season.title,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    val seasonDateRange = when (seasonalSprint.season) {
-                                        GoalEngine.Season.SPRING -> "Mar 1 – May 31"
-                                        GoalEngine.Season.SUMMER -> "Jun 1 – Aug 31"
-                                        GoalEngine.Season.AUTUMN -> "Sep 1 – Nov 30"
-                                        GoalEngine.Season.WINTER -> "Dec 1 – Feb 28"
-                                    }
-                                    Text(
-                                        seasonDateRange,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = if (seasonalSprint.isCompleted)
-                                    MaterialTheme.colorScheme.primaryContainer
-                                else
-                                    MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = if (seasonalSprint.isCompleted)
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                            ) {
-                                Text(
-                                    if (seasonalSprint.isCompleted) "Completed 🎉" else "${seasonalSprint.daysRemaining}d left",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "${today.month.name.lowercase().replaceFirstChar { it.uppercase() }} Target",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            TickFilterChip(
+                                selected = monthlyTargetMode == GoalType.MONTHLY_PAGES,
+                                onClick = { monthlyTargetMode = GoalType.MONTHLY_PAGES },
+                                label = { Text("Pages") },
+                                shape = CircleShape
+                            )
+                            TickFilterChip(
+                                selected = monthlyTargetMode == GoalType.MONTHLY_BOOKS,
+                                onClick = { monthlyTargetMode = GoalType.MONTHLY_BOOKS },
+                                label = { Text("Books") },
+                                shape = CircleShape
+                            )
                         }
+                    }
 
-                        Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(16.dp))
 
-                        val progressFraction = seasonalSprint.progress.coerceIn(0f, 1f)
-                        val animatedSprintProgress by androidx.compose.animation.core.animateFloatAsState(
-                            targetValue = progressFraction,
-                            label = "sprintProgress"
+                    val isPages = monthlyTargetMode == GoalType.MONTHLY_PAGES
+                    val currentCount = if (isPages) monthlySummary.pagesRead else monthlySummary.booksCompleted
+                    val targetCount = if (isPages) monthlySummary.targetPages else monthlySummary.targetBooks
+                    val monthlyFraction = (currentCount.toFloat() / targetCount.coerceAtLeast(1)).coerceIn(0f, 1f)
+
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(130.dp)) {
+                        val progress by androidx.compose.animation.core.animateFloatAsState(
+                            targetValue = monthlyFraction,
+                            label = "monthlyProgress"
                         )
-                        LinearProgressIndicator(
-                            progress = { animatedSprintProgress },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(8.dp)
-                                .clip(RoundedCornerShape(4.dp)),
-                            color = MaterialTheme.colorScheme.tertiary,
-                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                        CircularProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier.fillMaxSize(),
+                            color = MaterialTheme.colorScheme.secondary,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                            strokeWidth = 10.dp,
+                            strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                         )
-
-                        Spacer(Modifier.height(8.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                "${seasonalSprint.completedBooks} of ${seasonalSprint.targetBooks} books completed",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.SemiBold
+                                "$currentCount",
+                                style = MaterialTheme.typography.headlineLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                "${(progressFraction * 100).toInt()}%",
+                                "of $targetCount ${if (isPages) "pages" else "books"}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    }
 
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            seasonalSprint.statusMessage,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "${monthlySummary.activeDays} active reading day${if (monthlySummary.activeDays == 1) "" else "s"} this month",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { onEditGoal(monthlyTargetMode) },
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Adjust Target")
                     }
                 }
+            }
 
-                // Reading Habit Consistency Card
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Filled.Psychology,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.secondary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(Modifier.width(8.dp))
+        }
+
+        item {
+            // Seasonal Reading Sprint Challenge
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                seasonalSprint.season.emoji,
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Column {
                                 Text(
-                                    "Reading Habit Health",
+                                    seasonalSprint.season.title,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
-                            }
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            ) {
+                                val seasonDateRange = when (seasonalSprint.season) {
+                                    GoalEngine.Season.SPRING -> "Mar 1 – May 31"
+                                    GoalEngine.Season.SUMMER -> "Jun 1 – Aug 31"
+                                    GoalEngine.Season.AUTUMN -> "Sep 1 – Nov 30"
+                                    GoalEngine.Season.WINTER -> "Dec 1 – Feb 28"
+                                }
                                 Text(
-                                    habitConsistency.rating,
+                                    seasonDateRange,
                                     style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(Modifier.height(16.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(72.dp)) {
-                                val habitTarget = (habitConsistency.consistencyPercent / 100f).coerceIn(0f, 1f)
-                                val habitProgress by androidx.compose.animation.core.animateFloatAsState(
-                                    targetValue = habitTarget,
-                                    label = "habitProgress"
-                                )
-                                CircularProgressIndicator(
-                                    progress = { habitProgress },
-                                    modifier = Modifier.fillMaxSize(),
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                                    strokeWidth = 7.dp,
-                                    strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-                                )
-                                Text(
-                                    "${habitConsistency.consistencyPercent}%",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            Spacer(Modifier.width(16.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    "${habitConsistency.activeDays} of ${habitConsistency.totalDays} days active (30d)",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    habitConsistency.description,
-                                    style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
-                    }
-                }
-
-                // Last-7-days activity, switchable between pages and reading time.
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (seasonalSprint.isCompleted)
+                                MaterialTheme.colorScheme.primaryContainer
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (seasonalSprint.isCompleted)
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
                         ) {
                             Text(
-                                if (showMinutes) "Time Read" else "Pages Read",
-                                style = MaterialTheme.typography.titleLarge
+                                if (seasonalSprint.isCompleted) "Completed 🎉" else "${seasonalSprint.daysRemaining}d left",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                TickFilterChip(
-                                    selected = !showMinutes,
-                                    onClick = { showMinutes = false },
-                                    label = { Text("Pages") },
-                                    shape = CircleShape
-                                )
-                                TickFilterChip(
-                                    selected = showMinutes,
-                                    onClick = { showMinutes = true },
-                                    label = { Text("Minutes") },
-                                    shape = CircleShape
-                                )
-                            }
                         }
-                        if (last7Days.all { it.second == 0L }) {
-                            // A flat line of zeros reads as broken; say what will fill it instead.
-                            Spacer(Modifier.height(16.dp))
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    val progressFraction = seasonalSprint.progress.coerceIn(0f, 1f)
+                    val animatedSprintProgress by androidx.compose.animation.core.animateFloatAsState(
+                        targetValue = progressFraction,
+                        label = "sprintProgress"
+                    )
+                    LinearProgressIndicator(
+                        progress = { animatedSprintProgress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = MaterialTheme.colorScheme.tertiary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "${seasonalSprint.completedBooks} of ${seasonalSprint.targetBooks} books completed",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            "${(progressFraction * 100).toInt()}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        seasonalSprint.statusMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+        }
+
+        item {
+            // Reading Habit Consistency Card
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Filled.Psychology,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
                             Text(
-                                if (showMinutes) "No timed reading in the last 7 days. Use the timer on Home and your minutes show up here."
-                                else "No pages logged in the last 7 days. Update your page on Home and your week shows up here.",
-                                style = MaterialTheme.typography.bodyMedium,
+                                "Reading Habit Health",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ) {
+                            Text(
+                                habitConsistency.rating,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(72.dp)) {
+                            val habitTarget = (habitConsistency.consistencyPercent / 100f).coerceIn(0f, 1f)
+                            val habitProgress by androidx.compose.animation.core.animateFloatAsState(
+                                targetValue = habitTarget,
+                                label = "habitProgress"
+                            )
+                            CircularProgressIndicator(
+                                progress = { habitProgress },
+                                modifier = Modifier.fillMaxSize(),
+                                color = MaterialTheme.colorScheme.secondary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                strokeWidth = 7.dp,
+                                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                            )
+                            Text(
+                                "${habitConsistency.consistencyPercent}%",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "${habitConsistency.activeDays} of ${habitConsistency.totalDays} days active (30d)",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                habitConsistency.description,
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        } else {
-                            Spacer(Modifier.height(24.dp))
-                            SmoothLineChart(
-                                data = last7Days,
-                                maxValue = maxIn7Days,
-                                modifier = Modifier.fillMaxWidth().height(160.dp).padding(top = 16.dp, bottom = 8.dp, start = 8.dp, end = 8.dp)
+                        }
+                    }
+                }
+            }
+
+        }
+
+        item {
+            // Last-7-days activity, switchable between pages and reading time.
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            if (showMinutes) "Time Read" else "Pages Read",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            TickFilterChip(
+                                selected = !showMinutes,
+                                onClick = { showMinutes = false },
+                                label = { Text("Pages") },
+                                shape = CircleShape
+                            )
+                            TickFilterChip(
+                                selected = showMinutes,
+                                onClick = { showMinutes = true },
+                                label = { Text("Minutes") },
+                                shape = CircleShape
                             )
                         }
+                    }
+                    if (last7Days.all { it.second == 0L }) {
+                        // A flat line of zeros reads as broken; say what will fill it instead.
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            if (showMinutes) "No timed reading in the last 7 days. Use the timer on Home and your minutes show up here."
+                            else "No pages logged in the last 7 days. Update your page on Home and your week shows up here.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Spacer(Modifier.height(24.dp))
+                        SmoothLineChart(
+                            data = last7Days,
+                            maxValue = maxIn7Days,
+                            modifier = Modifier.fillMaxWidth().height(160.dp).padding(top = 16.dp, bottom = 8.dp, start = 8.dp, end = 8.dp)
+                        )
                     }
                 }
             }
@@ -666,6 +683,11 @@ fun AnalyticsScreen(
                     }
                 }
             }
+        }
+
+        // When and where focus is best, from the focus rated on the save screen.
+        if (focus != null) {
+            item { FocusInsightsCard(focus) }
         }
 
         // Where you read best — volume and pace per environment tag.
@@ -765,7 +787,7 @@ fun AnalyticsScreen(
 
 
         if (finishedBooks.isNotEmpty()) {
-            item {
+            item(span = StaggeredGridItemSpan.FullLine) {
                 Text(
                     "Recently Finished",
                     style = MaterialTheme.typography.titleLarge,
@@ -819,6 +841,60 @@ fun AnalyticsScreen(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+/** Average focus per time of day and per place, with the best of each called out. */
+@Composable
+private fun FocusInsightsCard(summary: com.example.booktracker.app.analytics.FocusInsights.Summary) {
+    val headline = com.example.booktracker.app.analytics.FocusInsights.headline(summary)
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Focus", style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                headline ?: "Average ${String.format(java.util.Locale.US, "%.1f", summary.average)} of 5 across ${summary.rated} rated sessions. Rate a few more at different times to see a pattern.",
+                style = if (headline != null) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodySmall,
+                fontWeight = if (headline != null) FontWeight.SemiBold else null,
+                color = if (headline != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(12.dp))
+            (summary.byTime + summary.byPlace.take(4)).forEachIndexed { i, group ->
+                if (i == summary.byTime.size && summary.byPlace.isNotEmpty()) Spacer(Modifier.height(10.dp))
+                val best = group == summary.bestTime || group == summary.bestPlace
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        group.label,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = if (best) FontWeight.Bold else null,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.width(96.dp)
+                    )
+                    LinearProgressIndicator(
+                        progress = { group.average / 5f },
+                        color = if (best) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        gapSize = 0.dp,
+                        drawStopIndicator = {},
+                        modifier = Modifier.weight(1f).height(8.dp).clip(CircleShape)
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        String.format(java.util.Locale.US, "%.1f", group.average),
+                        style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }

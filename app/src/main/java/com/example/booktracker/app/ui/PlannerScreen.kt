@@ -156,7 +156,7 @@ fun CalendarView(
         Spacer(Modifier.height(8.dp))
         
         Row(modifier = Modifier.fillMaxWidth()) {
-            val daysOfWeek = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+            val daysOfWeek = weekDays(LocalAppPrefs.current.weekStart).map { it.getDisplayName(TextStyle.SHORT, Locale.getDefault()) }
             daysOfWeek.forEach { day ->
                 Text(
                     text = day,
@@ -172,7 +172,7 @@ fun CalendarView(
         
         val daysInMonth = currentMonth.lengthOfMonth()
         val firstDayOfMonth = currentMonth.atDay(1)
-        val offset = (firstDayOfMonth.dayOfWeek.value - 1)
+        val offset = leadingDays(firstDayOfMonth, LocalAppPrefs.current.weekStart)
         
         val totalCells = daysInMonth + offset
         val rows = if (totalCells % 7 == 0) totalCells / 7 else (totalCells / 7) + 1

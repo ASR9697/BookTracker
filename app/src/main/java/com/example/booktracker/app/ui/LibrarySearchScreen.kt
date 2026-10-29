@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -138,10 +139,12 @@ fun LibrarySearchScreen(
             return@Scaffold
         }
 
+        val side = windowCentredPadding()
         LazyColumn(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = side),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             if (results.books.isNotEmpty()) {

@@ -32,12 +32,16 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.isActive
 import java.time.LocalTime
+import kotlin.math.PI
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -121,25 +125,54 @@ private fun dayPart(hour: Int) = when (hour) {
 
 private class Star(val x: Float, val y: Float, val radius: Float, val phase: Float, val speed: Float)
 
+/** A soft drifting cloud: height as a share of the sky, width, speed in dp per second, and where it starts. */
+private class Cloud(val y: Float, val widthDp: Float, val speedDp: Float, val start: Float)
+
+private val CLOUDS = listOf(
+    Cloud(0.42f, 120f, 5f, 0.1f),
+    Cloud(0.62f, 90f, 3.5f, 0.55f),
+    Cloud(0.32f, 70f, 7f, 0.85f)
+)
+
+/** Seconds between shooting stars, and how long one takes to cross. */
+private const val SHOOTING_STAR_EVERY = 30f
+private const val SHOOTING_STAR_SPAN = 1.1f
+
 /**
  * A soft sky behind the Home greeting that follows the clock: a warm wash at
- * dawn and dusk, a faint sun by day, and at night (Nocturnal Reader's hour) a
- * moon with twinkling stars. Fades out downward so it never fights the content.
+ * dawn and dusk, drifting clouds by day, and at night (Nocturnal Reader's hour) a
+ * moon with twinkling stars and the odd shooting star. The sun or moon sits on a
+ * slow arc for the current hour and eases in when Home opens. Fades out downward
+ * so it never fights the content.
+ *
+ * [bodyTop] is where the sun or moon sits from the top, so it clears the app bar.
+ * Set [active] false while the sky is off screen to stop its frame loop.
  */
 @Composable
-fun TimeOfDaySky(modifier: Modifier = Modifier) {
+fun TimeOfDaySky(modifier: Modifier = Modifier, bodyTop: Dp = 28.dp, active: Boolean = true) {
     val reduce = rememberReduceMotion()
-    val part = remember { dayPart(LocalTime.now().hour) }
+    val now = remember { LocalTime.now() }
+    val part = remember { dayPart(now.hour) }
     val stars = remember {
         val random = Random(7) // same sky every visit
         List(36) { Star(random.nextFloat(), random.nextFloat() * 0.85f, random.nextFloat() * 1.6f + 0.6f, random.nextFloat() * 6.28f, random.nextFloat() * 1.5f + 0.5f) }
     }
-    var seconds by remember { mutableFloatStateOf(0f) }
-    if (!reduce && (part == DayPart.NIGHT || part == DayPart.DUSK)) {
+    // Read only while drawing, so the loop redraws the sky without recomposing anything.
+    val seconds = remember { mutableFloatStateOf(0f) }
+    val animated = !reduce && active
+    if (animated) {
         LaunchedEffect(Unit) {
             val start = withInfiniteAnimationFrameMillis { it }
-            while (isActive) withInfiniteAnimationFrameMillis { seconds = (it - start) / 1000f }
+            while (isActive) withInfiniteAnimationFrameMillis { seconds.floatValue = (it - start) / 1000f }
         }
+    }
+    val intro = remember { Animatable(if (reduce) 1f else 0f) }
+    LaunchedEffect(Unit) { intro.animateTo(1f, tween(1200, easing = Motion.EmphasizedDecelerate)) }
+
+    // How far the sun (06-18h) or moon (18-06h) has travelled across its half of the day.
+    val arc = remember(now) {
+        val sinceSix = (now.hour + now.minute / 60f - 6f + 24f) % 24f
+        (if (sinceSix < 12f) sinceSix else sinceSix - 12f) / 12f
     }
 
     val primary = MaterialTheme.colorScheme.primary
@@ -150,32 +183,69 @@ fun TimeOfDaySky(modifier: Modifier = Modifier) {
         DayPart.NIGHT -> Color(0xFF3949AB).copy(alpha = 0.22f)
     }
     val moon = Color(0xFFFFF3C4)
+    val cloud = if (MaterialTheme.colorScheme.surface.luminance() > 0.5f) Color.White.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.07f)
 
     Canvas(modifier = modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }) {
+        val t = seconds.floatValue
+        val rise = intro.value
         drawRect(Brush.verticalGradient(listOf(wash, Color.Transparent)))
-        val body = Offset(size.width - 48.dp.toPx(), 28.dp.toPx())
         val r = 14.dp.toPx()
+        val body = Offset(
+            size.width * (0.58f + 0.32f * arc),
+            bodyTop.toPx() + r + 16.dp.toPx() * (1f - sin(PI.toFloat() * arc)) + (1f - rise) * 14.dp.toPx()
+        )
         when (part) {
             DayPart.NIGHT, DayPart.DUSK -> {
                 stars.forEach { star ->
-                    val twinkle = if (reduce) 0.7f else 0.45f + 0.55f * ((sin(seconds * star.speed + star.phase) + 1f) / 2f)
+                    val twinkle = if (reduce) 0.7f else 0.45f + 0.55f * ((sin(t * star.speed + star.phase) + 1f) / 2f)
                     drawCircle(
-                        Color.White.copy(alpha = twinkle * if (part == DayPart.DUSK) 0.35f else 0.8f),
+                        Color.White.copy(alpha = twinkle * rise * if (part == DayPart.DUSK) 0.35f else 0.8f),
                         radius = star.radius.dp.toPx() / 2f,
                         center = Offset(star.x * size.width, star.y * size.height)
                     )
                 }
                 if (part == DayPart.NIGHT) {
-                    drawCircle(Brush.radialGradient(listOf(moon.copy(alpha = 0.25f), Color.Transparent), body, r * 3f), r * 3f, body)
-                    drawCircle(moon, r, body)
+                    drawCircle(Brush.radialGradient(listOf(moon.copy(alpha = 0.25f * rise), Color.Transparent), body, r * 3f), r * 3f, body)
+                    drawCircle(moon.copy(alpha = rise), r, body)
                     // Bite out of the disc for a crescent.
                     drawCircle(Color.Black, r * 0.85f, body + Offset(r * 0.55f, -r * 0.25f), blendMode = BlendMode.Clear)
+                    if (animated) drawShootingStar(t)
                 }
             }
             DayPart.DAWN, DayPart.DAY -> {
+                CLOUDS.forEach { c ->
+                    val w = c.widthDp.dp.toPx()
+                    val span = size.width + 2f * w
+                    val x = (c.start * span + t * c.speedDp.dp.toPx()) % span - w
+                    drawCloud(cloud, Offset(x, size.height * c.y), w)
+                }
                 val sun = if (part == DayPart.DAWN) Color(0xFFFFCC80) else primary
-                drawCircle(Brush.radialGradient(listOf(sun.copy(alpha = 0.35f), Color.Transparent), body, r * 3.5f), r * 3.5f, body)
+                drawCircle(Brush.radialGradient(listOf(sun.copy(alpha = 0.35f * rise), Color.Transparent), body, r * 3.5f), r * 3.5f, body)
             }
         }
     }
+}
+
+/** Three soft puffs; [origin] is the cloud's left edge and [width] its span. */
+private fun DrawScope.drawCloud(color: Color, origin: Offset, width: Float) {
+    listOf(0.25f to 0.2f, 0.5f to 0.28f, 0.76f to 0.18f).forEach { (at, size) ->
+        val radius = width * size
+        val centre = Offset(origin.x + width * at, origin.y - if (size > 0.25f) radius * 0.3f else 0f)
+        drawCircle(Brush.radialGradient(listOf(color, Color.Transparent), centre, radius), radius, centre)
+    }
+}
+
+/** One streak across the upper sky every [SHOOTING_STAR_EVERY] seconds, the first about ten seconds in. */
+private fun DrawScope.drawShootingStar(seconds: Float) {
+    val into = (seconds + SHOOTING_STAR_EVERY - 10f) % SHOOTING_STAR_EVERY
+    if (into > SHOOTING_STAR_SPAN) return
+    val f = into / SHOOTING_STAR_SPAN
+    val fade = sin(PI.toFloat() * f)
+    val direction = Offset(1f, 0.45f).let { it / it.getDistance() }
+    val head = Offset(size.width * 0.15f, size.height * 0.12f) + direction * (f * size.width * 0.5f)
+    val tail = head - direction * (70.dp.toPx() * fade)
+    drawLine(
+        Brush.linearGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.9f * fade)), tail, head),
+        tail, head, strokeWidth = 1.5.dp.toPx(), cap = StrokeCap.Round
+    )
 }

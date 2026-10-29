@@ -18,6 +18,7 @@ import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.NoteType
 import com.example.booktracker.shared.models.Session
 import kotlinx.coroutines.flow.first
+import java.time.DayOfWeek
 
 /** Everything the widgets show, read once per update. */
 data class WidgetSnapshot(
@@ -29,7 +30,13 @@ data class WidgetSnapshot(
     val timerRunning: Boolean,
     val timerMode: TimerMode,
     val elapsedSeconds: Int,
-    val timeLeftSeconds: Int
+    val timeLeftSeconds: Int,
+    val weekStart: DayOfWeek = DayOfWeek.MONDAY,
+    val showTimeLeft: Boolean = true,
+    /** Where the open session began, so "+N this session" can be shown. */
+    val sessionStartPage: Int? = null,
+    val pageTarget: Int? = null,
+    val activeReadingSeconds: Int = 0
 ) {
     val reading: List<Book> get() = WidgetPicks.reading(books)
     val upNext: List<Book> get() = WidgetPicks.upNext(books)
@@ -44,8 +51,13 @@ object WidgetData {
         val repository = ServiceLocator.repository(context)
         val settings = ServiceLocator.settings(context)
         val sessions = repository.observeCompletedSessions().first()
+        val prefs = settings.prefs.first()
+        val books = repository.observeBooks().first()
+        val timerBookId = ServiceLocator.timerBookId.value
+        val open = repository.observeOpenSession().first()?.takeIf { it.bookId == timerBookId }
         return WidgetSnapshot(
-            books = repository.observeBooks().first(),
+            // The home screen is on show to anyone nearby, so the reader can keep titles off it.
+            books = if (prefs.hideTitles) books.map(::anonymous) else books,
             sessions = sessions,
             notes = repository.observeAllNotes().first(),
             streak = StreakEngine.compute(
@@ -53,13 +65,20 @@ object WidgetData {
                 dailyGoal = settings.dailyGoal.first(),
                 dayStartsAtHour = settings.dayStartsAtHour.first()
             ),
-            timerBookId = ServiceLocator.timerBookId.value,
+            timerBookId = timerBookId,
             timerRunning = ServiceLocator.timerIsRunning.value,
             timerMode = ServiceLocator.timerMode.value,
             elapsedSeconds = ServiceLocator.elapsedSeconds.value,
-            timeLeftSeconds = ServiceLocator.timeLeftSeconds.value
+            timeLeftSeconds = ServiceLocator.timeLeftSeconds.value,
+            weekStart = prefs.weekStart,
+            showTimeLeft = prefs.showTimeLeft,
+            sessionStartPage = open?.startPage,
+            pageTarget = ServiceLocator.sessionPageTarget.value,
+            activeReadingSeconds = ServiceLocator.activeReadingSeconds.value
         )
     }
+
+    private fun anonymous(book: Book) = book.copy(title = "Your book", coverUrl = "", creators = emptyList())
 
     suspend fun look(context: Context): WidgetLook {
         val settings = ServiceLocator.settings(context)

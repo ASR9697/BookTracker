@@ -1,6 +1,7 @@
 package com.example.booktracker.app.ui
 
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import com.example.booktracker.app.ui.animations.rememberEntranceState
 import com.example.booktracker.app.ui.animations.staggeredEntrance
 import androidx.compose.material.icons.filled.SearchOff
@@ -299,6 +300,30 @@ fun MemorizeScreen(
                     else -> "No notes match these filters."
                 }
             )
+        } else if (view == NotesView.LIST && LocalWidthTier.current.atLeastMedium) {
+            // Tablets: notes as a masonry wall, so short quotes don't leave a screen of empty card.
+            val feedEntrance = rememberEntranceState()
+            androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid(
+                columns = androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells.Adaptive(minSize = 320.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                verticalItemSpacing = 12.dp,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                itemsIndexed(listNotes, key = { _, note -> note.id }) { index, note ->
+                    Box(Modifier.animateItem().staggeredEntrance(feedEntrance, index)) {
+                        NoteFeedCard(
+                            note = note,
+                            book = booksById[note.bookId],
+                            onOpenBook = onOpenBook,
+                            onToggleFavorite = { onToggleFavorite(note.id) },
+                            onShare = { book -> noteToShare = note to book },
+                            onEdit = { noteToEdit = note },
+                            onDelete = { noteToDelete = note }
+                        )
+                    }
+                }
+            }
         } else if (view == NotesView.LIST) {
             val feedEntrance = rememberEntranceState()
             LazyColumn(
@@ -322,12 +347,12 @@ fun MemorizeScreen(
             }
         } else {
             val pagerState = rememberPagerState(pageCount = { displayNotes.size })
+            // A flashcard keeps a card's proportions on a tablet; neighbours peek in at the sides.
+            androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 32.dp),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = centredPadding(max = 560.dp, min = 32.dp)),
                 pageSpacing = 16.dp
             ) { page ->
                 val note = displayNotes[page]
@@ -438,6 +463,7 @@ fun MemorizeScreen(
                     }
                 }
             }
+            }
 
             Text(
                 "Swipe for next card",
@@ -547,12 +573,18 @@ private fun NoteFeedCard(
 
             Spacer(Modifier.height(12.dp))
             if (note.content.isNotBlank()) {
+                // On a tablet a note can be dragged out as text, into a doc or chat open alongside.
+                val dragOut = if (LocalWidthTier.current.atLeastMedium) {
+                    Modifier.draggableText("Note") { JournalingEngine.render(note.content).text }
+                } else {
+                    Modifier
+                }
                 Text(
                     JournalingEngine.render(note.content),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = noteTextStyle(),
                     maxLines = 10,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(end = 8.dp)
+                    modifier = Modifier.padding(end = 8.dp).then(dragOut)
                 )
             }
             if (note.imageUris.isNotEmpty()) {

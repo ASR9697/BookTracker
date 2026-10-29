@@ -16,7 +16,8 @@ fun SessionEntity.toModel(): Session = Session(
     endPage = endPage,
     pagesRead = pagesRead,
     environmentTag = environmentTag,
-    zoneId = zoneId.orEmpty()
+    zoneId = zoneId.orEmpty(),
+    focus = focus ?: 0
 )
 
 fun Session.toEntity(): SessionEntity = SessionEntity(
@@ -29,7 +30,8 @@ fun Session.toEntity(): SessionEntity = SessionEntity(
     endPage = endPage,
     pagesRead = pagesRead,
     environmentTag = environmentTag,
-    zoneId = zoneId.takeIf { it.isNotBlank() }
+    zoneId = zoneId.takeIf { it.isNotBlank() },
+    focus = focus.takeIf { it > 0 }
 )
 
 fun BookEntity.toModel(): Book = Book(
@@ -62,7 +64,9 @@ fun BookEntity.toModel(): Book = Book(
     // MIGRATION_9_10 already marked purchased books Owned, so null here means unset.
     ownership = Ownership.fromStored(ownership, hasPurchase = false),
     finishBy = finishBy,
-    readStartedAt = readStartedAt
+    readStartedAt = readStartedAt,
+    audioMinutes = audioMinutes ?: 0,
+    audioSpeed = audioSpeed ?: 1f
 )
 
 fun Book.toEntity(): BookEntity = BookEntity(
@@ -94,7 +98,9 @@ fun Book.toEntity(): BookEntity = BookEntity(
     finishedAt = finishedAt,
     ownership = ownership.name,
     finishBy = finishBy,
-    readStartedAt = readStartedAt
+    readStartedAt = readStartedAt,
+    audioMinutes = audioMinutes.takeIf { it > 0 },
+    audioSpeed = audioSpeed.takeIf { audioMinutes > 0 }
 )
 
 fun MarginNoteEntity.toModel(): MarginNote = MarginNote(

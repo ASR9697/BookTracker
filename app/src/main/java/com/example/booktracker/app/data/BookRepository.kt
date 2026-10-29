@@ -67,7 +67,11 @@ interface BookRepository {
         endPage: Int,
         environmentTag: String,
         startTime: Long,
-        endTime: Long
+        endTime: Long,
+        /** 1 to 5, or 0 when the reader skipped it. */
+        focus: Int = 0,
+        /** An earlier session of the same book to fold this one into, so the two count as one. */
+        mergeWithId: String? = null
     ): Session?
     suspend fun addManualSession(
         bookId: String,
@@ -124,6 +128,10 @@ interface BookRepository {
     suspend fun deleteWord(id: String)
     /** Sets or clears the day the reader wants to be done with the book by. */
     suspend fun setFinishBy(bookId: String, finishBy: Long?)
+    /** Sets the audiobook length (0 stops tandem reading) and listening speed. */
+    suspend fun setAudiobook(bookId: String, minutes: Int, speed: Float)
+    /** Writes and removes what a Drive sync merged, books first so sessions and notes have a parent. */
+    suspend fun applySync(changes: com.example.booktracker.app.sync.SyncMerge.Changes)
 }
 
 /** A margin-note hit carries its book so the UI can label and link it. */
@@ -526,6 +534,32 @@ class RoomBookRepository(
         bookDao.upsert(entity.copy(finishBy = finishBy, lastUpdated = System.currentTimeMillis()))
     }
 
+    override suspend fun setAudiobook(bookId: String, minutes: Int, speed: Float) {
+        val entity = bookDao.getById(bookId) ?: return
+        bookDao.upsert(
+            entity.copy(
+                audioMinutes = minutes.takeIf { it > 0 },
+                audioSpeed = speed.takeIf { minutes > 0 },
+                lastUpdated = System.currentTimeMillis()
+            )
+        )
+    }
+
+    override suspend fun applySync(changes: com.example.booktracker.app.sync.SyncMerge.Changes) {
+        val upserts = changes.snapshot
+        if (upserts.books.isNotEmpty()) bookDao.upsert(upserts.books.map { it.toEntity() })
+        if (upserts.sessions.isNotEmpty()) sessionDao.upsert(upserts.sessions.map { it.toEntity() })
+        if (upserts.notes.isNotEmpty()) marginNoteDao.upsert(upserts.notes.map { it.toEntity() })
+        if (upserts.words.isNotEmpty()) vocabDao.upsert(upserts.words.map { it.toEntity() })
+        if (upserts.reviews.isNotEmpty()) reviewDao.upsert(upserts.reviews.map { it.toEntity() })
+        changes.deletedReviews.forEach { reviewDao.deleteById(it) }
+        changes.deletedWords.forEach { vocabDao.deleteById(it) }
+        changes.deletedNotes.forEach { marginNoteDao.deleteById(it) }
+        changes.deletedSessions.forEach { sessionDao.deleteById(it) }
+        // Deleting a book cascades to its sessions and notes.
+        changes.deletedBooks.forEach { bookDao.deleteById(it) }
+    }
+
     /** Zone a new session is recorded in; see [Session.zoneId]. */
     private fun currentZoneId(): String = java.time.ZoneId.systemDefault().id
 
@@ -630,7 +664,9 @@ class RoomBookRepository(
         endPage: Int,
         environmentTag: String,
         startTime: Long,
-        endTime: Long
+        endTime: Long,
+        focus: Int,
+        mergeWithId: String?
     ): Session? {
         val book = bookDao.getById(bookId) ?: return null
         val ceiling = if (book.totalPages > 0) book.totalPages else Int.MAX_VALUE
@@ -660,12 +696,29 @@ class RoomBookRepository(
             endPage = cappedEnd,
             pagesRead = (cappedEnd - startPage).coerceAtLeast(0),
             durationSeconds = ((endTime - startTime) / 1000L).toInt().coerceAtLeast(0),
-            environmentTag = environmentTag
+            environmentTag = environmentTag,
+            focus = focus.takeIf { it in 1..5 }
         )
-        sessionDao.upsert(finalized)
+        val earlier = mergeWithId
+            ?.let { id -> sessionDao.getForBook(bookId).firstOrNull { it.id == id && it.endTime in 1..startTime } }
+        val saved = if (earlier == null) finalized else {
+            // One session covering both readings. The gap between them isn't reading,
+            // so the start moves up to keep endTime - startTime equal to the time read.
+            val seconds = earlier.durationSeconds + finalized.durationSeconds
+            finalized.copy(
+                startTime = endTime - seconds * 1000L,
+                durationSeconds = seconds,
+                startPage = earlier.startPage,
+                pagesRead = (cappedEnd - earlier.startPage).coerceAtLeast(0),
+                environmentTag = environmentTag.ifBlank { earlier.environmentTag },
+                focus = finalized.focus ?: earlier.focus
+            )
+        }
+        sessionDao.upsert(saved)
+        if (earlier != null) sessionDao.deleteById(earlier.id)
 
         if (ServiceLocator.timerBookId.value == bookId) ServiceLocator.activeReadingSeconds.value = 0
-        return finalized.toModel()
+        return saved.toModel()
     }
 
     private suspend fun finalizeSession(open: SessionEntity, tag: String = "") {

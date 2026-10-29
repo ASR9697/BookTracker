@@ -174,7 +174,7 @@ fun WrappedScreen(
                     modifier = Modifier.weight(1f)
                 )
                 Button(onClick = {
-                    scope.launch { shareSlide(context, graphicsLayer) }
+                    scope.launch { shareLayerImage(context, graphicsLayer, "wrapped.png", "Share your wrapped") }
                 }) {
                     Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
@@ -185,9 +185,15 @@ fun WrappedScreen(
     }
 }
 
-private suspend fun shareSlide(context: android.content.Context, layer: GraphicsLayer) {
+/** Shares whatever [layer] last recorded as a PNG through the app's file provider. */
+internal suspend fun shareLayerImage(
+    context: android.content.Context,
+    layer: GraphicsLayer,
+    fileName: String,
+    chooserTitle: String
+) {
     val bitmap = layer.toImageBitmap().asAndroidBitmap()
-    val imageFile = File(context.cacheDir, "wrapped.png")
+    val imageFile = File(context.cacheDir, fileName)
     FileOutputStream(imageFile).use { out -> bitmap.compress(Bitmap.CompressFormat.PNG, 100, out) }
     val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", imageFile)
     val intent = Intent(Intent.ACTION_SEND).apply {
@@ -195,7 +201,7 @@ private suspend fun shareSlide(context: android.content.Context, layer: Graphics
         putExtra(Intent.EXTRA_STREAM, uri)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
-    context.startActivity(Intent.createChooser(intent, "Share your wrapped"))
+    context.startActivity(Intent.createChooser(intent, chooserTitle))
 }
 
 /** Container colour and its matching text colour, so every slide stays readable in both themes. */
@@ -219,9 +225,16 @@ private fun SlideFrame(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val (container, onContainer) = slideColors(slide)
+    // A story is 9:16. On a tablet the slide keeps that shape in the middle instead
+    // of stretching into a landscape banner (and the shared image keeps it too).
+    val storyShaped = LocalWidthTier.current.atLeastMedium
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
     Box(
         modifier = Modifier
-            .fillMaxSize()
+            .then(
+                if (storyShaped) Modifier.fillMaxHeight().aspectRatio(9f / 16f, matchHeightConstraintsFirst = true)
+                else Modifier.fillMaxSize()
+            )
             .drawWithContent {
                 if (layer != null) {
                     layer.record { this@drawWithContent.drawContent() }
@@ -250,6 +263,7 @@ private fun SlideFrame(
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
             )
         }
+    }
     }
 }
 
