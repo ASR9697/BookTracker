@@ -11,6 +11,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -58,9 +59,13 @@ fun AddBookScreen(
     onAddBook: (BookMetadata, BookStatus, com.example.booktracker.shared.models.BookFormat) -> Unit,
     onScanBarcode: () -> Unit,
     modifier: Modifier = Modifier,
-    onScanShelf: () -> Unit = {}
+    onScanShelf: () -> Unit = {},
+    /** A book found here can go straight onto the wishlist instead of the pile. */
+    onAddToWishlist: ((BookMetadata, com.example.booktracker.shared.models.BookFormat) -> Unit)? = null,
+    /** Already typed in, e.g. "The Expanse book 4" from the wishlist's series card. */
+    initialQuery: String = ""
 ) {
-    var query by remember { mutableStateOf("") }
+    var query by remember { mutableStateOf(initialQuery) }
     var results by remember { mutableStateOf<List<BookMetadata>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -247,6 +252,12 @@ fun AddBookScreen(
             onConfirmAdd = { status, startPage, format, purchases ->
                 onAddBook(book.copy(currentPage = startPage, purchaseLog = purchases), status, format)
                 previewBook = null
+            },
+            onAddToWishlist = onAddToWishlist?.let { add ->
+                { format ->
+                    add(book, format)
+                    previewBook = null
+                }
             }
         )
     }
@@ -371,7 +382,9 @@ fun BookPreviewDialog(
     book: BookMetadata,
     onDismiss: () -> Unit,
     dismissLabel: String = "Cancel",
-    onConfirmAdd: (BookStatus, Int, com.example.booktracker.shared.models.BookFormat, List<com.example.booktracker.shared.models.PurchaseLog>) -> Unit
+    onConfirmAdd: (BookStatus, Int, com.example.booktracker.shared.models.BookFormat, List<com.example.booktracker.shared.models.PurchaseLog>) -> Unit,
+    /** Shown as a Wishlist button when set: you want the book but don't have it yet. */
+    onAddToWishlist: ((com.example.booktracker.shared.models.BookFormat) -> Unit)? = null
 ) {
     var purchases by remember { mutableStateOf(emptyList<com.example.booktracker.shared.models.PurchaseLog>()) }
     var selectedStatus by remember { mutableStateOf(BookStatus.TO_READ) }
@@ -490,6 +503,14 @@ fun BookPreviewDialog(
                 ) {
                     TextButton(onClick = onDismiss) {
                         Text(dismissLabel)
+                    }
+                    if (onAddToWishlist != null) {
+                        Spacer(Modifier.width(4.dp))
+                        OutlinedButton(onClick = { onAddToWishlist(selectedFormat) }) {
+                            Icon(Icons.Filled.BookmarkAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Wishlist")
+                        }
                     }
                     Spacer(Modifier.width(8.dp))
                     Button(

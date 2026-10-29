@@ -682,6 +682,7 @@ private fun NotificationsPage(
                 HourChoice("Remind me at", prefs.reviewReminderHour) { h -> onPrefsChange { it.copy(reviewReminderHour = h) } }
             }
             SwitchSetting("Weekly recap", "Pages, time and reading days, Sundays at 7 PM", prefs.weeklyRecap) { on -> onPrefsChange { it.copy(weeklyRecap = on) } }
+            SwitchSetting("Wishlist releases", "At 9 AM on the day a book you're waiting for comes out", prefs.releaseReminders) { on -> onPrefsChange { it.copy(releaseReminders = on) } }
         }
     }
 

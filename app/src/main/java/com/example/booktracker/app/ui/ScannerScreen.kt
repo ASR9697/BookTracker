@@ -65,7 +65,9 @@ private sealed interface ScanState {
 fun ScannerScreen(
     onClose: () -> Unit,
     onBookConfirmed: (BookMetadata, com.example.booktracker.shared.models.BookStatus, com.example.booktracker.shared.models.BookFormat) -> Unit,
-    onAddManually: () -> Unit
+    onAddManually: () -> Unit,
+    /** Scanned in a shop and not bought yet: straight onto the wishlist. */
+    onAddToWishlist: ((BookMetadata, com.example.booktracker.shared.models.BookFormat) -> Unit)? = null
 ) {
     val context = LocalContext.current
     var hasPermission by remember {
@@ -209,7 +211,8 @@ fun ScannerScreen(
                 dismissLabel = "Rescan",
                 onConfirmAdd = { status, startPage, format, purchases ->
                     onBookConfirmed(book.copy(currentPage = startPage, purchaseLog = purchases), status, format)
-                }
+                },
+                onAddToWishlist = onAddToWishlist?.let { add -> { format -> add(book, format) } }
             )
         }
         is ScanState.NotFound -> {

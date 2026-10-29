@@ -46,7 +46,7 @@ class BookTrackerApplication : Application(), SingletonImageLoader.Factory {
         appScope.launch {
             val settings = ServiceLocator.settings(this@BookTrackerApplication)
             settings.prefs
-                .map { listOf(it.streakNudge, it.streakNudgeHour, it.weeklyRecap, it.reviewReminder, it.reviewReminderHour) }
+                .map { listOf(it.streakNudge, it.streakNudgeHour, it.weeklyRecap, it.reviewReminder, it.reviewReminderHour, it.releaseReminders) }
                 .distinctUntilChanged()
                 .collect { NudgeScheduler.apply(this@BookTrackerApplication, settings.prefs.first()) }
         }

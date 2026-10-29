@@ -50,6 +50,7 @@ import com.example.booktracker.shared.models.Ownership
 import com.example.booktracker.shared.models.ReviewState
 import com.example.booktracker.shared.models.Session
 import com.example.booktracker.shared.models.VocabWord
+import com.example.booktracker.shared.models.WishInfo
 import java.time.ZoneId
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
@@ -732,7 +733,64 @@ class BookTrackerViewModel(
     }
 
     fun setOwnership(book: Book, ownership: Ownership) {
-        viewModelScope.launch { repository.updateOwnership(book.id, ownership) }
+        viewModelScope.launch {
+            val current = repository.observeBooks().first().find { it.id == book.id } ?: book
+            // Going on the wishlist starts its details, so the page can sort by when it was added.
+            if (ownership == Ownership.WISHLIST && current.wish == null) {
+                val now = System.currentTimeMillis()
+                repository.updateBook(current.copy(ownership = ownership, wish = WishInfo(addedAt = now), lastUpdated = now))
+            } else {
+                repository.updateOwnership(book.id, ownership)
+            }
+        }
+    }
+
+    /** Priority, expected price, store, who recommended it and when it comes out. */
+    fun setWish(book: Book, wish: WishInfo) {
+        viewModelScope.launch {
+            val current = repository.observeBooks().first().find { it.id == book.id } ?: book
+            repository.updateBook(current.copy(wish = wish, lastUpdated = System.currentTimeMillis()))
+        }
+    }
+
+    /**
+     * "Got it": off the wishlist and onto the shelf. With a [purchase] it was
+     * bought and the purchase is logged; without one it was a gift.
+     */
+    fun gotWished(book: Book, purchase: com.example.booktracker.shared.models.PurchaseLog?) {
+        viewModelScope.launch {
+            val current = repository.observeBooks().first().find { it.id == book.id } ?: book
+            repository.updateBook(
+                current.copy(
+                    ownership = if (purchase != null) Ownership.OWNED else Ownership.GIFT,
+                    purchaseLog = current.purchaseLog + listOfNotNull(purchase),
+                    lastUpdated = System.currentTimeMillis()
+                )
+            )
+        }
+    }
+
+    /** Adds a searched or scanned book straight to the wishlist, on the to-read pile. */
+    fun addToWishlist(scanned: BookMetadata, format: BookFormat, onAdded: (Book) -> Unit = {}) {
+        viewModelScope.launch {
+            val added = repository.addBook(
+                title = scanned.title,
+                authors = scanned.authors,
+                totalPages = scanned.pageCount,
+                coverUrl = scanned.coverUrl,
+                description = scanned.description,
+                genres = scanned.genres,
+                publishedDate = scanned.publishedDate,
+                status = BookStatus.TO_READ,
+                format = format,
+                creators = scanned.creators,
+                isbn = scanned.isbn,
+                publisher = scanned.publisher
+            )
+            val wished = added.copy(ownership = Ownership.WISHLIST, wish = WishInfo(addedAt = added.dateAdded))
+            repository.updateBook(wished)
+            onAdded(wished)
+        }
     }
 
     /** Replaces the book's purchase records; a first purchase also marks an unset book as owned. */

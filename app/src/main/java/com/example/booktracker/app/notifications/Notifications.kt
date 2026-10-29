@@ -22,6 +22,7 @@ object Notifications {
     const val ID_STREAK_NUDGE = 1002
     const val ID_WEEKLY_RECAP = 1003
     const val ID_REVIEW_REMINDER = 1004
+    const val ID_WISHLIST_RELEASE = 1005
 
     fun ensureChannels(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return

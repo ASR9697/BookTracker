@@ -34,6 +34,30 @@ enum class Ownership(val label: String) {
     }
 }
 
+enum class WishPriority(val label: String) {
+    MUST("Must have"),
+    WANT("Want"),
+    MAYBE("Maybe")
+}
+
+/**
+ * What the reader knows about a book they want to get. Filled in while the book
+ * is on the wishlist; kept afterwards so "Got it" can prefill the purchase.
+ */
+data class WishInfo(
+    val priority: WishPriority = WishPriority.WANT,
+    /** Expected price; null when unknown. */
+    val price: Double? = null,
+    val currency: String = "",
+    val store: String = "",
+    val recommendedBy: String = "",
+    val note: String = "",
+    /** Release day (start of day, local) for a book that isn't out yet; null when it already is. */
+    val releaseDate: Long? = null,
+    /** When it went on the wishlist. */
+    val addedAt: Long = 0L
+)
+
 enum class ProgressUnit {
     Page, Percentage, Chapter, Minute
 }
@@ -124,7 +148,9 @@ data class Book(
      */
     val audioMinutes: Int = 0,
     /** Playback speed the reader listens at (1.0, 1.25, 1.5…). */
-    val audioSpeed: Float = 1f
+    val audioSpeed: Float = 1f,
+    /** Wishlist details; null for a book that was never wished for. */
+    val wish: WishInfo? = null
 ) {
     val authors: List<String> get() = creators.map { it.name }
     val genres: List<String> get() = classification.tags

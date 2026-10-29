@@ -239,6 +239,7 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
         .filter { it.status.equals(BookStatus.READING.name, ignoreCase = true) }
         .sortedByDescending { it.lastUpdated }
     var showAddDialog by remember { mutableStateOf(false) }
+    var addQuery by remember { mutableStateOf("") }
     // Hoisted so the Add book button can shrink once Home scrolls under it.
     val homeScroll = rememberScrollState()
     val homeAtTop by remember { derivedStateOf { homeScroll.value == 0 } }
@@ -599,7 +600,9 @@ androidx.compose.animation.SharedTransitionLayout {
                                                 behindBar = barOverlaysContent,
                                                 layout = homeLayout,
                                                 onEditHome = { navController.navigate("editHome") },
-                                                onOpenOwnership = { navController.navigate("owned/${it.name}") },
+                                                onOpenOwnership = {
+                                                    navController.navigate(if (it == Ownership.WISHLIST) "wishlist" else "owned/${it.name}")
+                                                },
                                                 onAddNote = { book, page, text, type, images -> viewModel.addNote(book.id, page, text, type, images) },
                                                 onChangeStatus = { book, status -> viewModel.changeStatus(book, status) },
                                                 onOpenStreak = { navController.navigate("streak") { launchSingleTop = true } },
@@ -664,7 +667,15 @@ androidx.compose.animation.SharedTransitionLayout {
                                                                 onScan = openScanner,
                                                                 onChangeStatus = { book, status -> viewModel.changeStatus(book, status) },
                                                                 onSaveNote = { book, page, text, type, images -> viewModel.addNote(book.id, page, text, type, images) },
-                                                                onOverlayChange = { libraryOverlayOpen = it }
+                                                                onOverlayChange = { libraryOverlayOpen = it },
+                                                                onToggleWishlist = { book ->
+                                                                    val adding = book.ownership != Ownership.WISHLIST
+                                                                    viewModel.setOwnership(book, if (adding) Ownership.WISHLIST else Ownership.NONE)
+                                                                    scope.launch {
+                                                                        snackbarHostState.currentSnackbarData?.dismiss()
+                                                                        snackbarHostState.showSnackbar(if (adding) "Added to your wishlist" else "Removed from your wishlist")
+                                                                    }
+                                                                }
                                                             )
                                                         }
                                                         if (!libraryListDetail) {
@@ -782,6 +793,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             onOpenHistory = { navController.navigate("history") },
                                                             onOpenFinished = { navController.navigate("finished") },
                                                             onOpenPlanner = { navController.navigate("planner") },
+                                                            onOpenWishlist = { navController.navigate("wishlist") },
                                                             onOpenBook = { navController.navigate("book/${it.id}") },
                                                             onOpenWrapped = { navController.navigate("wrappedAnimated") },
                                                             onUpdateName = viewModel::setUserName
@@ -798,6 +810,42 @@ androidx.compose.animation.SharedTransitionLayout {
                                         val homeLayout by viewModel.homeLayout.collectAsState()
                                         SubScreen(title = "Edit home screen", onBack = { navController.popBackStack() }) {
                                             EditHomeScreen(layout = homeLayout, onLayoutChange = viewModel::setHomeLayout)
+                                        }
+                                    }
+                                    composable("wishlist") {
+                                        androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
+                                            val wishOwner by viewModel.userName.collectAsState()
+                                            WishlistScreen(
+                                                books = books,
+                                                ownerName = wishOwner,
+                                                onBack = { navController.popBackStack() },
+                                                onOpenBook = { navController.navigate("book/${it.id}") },
+                                                onSetWish = viewModel::setWish,
+                                                onGotIt = { book, purchase ->
+                                                    viewModel.gotWished(book, purchase)
+                                                    scope.launch {
+                                                        snackbarHostState.currentSnackbarData?.dismiss()
+                                                        snackbarHostState.showSnackbar("“${book.title}” is on your shelf")
+                                                    }
+                                                },
+                                                onRemove = { book ->
+                                                    viewModel.setOwnership(book, Ownership.NONE)
+                                                    scope.launch {
+                                                        snackbarHostState.currentSnackbarData?.dismiss()
+                                                        val result = snackbarHostState.showSnackbar(
+                                                            message = "Removed from your wishlist",
+                                                            actionLabel = "Undo",
+                                                            duration = SnackbarDuration.Short
+                                                        )
+                                                        if (result == SnackbarResult.ActionPerformed) viewModel.setOwnership(book, Ownership.WISHLIST)
+                                                    }
+                                                },
+                                                onSetBudget = { amount -> viewModel.updatePrefs { it.copy(monthlyBookBudget = amount) } },
+                                                onSearch = { query ->
+                                                    addQuery = query
+                                                    showAddDialog = true
+                                                }
+                                            )
                                         }
                                     }
                                     composable("owned/{ownership}") { entry ->
@@ -882,6 +930,14 @@ androidx.compose.animation.SharedTransitionLayout {
                                                 scope.launch {
                                                     snackbarHostState.currentSnackbarData?.dismiss()
                                                     snackbarHostState.showSnackbar("Added “${scanned.title}”")
+                                                }
+                                            },
+                                            onAddToWishlist = { scanned, format ->
+                                                viewModel.addToWishlist(scanned, format)
+                                                navController.popBackStack()
+                                                scope.launch {
+                                                    snackbarHostState.currentSnackbarData?.dismiss()
+                                                    snackbarHostState.showSnackbar("“${scanned.title}” added to your wishlist")
                                                 }
                                             },
                                             onAddManually = {
@@ -1371,15 +1427,26 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
     }
 
     if (showAddDialog) {
+        // A search opened from the wishlist comes with its query; it's used once.
+        androidx.compose.runtime.DisposableEffect(Unit) { onDispose { addQuery = "" } }
         androidx.compose.ui.window.Dialog(
             onDismissRequest = { showAddDialog = false },
             properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
         ) {
             AddBookScreen(
+                initialQuery = addQuery,
                 onDismiss = { showAddDialog = false },
                 onAddBook = { metadata, status, format ->
                     viewModel.addScannedBook(metadata, status, format)
                     showAddDialog = false
+                },
+                onAddToWishlist = { metadata, format ->
+                    viewModel.addToWishlist(metadata, format)
+                    showAddDialog = false
+                    scope.launch {
+                        snackbarHostState.currentSnackbarData?.dismiss()
+                        snackbarHostState.showSnackbar("“${metadata.title}” added to your wishlist")
+                    }
                 },
                 onScanBarcode = {
                     showAddDialog = false
@@ -1503,7 +1570,8 @@ fun LibraryScreen(
     onScan: () -> Unit,
     onChangeStatus: (Book, BookStatus) -> Unit = { _, _ -> },
     onSaveNote: (Book, Int, String, com.example.booktracker.shared.models.NoteType, List<String>) -> Unit = { _, _, _, _, _ -> },
-    onOverlayChange: (Boolean) -> Unit = {}
+    onOverlayChange: (Boolean) -> Unit = {},
+    onToggleWishlist: (Book) -> Unit = {}
 ) {
     var noteFor by remember { mutableStateOf<Book?>(null) }
     val gridEntrance = com.example.booktracker.app.ui.animations.rememberEntranceState()
@@ -1961,7 +2029,8 @@ fun LibraryScreen(
                                 onStartReading = { onStartReading(book) },
                                 onDelete = { onDelete(book) },
                                 onChangeStatus = { status -> onChangeStatus(book, status) },
-                                onAddNote = { noteFor = book }
+                                onAddNote = { noteFor = book },
+                                onToggleWishlist = { onToggleWishlist(book) }
                             )
                         }
                     }

@@ -70,7 +70,8 @@ fun LibraryGridCard(
     onStartReading: () -> Unit,
     onDelete: () -> Unit,
     onChangeStatus: ((BookStatus) -> Unit)? = null,
-    onAddNote: (() -> Unit)? = null
+    onAddNote: (() -> Unit)? = null,
+    onToggleWishlist: (() -> Unit)? = null
 ) {
     val haptics = rememberHaptics()
     var menuOpen by remember { mutableStateOf(false) }
@@ -87,7 +88,8 @@ fun LibraryGridCard(
             onStartReading = onStartReading.takeIf { canStart },
             onAddNote = onAddNote,
             onChangeStatus = onChangeStatus,
-            onDelete = onDelete
+            onDelete = onDelete,
+            onToggleWishlist = onToggleWishlist
         )
     }
 

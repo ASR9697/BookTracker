@@ -56,6 +56,10 @@ data class AppPrefs(
     val scanOnFinish: Boolean = false,
     /** A session shorter than this with no pages is treated as an accident; 0 keeps everything. */
     val minSessionSeconds: Int = 60,
+    /** Monthly spend on books the wishlist measures against, in the reader's currency; 0 is no budget. */
+    val monthlyBookBudget: Int = 0,
+    /** A notification on the day a wished-for book comes out. */
+    val releaseReminders: Boolean = true,
     // Appearance
     /** Dark theme between [nocturnalFrom] and [nocturnalTo] whatever the theme choice. */
     val nocturnal: Boolean = false,
@@ -280,6 +284,8 @@ class SettingsRepository(context: Context) {
         val stillReadingCheck = booleanPreferencesKey("pref_still_reading_check")
         val scanOnFinish = booleanPreferencesKey("pref_scan_on_finish")
         val minSessionSeconds = intPreferencesKey("pref_min_session_seconds")
+        val monthlyBookBudget = intPreferencesKey("pref_monthly_book_budget")
+        val releaseReminders = booleanPreferencesKey("pref_release_reminders")
         val nocturnal =booleanPreferencesKey("pref_nocturnal")
         val nocturnalFrom = intPreferencesKey("pref_nocturnal_from")
         val nocturnalTo = intPreferencesKey("pref_nocturnal_to")
@@ -311,6 +317,8 @@ class SettingsRepository(context: Context) {
             stillReadingCheck = p[PrefKeys.stillReadingCheck] ?: d.stillReadingCheck,
             scanOnFinish = p[PrefKeys.scanOnFinish] ?: d.scanOnFinish,
             minSessionSeconds = p[PrefKeys.minSessionSeconds] ?: d.minSessionSeconds,
+            monthlyBookBudget = p[PrefKeys.monthlyBookBudget] ?: d.monthlyBookBudget,
+            releaseReminders = p[PrefKeys.releaseReminders] ?: d.releaseReminders,
             nocturnal = p[PrefKeys.nocturnal] ?: d.nocturnal,
             nocturnalFrom = p[PrefKeys.nocturnalFrom] ?: d.nocturnalFrom,
             nocturnalTo = p[PrefKeys.nocturnalTo] ?: d.nocturnalTo,
@@ -346,6 +354,8 @@ class SettingsRepository(context: Context) {
             p[PrefKeys.stillReadingCheck] = next.stillReadingCheck
             p[PrefKeys.scanOnFinish] = next.scanOnFinish
             p[PrefKeys.minSessionSeconds] = next.minSessionSeconds.coerceIn(0, 600)
+            p[PrefKeys.monthlyBookBudget] = next.monthlyBookBudget.coerceAtLeast(0)
+            p[PrefKeys.releaseReminders] = next.releaseReminders
             p[PrefKeys.nocturnal] = next.nocturnal
             p[PrefKeys.nocturnalFrom] = next.nocturnalFrom.coerceIn(0, 23)
             p[PrefKeys.nocturnalTo] = next.nocturnalTo.coerceIn(0, 23)

@@ -62,6 +62,13 @@ fun BookDetailRoute(
         onSetFormat = { format -> book?.let { viewModel.setFormat(it, format) } },
         onSetOwnership = { ownership -> book?.let { viewModel.setOwnership(it, ownership) } },
         onSetPurchases = { purchases -> book?.let { viewModel.setPurchases(it, purchases) } },
+        onSetWish = { wish -> book?.let { viewModel.setWish(it, wish) } },
+        onGotWished = { purchase ->
+            book?.let {
+                viewModel.gotWished(it, purchase)
+                snack("“${it.title}” is on your shelf")
+            }
+        },
         onSetFinishBy = { finishBy -> book?.let { viewModel.setFinishBy(it, finishBy) } },
         onDelete = {
             book?.let { onDeleteWithUndo(it) }

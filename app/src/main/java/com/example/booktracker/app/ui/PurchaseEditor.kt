@@ -47,10 +47,12 @@ fun PurchaseEditorDialog(
     initial: PurchaseLog?,
     onDismiss: () -> Unit,
     onSave: (PurchaseLog) -> Unit,
-    onDelete: (() -> Unit)? = null
+    onDelete: (() -> Unit)? = null,
+    /** A prefilled new purchase (from the wishlist) isn't an edit, so it says so. */
+    title: String = if (initial == null) "Add purchase" else "Edit purchase"
 ) {
     var store by remember { mutableStateOf(initial?.vendor.orEmpty()) }
-    var price by remember { mutableStateOf(initial?.price?.let { if (it % 1.0 == 0.0) it.toLong().toString() else it.toString() }.orEmpty()) }
+    var price by remember { mutableStateOf(initial?.price?.takeIf { it > 0 }?.let { if (it % 1.0 == 0.0) it.toLong().toString() else it.toString() }.orEmpty()) }
     var currency by remember { mutableStateOf(initial?.currency?.takeIf { it.isNotBlank() } ?: defaultCurrencyCode()) }
     var date by remember { mutableLongStateOf(initial?.date ?: System.currentTimeMillis()) }
     var note by remember { mutableStateOf(initial?.memo.orEmpty()) }
@@ -59,7 +61,7 @@ fun PurchaseEditorDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (initial == null) "Add purchase" else "Edit purchase") },
+        title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(

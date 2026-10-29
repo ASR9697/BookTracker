@@ -9,6 +9,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.BookmarkRemove
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
@@ -44,7 +46,9 @@ fun BookQuickActionsSheet(
     onStartReading: (() -> Unit)? = null,
     onAddNote: (() -> Unit)? = null,
     onChangeStatus: ((BookStatus) -> Unit)? = null,
-    onDelete: (() -> Unit)? = null
+    onDelete: (() -> Unit)? = null,
+    /** Puts the book on the wishlist, or takes it off when it's there. */
+    onToggleWishlist: (() -> Unit)? = null
 ) {
     val haptics = rememberHaptics()
     val reduce = rememberReduceMotion()
@@ -93,6 +97,14 @@ fun BookQuickActionsSheet(
             }
             onAddNote?.let { add ->
                 SettingsRow(icon = Icons.AutoMirrored.Filled.NoteAdd, label = "Add a note", onClick = { onDismiss(); add() })
+            }
+            onToggleWishlist?.let { toggle ->
+                val wished = book.ownership == com.example.booktracker.shared.models.Ownership.WISHLIST
+                SettingsRow(
+                    icon = if (wished) Icons.Filled.BookmarkRemove else Icons.Filled.BookmarkAdd,
+                    label = if (wished) "Remove from wishlist" else "Add to wishlist",
+                    onClick = { haptics.confirm(); onDismiss(); toggle() }
+                )
             }
             onChangeStatus?.let { change ->
                 Text(

@@ -75,6 +75,7 @@ fun ProfileScreen(
     onOpenHistory: () -> Unit = {},
     onOpenFinished: () -> Unit = {},
     onOpenPlanner: () -> Unit = {},
+    onOpenWishlist: () -> Unit = {},
     onOpenBook: (Book) -> Unit = {},
     onOpenWrapped: () -> Unit = {},
     onOpenAchievements: () -> Unit = {},
@@ -446,6 +447,12 @@ fun ProfileScreen(
                             icon = Icons.Filled.Event,
                             label = "Reading Planner",
                             onClick = onOpenPlanner
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        SettingsRow(
+                            icon = Icons.Filled.BookmarkAdd,
+                            label = "Wishlist",
+                            onClick = onOpenWishlist
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         SettingsRow(

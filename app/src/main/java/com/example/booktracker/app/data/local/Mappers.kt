@@ -66,7 +66,18 @@ fun BookEntity.toModel(): Book = Book(
     finishBy = finishBy,
     readStartedAt = readStartedAt,
     audioMinutes = audioMinutes ?: 0,
-    audioSpeed = audioSpeed ?: 1f
+    audioSpeed = audioSpeed ?: 1f,
+    wish = wish?.let { runCatching { gson.fromJson(it, WishInfo::class.java) }.getOrNull() }?.withDefaults()
+)
+
+/** Gson skips Kotlin defaults, so a field missing from the JSON arrives as null; put the defaults back. */
+@Suppress("SENSELESS_COMPARISON", "USELESS_ELVIS")
+private fun WishInfo.withDefaults(): WishInfo = copy(
+    priority = priority ?: WishPriority.WANT,
+    currency = currency ?: "",
+    store = store ?: "",
+    recommendedBy = recommendedBy ?: "",
+    note = note ?: ""
 )
 
 fun Book.toEntity(): BookEntity = BookEntity(
@@ -100,7 +111,8 @@ fun Book.toEntity(): BookEntity = BookEntity(
     finishBy = finishBy,
     readStartedAt = readStartedAt,
     audioMinutes = audioMinutes.takeIf { it > 0 },
-    audioSpeed = audioSpeed.takeIf { audioMinutes > 0 }
+    audioSpeed = audioSpeed.takeIf { audioMinutes > 0 },
+    wish = wish?.let { gson.toJson(it) }
 )
 
 fun MarginNoteEntity.toModel(): MarginNote = MarginNote(

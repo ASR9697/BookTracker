@@ -42,7 +42,8 @@ data class BookEntity(
     val readStartedAt: Long? = null,
     // Nullable so rows from before version 14 need no SQL default.
     val audioMinutes: Int? = null,
-    val audioSpeed: Float? = null
+    val audioSpeed: Float? = null,
+    val wish: String? = null // JSON object, WishInfo
 )
 
 /** One row per highlight or word in spaced review; [kind] is a [ReviewKind] name. */

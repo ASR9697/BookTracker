@@ -13,6 +13,7 @@ import com.example.booktracker.app.R
 import com.example.booktracker.app.analytics.AnalyticsEngine
 import com.example.booktracker.app.analytics.ReviewEngine
 import com.example.booktracker.app.analytics.StreakEngine
+import com.example.booktracker.app.analytics.WishlistEngine
 import com.example.booktracker.app.data.AppPrefs
 import com.example.booktracker.app.data.ServiceLocator
 import com.example.booktracker.app.notifications.Notifications
@@ -125,12 +126,33 @@ class ReviewReminderWorker(context: Context, params: WorkerParameters) : Corouti
     }
 }
 
+/** In the morning, when a wished-for book comes out today. */
+class WishlistReleaseWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+    override suspend fun doWork(): Result {
+        val prefs = applicationContext.nudgePrefs() ?: return Result.success()
+        if (!prefs.releaseReminders) return Result.success()
+        val books = ServiceLocator.repository(applicationContext).observeBooks().first()
+        val out = WishlistEngine.releasedOn(books, java.time.LocalDate.now())
+        if (out.isNotEmpty()) {
+            val titles = if (prefs.hideTitles) null else out.joinToString(", ") { it.title }
+            applicationContext.postNudge(
+                Notifications.CHANNEL_REMINDERS, Notifications.ID_WISHLIST_RELEASE, "wishlist",
+                if (out.size == 1) "Out today from your wishlist" else "${out.size} wishlist books out today",
+                titles ?: "A book you've been waiting for is out today."
+            )
+        }
+        return Result.success()
+    }
+}
+
 /** Keeps the nudge jobs in line with the reader's switches and chosen hours. */
 object NudgeScheduler {
     private const val STREAK = "streak_nudge"
     private const val RECAP = "weekly_recap"
     private const val REVIEW = "review_reminder"
+    private const val RELEASE = "wishlist_release"
     private const val RECAP_HOUR = 19
+    private const val RELEASE_HOUR = 9
 
     fun apply(context: Context, prefs: AppPrefs) {
         val work = WorkManager.getInstance(context)
@@ -155,6 +177,12 @@ object NudgeScheduler {
                 PeriodicWorkRequestBuilder<ReviewReminderWorker>(1, TimeUnit.DAYS)
                     .setInitialDelay(delayTo(now, nextAt(now, prefs.reviewReminderHour)), TimeUnit.MILLISECONDS).build())
         } else work.cancelUniqueWork(REVIEW)
+
+        if (prefs.releaseReminders) {
+            work.enqueueUniquePeriodicWork(RELEASE, ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
+                PeriodicWorkRequestBuilder<WishlistReleaseWorker>(1, TimeUnit.DAYS)
+                    .setInitialDelay(delayTo(now, nextAt(now, RELEASE_HOUR)), TimeUnit.MILLISECONDS).build())
+        } else work.cancelUniqueWork(RELEASE)
     }
 
     private fun nextAt(now: LocalDateTime, hour: Int): LocalDateTime {

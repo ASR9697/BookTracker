@@ -20,6 +20,8 @@ import com.example.booktracker.shared.models.ReviewState
 import com.example.booktracker.shared.models.SeriesInfo
 import com.example.booktracker.shared.models.Session
 import com.example.booktracker.shared.models.VocabWord
+import com.example.booktracker.shared.models.WishInfo
+import com.example.booktracker.shared.models.WishPriority
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.util.zip.ZipEntry
@@ -289,7 +291,30 @@ object BackupEngine {
         if (loanRecord.isNotEmpty()) {
             put("loanRecord", JSONArray(loanRecord.map { it.toJson() }))
         }
+        wish?.let { put("wish", it.toJson()) }
     }
+
+    private fun WishInfo.toJson(): JSONObject = JSONObject().apply {
+        put("priority", priority.name)
+        price?.let { put("price", it) }
+        put("currency", currency)
+        put("store", store)
+        put("recommendedBy", recommendedBy)
+        put("note", note)
+        releaseDate?.let { put("releaseDate", it) }
+        put("addedAt", addedAt)
+    }
+
+    private fun JSONObject.toWish(): WishInfo = WishInfo(
+        priority = runCatching { WishPriority.valueOf(optString("priority")) }.getOrDefault(WishPriority.WANT),
+        price = if (has("price")) optDouble("price") else null,
+        currency = optString("currency"),
+        store = optString("store"),
+        recommendedBy = optString("recommendedBy"),
+        note = optString("note"),
+        releaseDate = if (has("releaseDate")) optLong("releaseDate") else null,
+        addedAt = optLong("addedAt")
+    )
 
     private fun PurchaseLog.toJson(): JSONObject = JSONObject().apply {
         put("date", date)
@@ -386,6 +411,7 @@ object BackupEngine {
             audioSpeed = optDouble("audioSpeed", 1.0).toFloat(),
             purchaseLog = optJSONArray("purchaseLog").mapObjects { it.toPurchaseLog() },
             loanRecord = optJSONArray("loanRecord").mapObjects { it.toLoanRecord() },
+            wish = optJSONObject("wish")?.toWish(),
             // Backups from before ownership existed: a logged purchase means Owned.
             ownership = Ownership.fromStored(
                 optString("ownership").takeIf { it.isNotBlank() },

@@ -290,6 +290,8 @@ fun BookDetailScreen(
     onSetFormat: (String) -> Unit,
     onSetOwnership: (Ownership) -> Unit = {},
     onSetPurchases: (List<com.example.booktracker.shared.models.PurchaseLog>) -> Unit = {},
+    onSetWish: (com.example.booktracker.shared.models.WishInfo) -> Unit = {},
+    onGotWished: (com.example.booktracker.shared.models.PurchaseLog?) -> Unit = {},
     onSetFinishBy: (Long?) -> Unit = {},
     onDelete: () -> Unit,
     onStartReading: () -> Unit,
@@ -651,7 +653,7 @@ fun BookDetailScreen(
                     if (book.format != com.example.booktracker.shared.models.BookFormat.Audiobook && book.totalPages > 0) {
                         item { SectionItem { TandemCard(book, onSetAudiobook, onLogListening, onSetAudioPosition) } }
                     }
-                    item { SectionItem { OwnershipCard(book, onSetOwnership) } }
+                    item { SectionItem { OwnershipCard(book, onSetOwnership, onSetWish, onGotWished) } }
 
                     if (book.status == BookStatus.READING.name) {
                         item { SectionItem { PlannerCard(book, completed) } }
@@ -1640,7 +1642,31 @@ private fun FormatCard(book: Book, onSetFormat: (String) -> Unit) {
 }
 
 @Composable
-private fun OwnershipCard(book: Book, onSetOwnership: (Ownership) -> Unit) {
+private fun OwnershipCard(
+    book: Book,
+    onSetOwnership: (Ownership) -> Unit,
+    onSetWish: (com.example.booktracker.shared.models.WishInfo) -> Unit,
+    onGotWished: (com.example.booktracker.shared.models.PurchaseLog?) -> Unit
+) {
+    var editingWish by remember { mutableStateOf(false) }
+    var gettingIt by remember { mutableStateOf(false) }
+    if (editingWish) {
+        WishEditorDialog(
+            title = book.title,
+            initial = com.example.booktracker.app.analytics.WishlistEngine.info(book),
+            onDismiss = { editingWish = false },
+            onSave = {
+                onSetWish(it)
+                editingWish = false
+            }
+        )
+    }
+    if (gettingIt) {
+        GotItFlow(book = book, onDismiss = { gettingIt = false }, onGotIt = {
+            onGotWished(it)
+            gettingIt = false
+        })
+    }
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
         shape = RoundedCornerShape(24.dp),
@@ -1670,6 +1696,44 @@ private fun OwnershipCard(book: Book, onSetOwnership: (Ownership) -> Unit) {
                         leadingIcon = { Icon(option.icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
                         modifier = Modifier.weight(1f)
                     )
+                }
+            }
+            if (book.ownership == Ownership.WISHLIST) {
+                val wish = com.example.booktracker.app.analytics.WishlistEngine.info(book)
+                Spacer(Modifier.height(16.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                Spacer(Modifier.height(12.dp))
+                val facts = listOfNotNull(
+                    wish.priority.label,
+                    wish.price?.let { "~${money(it, wish.currency.ifBlank { defaultCurrencyCode() })}" },
+                    wish.store.takeIf { it.isNotBlank() },
+                    wish.releaseDate?.let { "out ${formatPurchaseDate(it)}" }
+                )
+                Text(facts.joinToString(" · "), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                val why = listOfNotNull(
+                    wish.recommendedBy.takeIf { it.isNotBlank() }?.let { "Recommended by $it" },
+                    wish.note.takeIf { it.isNotBlank() }
+                )
+                if (why.isNotEmpty()) {
+                    Text(
+                        why.joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilledTonalButton(onClick = { gettingIt = true }) {
+                        Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Got it")
+                    }
+                    OutlinedButton(onClick = { editingWish = true }) {
+                        Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Details")
+                    }
                 }
             }
         }

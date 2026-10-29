@@ -14,7 +14,7 @@ object DeepLink {
 
     const val EXTRA_ROUTE = "com.example.booktracker.OPEN_ROUTE"
 
-    private val ALLOWED = Regex("^(home|library|memorize|stats|profile|review|streak|calendar|vocabulary|(book|focus|session_save)/[A-Za-z0-9_.:-]+)$")
+    private val ALLOWED = Regex("^(home|library|memorize|stats|profile|review|streak|calendar|vocabulary|wishlist|(book|focus|session_save)/[A-Za-z0-9_.:-]+)$")
 
     fun intent(context: Context, route: String): Intent =
         Intent(context, MainActivity::class.java).apply {
