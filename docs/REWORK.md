@@ -12,7 +12,6 @@ Paths are relative to `app/src/main/java/com/example/booktracker/` unless noted.
 |---|---|---|
 | [Profile](#profile) | `app/ui/ProfileScreen.kt` | Ready to build |
 | [Stats](#stats) | `app/ui/AnalyticsScreen.kt` | Ready to build |
-| [Home](#home) | `app/ui/HomeDashboard.kt` | Ready to build |
 
 <!-- Status: Idea → Planned, decisions open → Ready to build → In progress -->
 
@@ -225,101 +224,6 @@ the full "Recently finished" list.
 3. Rhythm, pace, focus & places merge, "what you read" section, finished covers row,
    goals link; remove the goal cards and the seasonal sprint code.
 4. Extra A: last year's line behind this year's on the Year chart.
-
----
-
-## Home
-
-**File:** `app/ui/HomeDashboard.kt` (1195 lines), sections in `app/data/HomeLayout.kt`
-· **Status:** Ready to build
-
-**Goal:** Home is *today*: the book in your hands, today's goal, the streak, and what
-needs you right now. It's in good shape (reorderable sections, swipe-the-cover
-actions, celebration), so this is a tune-up, not a rebuild. Problems: navigation is
-spread over two sections that overlap Profile (Finished, Wishlist), "Pages per month"
-is a Stats breakdown, things that are about today (books planned for today, wished
-books out today) never show, and the current-book card gets re-reads and non-page
-books wrong.
-
-### Decisions
-- [x] "Pages per month": **hidden by default** (still available in Edit home). Only
-      changes `HomeLayout.DEFAULT`; saved layouts keep their choice.
-- [x] **Merge** "Wishlist & owned" and "Shortcuts" into one Shortcuts section:
-      Calendar, Bookshelf, Wishlist, Owned, Gifts, plus Year in review once unlocked.
-      Finished leaves Home (it's on Profile).
-- [x] Today / year tiles: **tap opens the Goals screen**, not the edit-goal dialog.
-- [x] **Add the Heads-up strip**, folding in the loan banner.
-- [x] Extras: **A, C, D** (On this day, smart subtitle, "Can't decide?").
-
-### Layout, top to bottom
-1. **Greeting (kept):** name, today line. Subtitle stays unless extra C replaces it.
-2. **Heads-up strip (new):** only what needs you today, hidden when empty:
-   library loans due (today's `UrgentLoanBanner`, moved in), books planned for today
-   (`Book.plannedDate`), wished-for books released today (`WishlistEngine.releasedOn`).
-   One compact card, one line each, tap opens the book.
-3. **Current book carousel (kept)** with the fixes below.
-4. **Streak (kept).**
-5. **Today & year (kept):** tap opens Goals.
-6. **Daily review (kept).**
-7. **Up next (kept):** plus extra D if chosen.
-8. **Shortcuts (merged):** one section of tiles: Calendar, Bookshelf, Wishlist, Owned,
-   Gifts, Year in review (only once unlocked, not a disabled tile). Two rows on a
-   phone, or one scrolling row.
-9. **Pages per month (optional):** hidden by default.
-10. **Edit home screen (kept).**
-
-`HomeSection`: `OWNERSHIP` folds into `SHORTCUTS`, new `HEADS_UP`. `HomeLayout.decode`
-already drops unknown names and appends new ones, so saved layouts survive; check
-that a saved `-OWNERSHIP` (hidden) doesn't hide the merged section by surprise.
-
-### Fixes
-- Current book "Day N · since …" counts from the book's first session ever, so a
-  re-read shows the first read's date. Start from `readStartedAt`
-  (`RereadMemories.currentReadStart`), and use `today` (day-start hour) instead of
-  `LocalDate.now(zone)`.
-- Current book shows "p. 120 / 300" for every book, but `progressUnit` can be
-  Percentage, Chapter or Minute. Use `FormatAdaptabilityLayer.unitAbbrev`/`countLabel`.
-- "+ Pages" opens `CustomProgressDialog` (a +N stepper), while `ProgressPickerSheet`
-  is the app's one progress entry point. Switch to it and delete
-  `CustomProgressDialog.kt` (Home is its only user).
-- Cover drag backdrop `clip(MaterialTheme.shapes.small)` → `AppShape.XS`;
-  celebration pill `RoundedCornerShape(50)` → `CircleShape`.
-- "Year in review" shortcut shows disabled ("Unlocks after N reading days") while
-  Profile hides Wrapped until earned; hide it on Home too.
-
-### Extras
-| # | Idea | Effort |
-|---|---|---|
-| A | "On this day": a book you finished or a highlight you saved on this date in past years (moved here from Profile extra B; it's a *today* thing) | Small |
-| B | Tap the goal chip in the collapsed bar to log pages for the current book | Small |
-| C | Smart subtitle: replace the generic line with one from your habits, e.g. "You usually read around 9 pm; 20 minutes reaches today's goal" (`bestTimeOfDay`, `SmartPlanningEngine`) | Small |
-| D | "Can't decide?" button in Up next → the to-read swipe (`tbr_swipe`) | Small |
-| E | Monday recap card: last week's pages and time against the week before | Small |
-| F | Monthly badge challenge as one line under the streak | Small |
-
-**Chosen: A, C, D.** B, E, F are parked.
-
-Placement: A ("On this day") goes in the Heads-up strip as its last line, so today's
-things stay in one card; C replaces the greeting subtitle; D is a text button beside
-Up next's "See all".
-
-### Files
-- `app/ui/HomeDashboard.kt`: heads-up strip, merged shortcuts, card fixes, picker
-  sheet; consider moving `CurrentBookCard` out to `app/ui/CurrentBookCard.kt`.
-- `app/data/HomeLayout.kt` (+ `HomeLayoutTest`): `HEADS_UP`, fold `OWNERSHIP` into
-  `SHORTCUTS`, `MONTHLY_PAGES` hidden by default.
-- `app/ui/BookTrackerScreen.kt`: move the loan banner into the heads-up strip, pass
-  `onOpenGoals`, drop `onOpenFinished` from Home.
-- Delete `app/ui/CustomProgressDialog.kt`.
-- Heads-up logic as a small pure function (e.g. `HeadsUp.today(books, today)`) in
-  `app/analytics/` with a test.
-- `npm run update-maps`.
-
-### PRs
-1. Fixes: re-read day line, progress units, picker sheet, shapes, Year in review.
-2. Layout: heads-up strip, merged shortcuts, tiles → Goals, pages per month hidden.
-3. Extras A (On this day, in the heads-up strip), C (smart subtitle), D ("Can't
-   decide?" → `tbr_swipe`).
 
 ---
 

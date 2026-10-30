@@ -10,8 +10,7 @@ enum class HomeSection(val title: String, val description: String) {
     REVIEW("Daily review", "A few highlights and words to remember each day"),
     MONTHLY_PAGES("Pages per month", "This year's reading, month by month"),
     UP_NEXT("Up next", "Books waiting to be read"),
-    OWNERSHIP("Wishlist & owned", "Books you want, own or were given"),
-    SHORTCUTS("Shortcuts", "Calendar, bookshelf, finished, year in review")
+    SHORTCUTS("Shortcuts", "Calendar, bookshelf, wishlist, owned and gifts")
 }
 
 /** Order of every section plus the ones the reader hid. */
@@ -33,7 +32,8 @@ data class HomeLayout(
         copy(hidden = if (section in hidden) hidden - section else hidden + section)
 
     companion object {
-        val DEFAULT = HomeLayout(HomeSection.entries.toList())
+        /** Pages per month starts hidden: Stats owns breakdowns, Home is today. */
+        val DEFAULT = HomeLayout(HomeSection.entries.toList(), hidden = setOf(HomeSection.MONTHLY_PAGES))
 
         /**
          * Unknown or repeated names are dropped and sections added in later versions

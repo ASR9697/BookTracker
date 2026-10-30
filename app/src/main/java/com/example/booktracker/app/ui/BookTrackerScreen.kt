@@ -1,5 +1,6 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.format.FormatAdaptabilityLayer
 import com.example.booktracker.app.ui.theme.AppShape
 
 import androidx.activity.compose.BackHandler
@@ -640,7 +641,8 @@ androidx.compose.animation.SharedTransitionLayout {
                                                     scope.launch {
                                                         snackbarHostState.currentSnackbarData?.dismiss()
                                                         val result = snackbarHostState.showSnackbar(
-                                                            message = "Added $delta pages",
+                                                            message = if (delta > 0) "Added ${FormatAdaptabilityLayer.countLabel(b, delta)}"
+                                                                else "Back ${FormatAdaptabilityLayer.countLabel(b, -delta)}",
                                                             actionLabel = "Undo",
                                                             duration = SnackbarDuration.Short
                                                         )
@@ -654,21 +656,20 @@ androidx.compose.animation.SharedTransitionLayout {
                                                 onOpenCalendar = { navController.navigate("calendar") },
                                                 onOpenBookshelf = { navController.navigate("bookshelf") },
                                                 onOpenStats = { navigateTopLevel("stats") },
-                                                onOpenFinished = { navController.navigate("finished") },
                                                 onOpenWrapped = { navController.navigate("wrapped") },
-                                                onEditGoal = { type ->
-                                                    initialGoalType = type
-                                                    showGoalDialog = true
-                                                },
+                                                onOpenGoals = { navController.navigate("goals") { launchSingleTop = true } },
+                                                onPickNext = { navController.navigate("tbr_swipe") { launchSingleTop = true } },
+                                                // What needs the reader today: loans due, plans, releases.
                                                 banner = {
-                                                    val urgentLoans = remember(books) { LoanEngine.urgentLoans(books) }
-                                                    if (urgentLoans.isNotEmpty()) {
-                                                        UrgentLoanBanner(
-                                                            urgentLoans = urgentLoans,
-                                                            onOpenBook = { navController.navigate("book/${it.id}") },
-                                                            modifier = Modifier.padding(horizontal = 16.dp)
-                                                        )
+                                                    val homeNotes by viewModel.allNotes.collectAsState()
+                                                    val headsUp = remember(books, homeNotes) {
+                                                        com.example.booktracker.app.analytics.HeadsUp.today(books, java.time.LocalDate.now(), notes = homeNotes)
                                                     }
+                                                    HeadsUpCard(
+                                                        items = headsUp,
+                                                        onOpenBook = { navController.navigate("book/${it.id}") },
+                                                        modifier = Modifier.padding(horizontal = 16.dp)
+                                                    )
                                                 }
                                             )
                                         }

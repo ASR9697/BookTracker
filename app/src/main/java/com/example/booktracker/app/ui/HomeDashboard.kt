@@ -114,6 +114,8 @@ import androidx.compose.ui.unit.dp
 import com.example.booktracker.app.analytics.AnalyticsEngine
 import com.example.booktracker.app.analytics.GoalEngine
 import com.example.booktracker.app.analytics.StreakEngine
+import com.example.booktracker.app.analytics.RereadMemories
+import com.example.booktracker.shared.models.ProgressUnit
 import com.example.booktracker.app.analytics.WishlistEngine
 import com.example.booktracker.app.data.HomeLayout
 import com.example.booktracker.app.data.HomeSection
@@ -163,9 +165,8 @@ fun HomeDashboard(
     onOpenCalendar: () -> Unit,
     onOpenBookshelf: () -> Unit,
     onOpenStats: () -> Unit,
-    onOpenFinished: () -> Unit,
     onOpenWrapped: () -> Unit,
-    onEditGoal: (GoalType) -> Unit,
+    onOpenGoals: () -> Unit,
     modifier: Modifier = Modifier,
     layout: HomeLayout = HomeLayout.DEFAULT,
     onEditHome: () -> Unit = {},
@@ -179,6 +180,8 @@ fun HomeDashboard(
     scrollState: ScrollState = rememberScrollState(),
     headerState: TopAppBarState = rememberTopAppBarState(),
     onSearch: () -> Unit = {},
+    /** "Can't decide?": the to-read swipe. */
+    onPickNext: () -> Unit = {},
     banner: @Composable () -> Unit = {}
 ) {
     val zone = remember { ZoneId.systemDefault() }
@@ -221,6 +224,20 @@ fun HomeDashboard(
                 if (date.year == year) months[date.monthValue - 1] += pages
             }
         }
+    }
+    // Under the greeting: when you usually read and how long today's goal will take, once
+    // there's a habit to go on; otherwise the plain line.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val habitLine = remember(sessions, streak.pagesToday, streak.dailyGoal) {
+        val hourFormat = java.time.format.DateTimeFormatter.ofPattern(
+            if (android.text.format.DateFormat.is24HourFormat(context)) "HH:mm" else "h a", java.util.Locale.getDefault()
+        )
+        AnalyticsEngine.readingNudge(
+            usualHour = AnalyticsEngine.usualStartHour(sessions, zone),
+            pagesLeftToGoal = (streak.dailyGoal - streak.pagesToday).coerceAtLeast(0),
+            pagesPerHour = AnalyticsEngine.pagesPerHour(sessions),
+            hourLabel = { java.time.LocalTime.of(it, 0).format(hourFormat) }
+        )
     }
     val minutesToday = remember(sessions, streak.today, streak.dayStartsAtHour) {
         sessions.filter { StreakEngine.sessionDay(it, zone, streak.dayStartsAtHour) == streak.today }
@@ -338,7 +355,7 @@ fun HomeDashboard(
                     ) {
                         val dailyFraction = if (streak.dailyGoal > 0) streak.pagesToday.toFloat() / streak.dailyGoal else 0f
                         Tile(
-                            onClick = { onEditGoal(GoalType.DAILY_PAGES) },
+                            onClick = onOpenGoals,
                             modifier = Modifier.weight(1f).fillMaxHeight()
                         ) {
                             RingHeader(title = "Today", fraction = dailyFraction)
@@ -357,7 +374,7 @@ fun HomeDashboard(
                         }
                         val yearFraction = if (yearlyGoal > 0) finishedThisYear.size.toFloat() / yearlyGoal else 0f
                         Tile(
-                            onClick = { onEditGoal(GoalType.YEARLY_BOOKS) },
+                            onClick = onOpenGoals,
                             modifier = Modifier.weight(1f).fillMaxHeight()
                         ) {
                             RingHeader(title = "$year", fraction = yearFraction)
@@ -440,6 +457,7 @@ fun HomeDashboard(
                                     fontWeight = FontWeight.SemiBold,
                                     modifier = Modifier.weight(1f)
                                 )
+                                TextButton(onClick = onPickNext) { Text("Can't decide?") }
                                 TextButton(onClick = onOpenLibrary) { Text("See all") }
                             }
                             LazyRow(
@@ -482,65 +500,48 @@ fun HomeDashboard(
                         }
                     }
                 }
-                HomeSection.OWNERSHIP -> {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        listOf(Ownership.WISHLIST, Ownership.OWNED, Ownership.GIFT).forEach { ownership ->
-                            val count = books.count { it.ownership == ownership }
-                            ShortcutTile(
-                                icon = ownership.icon,
-                                title = if (ownership == Ownership.GIFT) "Gifts" else ownership.label,
-                                subtitle = "$count ${if (count == 1) "book" else "books"}",
-                                onClick = { onOpenOwnership(ownership) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                }
                 HomeSection.SHORTCUTS -> {
-                    // Shortcuts to the deeper views.
-                    Column(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        val thisMonthPages = pagesByMonth[streak.today.monthValue - 1]
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Ways into your shelf, two to a row. Year in review joins once there's a year to show.
+                    val thisMonthPages = pagesByMonth[streak.today.monthValue - 1]
+                    val shelfCount = WishlistEngine.onShelf(books).size
+                    fun books(n: Int) = "$n ${if (n == 1) "book" else "books"}"
+                    val tiles = buildList<@Composable (Modifier) -> Unit> {
+                        add { m ->
                             ShortcutTile(
                                 icon = Icons.Rounded.CalendarMonth,
                                 title = "Calendar",
                                 subtitle = if (thisMonthPages > 0) "$thisMonthPages pages this month" else "Your reading by day",
                                 onClick = onOpenCalendar,
-                                modifier = Modifier.weight(1f)
-                            )
-                            val shelfCount = WishlistEngine.onShelf(books).size
-                            ShortcutTile(
-                                icon = Icons.Rounded.ViewWeek,
-                                title = "Bookshelf",
-                                subtitle = "$shelfCount ${if (shelfCount == 1) "book" else "books"}",
-                                onClick = onOpenBookshelf,
-                                modifier = Modifier.weight(1f)
+                                modifier = m
                             )
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            val finishedCount = books.count { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) }
-                            ShortcutTile(
-                                icon = Icons.Rounded.EmojiEvents,
-                                title = "Finished",
-                                subtitle = "$finishedCount ${if (finishedCount == 1) "book" else "books"} read",
-                                onClick = onOpenFinished,
-                                modifier = Modifier.weight(1f)
-                            )
-                            ShortcutTile(
-                                icon = Icons.Rounded.AutoAwesome,
-                                title = "Year in review",
-                                subtitle = if (hasYearToReview) "Your $year so far"
-                                else "Unlocks after ${AnalyticsEngine.MIN_DAYS_FOR_WRAPPED} reading days",
-                                onClick = onOpenWrapped,
-                                enabled = hasYearToReview,
-                                modifier = Modifier.weight(1f)
-                            )
+                        add { m ->
+                            ShortcutTile(Icons.Rounded.ViewWeek, "Bookshelf", books(shelfCount), onOpenBookshelf, m)
+                        }
+                        listOf(Ownership.WISHLIST, Ownership.OWNED, Ownership.GIFT).forEach { ownership ->
+                            add { m ->
+                                ShortcutTile(
+                                    icon = ownership.icon,
+                                    title = if (ownership == Ownership.GIFT) "Gifts" else ownership.label,
+                                    subtitle = books(books.count { it.ownership == ownership }),
+                                    onClick = { onOpenOwnership(ownership) },
+                                    modifier = m
+                                )
+                            }
+                        }
+                        if (hasYearToReview) add { m ->
+                            ShortcutTile(Icons.Rounded.AutoAwesome, "Year in review", "Your $year so far", onOpenWrapped, m)
+                        }
+                    }
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        tiles.chunked(2).forEach { row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                row.forEach { tile -> tile(Modifier.weight(1f)) }
+                                if (row.size == 1) Spacer(Modifier.weight(1f))
+                            }
                         }
                     }
                 }
@@ -589,7 +590,7 @@ fun HomeDashboard(
             Column {
                 SectionTitle(greeting(userName), todayLine, Modifier.staggeredEntrance(entrance, 0))
                 Text(
-                    subtitle(readingBooks.isEmpty()),
+                    if (readingBooks.isEmpty()) subtitle(true) else habitLine ?: subtitle(false),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.staggeredEntrance(entrance, 1)
@@ -604,7 +605,7 @@ fun HomeDashboard(
                     Text("${streak.currentStreak}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 }
                 if (goal > 0) {
-                    StatusChip(onClick = { onEditGoal(GoalType.DAILY_PAGES) }) {
+                    StatusChip(onClick = onOpenGoals) {
                         CircularProgressIndicator(
                             progress = { (pagesToday.toFloat() / goal).coerceIn(0f, 1f) },
                             modifier = Modifier.size(16.dp),
@@ -682,7 +683,7 @@ fun HomeDashboard(
             modifier = Modifier.align(Alignment.TopCenter).padding(top = skyTop + 8.dp)
         ) {
             Surface(
-                shape = RoundedCornerShape(50),
+                shape = CircleShape,
                 color = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 shadowElevation = 6.dp
@@ -726,11 +727,12 @@ fun HomeDashboard(
     }
 
     bookToLog?.let { book ->
-        CustomProgressDialog(
-            unitName = if (book.totalPages > 0) "Pages" else "Units",
+        ProgressPickerSheet(
+            book = book,
+            initialPage = book.currentPage,
             onDismiss = { bookToLog = null },
-            onConfirm = { delta ->
-                onLogPages(book, delta)
+            onConfirm = { page ->
+                if (page != book.currentPage) onLogPages(book, page - book.currentPage)
                 bookToLog = null
             }
         )
@@ -753,11 +755,16 @@ private fun CurrentBookCard(
 ) {
     val zone = remember { ZoneId.systemDefault() }
     val fraction = if (book.totalPages > 0) (book.currentPage.toFloat() / book.totalPages).coerceIn(0f, 1f) else 0f
-    val startedAt = remember(sessions) { sessions.filter { it.startTime > 0 }.minOfOrNull { it.startTime } }
-    val dayLine = remember(startedAt) {
+    // On a re-read, "Day N" counts from when this read began, not the first read's first session.
+    val startedAt = remember(book, sessions) {
+        val readStart = RereadMemories.currentReadStart(book, sessions)
+        sessions.filter { it.startTime > 0 && (readStart == null || it.startTime >= readStart) }
+            .minOfOrNull { it.startTime } ?: readStart
+    }
+    val dayLine = remember(startedAt, today) {
         startedAt?.let {
-            val first = Instant.ofEpochMilli(it).atZone(zone).toLocalDate()
-            val day = ChronoUnit.DAYS.between(first, LocalDate.now(zone)).toInt() + 1
+            val first = StreakEngine.readingDate(it, zone, dayStartsAtHour)
+            val day = ChronoUnit.DAYS.between(first, today).toInt() + 1
             "Day $day · since ${first.format(DateTimeFormatter.ofPattern("MMM d"))}"
         }
     }
@@ -799,7 +806,7 @@ private fun CurrentBookCard(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .matchParentSize()
-                            .clip(MaterialTheme.shapes.small)
+                            .clip(AppShape.XS)
                             .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = (abs(drag) / 200f).coerceIn(0f, 1f)))
                     ) {
                         if (drag != 0f) {
@@ -851,13 +858,15 @@ private fun CurrentBookCard(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    val byPercent = book.progressUnit == ProgressUnit.Percentage
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
-                            "p. ${book.currentPage}",
+                            if (byPercent) "${book.currentPage}%"
+                            else "${FormatAdaptabilityLayer.unitAbbrev(book)} ${book.currentPage}",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
-                        if (book.totalPages > 0) {
+                        if (book.totalPages > 0 && !byPercent) {
                             Text(
                                 " / ${book.totalPages}",
                                 style = MaterialTheme.typography.bodyMedium,
