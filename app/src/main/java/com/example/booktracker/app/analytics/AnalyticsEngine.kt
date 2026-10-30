@@ -317,9 +317,9 @@ object AnalyticsEngine {
 
     /**
      * The line under Home's greeting, from the reader's habits: when they usually read
-     * and how long today's goal will take at their pace, e.g. "You usually read around
-     * 9 PM · about 20 min reaches today's goal". Null when there's nothing to say (no
-     * habit yet, or the goal is met), so Home keeps its plain line.
+     * and how long today's goal will take at their pace, e.g. "Usually around 9 PM ·
+     * 20 min to today's goal". Kept short so it fits beside the sky's moon. Null when
+     * there's nothing to say (no habit yet, or the goal is met), so Home keeps its plain line.
      */
     fun readingNudge(usualHour: Int?, pagesLeftToGoal: Int, pagesPerHour: Float?, hourLabel: (Int) -> String): String? {
         if (pagesLeftToGoal <= 0) return null
@@ -328,11 +328,11 @@ object AnalyticsEngine {
             val exact = kotlin.math.ceil(pagesLeftToGoal / pace * 60f).toInt()
             ((exact + 4) / 5 * 5).coerceAtLeast(5)
         }
-        val time = minutes?.let { "about $it min reaches today's goal" }
+        val time = minutes?.let { "$it min to today's goal" }
         return when {
-            usualHour != null && time != null -> "You usually read around ${hourLabel(usualHour)} · $time"
+            usualHour != null && time != null -> "Usually around ${hourLabel(usualHour)} · $time"
             usualHour != null -> "You usually read around ${hourLabel(usualHour)}"
-            time != null -> time.replaceFirstChar { it.uppercase() }
+            time != null -> "About $time"
             else -> null
         }
     }

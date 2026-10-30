@@ -267,9 +267,9 @@ class AnalyticsEngineTest {
     @Test
     fun `reading nudge says when and how long`() {
         // 8 pages at 30 p/h is 16 minutes, rounded up to 20.
-        assertEquals("You usually read around 21:00 · about 20 min reaches today's goal", AnalyticsEngine.readingNudge(21, 8, 30f, hour))
+        assertEquals("Usually around 21:00 · 20 min to today's goal", AnalyticsEngine.readingNudge(21, 8, 30f, hour))
         assertEquals("You usually read around 21:00", AnalyticsEngine.readingNudge(21, 8, null, hour))
-        assertEquals("About 5 min reaches today's goal", AnalyticsEngine.readingNudge(null, 1, 60f, hour))
+        assertEquals("About 5 min to today's goal", AnalyticsEngine.readingNudge(null, 1, 60f, hour))
     }
 
     @Test

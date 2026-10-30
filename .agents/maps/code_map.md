@@ -35,9 +35,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **GoalEngine.kt** (307) - Pure logic engine for reading targets: yearly goal pacing, monthly page/book targets, and on-track / ahead / behind s...
   - types: GoalEngine:15, .GoalPaceStatus:17, .YearlyGoalPace:23, .HabitConsistency:37, .Season:45, .SeasonalSprint:60, .MonthlyGoalSummary:70
   - fun: .trackingStart:85, .calculateYearlyPace:98, .calculateHabitConsistency:169, .currentSeason:203, .calculateSeasonalSprint:216, .calculateMonthlySummary:269
-- **HeadsUp.kt** (74) - What on Home needs the reader today, most pressing first: library books overdue or due soon, books planned for today,...
-  - types: HeadsUp:17, .Kind:19, .Item:21
-  - fun: .today:23, .onThisDay:52
+- **HeadsUp.kt** (73) - What on Home needs the reader today, most pressing first: library books overdue or due soon, books planned for today,...
+  - types: HeadsUp:16, .Kind:18, .Item:20
+  - fun: .today:22, .onThisDay:51
 - **LoanEngine.kt** (148) - Pure logic engine for library return dates, due date countdowns, lending tracking, and urgency evaluation.
   - types: LoanEngine:14, .LoanUrgency:16, .LoanStatusInfo:23
   - fun: .activeLoan:35, .getLoanStatus:42, .allActiveLoans:125, .urgentLoans:135

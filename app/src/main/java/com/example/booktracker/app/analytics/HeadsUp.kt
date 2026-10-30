@@ -1,7 +1,6 @@
 package com.example.booktracker.app.analytics
 
 import com.example.booktracker.shared.models.Book
-import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.NoteType
 import java.time.Instant
@@ -35,10 +34,10 @@ object HeadsUp {
                 detail = "${book.title} · ${status.detailText}"
             )
         }
-        // The planner stores a day as UTC midnight, so it's compared as an epoch day.
+        // The planner stores a day as UTC midnight, so it's compared as an epoch day. A
+        // finished book planned for today counts too: the planner offers them, for re-reads.
         val planned = WishlistEngine.onShelf(books)
             .filter { it.plannedDate?.let { at -> Math.floorDiv(at, DAY_MS) } == today.toEpochDay() }
-            .filterNot { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) }
             .map { Item(Kind.PLANNED, it, "Planned for today", it.title) }
         val released = WishlistEngine.releasedOn(books, today, zone)
             .map { Item(Kind.RELEASED, it, "Out today from your wishlist", it.title) }

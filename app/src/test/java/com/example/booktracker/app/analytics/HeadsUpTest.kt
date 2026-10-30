@@ -61,15 +61,15 @@ class HeadsUpTest {
     }
 
     @Test
-    fun `a finished book or a wished one isn't planned reading`() {
+    fun `a wished-for book isn't planned reading, a finished one planned for a re-read is`() {
         val items = HeadsUp.today(
             listOf(
-                planned("done", today, BookStatus.FINISHED),
+                planned("reread", today, BookStatus.FINISHED),
                 planned("wished", today).copy(ownership = Ownership.WISHLIST)
             ),
             today, zone
         )
-        assertTrue(items.isEmpty())
+        assertEquals(listOf("reread"), items.map { it.book.id })
     }
 
     private fun finishedOn(id: String, day: LocalDate) = book(id) { copy(status = BookStatus.FINISHED.name, finishedAt = millis(day)) }
