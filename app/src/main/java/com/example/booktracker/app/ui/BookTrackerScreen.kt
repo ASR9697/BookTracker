@@ -656,21 +656,18 @@ androidx.compose.animation.SharedTransitionLayout {
                                                 onOpenCalendar = { navController.navigate("calendar") },
                                                 onOpenBookshelf = { navController.navigate("bookshelf") },
                                                 onOpenStats = { navigateTopLevel("stats") },
-                                                onOpenFinished = { navController.navigate("finished") },
                                                 onOpenWrapped = { navController.navigate("wrapped") },
-                                                onEditGoal = { type ->
-                                                    initialGoalType = type
-                                                    showGoalDialog = true
-                                                },
+                                                onOpenGoals = { navController.navigate("goals") { launchSingleTop = true } },
+                                                // What needs the reader today: loans due, plans, releases.
                                                 banner = {
-                                                    val urgentLoans = remember(books) { LoanEngine.urgentLoans(books) }
-                                                    if (urgentLoans.isNotEmpty()) {
-                                                        UrgentLoanBanner(
-                                                            urgentLoans = urgentLoans,
-                                                            onOpenBook = { navController.navigate("book/${it.id}") },
-                                                            modifier = Modifier.padding(horizontal = 16.dp)
-                                                        )
+                                                    val headsUp = remember(books) {
+                                                        com.example.booktracker.app.analytics.HeadsUp.today(books, java.time.LocalDate.now())
                                                     }
+                                                    HeadsUpCard(
+                                                        items = headsUp,
+                                                        onOpenBook = { navController.navigate("book/${it.id}") },
+                                                        modifier = Modifier.padding(horizontal = 16.dp)
+                                                    )
                                                 }
                                             )
                                         }

@@ -12,6 +12,11 @@ class HomeLayoutTest {
     }
 
     @Test
+    fun `pages per month starts hidden`() {
+        assertEquals(setOf(HomeSection.MONTHLY_PAGES), HomeLayout.DEFAULT.hidden)
+    }
+
+    @Test
     fun `encode and decode round-trip order and hidden sections`() {
         val layout = HomeLayout.DEFAULT.move(HomeLayout.DEFAULT.order.lastIndex, 0).toggle(HomeSection.GOALS)
         assertEquals(layout, HomeLayout.decode(layout.encode()))
@@ -26,11 +31,20 @@ class HomeLayoutTest {
         assertEquals(
             listOf(
                 HomeSection.MONTHLY_PAGES, HomeSection.STREAK, HomeSection.GOALS,
-                HomeSection.REVIEW, HomeSection.UP_NEXT, HomeSection.OWNERSHIP, HomeSection.SHORTCUTS
+                HomeSection.REVIEW, HomeSection.UP_NEXT, HomeSection.SHORTCUTS
             ),
             layout.order
         )
         assertEquals(setOf(HomeSection.MONTHLY_PAGES), layout.hidden)
+    }
+
+    @Test
+    fun `a saved layout from before the merge drops ownership without hiding shortcuts`() {
+        // OWNERSHIP folded into SHORTCUTS; hiding the old section mustn't hide the merged one.
+        val layout = HomeLayout.decode("STREAK,-OWNERSHIP,SHORTCUTS,MONTHLY_PAGES")
+        assertEquals(true, HomeSection.SHORTCUTS in layout.visible)
+        // A saved choice to show pages per month is kept.
+        assertEquals(true, HomeSection.MONTHLY_PAGES in layout.visible)
     }
 
     @Test
@@ -42,7 +56,7 @@ class HomeLayoutTest {
     @Test
     fun `toggle hides then shows a section`() {
         val hidden = HomeLayout.DEFAULT.toggle(HomeSection.STREAK)
-        assertEquals(setOf(HomeSection.STREAK), hidden.hidden)
+        assertEquals(setOf(HomeSection.MONTHLY_PAGES, HomeSection.STREAK), hidden.hidden)
         assertEquals(HomeLayout.DEFAULT, hidden.toggle(HomeSection.STREAK))
     }
 }

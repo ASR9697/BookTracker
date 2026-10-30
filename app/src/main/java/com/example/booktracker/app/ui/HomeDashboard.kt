@@ -165,9 +165,8 @@ fun HomeDashboard(
     onOpenCalendar: () -> Unit,
     onOpenBookshelf: () -> Unit,
     onOpenStats: () -> Unit,
-    onOpenFinished: () -> Unit,
     onOpenWrapped: () -> Unit,
-    onEditGoal: (GoalType) -> Unit,
+    onOpenGoals: () -> Unit,
     modifier: Modifier = Modifier,
     layout: HomeLayout = HomeLayout.DEFAULT,
     onEditHome: () -> Unit = {},
@@ -340,7 +339,7 @@ fun HomeDashboard(
                     ) {
                         val dailyFraction = if (streak.dailyGoal > 0) streak.pagesToday.toFloat() / streak.dailyGoal else 0f
                         Tile(
-                            onClick = { onEditGoal(GoalType.DAILY_PAGES) },
+                            onClick = onOpenGoals,
                             modifier = Modifier.weight(1f).fillMaxHeight()
                         ) {
                             RingHeader(title = "Today", fraction = dailyFraction)
@@ -359,7 +358,7 @@ fun HomeDashboard(
                         }
                         val yearFraction = if (yearlyGoal > 0) finishedThisYear.size.toFloat() / yearlyGoal else 0f
                         Tile(
-                            onClick = { onEditGoal(GoalType.YEARLY_BOOKS) },
+                            onClick = onOpenGoals,
                             modifier = Modifier.weight(1f).fillMaxHeight()
                         ) {
                             RingHeader(title = "$year", fraction = yearFraction)
@@ -484,65 +483,48 @@ fun HomeDashboard(
                         }
                     }
                 }
-                HomeSection.OWNERSHIP -> {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        listOf(Ownership.WISHLIST, Ownership.OWNED, Ownership.GIFT).forEach { ownership ->
-                            val count = books.count { it.ownership == ownership }
-                            ShortcutTile(
-                                icon = ownership.icon,
-                                title = if (ownership == Ownership.GIFT) "Gifts" else ownership.label,
-                                subtitle = "$count ${if (count == 1) "book" else "books"}",
-                                onClick = { onOpenOwnership(ownership) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                }
                 HomeSection.SHORTCUTS -> {
-                    // Shortcuts to the deeper views.
-                    Column(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        val thisMonthPages = pagesByMonth[streak.today.monthValue - 1]
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Ways into your shelf, two to a row. Year in review joins once there's a year to show.
+                    val thisMonthPages = pagesByMonth[streak.today.monthValue - 1]
+                    val shelfCount = WishlistEngine.onShelf(books).size
+                    fun books(n: Int) = "$n ${if (n == 1) "book" else "books"}"
+                    val tiles = buildList<@Composable (Modifier) -> Unit> {
+                        add { m ->
                             ShortcutTile(
                                 icon = Icons.Rounded.CalendarMonth,
                                 title = "Calendar",
                                 subtitle = if (thisMonthPages > 0) "$thisMonthPages pages this month" else "Your reading by day",
                                 onClick = onOpenCalendar,
-                                modifier = Modifier.weight(1f)
-                            )
-                            val shelfCount = WishlistEngine.onShelf(books).size
-                            ShortcutTile(
-                                icon = Icons.Rounded.ViewWeek,
-                                title = "Bookshelf",
-                                subtitle = "$shelfCount ${if (shelfCount == 1) "book" else "books"}",
-                                onClick = onOpenBookshelf,
-                                modifier = Modifier.weight(1f)
+                                modifier = m
                             )
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            val finishedCount = books.count { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) }
-                            ShortcutTile(
-                                icon = Icons.Rounded.EmojiEvents,
-                                title = "Finished",
-                                subtitle = "$finishedCount ${if (finishedCount == 1) "book" else "books"} read",
-                                onClick = onOpenFinished,
-                                modifier = Modifier.weight(1f)
-                            )
-                            ShortcutTile(
-                                icon = Icons.Rounded.AutoAwesome,
-                                title = "Year in review",
-                                subtitle = if (hasYearToReview) "Your $year so far"
-                                else "Unlocks after ${AnalyticsEngine.MIN_DAYS_FOR_WRAPPED} reading days",
-                                onClick = onOpenWrapped,
-                                enabled = hasYearToReview,
-                                modifier = Modifier.weight(1f)
-                            )
+                        add { m ->
+                            ShortcutTile(Icons.Rounded.ViewWeek, "Bookshelf", books(shelfCount), onOpenBookshelf, m)
+                        }
+                        listOf(Ownership.WISHLIST, Ownership.OWNED, Ownership.GIFT).forEach { ownership ->
+                            add { m ->
+                                ShortcutTile(
+                                    icon = ownership.icon,
+                                    title = if (ownership == Ownership.GIFT) "Gifts" else ownership.label,
+                                    subtitle = books(books.count { it.ownership == ownership }),
+                                    onClick = { onOpenOwnership(ownership) },
+                                    modifier = m
+                                )
+                            }
+                        }
+                        if (hasYearToReview) add { m ->
+                            ShortcutTile(Icons.Rounded.AutoAwesome, "Year in review", "Your $year so far", onOpenWrapped, m)
+                        }
+                    }
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        tiles.chunked(2).forEach { row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                row.forEach { tile -> tile(Modifier.weight(1f)) }
+                                if (row.size == 1) Spacer(Modifier.weight(1f))
+                            }
                         }
                     }
                 }
@@ -606,7 +588,7 @@ fun HomeDashboard(
                     Text("${streak.currentStreak}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 }
                 if (goal > 0) {
-                    StatusChip(onClick = { onEditGoal(GoalType.DAILY_PAGES) }) {
+                    StatusChip(onClick = onOpenGoals) {
                         CircularProgressIndicator(
                             progress = { (pagesToday.toFloat() / goal).coerceIn(0f, 1f) },
                             modifier = Modifier.size(16.dp),
