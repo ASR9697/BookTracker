@@ -182,8 +182,9 @@ fun ReaderCard(
             }
             if (authors.isNotEmpty()) {
                 Spacer(Modifier.height(14.dp))
+                // "Come back to" only once someone has more than one of your finished books.
                 Text(
-                    "Authors you come back to",
+                    if (authors.any { it.books > 1 }) "Authors you come back to" else "Authors you've read",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

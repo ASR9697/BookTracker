@@ -357,8 +357,8 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: rememberTabletopHinge:24
 - **PrivacyPolicyScreen.kt** (96) - Shows the bundled privacy policy (res/raw/privacy_policy.md) so it's readable offline.
   - fun: PrivacyPolicyScreen:37
-- **ProfileIdentity.kt** (268) - The books you'd hand someone: the ones you hearted, or (until you heart any) your highest rated.
-  - fun: FavouritesShelf:52, FavouritePickerSheet:99, ReaderCard:162, RecordsCard:224
+- **ProfileIdentity.kt** (269) - The books you'd hand someone: the ones you hearted, or (until you heart any) your highest rated.
+  - fun: FavouritesShelf:52, FavouritePickerSheet:99, ReaderCard:162, RecordsCard:225
 - **ProfileScreen.kt** (694)
   - fun: ProfileScreen:69, AchievementsTeaser:455, HeaderLine:560, ProfileAvatar:570, AvatarPickerSheet:611, SettingsRow:676
 - **ProfileSections.kt** (127) - Profile's ways into your record, two by two, each with a live count.
