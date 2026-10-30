@@ -145,6 +145,17 @@ fun ProfileScreen(
     val level = remember(pagesRead) { ReaderProfileEngine.level(pagesRead) }
     val pinnedQuote = remember(notes, pinnedNoteId) { ReaderProfileEngine.pinnedQuote(notes, pinnedNoteId) }
     var showQuotePicker by remember { mutableStateOf(false) }
+    var showShareCard by remember { mutableStateOf(false) }
+    if (showShareCard) {
+        ShareReaderCardSheet(
+            content = readerCardContent(
+                userName, avatar, motto, level, taste, favourites, authors,
+                books = completedBooks.size, pages = pagesRead, minutes = totalMinutes
+            ),
+            allBooks = books,
+            onDismiss = { showShareCard = false }
+        )
+    }
     if (showQuotePicker) {
         QuotePickerSheet(
             favourites = remember(notes) { notes.filter { it.isFavorite && it.content.isNotBlank() }.sortedByDescending { it.timestamp } },
@@ -319,6 +330,9 @@ fun ProfileScreen(
             }
         },
         actions = {
+            IconButton(onClick = { showShareCard = true }) {
+                Icon(Icons.Rounded.IosShare, contentDescription = "Share your reader card")
+            }
             IconButton(onClick = onOpenAppSettings) {
                 Icon(Icons.Rounded.Settings, contentDescription = "Settings")
             }

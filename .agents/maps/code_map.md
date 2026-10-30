@@ -359,10 +359,13 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: PrivacyPolicyScreen:37
 - **ProfileIdentity.kt** (423) - The books you'd hand someone: the ones you hearted, or (until you heart any) your highest rated.
   - fun: FavouritesShelf:62, FavouritePickerSheet:109, ReaderCard:172, RecordsCard:235, PinnedQuoteCard:286, QuotePickerSheet:328, QuoteChoice:367, LevelChip:397
-- **ProfileScreen.kt** (724)
-  - fun: ProfileScreen:69, AchievementsTeaser:485, HeaderLine:590, ProfileAvatar:600, AvatarPickerSheet:641, SettingsRow:706
+- **ProfileScreen.kt** (738)
+  - fun: ProfileScreen:69, AchievementsTeaser:499, HeaderLine:604, ProfileAvatar:614, AvatarPickerSheet:655, SettingsRow:720
 - **ProfileSections.kt** (127) - Profile's ways into your record, two by two, each with a live count.
   - fun: ProfileShortcuts:35, LifetimeCard:79
+- **ProfileShareCard.kt** (171) - What the reader card shows; gathered by Profile, which already has every piece.
+  - types: ReaderCardContent:39
+  - fun: ShareReaderCardSheet:54, ReaderCardFace:87, readerCardContent:159
 - **ProgressPickerSheet.kt** (398) - "How much did you read?" — the single progress entry point used by the save screen and the book detail header.
   - fun: ProgressPickerSheet:67, PageWheel:243, KeyboardEntry:355, percentLabel:396
 - **ProgressRingCover.kt** (110) - A book cover cropped to a circle with a completion arc sweeping around it.
