@@ -379,9 +379,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **SessionResultScreen.kt** (536) - Post-save recap.
   - types: StatSentenceScope:496
   - fun: SessionResultScreen:94, formatSessionTime:405, paceComparison:409, RowScope.StatTile:420, Pill:440, GoalRow:458, .append:498, .highlight:499, StatSentence:503
-- **SessionSaveScreen.kt** (970) - The one review step every finished session passes through, whether it came from the focus timer or the home card.
-  - types: SessionDraft:695
-  - fun: SessionSaveScreen:102, formatShort:709, focusLabel:712, FocusPicker:723, EditableStamp:766, SaveRow:782, OutcomeButton:839, DurationEditorDialog:866, TagPickerDialog:911, formatClock:966
+- **SessionSaveScreen.kt** (972) - The one review step every finished session passes through, whether it came from the focus timer or the home card.
+  - types: SessionDraft:697
+  - fun: SessionSaveScreen:102, formatShort:711, focusLabel:714, FocusPicker:725, EditableStamp:768, SaveRow:784, OutcomeButton:841, DurationEditorDialog:868, TagPickerDialog:913, formatClock:968
 - **SettingsScreen.kt** (1407) - Settings as a hub: a profile card, then one row per area with its current value, each opening a page of its own.
   - types: SettingsPage:92
   - fun: SettingsScreen:112, notificationSummary:261, relative:275, SettingsHub:281, .row:296, ProfileCard:320, AppearancePage:397, ThemePreview:479, PaletteGrid:505, ReadingPage:564, NotificationsPage:663, PrivacyPage:721, DataPage:768, StorageCard:921, StorageLine:960, dirSize:968, DeleteAllCard:971, BookmoryResultDialog:1032, MotionPage:1069, AboutPage:1083, SettingsGroup:1113, GroupLabel:1120, GroupDivider:1130, SettingRow:1135, SwitchSetting:1162, InfoNote:1184, hourLabel:1199, HourChoice:1203, HourRange:1212, HourDropdown:1225, folderName:1243, AppIconPicker:1249, SettingsCard:1318, SwitchRow:1339, LinkRow:1357, snap:1377, SettingsSectionTitle:1381, formatTime:1391, appVersionName:1396, Context.safeStartActivity:1401

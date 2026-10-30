@@ -189,8 +189,10 @@ fun SessionSaveScreen(
     val complete = book.totalPages > 0 && endPage >= book.totalPages
 
     val effectiveStatus = status ?: if (complete) BookStatus.FINISHED else BookStatus.READING
-    // Only a book you're still reading has somewhere to pick up from.
-    val offerPickUp = canNotify && effectiveStatus == BookStatus.READING
+    // Only a book you're still reading has somewhere to pick up from, and a reminder
+    // that would land in quiet hours would be skipped, so it isn't offered.
+    val quietAtPickUp = LocalAppPrefs.current.isQuiet(pickUpAt.hour)
+    val offerPickUp = canNotify && !quietAtPickUp && effectiveStatus == BookStatus.READING
 
     val commit = {
         saveHaptics.confirm()
