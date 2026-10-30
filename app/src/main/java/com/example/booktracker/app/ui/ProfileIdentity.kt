@@ -301,7 +301,7 @@ fun PinnedQuoteCard(note: MarginNote, book: Book?, onOpenBook: (Book) -> Unit, o
         Row(modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp)) {
             Column(modifier = Modifier.weight(1f).padding(top = 4.dp)) {
                 Text(
-                    "“${note.content.trim()}”",
+                    "“${ReaderProfileEngine.quoteLine(note.content)}”",
                     style = noteTextStyle().copy(fontStyle = FontStyle.Italic),
                     maxLines = 5,
                     overflow = TextOverflow.Ellipsis
@@ -354,7 +354,7 @@ fun QuotePickerSheet(
             }
             items(favourites, key = { it.id }) { note ->
                 QuoteChoice(
-                    text = "“${note.content.trim()}”",
+                    text = "“${ReaderProfileEngine.quoteLine(note.content)}”",
                     source = titles[note.bookId],
                     selected = note.id == pinnedId,
                     onClick = { onPick(note.id) }

@@ -127,6 +127,14 @@ class ReaderProfileEngineTest {
     }
 
     @Test
+    fun `a quote reads as one line`() {
+        assertEquals(
+            "SHIFT AN ARGUMENT Instead of looking at it",
+            ReaderProfileEngine.quoteLine("  SHIFT AN ARGUMENT\n\n  Instead of looking\nat it \n")
+        )
+    }
+
+    @Test
     fun `levels climb with lifetime pages`() {
         assertEquals(ReaderProfileEngine.Level("First pages", "Page turner", 100), ReaderProfileEngine.level(0))
         assertEquals(ReaderProfileEngine.Level("Bookworm", "Avid reader", 3_182), ReaderProfileEngine.level(1_818))

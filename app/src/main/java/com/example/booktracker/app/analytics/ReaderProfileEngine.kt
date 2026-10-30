@@ -112,6 +112,9 @@ object ReaderProfileEngine {
             ?: favourites.maxByOrNull { it.timestamp }
     }
 
+    /** A highlight as one flowing line for a quote card: line breaks and blank lines become single spaces. */
+    fun quoteLine(content: String): String = content.trim().replace(Regex("\\s*\\n\\s*"), " ")
+
     /** One year of reading: books finished and pages read in it. */
     data class YearRow(val year: Int, val books: Int, val pages: Int)
 

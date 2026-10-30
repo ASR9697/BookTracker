@@ -44,9 +44,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **PeriodStats.kt** (148) - Stats over a period the reader picks: a week, a month, a year or all time, now or stepped back.
   - types: PeriodStats:15, .Span:17, .Period:20, .Summary:66, .Grain:93, .Bucket:96
   - fun: .bounds:27, .label:46, .summary:69, .change:86, .buckets:103
-- **ReaderProfileEngine.kt** (183) - Who you are as a reader, for Profile: the books you'd hand someone, the authors you come back to, your taste in a sen...
-  - types: ReaderProfileEngine:17, .Favourites:20, .Author:34, .Level:86, .YearRow:116, .Record:139
-  - fun: .favourites:23, .topAuthors:37, .tasteSentence:53, .level:99, .pinnedQuote:109, .yearByYear:119, .records:142
+- **ReaderProfileEngine.kt** (186) - Who you are as a reader, for Profile: the books you'd hand someone, the authors you come back to, your taste in a sen...
+  - types: ReaderProfileEngine:17, .Favourites:20, .Author:34, .Level:86, .YearRow:119, .Record:142
+  - fun: .favourites:23, .topAuthors:37, .tasteSentence:53, .level:99, .pinnedQuote:109, .quoteLine:116, .yearByYear:122, .records:145
 - **ReadingCalendar.kt** (56) - Aggregates completed sessions into per-day page counts for the calendar heatmap (blueprint §3A).
   - types: ReadingCalendar:12, .Summary:17
   - fun: .pagesByDay:23, .gridStart:30, .summarize:35, .level:48
@@ -315,7 +315,7 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **GoalsScreen.kt** (335) - Every reading target in one place, each with a live bar of how far along you are: today, this month, this year.
   - types: GoalProgress:42
   - fun: GoalsScreen:64, GoalCard:253, animateFloatAsStateCompat:333
-- **HeadsUpCard.kt** (100) - Home's "today" card: one line for each thing that needs the reader today ([HeadsUp]), each opening its book.
+- **HeadsUpCard.kt** (101) - Home's "today" card: one line for each thing that needs the reader today ([HeadsUp]), each opening its book.
   - fun: HeadsUpCard:42, HeadsUpRow:59
 - **HistoryScreen.kt** (287)
   - fun: HistoryScreen:69, EditSessionDialog:200, HistorySessionRow:248

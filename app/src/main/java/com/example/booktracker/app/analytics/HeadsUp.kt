@@ -64,7 +64,7 @@ object HeadsUp {
             .mapNotNull { note -> yearIfThisDay(note.timestamp)?.let { year -> byId[note.bookId]?.let { Triple(year, note, it) } } }
             .maxWithOrNull(compareBy({ it.first }, { it.second.isFavorite }))
             ?.let { (year, note, book) ->
-                Item(Kind.ON_THIS_DAY, book, "On this day in $year", "“${note.content.trim()}” · ${book.title}")
+                Item(Kind.ON_THIS_DAY, book, "On this day in $year", "“${ReaderProfileEngine.quoteLine(note.content)}” · ${book.title}")
             }
     }
 
