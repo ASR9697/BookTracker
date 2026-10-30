@@ -806,6 +806,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             motto = motto,
                                                             pinnedNoteId = pinnedNoteId,
                                                             onPinNote = viewModel::setPinnedNoteId,
+                                                            onOpenYear = { year -> navController.navigate("wrappedAnimated?year=$year") },
                                                             onUpdateMotto = viewModel::setMotto,
                                                             onToggleFavorite = viewModel::toggleFavorite,
                                                             onSearch = { query -> navController.navigate("search?q=" + android.net.Uri.encode(query)) },
@@ -991,7 +992,10 @@ androidx.compose.animation.SharedTransitionLayout {
                                             )
                                         }
                                     }
-                                    composable("wrappedAnimated") {
+                                    composable(
+                                        "wrappedAnimated?year={year}",
+                                        arguments = listOf(androidx.navigation.navArgument("year") { type = androidx.navigation.NavType.IntType; defaultValue = -1 })
+                                    ) { wrappedEntry ->
                                         androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
                                             val completedSessions by viewModel.completedSessions.collectAsState()
                                             val currentStreak by viewModel.streak.collectAsState()
@@ -1003,7 +1007,8 @@ androidx.compose.animation.SharedTransitionLayout {
                                                 notes = wrappedNotes,
                                                 userName = wrappedName,
                                                 dayStartsAtHour = currentStreak.dayStartsAtHour,
-                                                onBack = { navController.popBackStack() }
+                                                onBack = { navController.popBackStack() },
+                                                year = wrappedEntry.arguments?.getInt("year")?.takeIf { it > 0 }
                                             )
                                         }
                                     }

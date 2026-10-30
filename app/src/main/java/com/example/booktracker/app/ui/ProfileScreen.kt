@@ -92,6 +92,8 @@ fun ProfileScreen(
     /** The favourite highlight pinned under the header; blank shows the newest. */
     pinnedNoteId: String = "",
     onPinNote: (String) -> Unit = {},
+    /** Opens Wrapped for a past year (or this one). */
+    onOpenYear: (Int) -> Unit = {},
     onToggleFavorite: (Book) -> Unit = {},
     /** Searches the library, e.g. for an author tapped in the reader card. */
     onSearch: (String) -> Unit = {},
@@ -143,6 +145,7 @@ fun ProfileScreen(
     val records = remember(books, sessions, dayStartsAtHour) { ReaderProfileEngine.records(books, sessions, zone, dayStartsAtHour) }
     var showFavouritePicker by remember { mutableStateOf(false) }
     val level = remember(pagesRead) { ReaderProfileEngine.level(pagesRead) }
+    val years = remember(books, sessions, dayStartsAtHour) { ReaderProfileEngine.yearByYear(books, sessions, zone, dayStartsAtHour) }
     val pinnedQuote = remember(notes, pinnedNoteId) { ReaderProfileEngine.pinnedQuote(notes, pinnedNoteId) }
     var showQuotePicker by remember { mutableStateOf(false) }
     var showShareCard by remember { mutableStateOf(false) }
@@ -397,6 +400,10 @@ fun ProfileScreen(
 
         if (records.isNotEmpty()) item {
             RecordsCard(records, onOpenBook, Modifier.staggeredEntrance(entrance, 3))
+        }
+
+        if (years.isNotEmpty()) item {
+            YearByYearCard(years, onYear = onOpenYear, modifier = Modifier.staggeredEntrance(entrance, 3))
         }
 
         // Wrapped stays hidden until there is a year worth sharing.

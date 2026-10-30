@@ -112,6 +112,21 @@ class ReaderProfileEngineTest {
     }
 
     @Test
+    fun `year by year counts books and pages per year, newest first`() {
+        val at2025 = LocalDateTime.of(2025, 6, 1, 12, 0).atZone(utc).toInstant().toEpochMilli()
+        val at2026 = LocalDateTime.of(2026, 2, 1, 12, 0).atZone(utc).toInstant().toEpochMilli()
+        val rows = ReaderProfileEngine.yearByYear(
+            listOf(finished("a", at = at2025), finished("b", at = at2026), finished("c", at = at2026)),
+            listOf(sessionAt(21, day = 3, pages = 40)),
+            utc, dayStartsAtHour = 0
+        )
+        assertEquals(
+            listOf(ReaderProfileEngine.YearRow(2026, 2, 40), ReaderProfileEngine.YearRow(2025, 1, 0)),
+            rows
+        )
+    }
+
+    @Test
     fun `levels climb with lifetime pages`() {
         assertEquals(ReaderProfileEngine.Level("First pages", "Page turner", 100), ReaderProfileEngine.level(0))
         assertEquals(ReaderProfileEngine.Level("Bookworm", "Avid reader", 3_182), ReaderProfileEngine.level(1_818))

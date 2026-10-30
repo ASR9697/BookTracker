@@ -112,6 +112,29 @@ object ReaderProfileEngine {
             ?: favourites.maxByOrNull { it.timestamp }
     }
 
+    /** One year of reading: books finished and pages read in it. */
+    data class YearRow(val year: Int, val books: Int, val pages: Int)
+
+    /** Every year with reading in it, newest first. */
+    fun yearByYear(
+        books: List<Book>,
+        sessions: List<Session>,
+        zone: ZoneId = ZoneId.systemDefault(),
+        dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR
+    ): List<YearRow> {
+        val pages = StreakEngine.pagesByDay(sessions, zone, dayStartsAtHour).entries
+            .groupBy({ it.key.year }, { it.value })
+            .mapValues { it.value.sum() }
+        val finished = WishlistEngine.onShelf(books).filter(FinishedShelf::isFinished)
+            .filter { it.completedAt > 0 }
+            .groupingBy { StreakEngine.readingDate(it.completedAt, zone, dayStartsAtHour).year }
+            .eachCount()
+        return (pages.keys + finished.keys)
+            .map { YearRow(it, finished[it] ?: 0, pages[it] ?: 0) }
+            .filter { it.books > 0 || it.pages > 0 }
+            .sortedByDescending { it.year }
+    }
+
     /** A personal best: what it is, its value, and the book behind it when there is one. */
     data class Record(val label: String, val value: String, val book: Book?)
 
