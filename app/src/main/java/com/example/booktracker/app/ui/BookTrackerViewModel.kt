@@ -1169,12 +1169,18 @@ class BookTrackerViewModel(
         viewModelScope.launch { settings.setUseAppLock(enabled) }
     }
 
-    fun setNoiseType(type: NoiseType) {
+    /** [preview] plays the sound even with the clock stopped, while the reader is choosing. */
+    fun setNoiseType(type: NoiseType, preview: Boolean = false) {
         _noiseType.value = type
-        if (ServiceLocator.timerIsRunning.value) {
+        if (ServiceLocator.timerIsRunning.value || preview) {
             if (type == NoiseType.NONE) soundscapeEngine.stop()
             else soundscapeEngine.play(type)
         }
+    }
+
+    /** The sound picker closed: a preview stops unless the clock is running. */
+    fun endNoisePreview() {
+        if (!ServiceLocator.timerIsRunning.value) soundscapeEngine.stop()
     }
 
     fun setTimerVolume(vol: Float) {

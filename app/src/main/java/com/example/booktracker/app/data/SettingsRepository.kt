@@ -52,6 +52,8 @@ data class AppPrefs(
     val defaultFormat: BookFormat = BookFormat.Paperback,
     /** The timer asks "still reading?" after a long stretch untouched, and pauses if nobody answers. */
     val stillReadingCheck: Boolean = true,
+    /** While the timer is open, the volume keys step the page forward and back. */
+    val volumeKeysTurnPages: Boolean = false,
     /** Finishing a session opens the camera on the page number instead of the page wheel. */
     val scanOnFinish: Boolean = false,
     /** A session shorter than this with no pages is treated as an accident; 0 keeps everything. */
@@ -276,6 +278,7 @@ class SettingsRepository(context: Context) {
         val showTimeLeft = booleanPreferencesKey("pref_show_time_left")
         val defaultFormat = androidx.datastore.preferences.core.stringPreferencesKey("pref_default_format")
         val stillReadingCheck = booleanPreferencesKey("pref_still_reading_check")
+        val volumeKeysTurnPages = booleanPreferencesKey("pref_volume_keys_turn_pages")
         val scanOnFinish = booleanPreferencesKey("pref_scan_on_finish")
         val minSessionSeconds = intPreferencesKey("pref_min_session_seconds")
         val monthlyBookBudget = intPreferencesKey("pref_monthly_book_budget")
@@ -310,6 +313,7 @@ class SettingsRepository(context: Context) {
             showTimeLeft = p[PrefKeys.showTimeLeft] ?: d.showTimeLeft,
             defaultFormat = p[PrefKeys.defaultFormat]?.let { name -> BookFormat.entries.firstOrNull { it.name == name } } ?: d.defaultFormat,
             stillReadingCheck = p[PrefKeys.stillReadingCheck] ?: d.stillReadingCheck,
+            volumeKeysTurnPages = p[PrefKeys.volumeKeysTurnPages] ?: d.volumeKeysTurnPages,
             scanOnFinish = p[PrefKeys.scanOnFinish] ?: d.scanOnFinish,
             minSessionSeconds = p[PrefKeys.minSessionSeconds] ?: d.minSessionSeconds,
             monthlyBookBudget = p[PrefKeys.monthlyBookBudget] ?: d.monthlyBookBudget,
@@ -348,6 +352,7 @@ class SettingsRepository(context: Context) {
             p[PrefKeys.showTimeLeft] = next.showTimeLeft
             p[PrefKeys.defaultFormat] = next.defaultFormat.name
             p[PrefKeys.stillReadingCheck] = next.stillReadingCheck
+            p[PrefKeys.volumeKeysTurnPages] = next.volumeKeysTurnPages
             p[PrefKeys.scanOnFinish] = next.scanOnFinish
             p[PrefKeys.minSessionSeconds] = next.minSessionSeconds.coerceIn(0, 600)
             p[PrefKeys.monthlyBookBudget] = next.monthlyBookBudget.coerceAtLeast(0)

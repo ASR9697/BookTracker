@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.focusable
@@ -241,6 +242,7 @@ fun FocusTimerScreen(
     }
     var showSoundscapeSheet by remember { mutableStateOf(false) }
     var showNoteSheet by remember { mutableStateOf(false) }
+    var dictateNote by remember { mutableStateOf(false) }
     var showCountdownSheet by remember { mutableStateOf(false) }
 
     val haptic = LocalHapticFeedback.current
@@ -330,11 +332,26 @@ fun FocusTimerScreen(
             .background(if (isZenMode) com.example.booktracker.app.ui.theme.ZenNight else background)
             .focusRequester(keyFocus)
             .onKeyEvent { event ->
-                if (event.type == KeyEventType.KeyUp && event.key == Key.Spacebar) {
-                    if (countdownDone) finish() else viewModel.setTimerRunning(!isRunning)
-                    true
-                } else {
-                    false
+                val volumeStep = when (event.key) {
+                    Key.VolumeUp -> 1
+                    Key.VolumeDown -> -1
+                    else -> 0
+                }
+                when {
+                    event.type == KeyEventType.KeyUp && event.key == Key.Spacebar -> {
+                        if (countdownDone) finish() else viewModel.setTimerRunning(!isRunning)
+                        true
+                    }
+                    // Volume keys turn the page when the reader opted in; both the press and
+                    // the release are taken so the system volume doesn't move as well.
+                    volumeStep != 0 && prefs.volumeKeysTurnPages -> {
+                        if (event.type == KeyEventType.KeyDown) {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            sessionCurrentPage = (sessionCurrentPage + volumeStep).coerceIn(0, maxPage)
+                        }
+                        true
+                    }
+                    else -> false
                 }
             }
             .focusable()
@@ -630,15 +647,31 @@ fun FocusTimerScreen(
                             )
                         }
                         Spacer(Modifier.width(8.dp))
-                        FilledIconButton(
-                            onClick = { showNoteSheet = true },
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = onBackground.copy(alpha = 0.16f),
-                                contentColor = onBackground
-                            ),
-                            modifier = Modifier.size(52.dp)
+                        // Tap to write a note; hold to start dictating straight away.
+                        Surface(
+                            shape = CircleShape,
+                            color = onBackground.copy(alpha = 0.16f),
+                            contentColor = onBackground,
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(CircleShape)
+                                .combinedClickable(
+                                    onClickLabel = "Add a note",
+                                    onLongClickLabel = "Dictate a note",
+                                    onLongClick = {
+                                        haptics.longPress()
+                                        dictateNote = true
+                                        showNoteSheet = true
+                                    },
+                                    onClick = {
+                                        dictateNote = false
+                                        showNoteSheet = true
+                                    }
+                                )
                         ) {
-                            Icon(Icons.AutoMirrored.Rounded.NoteAdd, contentDescription = "Add a note")
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.AutoMirrored.Rounded.NoteAdd, contentDescription = "Add a note, or hold to dictate")
+                            }
                         }
                     }
                 }
@@ -771,7 +804,10 @@ fun FocusTimerScreen(
 
     if (showSoundscapeSheet) {
         ModalBottomSheet(
-            onDismissRequest = { showSoundscapeSheet = false },
+            onDismissRequest = {
+                showSoundscapeSheet = false
+                viewModel.endNoisePreview()
+            },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ) {
             Column(
@@ -807,7 +843,8 @@ fun FocusTimerScreen(
                                 .fillMaxWidth()
                                 .clickable {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    viewModel.setNoiseType(type)
+                                    // Heard right away, even before the clock starts.
+                                    viewModel.setNoiseType(type, preview = true)
                                 }
                         ) {
                             Row(
@@ -862,6 +899,7 @@ fun FocusTimerScreen(
             totalPages = book.totalPages,
             pageLabel = FormatAdaptabilityLayer.getDisplayUnit(book).trimEnd('s'),
             draftKey = book.id,
+            startDictating = dictateNote,
             onDismiss = { showNoteSheet = false },
             onConfirm = { page, text, type, images ->
                 onAddNote(page, text, type, images)

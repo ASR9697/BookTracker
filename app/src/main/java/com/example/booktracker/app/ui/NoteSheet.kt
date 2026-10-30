@@ -94,6 +94,8 @@ fun NoteSheet(
     isEditing: Boolean = false,
     pageLabel: String = "Page",
     draftKey: String? = null,
+    /** Open listening: the voice prompt starts as soon as the sheet does. */
+    startDictating: Boolean = false,
     onConfirmAndAddAnother: ((page: Int, text: String, type: NoteType, images: List<String>) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -156,6 +158,7 @@ fun NoteSheet(
             voiceMissing = true
         }
     }
+    LaunchedEffect(Unit) { if (startDictating) dictate() }
 
     if (showDiscard) {
         AlertDialog(
