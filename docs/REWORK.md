@@ -10,7 +10,7 @@ Paths are relative to `app/src/main/java/com/example/booktracker/` unless noted.
 
 | Page | File | Status |
 |---|---|---|
-| [Profile](#profile) | `app/ui/ProfileScreen.kt` | Ready to build |
+| (none planned yet) | | |
 
 <!-- Status: Idea → Planned, decisions open → Ready to build → In progress -->
 
@@ -28,110 +28,8 @@ Agreed split so pages stop repeating each other. Check new ideas against it.
 
 ---
 
-## Profile
-
-**File:** `app/ui/ProfileScreen.kt` · **Status:** Ready to build
-
-**Goal:** Home is *today*, Stats is *numbers*, Profile is *who you are as a reader*
-and your record. Today the page repeats Home (streak, yearly goal, currently
-reading) and says little about the reader's taste.
-
-### Decisions
-- [x] **Drop "Currently reading"**; Home owns books in progress.
-- [x] **Add the reading motto** under the name (one new setting, no DB change).
-- [x] Extras: **A, C, D, E** (share card, pinned quote, year by year, reader level).
-      F is parked; B moved to Home.
-
-### Layout, top to bottom
-1. **Header (trimmed):** avatar in goal ring, name, personality line, optional motto,
-   "Tracking since". Remove the "x / y books in 2026 · on track" line (ring + Home
-   already show it).
-2. **Shortcut grid (new):** 2×2 tiles with live counts: History, Finished &
-   abandoned, Planner, Journey map. Replaces the bottom "Your reading" list.
-   (Wishlist lives on Home's shortcuts; see Cross-page notes.)
-   "Reading goals" leaves the page (reach it via the gear).
-3. **Favourites shelf (new):** covers of `isFavorite` books; falls back to
-   top-rated finished books ("Your highest rated"). "Pick favourites" chip opens
-   a sheet over finished books using the existing favourite toggle. Tap → book page.
-4. **Reader card (new):**
-   - Taste sentence, e.g. "Mostly fantasy and history, in ebooks, at night."
-     Built from `AnalyticsEngine.topGenre`/`genreMix`, top format, `bestTimeOfDay`.
-   - Top authors: up to 5 by books finished, with count; tap → Library search for
-     that author. (Stats has no author view today.)
-5. **Lifetime numbers (redesigned):** streak as a headline row with `LivingFlame`
-   (still opens Streak); books · pages · time as one quiet row beneath. Fixes the
-   cramped "day streak · best X" label.
-6. **Records (new):** longest book finished, fastest read (days, from
-   `FinishedShelf.reads`), most re-read (`readCount`), biggest reading day
-   (`StreakEngine.pagesByDay`), longest session, languages read (only if > 1).
-   Each names a book and opens it; hidden when there's no data.
-7. **Kept:** Wrapped card, achievements teaser, heatmap.
-8. **Footer:** "Export notes as Markdown" with a snackbar result, styled as an action.
-   (Journey map moved into the shortcut grid.)
-
-**Removed:** Currently reading.
-
-### Fixes
-- Name editor `AlertDialog` → `ActionSheet` (name + motto fields).
-- `AvatarPickerSheet` plain `ModalBottomSheet` → `ActionSheet` with content.
-- Selected-cover border `MaterialTheme.shapes.small` → `AppShape.XS`.
-- Avatar cover picker lists wishlist books too; filter through `WishlistEngine.onShelf`.
-
-### Extras
-| # | Idea | Effort |
-|---|---|---|
-| A | Shareable profile card image (header, favourites, top authors, lifetime numbers); reuse Wrapped's `shareLayerImage` | Medium |
-| B | ~~"On this day"~~ moved to Home extra A | — |
-| C | Pinned quote: one favourite highlight (`MarginNote.isFavorite`) under the header, serif note style | Small |
-| D | Year by year rows ("2026 · 34 books"), opening Wrapped for past years (needs `WrappedEngine` to take any year) | Medium / Large |
-| E | Reader level title from lifetime pages, as a header chip | Small |
-| F | Taste over time ("more non-fiction than ever this year") | Medium |
-
-**Chosen: A, C, D, E.** F is parked.
-
-Placement:
-- A (share card): a share icon in the header actions beside the gear; the card shows
-  avatar, name, motto, reader level, favourites, top authors and lifetime numbers.
-- C (pinned quote): under the header. Defaults to the newest favourite highlight;
-  long-press it to pick another (stored as a note id in settings, cleared if the note
-  is deleted). Hidden when there are no favourite highlights.
-- D (year by year): its own card after Records, one row per year with books and a
-  mini bar. Tapping a row opens Wrapped for that year, which needs
-  `WrappedEngine.summarize` and the `wrappedAnimated` route to take a year.
-- E (reader level): a chip in the header beside the personality line. Thresholds
-  from lifetime pages, kept in `ReaderProfileEngine` with tests.
-
-### Files
-- New `app/analytics/ReaderProfileEngine.kt` (`favourites`, `topAuthors`,
-  `tasteSentence`, `records`) + tests in `app/src/test/.../analytics/`.
-- New `app/ui/ProfileSections.kt` for the new cards (ProfileScreen is 823 lines).
-- `app/ui/ProfileScreen.kt`, `app/ui/BookTrackerScreen.kt` (callbacks: journey map,
-  author search, favourites toggle; drop `onOpenSettings`).
-- Motto and pinned-quote note id: `app/data/SettingsRepository.kt` →
-  `app/ui/BookTrackerViewModel.kt` → `settings` block in `app/data/BackupEngine.kt`.
-- Year by year: `app/analytics/WrappedEngine.kt` (any year), `app/ui/WrappedScreen.kt`
-  and the `wrappedAnimated` route in `BookTrackerScreen.kt` (year argument).
-- Share card: reuse `shareLayerImage` from `app/ui/WrappedScreen.kt`.
-- `npm run update-maps` after adding files.
-
-### PRs
-1. Clean-up: shortcut grid, remove duplicates, lifetime row, export feedback,
-   journey link, fixes.
-2. Reader identity: engine + tests, favourites shelf, reader card, records, motto.
-3. Extras C (pinned quote) and E (reader level): small, header-only.
-4. Extra A (share card), after PR 2 so the card has favourites and authors to show.
-5. Extra D (year by year), including Wrapped for past years.
-
----
-
 ## Cross-page notes
 
-- **Navigation split (Home ↔ Profile), decided:** Home's shortcuts are about your
-  *shelf* (Calendar, Bookshelf, Wishlist, Owned, Gifts). Profile's grid is about
-  your *record*: History, Finished, Planner, Journey map. Applied to the Profile
-  layout below. AGENTS.md says the wishlist is reached from "Profile, the Home
-  ownership tiles…": update that line when this ships.
-- **"On this day"** is listed under Home (extra A), not Profile (old extra B).
 - **Not reviewed yet:** `SessionResultScreen.kt`, the recap shown after saving a session.
 
 ---
