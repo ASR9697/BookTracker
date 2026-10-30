@@ -255,7 +255,7 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: Modifier.readableWidth:47, BoxWithConstraintsScope.centredPadding:54, windowCentredPadding:63, navChromeWidth:70, coverTileMinWidth:78
 - **AddBookScreen.kt** (878)
   - fun: AddBookScreen:60, BookSuggestionCard:283, BookFormat.displayName:330, FormatChips:339, StatusOptions:358, BookPreviewDialog:387, ManualAddBookDialog:538
-- **AnalyticsScreen.kt** (176) - Stats: your reading over a period you pick.
+- **AnalyticsScreen.kt** (189) - Stats: your reading over a period you pick.
   - fun: AnalyticsScreen:41
 - **AppPrefsUi.kt** (32) - Body text for notes and quotes: a serif face when the reader chose one in Settings.
   - fun: noteTextStyle:17, LocalDate.startOfWeek:23, leadingDays:27, weekDays:31
@@ -401,8 +401,8 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: ShelfScanScreen:102, .process:122, .launchCamera:165, SpineMatch.copyWith:345, SpineRow:349, readSpines:386
 - **StatsBreakdownCards.kt** (346) - A card with a title line, the shell every Stats breakdown sits in.
   - fun: StatsCard:49, RhythmCard:76, PaceCard:125, BigNumber:141, FocusPlacesCard:153, MeterRow:186, WhatYouReadCard:219, SubHeading:270, FormatSplit:278, FinishedInPeriod:309, GoalsLink:331
-- **StatsCards.kt** (265) - Week · Month · Year · All, with ‹ › to step back through earlier ones.
-  - fun: PeriodSwitcher:46, SummaryStrip:89, SummaryNumber:119, ActivityChart:142, Bars:197, AxisLabels:235, bucketName:253, compactMinutes:260, formatValue:263
+- **StatsCards.kt** (280) - Week · Month · Year · All, with ‹ › to step back through earlier ones.
+  - fun: PeriodSwitcher:46, SummaryStrip:89, SummaryNumber:119, ActivityChart:142, Bars:202, AxisLabels:250, bucketName:268, compactMinutes:275, formatValue:278
 - **StreakHeader.kt** (256) - Top of the streak screen: the flame with current and best streak, whether today already counts, a month calendar of r...
   - fun: StreakHeader:43, StreakHero:64, HeroStat:112, MonthCalendar:121, StreakRuns:207
 - **TabletInput.kt** (78) - Right-click (mouse or trackpad) does what a long-press does on touch.

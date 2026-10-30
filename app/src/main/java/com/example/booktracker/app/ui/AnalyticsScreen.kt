@@ -82,6 +82,15 @@ fun AnalyticsScreen(
         PeriodStats.buckets(period, range, if (showMinutes) minutesByDay else pagesByDay.mapValues { it.value.toLong() })
     }
 
+    // On the Year view, last year's months as a faint line behind this year's bars.
+    val lastYear = if (period.span != PeriodStats.Span.YEAR) null else remember(period, today, showMinutes, pagesByDay, minutesByDay) {
+        PeriodStats.buckets(
+            period.previous,
+            PeriodStats.bounds(period.previous, today, prefs.weekStartsSunday),
+            if (showMinutes) minutesByDay else pagesByDay.mapValues { it.value.toLong() }
+        ).map { it.value }.takeIf { values -> values.any { it > 0 } }
+    }
+
     // The breakdowns, all for the same period.
     val periodSessions = remember(sessions, range, dayStartsAtHour) { StatsBreakdown.sessionsIn(sessions, range, zone, dayStartsAtHour) }
     val rhythm = remember(periodSessions) { StatsBreakdown.rhythm(periodSessions, zone) }
@@ -156,7 +165,11 @@ fun AnalyticsScreen(
         }
         item(span = StaggeredGridItemSpan.FullLine) { SummaryStrip(periodSummary, before, comparedWith) }
         item(span = StaggeredGridItemSpan.FullLine) {
-            ActivityChart(buckets, period.span, showMinutes, onShowMinutes = { showMinutes = it })
+            ActivityChart(
+                buckets, period.span, showMinutes, onShowMinutes = { showMinutes = it },
+                ghost = lastYear,
+                ghostLabel = PeriodStats.label(period.previous, today, prefs.weekStartsSunday)
+            )
         }
         staggeredItem(entrance, 0) { RhythmCard(rhythm, periodSummary.activeDays, daysSoFar, peak) }
         staggeredItem(entrance, 1) { PaceCard(pace) }

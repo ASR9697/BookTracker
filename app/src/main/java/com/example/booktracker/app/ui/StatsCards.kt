@@ -144,10 +144,13 @@ fun ActivityChart(
     span: PeriodStats.Span,
     showMinutes: Boolean,
     onShowMinutes: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** The period before, bar for bar, drawn as a faint line behind (the Year view's last year). */
+    ghost: List<Long>? = null,
+    ghostLabel: String? = null
 ) {
     var picked by remember(buckets) { mutableStateOf<Int?>(null) }
-    val max = buckets.maxOfOrNull { it.value }?.coerceAtLeast(1L) ?: 1L
+    val max = (buckets.map { it.value } + ghost.orEmpty()).maxOrNull()?.coerceAtLeast(1L) ?: 1L
     val unit = if (showMinutes) "min" else "pages"
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
@@ -158,7 +161,8 @@ fun ActivityChart(
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 val bucket = picked?.let { buckets.getOrNull(it) }
                 Text(
-                    if (bucket != null) "${bucketName(bucket, span)} · ${formatValue(bucket.value, showMinutes)}"
+                    if (bucket != null) "${bucketName(bucket, span)} · ${formatValue(bucket.value, showMinutes)}" +
+                        (ghost?.getOrNull(picked!!)?.let { " (${formatValue(it, showMinutes)} in $ghostLabel)" } ?: "")
                     else if (showMinutes) "Time read" else "Pages read",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
@@ -169,7 +173,7 @@ fun ActivityChart(
                 TickFilterChip(selected = showMinutes, onClick = { onShowMinutes(true) }, label = { Text("Minutes") }, shape = CircleShape)
             }
             Spacer(Modifier.height(16.dp))
-            if (buckets.all { it.value == 0L }) {
+            if (buckets.all { it.value == 0L } && ghost.orEmpty().all { it == 0L }) {
                 // A flat row of zeros reads as broken; say what will fill it instead.
                 Text(
                     if (showMinutes) "No timed reading in this period. Time a session and your minutes show up here."
@@ -178,12 +182,13 @@ fun ActivityChart(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
-                Bars(buckets, max, picked, onPick = { picked = if (picked == it) null else it })
+                Bars(buckets, max, picked, ghost, onPick = { picked = if (picked == it) null else it })
                 Spacer(Modifier.height(6.dp))
                 AxisLabels(buckets, span)
                 Text(
                     "Total ${formatValue(buckets.sumOf { it.value }, showMinutes)}" +
-                        if (buckets.size > 1) " · best ${formatValue(max, showMinutes)}" else "",
+                        (if (buckets.size > 1) " · best ${formatValue(buckets.maxOf { it.value }, showMinutes)}" else "") +
+                        (if (ghost != null && ghostLabel != null) " · line: $ghostLabel, ${formatValue(ghost.sum(), showMinutes)}" else ""),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp)
@@ -194,7 +199,8 @@ fun ActivityChart(
 }
 
 @Composable
-private fun Bars(buckets: List<PeriodStats.Bucket>, max: Long, picked: Int?, onPick: (Int) -> Unit) {
+private fun Bars(buckets: List<PeriodStats.Bucket>, max: Long, picked: Int?, ghost: List<Long>?, onPick: (Int) -> Unit) {
+    val ghostInk = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
     val strong = MaterialTheme.colorScheme.primary
     val soft = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
     val empty = MaterialTheme.colorScheme.surfaceContainerHighest
@@ -226,6 +232,15 @@ private fun Bars(buckets: List<PeriodStats.Bucket>, max: Long, picked: Int?, onP
                 size = Size(barWidth, h),
                 cornerRadius = CornerRadius(radius, radius)
             )
+        }
+        // Last year, joined point to point through the middle of each slot.
+        if (ghost != null && ghost.size == buckets.size) {
+            val points = ghost.mapIndexed { i, v -> Offset(slot * i + slot / 2f, size.height - size.height * v / max) }
+            val path = androidx.compose.ui.graphics.Path().apply {
+                points.forEachIndexed { i, p -> if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y) }
+            }
+            drawPath(path, ghostInk, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx()))
+            points.forEach { drawCircle(ghostInk, radius = 3.dp.toPx(), center = it) }
         }
     }
 }
