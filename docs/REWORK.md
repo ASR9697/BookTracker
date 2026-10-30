@@ -13,7 +13,6 @@ Paths are relative to `app/src/main/java/com/example/booktracker/` unless noted.
 | [Profile](#profile) | `app/ui/ProfileScreen.kt` | Ready to build |
 | [Stats](#stats) | `app/ui/AnalyticsScreen.kt` | Ready to build |
 | [Home](#home) | `app/ui/HomeDashboard.kt` | Ready to build |
-| [Reading timer](#reading-timer) | `app/ui/FocusTimerScreen.kt` | Ready to build |
 
 <!-- Status: Idea → Planned, decisions open → Ready to build → In progress -->
 
@@ -321,84 +320,6 @@ Up next's "See all".
 2. Layout: heads-up strip, merged shortcuts, tiles → Goals, pages per month hidden.
 3. Extras A (On this day, in the heads-up strip), C (smart subtitle), D ("Can't
    decide?" → `tbr_swipe`).
-
----
-
-## Reading timer
-
-**File:** `app/ui/FocusTimerScreen.kt` (1122 lines), service `app/service/TimerService.kt`
-· **Status:** Ready to build
-
-**Goal:** a quiet clock you can trust while you read. This is already the most polished
-screen (pick-up card, page goal, "still reading?", zen, foldable and keyboard support),
-so this is a tune-up. Problems: logging pages means tapping a small + once per page
-with no way to jump, a half-built Break phase sits in the code, and a few project
-rules are broken.
-
-### Decisions
-- [x] Break phase: **remove it.** (`TimerPhase.BREAK`, `breakMinutes`, its persistence
-      and the break text exist, but `setTimerPhase` has no callers and there's no
-      setting.) Extra B covers the real need.
-- [x] **Tap the page number to open `ProgressPickerSheet`**; +/- stay for single pages.
-- [x] Extras: **A, B, C, D, E** (all).
-
-### Layout, top to bottom
-1. **Top bar (kept):** minimise, sounds, zen, Done.
-2. **Clock and status line (kept).**
-3. **Pick-up card (kept)** before starting.
-4. **Play button, countdown and page-goal chips (kept).**
-5. **Book card:** page number becomes tappable (opens the progress picker); +/-
-   buttons grow to 48dp touch targets. Note button kept.
-
-### Fixes
-- The breathing glow behind the play button is an infinite loop that ignores
-  `rememberReduceMotion()` (AGENTS rule: loops stay still when it's on).
-- Page stepper reads "p. 120 / 300" for every book; use
-  `FormatAdaptabilityLayer.unitAbbrev` like the rest of the screen already does.
-- +/- buttons are 32dp, below the 48dp touch target.
-- Countdown and page-goal pickers are plain `ModalBottomSheet`s; small pickers should
-  be `ActionSheet` with content.
-- Hand-typed shapes: `RoundedCornerShape(50)` ×3 → `CircleShape`; sheet shapes
-  `RoundedCornerShape(topStart = 28.dp…)` ×3 go away with the `ActionSheet` move.
-- Hard-coded colours `Color(0xFF6EE7A0)` (break ring, goes with the break phase) and
-  `Color(0xFF090D14)` (zen background) → theme tokens.
-
-### Extras
-| # | Idea | Effort |
-|---|---|---|
-| A | Volume keys turn the page (+1 / -1) while the timer is open; opt-in `AppPrefs` toggle. The screen already handles key events | Small |
-| B | When a countdown ends: "+5 min" beside Save, to keep going without starting over | Small |
-| C | Preview a sound while choosing it, even before the clock starts | Small |
-| D | Zen mode fades the clock to a dim glow after 10 s; a tap brings it back | Small |
-| E | Dictate a note from the note button (speech to text) | Small |
-
-**Chosen: all (A-E).**
-
-Notes:
-- B ("+5 min") replaces the break flow: when the countdown ends the screen offers
-  Save and "+5 min"; the button adds to `timeLeftSeconds` and keeps the same session.
-- C: playing a sound while paused must stop when the sheet closes, unless the clock
-  is running (`SoundscapeEngine`).
-- D: the dim must respect reduce motion (no fade, just dim).
-- E: `NoteSheet` already dictates (`RecognizerIntent`), so this is a long-press on the
-  timer's note button that opens the sheet straight into dictation. Small, not Medium.
-
-### Files
-- `app/ui/FocusTimerScreen.kt`: page picker, button sizes, unit label, reduce motion,
-  sheets → `ActionSheet`, shapes and colours; extras.
-- Break removal: `TimerPhase` and its uses in `FocusTimerScreen.kt`,
-  `BookTrackerViewModel.kt` (`setTimerPhase`, `breakMinutes`, phase restore),
-  `SettingsRepository.kt` (`breakMinutesKey`, `activeTimerPhase`), `TimerService.kt`.
-  Check `shared/.../Constants.kt` and the watch (`WatchStore`) for the phase too.
-- Volume keys: `AppPrefs` field, toggle in `app/ui/SettingsScreen.kt`.
-- `npm run update-maps`.
-
-### PRs
-1. Fixes + tappable page number.
-2. Break phase removal.
-3. Extras B ("+5 min") and D (zen dim): on-screen timer behaviour.
-4. Extras A (volume keys, with its Settings toggle), C (sound preview), E (dictation
-   long-press).
 
 ---
 
