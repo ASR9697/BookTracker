@@ -50,6 +50,13 @@ android {
             )
             signingConfig = if (keystorePropertiesFile.exists()) signingConfigs.getByName("release") else null
         }
+        // Same as the phone's: release code signed with the debug key, so it installs over
+        // a debug build and still syncs with a debug or profile phone app.
+        create("profile") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
     }
     buildFeatures {
         compose = true
@@ -65,6 +72,8 @@ kotlin {
 dependencies {
     implementation(project(":shared"))
     implementation("com.google.android.gms:play-services-wearable:19.0.0")
+    // Play services drags in fragment 1.2, which mishandles ActivityResult permission requests.
+    implementation("androidx.fragment:fragment:1.5.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
 
     implementation(platform("androidx.compose:compose-bom:2025.09.00"))
@@ -73,4 +82,12 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.wear:wear:1.3.0")
     implementation("androidx.wear.watchface:watchface-complications-data-source-ktx:1.3.0")
+    implementation("androidx.wear:wear-ongoing:1.0.0")
+    implementation("androidx.core:core-ktx:1.16.0")
+    implementation("androidx.wear.tiles:tiles:1.5.0")
+    implementation("androidx.wear.protolayout:protolayout:1.3.0")
+    implementation("androidx.wear.protolayout:protolayout-material3:1.3.0")
+    implementation("androidx.concurrent:concurrent-futures-ktx:1.2.0")
+
+    testImplementation("junit:junit:4.13.2")
 }

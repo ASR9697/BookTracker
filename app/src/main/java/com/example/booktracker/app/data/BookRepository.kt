@@ -80,6 +80,8 @@ interface BookRepository {
         durationMillis: Long,
         endTime: Long = System.currentTimeMillis()
     )
+    /** A session timed on the watch; see the implementation for why it moves the bookmark. */
+    suspend fun addRemoteSession(session: Session)
     suspend fun deleteSession(id: String)
     suspend fun updateSession(session: Session)
     suspend fun importCsv(context: android.content.Context, uri: android.net.Uri): CsvImportResult
@@ -787,6 +789,34 @@ class RoomBookRepository(
                 book.copy(
                     currentPage = cappedEnd,
                     lastUpdated = now,
+                    status = if (keepStatus) book.status else BookStatus.READING.name
+                )
+            )
+        }
+    }
+
+    // A session timed on the watch arrives whole with the watch's own id, so a Data
+    // Layer replay upserts the same row. The watch holds its page taps back while it
+    // times a session, so the bookmark moves here, and no quick log is made for them.
+    override suspend fun addRemoteSession(session: Session) {
+        val book = bookDao.getById(session.bookId) ?: return
+        val ceiling = if (book.totalPages > 0) book.totalPages else Int.MAX_VALUE
+        val start = session.startPage.coerceIn(0, ceiling)
+        val end = session.endPage.coerceIn(0, ceiling)
+        sessionDao.upsert(
+            session.copy(
+                startPage = start,
+                endPage = end,
+                pagesRead = (end - start).coerceAtLeast(0),
+                zoneId = session.zoneId.ifBlank { currentZoneId() }
+            ).toEntity()
+        )
+        if (end > book.currentPage) {
+            val keepStatus = book.status == BookStatus.FINISHED.name || book.status == BookStatus.DNF.name
+            bookDao.upsert(
+                book.copy(
+                    currentPage = end,
+                    lastUpdated = System.currentTimeMillis(),
                     status = if (keepStatus) book.status else BookStatus.READING.name
                 )
             )

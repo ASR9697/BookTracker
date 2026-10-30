@@ -7,6 +7,7 @@ import coil3.SingletonImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import com.example.booktracker.app.data.ServiceLocator
 import com.example.booktracker.app.notifications.Notifications
+import com.example.booktracker.app.sync.WearBridge
 import com.example.booktracker.app.widget.WidgetRefresher
 import com.example.booktracker.app.worker.AutoBackupScheduler
 import com.example.booktracker.app.worker.NudgeScheduler
@@ -59,6 +60,8 @@ class BookTrackerApplication : Application(), SingletonImageLoader.Factory {
 
         // Home-screen widgets follow the data wherever it changes: the app, the timer or a widget tap.
         WidgetRefresher.start(this, appScope)
+        // The watch follows the same way, so its controls work with the app closed.
+        WearBridge.start(this, appScope)
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader =

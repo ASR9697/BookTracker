@@ -3,6 +3,7 @@ package com.example.booktracker.app.sync
 import android.util.Log
 import com.example.booktracker.app.data.ServiceLocator
 import com.example.booktracker.shared.Constants
+import com.example.booktracker.shared.models.Session
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
@@ -11,10 +12,10 @@ import com.google.android.gms.wearable.WearableListenerService
 import kotlinx.coroutines.runBlocking
 
 /**
- * Receives data items from the watch — page progress and dictated margin notes —
- * and applies them to the local database. Runs even when the app UI is closed.
- * Progress uses Last-Write-Wins; notes are keyed by the watch's note id (upsert),
- * so replays are idempotent.
+ * Receives data items from the watch (page progress, dictated margin notes,
+ * sessions timed on the wrist and timer taps) and applies them. Runs even when
+ * the app UI is closed. Progress uses Last-Write-Wins; notes and sessions are
+ * keyed by the watch's own id (upsert), so replays are idempotent.
  */
 class WearSyncService : WearableListenerService() {
 
@@ -58,9 +59,36 @@ class WearSyncService : WearableListenerService() {
                     Log.d(TAG, "Applied watch progress for $bookId -> $currentPage")
                 }
 
+                path.startsWith(Constants.SESSION_PATH_PREFIX) -> {
+                    val sessionId = dataMap.getString(Constants.KEY_SESSION_ID) ?: continue
+                    val bookId = dataMap.getString(Constants.KEY_BOOK_ID) ?: continue
+                    val startPage = dataMap.getInt(Constants.KEY_START_UNIT)
+                    val endPage = dataMap.getInt(Constants.KEY_END_UNIT)
+                    val session = Session(
+                        id = sessionId,
+                        bookId = bookId,
+                        startTime = dataMap.getLong(Constants.KEY_START_TIME),
+                        endTime = dataMap.getLong(Constants.KEY_END_TIME),
+                        durationSeconds = dataMap.getInt(Constants.KEY_DURATION_SECONDS),
+                        startPage = startPage,
+                        endPage = endPage,
+                        pagesRead = (endPage - startPage).coerceAtLeast(0),
+                        deviceSource = "watch",
+                        zoneId = dataMap.getString(Constants.KEY_ZONE_ID).orEmpty(),
+                        focus = dataMap.getInt(Constants.KEY_FOCUS).coerceIn(0, 5)
+                    )
+                    runBlocking { ServiceLocator.repository(applicationContext).addRemoteSession(session) }
+                    try {
+                        Wearable.getDataClient(applicationContext).deleteDataItems(event.dataItem.uri)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to clear synced session item", e)
+                    }
+                    Log.d(TAG, "Applied watch session $sessionId for $bookId")
+                }
+
                 path.startsWith(Constants.TIMER_CONTROL_PATH) -> {
                     val action = dataMap.getString(Constants.KEY_TIMER_CONTROL_ACTION) ?: continue
-                    ServiceLocator.emitTimerControlEvent(action)
+                    runBlocking { WearBridge.applyTimerControl(applicationContext, action) }
                     try {
                         Wearable.getDataClient(applicationContext).deleteDataItems(event.dataItem.uri)
                     } catch (e: Exception) {

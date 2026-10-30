@@ -39,7 +39,6 @@ import com.example.booktracker.app.data.remote.BookMetadata
 import com.example.booktracker.app.journal.NoiseType
 import com.example.booktracker.app.journal.SoundscapeEngine
 import com.example.booktracker.app.service.TimerPersistence
-import com.example.booktracker.app.sync.WearBridge
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookFormat
 import com.example.booktracker.shared.models.BookStatus
@@ -84,8 +83,7 @@ sealed interface DriveSyncState {
 class BookTrackerViewModel(
     private val appContext: Context,
     private val repository: BookRepository,
-    private val settings: SettingsRepository,
-    private val wearBridge: WearBridge
+    private val settings: SettingsRepository
 ) : ViewModel() {
 
     val books: StateFlow<List<Book>> = repository.observeBooks()
@@ -354,33 +352,6 @@ class BookTrackerViewModel(
             val notes = repository.observeAllNotes().first()
             NoteImageStore.sweepOrphans(appContext, notes.flatMap { it.imageUris })
         }
-        viewModelScope.launch {
-            combine(
-                repository.observeBooks().map { list ->
-                    list.filter { it.status == BookStatus.READING.name }
-                },
-                streak
-            ) { books, streakInfo -> books to streakInfo }
-                .distinctUntilChanged { (oldBooks, oldStreak), (newBooks, newStreak) ->
-                    oldBooks.size == newBooks.size &&
-                        oldBooks.zip(newBooks).all { (old, new) ->
-                            old.id == new.id &&
-                            old.title == new.title &&
-                            old.currentPage == new.currentPage &&
-                            old.totalPages == new.totalPages
-                        } &&
-                        oldStreak.dailyGoal == newStreak.dailyGoal &&
-                        oldStreak.pagesToday == newStreak.pagesToday
-                }
-                .collect { (books, streakInfo) ->
-                    wearBridge.publishActiveBooks(
-                        books,
-                        streakInfo.dailyGoal,
-                        streakInfo.pagesToday
-                    )
-                }
-        }
-
         // Home-screen widgets refresh from WidgetRefresher, which starts with the app.
 
         viewModelScope.launch {
@@ -393,26 +364,12 @@ class BookTrackerViewModel(
             }.collect()
         }
 
-        // Timer Sync to WearOS
+        // The clock also starts and stops from the notification, widgets and watch;
+        // the soundscape follows it wherever the tap came from.
         viewModelScope.launch {
-            combine(
-                combine(timerIsRunning, timeLeftSeconds, elapsedSeconds) { run, left, elap -> Triple(run, left, elap) },
-                timerPhase,
-                timerMode,
-                ServiceLocator.timerBookId
-            ) { (isRunning, timeLeft, elapsed), phase, mode, bookId ->
-                val timeValue = if (mode == TimerMode.STOPWATCH) elapsed else timeLeft
-                wearBridge.publishTimerState(isRunning, timeValue, phase.ordinal, bookId, mode.name)
-            }.collect()
-        }
-
-        viewModelScope.launch {
-            ServiceLocator.timerControlEvents.collect { action ->
-                if (action == "PAUSE" && timerIsRunning.value) {
-                    setTimerRunning(false)
-                } else if (action == "RESUME" && !timerIsRunning.value && ServiceLocator.timerBookId.value != null) {
-                    setTimerRunning(true)
-                }
+            ServiceLocator.timerIsRunning.collect { running ->
+                if (running && _noiseType.value != NoiseType.NONE) soundscapeEngine.play(_noiseType.value)
+                else soundscapeEngine.stop()
             }
         }
 
@@ -1161,11 +1118,6 @@ class BookTrackerViewModel(
             return
         }
         ServiceLocator.setTimerRunning(isRunning)
-        if (isRunning) {
-            if (_noiseType.value != NoiseType.NONE) soundscapeEngine.play(_noiseType.value)
-        } else {
-            soundscapeEngine.stop()
-        }
         persistTimer()
     }
 
@@ -1311,8 +1263,7 @@ class BookTrackerViewModel(
                     BookTrackerViewModel(
                         appContext,
                         ServiceLocator.repository(appContext),
-                        ServiceLocator.settings(appContext),
-                        WearBridge(appContext)
+                        ServiceLocator.settings(appContext)
                     )
                 }
             }
