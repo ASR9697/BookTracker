@@ -263,10 +263,10 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: EditBookDialog:80, LogSessionDialog:328, PastDatePickerDialog:436, Book.isEnded:467
 - **BookQuickActionsSheet.kt** (153) - What a long-press on a cover opens: the cover lifts into view with the book's title, then the things you'd want to do...
   - fun: BookQuickActionsSheet:42
-- **BookTrackerScreen.kt** (2262)
-  - types: LibraryViewMode:183, LibrarySort:207, SilentHaptics:241
-  - fun: BookTrackerApp:223, BookTrackerAppContent:247, WeekBubbles:1554, LibraryScreen:1628, formatElapsed:2163, SubScreen:2178, TimerMiniPlayer:2193
-  - nav routes: editHome:832, wishlist:838, owned/{ownership}:874, calendar:907, bookshelf:929, epubReader/{uri}:940, scanner:947, privacy:972, achievements:975, wrappedAnimated:986, wrapped:1002, planner:1018, book/{bookId}:1027, history:1041, settings:1054, streak:1135, goals:1150, finished:1192, journey_map:1206, search:1217, focus/{bookId}:1227, session_result/{bookId}:1326, review:1354, tagTidy:1373, vocabulary:1378, shelfScan:1393, tbr_swipe:1409
+- **BookTrackerScreen.kt** (2254)
+  - types: LibraryViewMode:184, LibrarySort:208, SilentHaptics:242
+  - fun: BookTrackerApp:224, BookTrackerAppContent:248, WeekBubbles:1555, LibraryScreen:1629, formatElapsed:2155, SubScreen:2170, TimerMiniPlayer:2185
+  - nav routes: editHome:833, wishlist:839, owned/{ownership}:875, calendar:908, bookshelf:930, epubReader/{uri}:941, scanner:948, privacy:973, achievements:976, wrappedAnimated:987, wrapped:1003, planner:1019, book/{bookId}:1028, history:1042, settings:1055, streak:1136, goals:1151, finished:1193, journey_map:1207, search:1218, focus/{bookId}:1228, session_result/{bookId}:1327, review:1355, tagTidy:1374, vocabulary:1379, shelfScan:1394, tbr_swipe:1410
 - **BookTrackerViewModel.kt** (1286)
   - types: DriveSyncState:75, .Idle:76, .Syncing:77, .NeedsConsent:78, .Done:79, .Failed:80, BookTrackerViewModel:83, .SessionResult:853
   - fun: .clearDriveStatus:154, .setHapticsEnabled:216, .setReduceMotion:217, .setKeepScreenOn:218, .updatePrefs:224, .finishWelcome:242, .exportCsv:245, .backupNow:258, .deleteAllData:273, .openRoute:442, .consumeRoute:446, .gradeReview:450, .saveWord:459, .deleteWord:468, .setFinishBy:472, .syncDrive:477, .driveConsentShown:490, .onDriveConsent:494, .disconnectDrive:527, .setAudiobook:536, .logListening:541, .setAudioPosition:548, .addShelfBooks:553, .shareNote:574, .addScannedBook:578, .importCsv:605, .importBookmory:617, .promote:631, .promoteToReading:641, .pauseBook:647, .changeStatus:657, .toggleFavorite:667, .addProgress:671, .recordLoan:675, .markLoanReturned:684, .tidyTag:699, .updateBookDetails:708, .setFormat:720, .setOwnership:724, .setWish:738, .gotWished:749, .addToWishlist:763, .setPurchases:786, .finishBook:799, .readAgain:803, .setProgress:807, .setCollections:811, .markDnf:815, .startSession:819, .startFocus:829, .saveSession:872, .discardOpenSession:920, .leaveUnstartedFocus:936, .logManualSession:951, .delete:957, .deleteSession:964, .updateSession:968, .restore:973, .setHomeLayout:980, .setUserName:984, .setAvatarPhoto:989, .setAvatarCover:997, .clearAvatar:1004, .setDailyGoal:1011, .setYearlyGoal:1015, .setMonthlyGoalPages:1019, .setMonthlyGoalBooks:1023, .setDndDuringSession:1027, .setThemeMode:1031, .setUseDynamicColor:1035, .setAppPalette:1039, .setReminder:1043, .planBook:1047, .setTimerBook:1057, .setTimerPhase:1072, .setTimerMode:1095, .setCustomWorkMinutes:1109, .countdownTotalSeconds:1119, .setTimerRunning:1128, .pauseUnattended:1141, .setPageTarget:1153, .setWorkMinutes:1162, .setBreakMinutes:1170, .setDayStartsAtHour:1177, .setUseAppLock:1181, .setNoiseType:1185, .setTimerVolume:1193, .sessionsFor:1198, .notesFor:1201, .addNote:1203, .updateNote:1213, .toggleNoteFavorite:1217, .deleteNote:1221, .searchLibrary:1225, .exportBackup:1228, .importBackup:1245
@@ -309,8 +309,8 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: HistoryScreen:69, EditSessionDialog:200, HistorySessionRow:248
 - **HomeDashboard.kt** (1195)
   - fun: HomeDashboard:150, CurrentBookCard:741, NothingInProgressCard:935, Tile:974, ShortcutTile:1003, RingHeader:1037, MonthBars:1092, greeting:1139, subtitle:1152, formatMinutes:1163, yearPace:1167, pages:1179, StatusChip:1183
-- **LibraryGridCard.kt** (311) - Compact library tile sized for three across on a phone: cover with status, rating and loan marks, title and author un...
-  - fun: LibraryGridCard:78, CoverPill:202, libraryStatus:214, statusIcon:221, WishlistTile:237
+- **LibraryGridCard.kt** (229) - Compact library tile sized for three across on a phone: cover with status, rating and loan marks, title and author un...
+  - fun: LibraryGridCard:78, CoverPill:202, libraryStatus:214, statusIcon:221
 - **LibrarySearchScreen.kt** (280) - Universal library search over the local FTS index: every book field the user would remember (title, author, descripti...
   - fun: LibrarySearchScreen:64, SearchSectionHeader:176, BookHitRow:186, NoteHitRow:218, StatusChip:261
 - **LoanComponents.kt** (537) - Reusable visual badge displaying loan status and due date countdown.

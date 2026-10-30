@@ -50,6 +50,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.rounded.BookmarkAdd
 import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ArrowDropDown
@@ -1690,13 +1691,13 @@ fun LibraryScreen(
     val formats = remember(books) { BookFormat.entries.filter { f -> books.any { it.format == f } } }
     if (selectedFormat != null && selectedFormat !in formats) selectedFormat = null
     val ownershipCounts = remember(books) {
-        SelectableOwnerships.associateWith { o -> books.count { it.ownership == o } }.filterValues { it > 0 }
+        // Wished-for books aren't on the shelf, so Wishlist isn't a filter here; it has its own page.
+        SelectableOwnerships.filter { it != Ownership.WISHLIST }.associateWith { o -> shelf.count { it.ownership == o } }.filterValues { it > 0 }
     }
     if (selectedOwnership != null && selectedOwnership !in ownershipCounts) selectedOwnership = null
 
-    val pool = if (selectedOwnership == Ownership.WISHLIST) books else shelf
-    val displayBooks = remember(pool, selectedFilter, showFavoritesOnly, showLoansOnly, selectedCollection, selectedFormat, selectedOwnership, sortOrder) {
-        pool.filter { book ->
+    val displayBooks = remember(shelf, selectedFilter, showFavoritesOnly, showLoansOnly, selectedCollection, selectedFormat, selectedOwnership, sortOrder) {
+        shelf.filter { book ->
             val statusMatches = when (selectedFilter) {
                 null -> true
                 BookStatus.TO_READ -> book.status.equals(BookStatus.TO_READ.name, ignoreCase = true) || book.status.equals("BACKLOG", ignoreCase = true)
@@ -1728,9 +1729,6 @@ fun LibraryScreen(
     }
 
     val readingCount = remember(shelf) { shelf.count { it.status.equals(BookStatus.READING.name, ignoreCase = true) } }
-    val noFilters = selectedFilter == null && !showFavoritesOnly && !showLoansOnly &&
-        selectedCollection == null && selectedFormat == null && selectedOwnership == null
-    val showWishTile = wished.isNotEmpty() && noFilters && viewMode == LibraryViewMode.GRID
     SectionPage(
         title = "Library",
         line = when {
@@ -1771,14 +1769,14 @@ fun LibraryScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             val filters = listOf(
-                null to "All (${pool.size})",
-                BookStatus.READING to "${BookStatus.READING.label} (${pool.count { it.status.equals(BookStatus.READING.name, ignoreCase = true) }})",
-                BookStatus.TO_READ to "${BookStatus.TO_READ.label} (${pool.count { it.status.equals(BookStatus.TO_READ.name, ignoreCase = true) || it.status.equals("BACKLOG", ignoreCase = true) }})",
-                BookStatus.SHORTLIST to "${BookStatus.SHORTLIST.label} (${pool.count { it.status.equals(BookStatus.SHORTLIST.name, ignoreCase = true) }})",
-                BookStatus.UP_NEXT to "${BookStatus.UP_NEXT.label} (${pool.count { it.status.equals(BookStatus.UP_NEXT.name, ignoreCase = true) }})",
-                BookStatus.PAUSED to "${BookStatus.PAUSED.label} (${pool.count { it.status.equals(BookStatus.PAUSED.name, ignoreCase = true) }})",
-                BookStatus.FINISHED to "${BookStatus.FINISHED.label} (${pool.count { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) }})",
-                BookStatus.DNF to "${BookStatus.DNF.label} (${pool.count { it.status.equals(BookStatus.DNF.name, ignoreCase = true) || it.status.equals(BookStatus.ABANDONED.name, ignoreCase = true) }})"
+                null to "All (${shelf.size})",
+                BookStatus.READING to "${BookStatus.READING.label} (${shelf.count { it.status.equals(BookStatus.READING.name, ignoreCase = true) }})",
+                BookStatus.TO_READ to "${BookStatus.TO_READ.label} (${shelf.count { it.status.equals(BookStatus.TO_READ.name, ignoreCase = true) || it.status.equals("BACKLOG", ignoreCase = true) }})",
+                BookStatus.SHORTLIST to "${BookStatus.SHORTLIST.label} (${shelf.count { it.status.equals(BookStatus.SHORTLIST.name, ignoreCase = true) }})",
+                BookStatus.UP_NEXT to "${BookStatus.UP_NEXT.label} (${shelf.count { it.status.equals(BookStatus.UP_NEXT.name, ignoreCase = true) }})",
+                BookStatus.PAUSED to "${BookStatus.PAUSED.label} (${shelf.count { it.status.equals(BookStatus.PAUSED.name, ignoreCase = true) }})",
+                BookStatus.FINISHED to "${BookStatus.FINISHED.label} (${shelf.count { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) }})",
+                BookStatus.DNF to "${BookStatus.DNF.label} (${shelf.count { it.status.equals(BookStatus.DNF.name, ignoreCase = true) || it.status.equals(BookStatus.ABANDONED.name, ignoreCase = true) }})"
             )
 
             filters.forEach { (status, label) ->
@@ -1967,6 +1965,10 @@ fun LibraryScreen(
                 }
             }
             Spacer(Modifier.weight(1f))
+            // Wished-for books aren't on the shelf, so the wishlist is one tap away from here instead.
+            IconButton(onClick = onOpenWishlist) {
+                Icon(Icons.Rounded.BookmarkAdd, contentDescription = "Wishlist")
+            }
             IconButton(onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 viewMode = if (viewMode == LibraryViewMode.GRID) LibraryViewMode.BOOKSHELF else LibraryViewMode.GRID
@@ -2003,7 +2005,7 @@ fun LibraryScreen(
         }
 
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            if (displayBooks.isEmpty() && !showWishTile) {
+            if (displayBooks.isEmpty()) {
                 if (shelf.isEmpty()) {
                     // Library is completely empty
                     Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
@@ -2125,22 +2127,12 @@ fun LibraryScreen(
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        if (showWishTile) {
-                            item(key = "wishlist") {
-                                WishlistTile(
-                                    wished = wished,
-                                    onClick = onOpenWishlist,
-                                    modifier = Modifier.animateItem().staggeredEntrance(gridEntrance, 0)
-                                )
-                            }
-                        }
-                        val firstBook = if (showWishTile) 1 else 0
                         itemsIndexed(displayBooks, key = { _, book -> book.id }) { index, book ->
                             LibraryGridCard(
                                 book = book,
                                 modifier = Modifier
                                     .animateItem()
-                                    .staggeredEntrance(gridEntrance, firstBook + index),
+                                    .staggeredEntrance(gridEntrance, index),
                                 onClick = { onOpenBook(book) },
                                 onStartReading = { onStartReading(book) },
                                 onDelete = { onDelete(book) },
