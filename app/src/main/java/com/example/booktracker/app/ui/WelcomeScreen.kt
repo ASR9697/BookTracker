@@ -28,12 +28,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.EditNote
 import androidx.compose.material.icons.rounded.QrCodeScanner
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -56,6 +59,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.booktracker.app.ui.animations.Motion
+import com.example.booktracker.app.ui.animations.animateCountUp
 import com.example.booktracker.app.ui.animations.rememberHaptics
 import com.example.booktracker.app.ui.theme.AppShape
 
@@ -138,16 +142,7 @@ fun WelcomeScreen(
                             )
                         }
                         2 -> StepText("A little every day", "How many pages make a good reading day? You can change this any time in Goals.") {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                                listOf(10, 20, 30, 50).forEach { pages ->
-                                    TickFilterChip(
-                                        selected = goal == pages,
-                                        onClick = { haptics.tick(); goal = pages },
-                                        label = { Text("$pages pages") },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
-                            }
+                            GoalPicker(goal = goal, onGoal = { haptics.tick(); goal = it })
                         }
                         else -> StepText("Your first book", "Scan the barcode on the back, or search by title. It goes straight onto your shelf.") {
                             Button(
@@ -207,6 +202,66 @@ private fun Intro() {
     Promise(Icons.AutoMirrored.Rounded.MenuBook, "Your whole library, with progress and time left")
     Promise(Icons.Rounded.Timer, "A reading timer that stays out of the way")
     Promise(Icons.Rounded.EditNote, "Notes and quotes that come back for review")
+}
+
+private const val GOAL_MIN = 5
+private const val GOAL_MAX = 200
+private const val GOAL_STEP = 5
+
+/** Quick picks under the stepper; the stepper covers everything in between. */
+private val GoalPresets = listOf(10, 20, 30, 50)
+
+/** A rough reading pace (40 pages an hour) and book length, only to make the number feel real. */
+private const val MINUTES_PER_PAGE = 1.5f
+private const val PAGES_PER_BOOK = 300
+
+/**
+ * The daily page goal as one big number with a stepper, a few presets, and a
+ * line translating it into time and books so the choice means something.
+ */
+@Composable
+private fun GoalPicker(goal: Int, onGoal: (Int) -> Unit) {
+    val shown by animateCountUp(goal, durationMillis = 250)
+    val minutes = (goal * MINUTES_PER_PAGE / 5).toInt() * 5
+    val booksPerYear = (goal * 365f / PAGES_PER_BOOK).toInt().coerceAtLeast(1)
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+            FilledTonalIconButton(
+                onClick = { onGoal((goal - GOAL_STEP).coerceAtLeast(GOAL_MIN)) },
+                enabled = goal > GOAL_MIN,
+                modifier = Modifier.size(52.dp)
+            ) { Icon(Icons.Rounded.Remove, contentDescription = "Fewer pages") }
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(128.dp)) {
+                Text("$shown", style = MaterialTheme.typography.displayLarge, color = MaterialTheme.colorScheme.primary)
+                Text("pages a day", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            FilledTonalIconButton(
+                onClick = { onGoal((goal + GOAL_STEP).coerceAtMost(GOAL_MAX)) },
+                enabled = goal < GOAL_MAX,
+                modifier = Modifier.size(52.dp)
+            ) { Icon(Icons.Rounded.Add, contentDescription = "More pages") }
+        }
+        Spacer(Modifier.height(20.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            GoalPresets.forEach { pages ->
+                TickFilterChip(
+                    selected = goal == pages,
+                    onClick = { onGoal(pages) },
+                    label = { Text("$pages", modifier = Modifier.padding(horizontal = 8.dp)) }
+                )
+            }
+        }
+        Spacer(Modifier.height(20.dp))
+        Surface(shape = AppShape.M, color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = Modifier.fillMaxWidth()) {
+            Text(
+                "About $minutes minutes of reading a day, or around $booksPerYear ${if (booksPerYear == 1) "book" else "books"} a year.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
+            )
+        }
+    }
 }
 
 @Composable

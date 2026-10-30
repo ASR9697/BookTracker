@@ -407,8 +407,8 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: VirtualBookshelfView:87, ShelfHeader:208, spineWidth:228, spineHeight:235, SpineShelf:242, CoverShelf:290, Ledge:323, fallbackSpineColor:352, BookSpine:360, FaceOutCover:439, ShelfInspector:479, Modifier.verticalText:539
 - **VocabularyScreen.kt** (527) - Words met while reading: what they mean, which book and page they came from, and the sentence they were in.
   - fun: VocabularyScreen:101, WordEditorSheet:257, WordScanDialog:456
-- **WelcomeScreen.kt** (248) - First run, shown over an empty library: what the app is for, your name, a daily goal, and your first book.
-  - fun: WelcomeScreen:70, Intro:191, Promise:213, StepText:226, StepDots:236
+- **WelcomeScreen.kt** (303) - First run, shown over an empty library: what the app is for, your name, a daily goal, and your first book.
+  - fun: WelcomeScreen:74, Intro:186, GoalPicker:223, Promise:268, StepText:281, StepDots:291
 - **WishlistScreen.kt** (698) - The buying side of the library: what's wished for, what it would cost against this month's budget, what a series is m...
   - types: WishFilter:64
   - fun: WishlistScreen:75, money:291, BudgetCard:299, SeriesGapsCard:346, WishRow:379, PriorityPill:486, WishEditorDialog:500, GotItFlow:643, BudgetDialog:674
