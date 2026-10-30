@@ -48,6 +48,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -509,10 +510,11 @@ fun HomeDashboard(
                                 onClick = onOpenCalendar,
                                 modifier = Modifier.weight(1f)
                             )
+                            val shelfCount = WishlistEngine.onShelf(books).size
                             ShortcutTile(
                                 icon = Icons.Rounded.ViewWeek,
                                 title = "Bookshelf",
-                                subtitle = "${books.size} ${if (books.size == 1) "book" else "books"}",
+                                subtitle = "$shelfCount ${if (shelfCount == 1) "book" else "books"}",
                                 onClick = onOpenBookshelf,
                                 modifier = Modifier.weight(1f)
                             )
@@ -820,7 +822,8 @@ private fun CurrentBookCard(
                     )
                 }
                 Spacer(Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f).height(132.dp)) {
+                // At least the cover's height, but free to grow with large text.
+                Column(modifier = Modifier.weight(1f).heightIn(min = 132.dp)) {
                     Text(
                         book.title,
                         style = MaterialTheme.typography.titleMedium,
@@ -1042,6 +1045,8 @@ private fun RingHeader(title: String, fraction: Float) {
         }
     }
     val shownPercent by animateCountUp((fraction * 100).toInt())
+    // The ring grows with the font scale so "140%" still fits inside it.
+    val ringSize = 48.dp * LocalDensity.current.fontScale.coerceAtLeast(1f)
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             title,
@@ -1050,7 +1055,7 @@ private fun RingHeader(title: String, fraction: Float) {
             modifier = Modifier.weight(1f)
         )
         Box(
-            modifier = Modifier.size(48.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value },
+            modifier = Modifier.size(ringSize).graphicsLayer { scaleX = pop.value; scaleY = pop.value },
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {

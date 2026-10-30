@@ -2342,7 +2342,7 @@ private fun ProgressAndDaysRow(
                 if (book.totalPages > 0) {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "${(fraction * 100).roundToInt()}% complete",
+                        "${(fraction * 100).toInt()}% complete",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -2550,7 +2550,7 @@ private fun SessionRow(
         
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("${session.pagesRead} Pages Read", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text("${session.pagesRead} ${if (session.pagesRead == 1) "Page" else "Pages"} Read",style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 if (durationMinutes >= 1) {
                     Spacer(Modifier.width(8.dp))
                     Box(modifier = Modifier.size(4.dp).background(MaterialTheme.colorScheme.outlineVariant, CircleShape))

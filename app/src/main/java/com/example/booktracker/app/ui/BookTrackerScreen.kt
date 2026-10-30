@@ -921,7 +921,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                     composable("bookshelf") {
                                         SubScreen(title = "Bookshelf", onBack = { navController.popBackStack() }) {
                                             VirtualBookshelfView(
-                                                books = books,
+                                                books = com.example.booktracker.app.analytics.WishlistEngine.onShelf(books),
                                                 onOpenBook = { navController.navigate("book/${it.id}") },
                                                 onStartReading = { navController.navigate("focus/${it.id}") },
                                                 modifier = Modifier.fillMaxSize(),

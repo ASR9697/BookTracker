@@ -32,9 +32,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **FocusInsights.kt** (95) - When and where the reader focuses best, from the focus they rate on the save screen.
   - types: FocusInsights:12, .Group:20, .Summary:22
   - fun: .summarize:36, .headline:61
-- **GoalEngine.kt** (305) - Pure logic engine for reading targets: yearly goal pacing, monthly page/book targets, and on-track / ahead / behind s...
+- **GoalEngine.kt** (307) - Pure logic engine for reading targets: yearly goal pacing, monthly page/book targets, and on-track / ahead / behind s...
   - types: GoalEngine:15, .GoalPaceStatus:17, .YearlyGoalPace:23, .HabitConsistency:37, .Season:45, .SeasonalSprint:60, .MonthlyGoalSummary:70
-  - fun: .trackingStart:85, .calculateYearlyPace:98, .calculateHabitConsistency:167, .currentSeason:201, .calculateSeasonalSprint:214, .calculateMonthlySummary:267
+  - fun: .trackingStart:85, .calculateYearlyPace:98, .calculateHabitConsistency:169, .currentSeason:203, .calculateSeasonalSprint:216, .calculateMonthlySummary:269
 - **LoanEngine.kt** (148) - Pure logic engine for library return dates, due date countdowns, lending tracking, and urgency evaluation.
   - types: LoanEngine:14, .LoanUrgency:16, .LoanStatusInfo:23
   - fun: .activeLoan:35, .getLoanStatus:42, .allActiveLoans:125, .urgentLoans:135
@@ -304,8 +304,8 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: GoalsScreen:64, GoalCard:253, animateFloatAsStateCompat:333
 - **HistoryScreen.kt** (287)
   - fun: HistoryScreen:69, EditSessionDialog:200, HistorySessionRow:248
-- **HomeDashboard.kt** (1185)
-  - fun: HomeDashboard:146, CurrentBookCard:734, NothingInProgressCard:927, Tile:966, ShortcutTile:995, RingHeader:1029, MonthBars:1082, greeting:1129, subtitle:1142, formatMinutes:1153, yearPace:1157, pages:1169, StatusChip:1173
+- **HomeDashboard.kt** (1190)
+  - fun: HomeDashboard:147, CurrentBookCard:736, NothingInProgressCard:930, Tile:969, ShortcutTile:998, RingHeader:1032, MonthBars:1087, greeting:1134, subtitle:1147, formatMinutes:1158, yearPace:1162, pages:1174, StatusChip:1178
 - **LibraryGridCard.kt** (311) - Compact library tile sized for three across on a phone: cover with status, rating and loan marks, title and author un...
   - fun: LibraryGridCard:78, CoverPill:202, libraryStatus:214, statusIcon:221, WishlistTile:237
 - **LibrarySearchScreen.kt** (280) - Universal library search over the local FTS index: every book field the user would remember (title, author, descripti...

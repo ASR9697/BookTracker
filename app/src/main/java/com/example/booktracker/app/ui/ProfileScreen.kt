@@ -790,7 +790,7 @@ private fun ReadingRow(book: Book, sessions: List<Session>, onClick: () -> Unit)
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                listOfNotNull("${(fraction * 100).roundToInt()}%", timeLeft).joinToString(" · "),
+                listOfNotNull("${(fraction * 100).toInt()}%", timeLeft).joinToString(" · "),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
