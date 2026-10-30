@@ -244,6 +244,24 @@ class AnalyticsEngineTest {
         assertNull(AnalyticsEngine.usualPlace(nights, 15, utc))
     }
 
+    /** A timed 30-minute session starting at [hour]:00 UTC on day [day]. */
+    private fun timedAt(hour: Int, day: Int): Session {
+        val start = (day * 24L + hour) * 3_600_000L
+        return Session(id = "t$hour$day", startTime = start, endTime = start + 1_800_000L, durationSeconds = 1800, pagesRead = 10)
+    }
+
+    @Test
+    fun `usual start hour is the most common one`() {
+        val sessions = listOf(timedAt(21, 1), timedAt(21, 2), timedAt(7, 3), timedAt(21, 4))
+        assertEquals(21, AnalyticsEngine.usualStartHour(sessions, utc))
+    }
+
+    @Test
+    fun `usual start hour prefers the later hour on a tie and needs three sessions`() {
+        assertEquals(22, AnalyticsEngine.usualStartHour(listOf(timedAt(7, 1), timedAt(22, 2), timedAt(7, 3), timedAt(22, 4)), utc))
+        assertNull(AnalyticsEngine.usualStartHour(listOf(timedAt(7, 1), timedAt(7, 2)), utc))
+    }
+
     @Test
     fun `usual place wraps around midnight`() {
         val lateNights = listOf(startedAt("Bed", 23, 1), startedAt("Bed", 0, 2), startedAt("Bed", 1, 3))

@@ -6,9 +6,13 @@ import android.content.Context
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import androidx.work.workDataOf
+import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.app.R
 import com.example.booktracker.app.analytics.AnalyticsEngine
 import com.example.booktracker.app.analytics.ReviewEngine
@@ -145,8 +149,65 @@ class WishlistReleaseWorker(context: Context, params: WorkerParameters) : Corout
     }
 }
 
+/**
+ * "Pick up tomorrow?", asked for on the save screen: once, at the chosen time, unless
+ * the book was read again since. It takes the daily reminder's notification slot, so
+ * the two never stack when they land together.
+ */
+class PickUpReminderWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+    override suspend fun doWork(): Result {
+        val prefs = applicationContext.nudgePrefs() ?: return Result.success()
+        val bookId = inputData.getString(KEY_BOOK_ID) ?: return Result.success()
+        val setAt = inputData.getLong(KEY_SET_AT, 0L)
+        val repository = ServiceLocator.repository(applicationContext)
+        val book = repository.observeBooks().first().firstOrNull { it.id == bookId } ?: return Result.success()
+        if (!book.status.equals(BookStatus.READING.name, ignoreCase = true)) return Result.success()
+        val readSince = repository.observeCompletedSessions().first().any { it.bookId == bookId && it.endTime > setAt }
+        if (readSince) return Result.success()
+        val unit = com.example.booktracker.app.format.FormatAdaptabilityLayer.unitAbbrev(book)
+        applicationContext.postNudge(
+            Notifications.CHANNEL_REMINDERS, Notifications.ID_REMINDER, "book/$bookId",
+            if (prefs.hideTitles) "Pick up where you left off" else "Pick up ${book.title}",
+            "You're on $unit ${book.currentPage}. A few pages now keeps the story fresh."
+        )
+        return Result.success()
+    }
+
+    companion object {
+        const val KEY_BOOK_ID = "bookId"
+        const val KEY_SET_AT = "setAt"
+    }
+}
+
 /** Keeps the nudge jobs in line with the reader's switches and chosen hours. */
 object NudgeScheduler {
+    private const val PICK_UP = "pick_up_reminder"
+
+    /** One pick-up reminder at a time: a newer one replaces the last. */
+    fun schedulePickUp(context: Context, bookId: String, at: LocalDateTime) {
+        val now = LocalDateTime.now()
+        val request = OneTimeWorkRequestBuilder<PickUpReminderWorker>()
+            .setInitialDelay(delayTo(now, at).coerceAtLeast(0), TimeUnit.MILLISECONDS)
+            .setInputData(
+                workDataOf(
+                    PickUpReminderWorker.KEY_BOOK_ID to bookId,
+                    PickUpReminderWorker.KEY_SET_AT to System.currentTimeMillis()
+                )
+            )
+            .build()
+        WorkManager.getInstance(context).enqueueUniqueWork(PICK_UP, ExistingWorkPolicy.REPLACE, request)
+    }
+
+    /**
+     * When to offer the pick-up reminder: the next [hour]:00 at least half a day away,
+     * so a session just finished isn't followed by a reminder the same evening.
+     */
+    fun pickUpTime(now: LocalDateTime, hour: Int): LocalDateTime {
+        var at = now.withHour(hour).withMinute(0).withSecond(0).withNano(0)
+        while (at.isBefore(now.plusHours(12))) at = at.plusDays(1)
+        return at
+    }
+
     private const val STREAK = "streak_nudge"
     private const val RECAP = "weekly_recap"
     private const val REVIEW = "review_reminder"

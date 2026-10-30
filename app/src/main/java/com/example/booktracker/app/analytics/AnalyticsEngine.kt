@@ -301,6 +301,20 @@ object AnalyticsEngine {
         return top.takeIf { count >= MIN_SESSIONS_FOR_USUAL_PLACE && count * 2 > near.size }
     }
 
+    /**
+     * The hour the reader most often starts a timed session (ties: the later hour,
+     * since reading drifts towards bedtime); null with fewer than three timed sessions.
+     */
+    fun usualStartHour(sessions: List<Session>, zone: ZoneId = ZoneId.systemDefault()): Int? {
+        val timed = timedSessions(sessions)
+        if (timed.size < 3) return null
+        return timed
+            .groupingBy { Instant.ofEpochMilli(it.startTime).atZone(zone).hour }
+            .eachCount()
+            .maxWithOrNull(compareBy<Map.Entry<Int, Int>> { it.value }.thenBy { it.key })
+            ?.key
+    }
+
     private val FORMAT_TAGS = BookFormat.entries.map { it.name.lowercase() }.toSet() + "ebook"
 
     /**

@@ -17,9 +17,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 ## app/analytics - Pure stats engines (goals, streaks, badges, loans); unit-tested
 `app/src/main/java/com/example/booktracker/app/analytics/`
 
-- **AnalyticsEngine.kt** (372) - Time-based reading analytics over completed sessions.
+- **AnalyticsEngine.kt** (386) - Time-based reading analytics over completed sessions.
   - types: AnalyticsEngine:20, .CompletionPrediction:139, .TimeSummary:203, .EnvironmentStat:248
-  - fun: .hasYearToReview:32, .timedSessions:47, .pagesPerHour:57, .readingSpeedPpm:67, .sessionSpeedPpm:73, .formatReadingSpeed:79, .formatSessionPpm:90, .estimatedMinutesLeft:96, .bookEstimatedMinutesLeft:108, .bookPagesPerHour:121, .formatEstimatedTime:130, .predictCompletionDate:149, .minutesByDay:194, .summarizeTime:209, .bestTimeOfDay:231, .environmentStats:256, .pastPlaces:274, .usualPlace:293, .topGenre:310, .genreMix:325, .readerPersonality:340, .formatMinutes:366
+  - fun: .hasYearToReview:32, .timedSessions:47, .pagesPerHour:57, .readingSpeedPpm:67, .sessionSpeedPpm:73, .formatReadingSpeed:79, .formatSessionPpm:90, .estimatedMinutesLeft:96, .bookEstimatedMinutesLeft:108, .bookPagesPerHour:121, .formatEstimatedTime:130, .predictCompletionDate:149, .minutesByDay:194, .summarizeTime:209, .bestTimeOfDay:231, .environmentStats:256, .pastPlaces:274, .usualPlace:293, .usualStartHour:308, .topGenre:324, .genreMix:339, .readerPersonality:354, .formatMinutes:380
 - **BadgeEngine.kt** (413)
   - types: BadgeInput:15, Badge:23, BadgeStatus:36, BadgeEngine:49, .MonthInput:335
   - fun: .statuses:274, .evaluate:277, .nextUp:281, .withEarnedDates:291, .monthlyChallenge:378
@@ -263,10 +263,10 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: EditBookDialog:80, LogSessionDialog:328, PastDatePickerDialog:436, Book.isEnded:467
 - **BookQuickActionsSheet.kt** (153) - What a long-press on a cover opens: the cover lifts into view with the book's title, then the things you'd want to do...
   - fun: BookQuickActionsSheet:42
-- **BookTrackerScreen.kt** (2256)
+- **BookTrackerScreen.kt** (2260)
   - types: LibraryViewMode:184, LibrarySort:208, SilentHaptics:242
-  - fun: BookTrackerApp:224, BookTrackerAppContent:248, WeekBubbles:1557, LibraryScreen:1631, formatElapsed:2157, SubScreen:2172, TimerMiniPlayer:2187
-  - nav routes: editHome:833, wishlist:839, owned/{ownership}:875, calendar:908, bookshelf:930, epubReader/{uri}:941, scanner:948, privacy:973, achievements:976, wrappedAnimated:987, wrapped:1003, planner:1019, book/{bookId}:1028, history:1042, settings:1055, streak:1136, goals:1151, finished:1193, journey_map:1207, search:1218, focus/{bookId}:1228, session_result/{bookId}:1329, review:1357, tagTidy:1376, vocabulary:1381, shelfScan:1396, tbr_swipe:1412
+  - fun: BookTrackerApp:224, BookTrackerAppContent:248, WeekBubbles:1561, LibraryScreen:1635, formatElapsed:2161, SubScreen:2176, TimerMiniPlayer:2191
+  - nav routes: editHome:833, wishlist:839, owned/{ownership}:875, calendar:908, bookshelf:930, epubReader/{uri}:941, scanner:948, privacy:973, achievements:976, wrappedAnimated:987, wrapped:1003, planner:1019, book/{bookId}:1028, history:1042, settings:1055, streak:1136, goals:1151, finished:1193, journey_map:1207, search:1218, focus/{bookId}:1228, session_result/{bookId}:1333, review:1361, tagTidy:1380, vocabulary:1385, shelfScan:1400, tbr_swipe:1416
 - **BookTrackerViewModel.kt** (1286)
   - types: DriveSyncState:75, .Idle:76, .Syncing:77, .NeedsConsent:78, .Done:79, .Failed:80, BookTrackerViewModel:83, .SessionResult:853
   - fun: .clearDriveStatus:154, .setHapticsEnabled:216, .setReduceMotion:217, .setKeepScreenOn:218, .updatePrefs:224, .finishWelcome:242, .exportCsv:245, .backupNow:258, .deleteAllData:273, .openRoute:442, .consumeRoute:446, .gradeReview:450, .saveWord:459, .deleteWord:468, .setFinishBy:472, .syncDrive:477, .driveConsentShown:490, .onDriveConsent:494, .disconnectDrive:527, .setAudiobook:536, .logListening:541, .setAudioPosition:548, .addShelfBooks:553, .shareNote:574, .addScannedBook:578, .importCsv:605, .importBookmory:617, .promote:631, .promoteToReading:641, .pauseBook:647, .changeStatus:657, .toggleFavorite:667, .addProgress:671, .recordLoan:675, .markLoanReturned:684, .tidyTag:699, .updateBookDetails:708, .setFormat:720, .setOwnership:724, .setWish:738, .gotWished:749, .addToWishlist:763, .setPurchases:786, .finishBook:799, .readAgain:803, .setProgress:807, .setCollections:811, .markDnf:815, .startSession:819, .startFocus:829, .saveSession:872, .discardOpenSession:920, .leaveUnstartedFocus:936, .logManualSession:951, .delete:957, .deleteSession:964, .updateSession:968, .restore:973, .setHomeLayout:980, .setUserName:984, .setAvatarPhoto:989, .setAvatarCover:997, .clearAvatar:1004, .setDailyGoal:1011, .setYearlyGoal:1015, .setMonthlyGoalPages:1019, .setMonthlyGoalBooks:1023, .setDndDuringSession:1027, .setThemeMode:1031, .setUseDynamicColor:1035, .setAppPalette:1039, .setReminder:1043, .planBook:1047, .setTimerBook:1057, .setTimerPhase:1072, .setTimerMode:1095, .setCustomWorkMinutes:1109, .countdownTotalSeconds:1119, .setTimerRunning:1128, .pauseUnattended:1141, .setPageTarget:1153, .setWorkMinutes:1162, .setBreakMinutes:1170, .setDayStartsAtHour:1177, .setUseAppLock:1181, .setNoiseType:1185, .setTimerVolume:1193, .sessionsFor:1198, .notesFor:1201, .addNote:1203, .updateNote:1213, .toggleNoteFavorite:1217, .deleteNote:1221, .searchLibrary:1225, .exportBackup:1228, .importBackup:1245
@@ -379,9 +379,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **SessionResultScreen.kt** (536) - Post-save recap.
   - types: StatSentenceScope:496
   - fun: SessionResultScreen:94, formatSessionTime:405, paceComparison:409, RowScope.StatTile:420, Pill:440, GoalRow:458, .append:498, .highlight:499, StatSentence:503
-- **SessionSaveScreen.kt** (922) - The one review step every finished session passes through, whether it came from the focus timer or the home card.
-  - types: SessionDraft:649
-  - fun: SessionSaveScreen:99, formatShort:661, focusLabel:664, FocusPicker:675, EditableStamp:718, SaveRow:734, OutcomeButton:791, DurationEditorDialog:818, TagPickerDialog:863, formatClock:918
+- **SessionSaveScreen.kt** (970) - The one review step every finished session passes through, whether it came from the focus timer or the home card.
+  - types: SessionDraft:695
+  - fun: SessionSaveScreen:102, formatShort:709, focusLabel:712, FocusPicker:723, EditableStamp:766, SaveRow:782, OutcomeButton:839, DurationEditorDialog:866, TagPickerDialog:911, formatClock:966
 - **SettingsScreen.kt** (1407) - Settings as a hub: a profile card, then one row per area with its current value, each opening a page of its own.
   - types: SettingsPage:92
   - fun: SettingsScreen:112, notificationSummary:261, relative:275, SettingsHub:281, .row:296, ProfileCard:320, AppearancePage:397, ThemePreview:479, PaletteGrid:505, ReadingPage:564, NotificationsPage:663, PrivacyPage:721, DataPage:768, StorageCard:921, StorageLine:960, dirSize:968, DeleteAllCard:971, BookmoryResultDialog:1032, MotionPage:1069, AboutPage:1083, SettingsGroup:1113, GroupLabel:1120, GroupDivider:1130, SettingRow:1135, SwitchSetting:1162, InfoNote:1184, hourLabel:1199, HourChoice:1203, HourRange:1212, HourDropdown:1225, folderName:1243, AppIconPicker:1249, SettingsCard:1318, SwitchRow:1339, LinkRow:1357, snap:1377, SettingsSectionTitle:1381, formatTime:1391, appVersionName:1396, Context.safeStartActivity:1401
@@ -508,9 +508,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **DriveSyncWorker.kt** (57) - Background Drive sync every few hours on a network connection.
   - types: DriveSyncWorker:22, DriveSyncScheduler:42
   - fun: .apply:45
-- **NudgeWorkers.kt** (195) - The optional nudges from Settings > Notifications, on top of the daily goal reminder: a streak about to lapse, a Sund...
-  - types: StreakNudgeWorker:58, WeeklyRecapWorker:77, ReviewReminderWorker:103, WishlistReleaseWorker:130, NudgeScheduler:149
-  - fun: Context.nudgePrefs:35, Context.postNudge:40, .apply:157
+- **NudgeWorkers.kt** (256) - The optional nudges from Settings > Notifications, on top of the daily goal reminder: a streak about to lapse, a Sund...
+  - types: StreakNudgeWorker:62, WeeklyRecapWorker:81, ReviewReminderWorker:107, WishlistReleaseWorker:134, PickUpReminderWorker:157, NudgeScheduler:183
+  - fun: Context.nudgePrefs:39, Context.postNudge:44, .schedulePickUp:187, .pickUpTime:205, .apply:218
 - **ReminderWorker.kt** (110)
   - types: ReminderWorker:24, ReminderScheduler:84
   - fun: .apply:87
@@ -601,4 +601,5 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - `app/src/test/java/com/example/booktracker/app/ui/PhotoHighlightTest.kt`
 - `app/src/test/java/com/example/booktracker/app/ui/WidthTierTest.kt`
 - `app/src/test/java/com/example/booktracker/app/util/CsvExporterTest.kt`
+- `app/src/test/java/com/example/booktracker/app/worker/NudgeSchedulerTest.kt`
 - `wear/src/test/java/com/example/booktracker/wear/WatchStoreTest.kt`

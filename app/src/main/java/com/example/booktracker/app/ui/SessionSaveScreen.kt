@@ -40,6 +40,9 @@ import androidx.compose.ui.draw.clip
 import com.example.booktracker.app.ui.animations.staggeredEntrance
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.material.icons.rounded.NotificationsActive
+import com.example.booktracker.app.notifications.Notifications
+import com.example.booktracker.app.worker.NudgeScheduler
 import com.example.booktracker.app.analytics.AnalyticsEngine
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
@@ -143,6 +146,14 @@ fun SessionSaveScreen(
     var quote by remember { mutableStateOf("") }
     var showNoteSheet by remember { mutableStateOf(false) }
     var notesAdded by remember { mutableIntStateOf(0) }
+    // "Pick up tomorrow at 9 PM?": at the hour you usually start reading, or this session's.
+    var remindToPickUp by remember { mutableStateOf(false) }
+    val pickUpAt = remember(sessions) {
+        val hour = AnalyticsEngine.usualStartHour(sessions, zone)
+            ?: Instant.ofEpochMilli(initialStartTime).atZone(zone).hour
+        NudgeScheduler.pickUpTime(LocalDateTime.now(zone), hour)
+    }
+    val canNotify = remember { Notifications.canPost(context) }
     var joinPrevious by remember { mutableStateOf(false) }
     var showTooShort by remember { mutableStateOf(false) }
     var scanOnOpen by remember { mutableStateOf(false) }
@@ -178,6 +189,8 @@ fun SessionSaveScreen(
     val complete = book.totalPages > 0 && endPage >= book.totalPages
 
     val effectiveStatus = status ?: if (complete) BookStatus.FINISHED else BookStatus.READING
+    // Only a book you're still reading has somewhere to pick up from.
+    val offerPickUp = canNotify && effectiveStatus == BookStatus.READING
 
     val commit = {
         saveHaptics.confirm()
@@ -192,7 +205,8 @@ fun SessionSaveScreen(
                 status = effectiveStatus,
                 focus = focus,
                 quote = quote,
-                mergeWithId = previousSession?.id?.takeIf { joinPrevious }
+                mergeWithId = previousSession?.id?.takeIf { joinPrevious },
+                remindAt = pickUpAt.takeIf { remindToPickUp && offerPickUp }
             )
         )
     }
@@ -394,6 +408,38 @@ fun SessionSaveScreen(
                 value = tag.ifBlank { "Not set" },
                 onClick = { showTagPicker = true }
             )
+
+            if (offerPickUp) {
+                Spacer(Modifier.height(12.dp))
+                val day = pickUpAt.toLocalDate()
+                val today = LocalDate.now(zone)
+                val whenLabel = when (day) {
+                    today -> "tonight"
+                    today.plusDays(1) -> "tomorrow"
+                    else -> day.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, Locale.getDefault())
+                } + " at " + pickUpAt.toLocalTime().format(saveTimeFormat)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(AppShape.L)
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                        .clickable { remindToPickUp = !remindToPickUp }
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.NotificationsActive, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                    Spacer(Modifier.width(20.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Remind me $whenLabel", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(
+                            "To pick this book up where you left off. Skipped if you read it before then.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    androidx.compose.material3.Switch(checked = remindToPickUp, onCheckedChange = { remindToPickUp = it })
+                }
+            }
 
             if (previousSession != null) {
                 Spacer(Modifier.height(12.dp))
@@ -655,7 +701,9 @@ data class SessionDraft(
     val focus: Int,
     val quote: String,
     /** The earlier session to join this one onto, when the reader chose to. */
-    val mergeWithId: String?
+    val mergeWithId: String?,
+    /** When to remind the reader to pick the book up again; null for no reminder. */
+    val remindAt: LocalDateTime? = null
 )
 
 private fun formatShort(seconds: Int): String =
