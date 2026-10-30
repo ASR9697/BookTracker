@@ -89,6 +89,9 @@ fun ProfileScreen(
     /** One line under the name, e.g. "Just one more chapter."; blank for none. */
     motto: String = "",
     onUpdateMotto: (String) -> Unit = {},
+    /** The favourite highlight pinned under the header; blank shows the newest. */
+    pinnedNoteId: String = "",
+    onPinNote: (String) -> Unit = {},
     onToggleFavorite: (Book) -> Unit = {},
     /** Searches the library, e.g. for an author tapped in the reader card. */
     onSearch: (String) -> Unit = {},
@@ -139,6 +142,21 @@ fun ProfileScreen(
     val authors = remember(books) { ReaderProfileEngine.topAuthors(books) }
     val records = remember(books, sessions, dayStartsAtHour) { ReaderProfileEngine.records(books, sessions, zone, dayStartsAtHour) }
     var showFavouritePicker by remember { mutableStateOf(false) }
+    val level = remember(pagesRead) { ReaderProfileEngine.level(pagesRead) }
+    val pinnedQuote = remember(notes, pinnedNoteId) { ReaderProfileEngine.pinnedQuote(notes, pinnedNoteId) }
+    var showQuotePicker by remember { mutableStateOf(false) }
+    if (showQuotePicker) {
+        QuotePickerSheet(
+            favourites = remember(notes) { notes.filter { it.isFavorite && it.content.isNotBlank() }.sortedByDescending { it.timestamp } },
+            titles = remember(books) { books.associate { it.id to it.title } },
+            pinnedId = pinnedNoteId,
+            onPick = { id ->
+                onPinNote(id)
+                showQuotePicker = false
+            },
+            onDismiss = { showQuotePicker = false }
+        )
+    }
     if (showFavouritePicker) {
         FavouritePickerSheet(
             finished = remember(books) {
@@ -283,8 +301,10 @@ fun ProfileScreen(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
+                    Spacer(Modifier.height(6.dp))
+                    LevelChip(level, pagesRead)
                     if (trackingSince != null) {
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(6.dp))
                         HeaderLine(icon = Icons.Rounded.CalendarToday, text = "Tracking since $trackingSince")
                     }
                 }
@@ -311,6 +331,16 @@ fun ProfileScreen(
         contentPadding = PaddingValues(start = side, top = 8.dp, end = side, bottom = 16.dp + LocalNavBarClearance.current),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
+        if (pinnedQuote != null) item {
+            PinnedQuoteCard(
+                note = pinnedQuote,
+                book = books.firstOrNull { it.id == pinnedQuote.bookId },
+                onOpenBook = onOpenBook,
+                onChange = { showQuotePicker = true },
+                modifier = Modifier.staggeredEntrance(entrance, 1)
+            )
+        }
+
         // Ways into your record: history, finished, planner, journey map.
         item {
             ProfileShortcuts(

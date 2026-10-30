@@ -785,6 +785,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                         val streak by viewModel.streak.collectAsState()
                                                         val userName by viewModel.userName.collectAsState()
                                                         val motto by viewModel.motto.collectAsState()
+                                                        val pinnedNoteId by viewModel.pinnedNoteId.collectAsState()
                                                         val allNotes by viewModel.allNotes.collectAsState()
                                                         val monthlyChallenge by viewModel.monthlyChallenge.collectAsState()
                                                         val yearlyGoal by viewModel.yearlyGoal.collectAsState()
@@ -803,6 +804,8 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             onClearAvatar = viewModel::clearAvatar,
                                                             userName = userName,
                                                             motto = motto,
+                                                            pinnedNoteId = pinnedNoteId,
+                                                            onPinNote = viewModel::setPinnedNoteId,
                                                             onUpdateMotto = viewModel::setMotto,
                                                             onToggleFavorite = viewModel::toggleFavorite,
                                                             onSearch = { query -> navController.navigate("search?q=" + android.net.Uri.encode(query)) },

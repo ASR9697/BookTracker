@@ -3,6 +3,16 @@ package com.example.booktracker.app.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.rounded.AutoStories
+import androidx.compose.material.icons.rounded.FormatQuote
+import androidx.compose.material.icons.rounded.SwapHoriz
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.font.FontStyle
+import com.example.booktracker.shared.models.MarginNote
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -264,5 +274,149 @@ fun RecordsCard(records: List<ReaderProfileEngine.Record>, onOpenBook: (Book) ->
                 }
             }
         }
+    }
+}
+
+/**
+ * One favourite highlight under the header, in the notes' own type. Tap opens its
+ * book; the swap button (or a long press) picks another.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+fun PinnedQuoteCard(note: MarginNote, book: Book?, onOpenBook: (Book) -> Unit, onChange: () -> Unit, modifier: Modifier = Modifier) {
+    Card(
+        shape = AppShape.L,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(AppShape.L)
+            .combinedClickable(
+                onClickLabel = book?.let { "Open ${it.title}" },
+                onLongClickLabel = "Choose another quote",
+                onLongClick = onChange,
+                onClick = { book?.let(onOpenBook) }
+            )
+    ) {
+        Row(modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp)) {
+            Column(modifier = Modifier.weight(1f).padding(top = 4.dp)) {
+                Text(
+                    "“${note.content.trim()}”",
+                    style = noteTextStyle().copy(fontStyle = FontStyle.Italic),
+                    maxLines = 5,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (book != null) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "— ${book.title}" + if (note.pageNumber > 0) ", p. ${note.pageNumber}" else "",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            IconButton(onClick = onChange) {
+                Icon(Icons.Rounded.SwapHoriz, contentDescription = "Choose another quote", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+/** Favourite highlights to pin, newest first, and a way back to "the newest". */
+@Composable
+fun QuotePickerSheet(
+    favourites: List<MarginNote>,
+    titles: Map<String, String>,
+    pinnedId: String,
+    onPick: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionSheet(
+        onDismiss = onDismiss,
+        icon = Icons.Rounded.FormatQuote,
+        title = "Pin a quote",
+        message = "From the highlights you've hearted.",
+        dismissLabel = "Close"
+    ) {
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp)
+        ) {
+            item {
+                QuoteChoice(
+                    text = "Always the newest favourite",
+                    source = null,
+                    selected = pinnedId.isBlank(),
+                    onClick = { onPick("") }
+                )
+            }
+            items(favourites, key = { it.id }) { note ->
+                QuoteChoice(
+                    text = "“${note.content.trim()}”",
+                    source = titles[note.bookId],
+                    selected = note.id == pinnedId,
+                    onClick = { onPick(note.id) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuoteChoice(text: String, source: String?, selected: Boolean, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(AppShape.M)
+            .background(if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest)
+            .clickable(onClick = onClick)
+            .padding(12.dp)
+    ) {
+        Text(
+            text,
+            style = noteTextStyle(),
+            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis
+        )
+        if (source != null) {
+            Text(
+                source,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+/** The reader's level as a small chip; a tap tells how far the next one is. */
+@Composable
+fun LevelChip(level: ReaderProfileEngine.Level, pages: Int, modifier: Modifier = Modifier) {
+    var open by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .clickable(onClickLabel = "About your reader level") { open = true }
+            .padding(horizontal = 10.dp, vertical = 4.dp)
+    ) {
+        Icon(Icons.Rounded.AutoStories, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(level.title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+    }
+    if (open) {
+        ActionSheet(
+            onDismiss = { open = false },
+            icon = Icons.Rounded.AutoStories,
+            title = level.title,
+            message = "${"%,d".format(pages)} pages read so far. " + if (level.next != null && level.pagesToNext != null)
+                "${"%,d".format(level.pagesToNext)} more to reach ${level.next}."
+            else "That's the top. Every page from here is a bonus.",
+            dismissLabel = "Close"
+        )
     }
 }

@@ -3,6 +3,7 @@ package com.example.booktracker.app.analytics
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookFormat
 import com.example.booktracker.shared.models.BookStatus
+import com.example.booktracker.shared.models.MarginNote
 import com.example.booktracker.shared.models.Session
 import java.time.LocalDate
 import java.time.ZoneId
@@ -79,6 +80,36 @@ object ReaderProfileEngine {
         BookFormat.Hardcover -> "hardcovers"
         BookFormat.`E-book` -> "ebooks"
         BookFormat.Audiobook -> "audiobooks"
+    }
+
+    /** A reader level: its title, and the next one with the pages still to go (null at the top). */
+    data class Level(val title: String, val next: String?, val pagesToNext: Int?)
+
+    /** Lifetime pages at which each title begins. */
+    val LEVELS = listOf(
+        0 to "First pages",
+        100 to "Page turner",
+        1_000 to "Bookworm",
+        5_000 to "Avid reader",
+        15_000 to "Bibliophile",
+        40_000 to "Sage",
+        100_000 to "Living library"
+    )
+
+    fun level(lifetimePages: Int): Level {
+        val i = LEVELS.indexOfLast { lifetimePages >= it.first }.coerceAtLeast(0)
+        val next = LEVELS.getOrNull(i + 1)
+        return Level(LEVELS[i].second, next?.second, next?.let { it.first - lifetimePages })
+    }
+
+    /**
+     * The quote under the header: the one the reader pinned while it still exists,
+     * else the newest favourite highlight. Null without a favourite to show.
+     */
+    fun pinnedQuote(notes: List<MarginNote>, pinnedId: String): MarginNote? {
+        val favourites = notes.filter { it.isFavorite && it.content.isNotBlank() }
+        return favourites.firstOrNull { it.id == pinnedId && pinnedId.isNotBlank() }
+            ?: favourites.maxByOrNull { it.timestamp }
     }
 
     /** A personal best: what it is, its value, and the book behind it when there is one. */

@@ -110,4 +110,24 @@ class ReaderProfileEngineTest {
         assertEquals("long", records["Longest sitting"]?.book?.id)
         assertNull(records["Languages read"])
     }
+
+    @Test
+    fun `levels climb with lifetime pages`() {
+        assertEquals(ReaderProfileEngine.Level("First pages", "Page turner", 100), ReaderProfileEngine.level(0))
+        assertEquals(ReaderProfileEngine.Level("Bookworm", "Avid reader", 3_182), ReaderProfileEngine.level(1_818))
+        assertEquals(ReaderProfileEngine.Level("Living library", null, null), ReaderProfileEngine.level(250_000))
+    }
+
+    private fun note(id: String, at: Long, favourite: Boolean = true, text: String = "line") =
+        com.example.booktracker.shared.models.MarginNote(id = id, bookId = "b", content = text, timestamp = at, isFavorite = favourite)
+
+    @Test
+    fun `pinned quote is the chosen one while it lasts, else the newest favourite`() {
+        val notes = listOf(note("old", 1), note("new", 3), note("plain", 5, favourite = false), note("blank", 9, text = " "))
+        assertEquals("old", ReaderProfileEngine.pinnedQuote(notes, "old")?.id)
+        assertEquals("new", ReaderProfileEngine.pinnedQuote(notes, "")?.id)
+        // A pinned note that was deleted or un-favourited falls back too.
+        assertEquals("new", ReaderProfileEngine.pinnedQuote(notes, "plain")?.id)
+        assertNull(ReaderProfileEngine.pinnedQuote(listOf(note("p", 1, favourite = false)), ""))
+    }
 }
