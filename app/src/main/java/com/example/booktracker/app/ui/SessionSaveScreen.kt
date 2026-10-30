@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Place
@@ -113,7 +114,9 @@ fun SessionSaveScreen(
     /** Shorter than this with no pages read asks before saving; 0 never asks. */
     minSessionSeconds: Int = 0,
     /** Open the camera on the page number rather than the page wheel. */
-    scanFirst: Boolean = false
+    scanFirst: Boolean = false,
+    /** Every saved session, for the time-left estimate. */
+    sessions: List<Session> = emptyList()
 ) {
     val zone = remember { ZoneId.systemDefault() }
     val haptic = LocalHapticFeedback.current
@@ -256,7 +259,7 @@ fun SessionSaveScreen(
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = { if (tooShort) showTooShort = true else commit() },
-                        shape = RoundedCornerShape(50),
+                        shape = CircleShape,
                         modifier = Modifier.padding(end = 12.dp)
                     ) {
                         Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -327,10 +330,16 @@ fun SessionSaveScreen(
             }
             val sessionSpeedText = remember(sessionPpm) { AnalyticsEngine.formatSessionPpm(sessionPpm) }
             val remainingPages = if (book.totalPages > 0) (book.totalPages - endPage).coerceAtLeast(0) else 0
-            val remainingMinutes = if (remainingPages > 0 && sessionPpm != null && sessionPpm > 0f) {
-                (remainingPages / sessionPpm).toLong()
-            } else null
-            val remainingEtaText = remember(remainingMinutes) { AnalyticsEngine.formatEstimatedTime(remainingMinutes) }
+            // The book's usual pace, not this session's: one short sitting swings far too much.
+            val remainingEtaText = remember(endPage, sessions) {
+                AnalyticsEngine.formatEstimatedTime(
+                    AnalyticsEngine.bookEstimatedMinutesLeft(
+                        book.copy(currentPage = endPage),
+                        sessions.filter { it.bookId == book.id },
+                        sessions
+                    )
+                )
+            }
 
             if (deltaPages > 0) {
                 Spacer(Modifier.height(12.dp))
@@ -361,7 +370,7 @@ fun SessionSaveScreen(
                             if (remainingPages > 0 && remainingEtaText != null) {
                                 Spacer(Modifier.height(2.dp))
                                 Text(
-                                    "~${remainingEtaText.removeSuffix(" left")} to finish the book at this pace",
+                                    "About ${remainingEtaText.removeSuffix(" left")} to finish the book",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -478,27 +487,23 @@ fun SessionSaveScreen(
             initialMinute = endDateTime.minute,
             is24Hour = is24Hour
         )
-        AlertDialog(
-            onDismissRequest = { showTimePicker = false },
-            title = { Text("Session time") },
-            text = {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    TimePicker(state = state)
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    endDateTime = LocalDateTime.of(
-                        endDateTime.toLocalDate(),
-                        LocalTime.of(state.hour, state.minute)
-                    )
-                    showTimePicker = false
-                }) { Text("OK") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+        ActionSheet(
+            onDismiss = { showTimePicker = false },
+            icon = Icons.Rounded.Schedule,
+            title = "When you stopped",
+            confirmLabel = "Save",
+            onConfirm = {
+                endDateTime = LocalDateTime.of(
+                    endDateTime.toLocalDate(),
+                    LocalTime.of(state.hour, state.minute)
+                )
+                showTimePicker = false
             }
-        )
+        ) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                TimePicker(state = state)
+            }
+        }
     }
 
     if (showPagePicker) {
@@ -514,7 +519,12 @@ fun SessionSaveScreen(
             },
             onConfirm = {
                 endPage = it
-                if (book.totalPages > 0 && it >= book.totalPages) status = BookStatus.FINISHED
+                // Finished goes with the last page: reaching it finishes the book, and
+                // stepping back from it undoes that rather than saving "finished" with pages left.
+                if (book.totalPages > 0) {
+                    if (it >= book.totalPages) status = BookStatus.FINISHED
+                    else if (status == BookStatus.FINISHED) status = null
+                }
                 showPagePicker = false
                 scanOnOpen = false
             }
@@ -758,7 +768,7 @@ private fun OutcomeButton(
     onClick: () -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(50),
+        shape = CircleShape,
         color = if (selected) MaterialTheme.colorScheme.primary
         else MaterialTheme.colorScheme.surfaceContainerHighest,
         contentColor = if (selected) MaterialTheme.colorScheme.onPrimary
