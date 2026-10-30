@@ -104,7 +104,7 @@ object WidgetPicks {
 
     /** Same order as Home: Up next first, then the shortlist, then the rest of the pile. */
     fun upNext(books: List<Book>): List<Book> =
-        books.filter { b -> UP_NEXT_ORDER.any { it.equals(b.status, ignoreCase = true) } }
+        com.example.booktracker.app.analytics.WishlistEngine.onShelf(books).filter { b -> UP_NEXT_ORDER.any { it.equals(b.status, ignoreCase = true) } }
             .sortedWith(
                 compareBy<Book> { b -> UP_NEXT_ORDER.indexOfFirst { it.equals(b.status, ignoreCase = true) } }
                     .thenByDescending { it.lastUpdated }

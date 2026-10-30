@@ -137,7 +137,7 @@ fun VirtualBookshelfView(
 
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 200.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 200.dp + LocalNavBarClearance.current),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxSize()
         ) {
@@ -186,7 +186,8 @@ fun VirtualBookshelfView(
             visible = selected != null,
             enter = slideInVertically(tween(Motion.MEDIUM, easing = Motion.EmphasizedDecelerate)) { it } + fadeIn(),
             exit = slideOutVertically(tween(Motion.SHORT, easing = Motion.EmphasizedAccelerate)) { it } + fadeOut(),
-            modifier = Modifier.align(Alignment.BottomCenter)
+            // Above the floating bottom bar, where the Add button steps aside for it.
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = LocalNavBarClearance.current)
         ) {
             // Keep the last book on screen while the card slides away.
             var lastShown by remember { mutableStateOf<Book?>(null) }

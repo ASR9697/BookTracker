@@ -157,11 +157,18 @@ fun AnalyticsScreen(
 
     val entrance = rememberEntranceState()
 
+    val pagesThisYear = remember(pagesByDay, today) { pagesByDay.filterKeys { it.year == today.year }.values.sum() }
+    SectionPage(
+        title = "Stats",
+        line = if (pagesThisYear > 0) String.format(java.util.Locale.getDefault(), "%,d pages read in %d", pagesThisYear, today.year)
+        else "Your reading, in numbers",
+        modifier = modifier
+    ) {
     // One column on a phone; on a tablet the cards sit side by side, two or three across.
     LazyVerticalStaggeredGrid(
         columns = StaggeredGridCells.Adaptive(minSize = 360.dp),
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp + LocalNavBarClearance.current),
         verticalItemSpacing = 24.dp,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -852,6 +859,7 @@ fun AnalyticsScreen(
                 }
             }
         }
+    }
     }
 }
 

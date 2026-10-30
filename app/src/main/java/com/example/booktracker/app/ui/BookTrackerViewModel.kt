@@ -314,7 +314,8 @@ class BookTrackerViewModel(
     val newUnlockEvents = _newUnlockEvents.receiveAsFlow()
 
     val tbrCurationBooks: StateFlow<List<Book>> = books.map { list ->
-        list.filter { it.status.equals(BookStatus.TO_READ.name, ignoreCase = true) || it.status.equals("BACKLOG", ignoreCase = true) }
+        // Wished-for books aren't on the pile until the reader has them.
+        com.example.booktracker.app.analytics.WishlistEngine.onShelf(list).filter { it.status.equals(BookStatus.TO_READ.name, ignoreCase = true) || it.status.equals("BACKLOG", ignoreCase = true) }
             .sortedByDescending { it.lastUpdated }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

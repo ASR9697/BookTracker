@@ -66,6 +66,8 @@ fun Modifier.coverGlow(accent: CoverAccent, strength: Float = 0.28f, fromLeft: B
     }
 }
 
+private const val PALETTE_SIZE_PX = 160
+
 /**
  * Decodes the cover once and extracts its palette. Coil caches the bitmap, so
  * repeat visits to the same book resolve without another decode.
@@ -84,6 +86,9 @@ fun rememberCoverAccent(coverUrl: String): CoverAccent {
             val request = ImageRequest.Builder(context)
                 .data(coverUrl)
                 .allowHardware(false) // Palette needs to read pixels back.
+                // Palette samples about 112 px square anyway; decoding the full
+                // cover in software for it stalled screens that open with one.
+                .size(PALETTE_SIZE_PX)
                 .build()
             val result = context.imageLoader.execute(request)
             (result as? SuccessResult)?.let { success ->

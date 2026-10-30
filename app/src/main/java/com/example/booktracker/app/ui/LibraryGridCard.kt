@@ -52,6 +52,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.booktracker.app.analytics.LoanEngine
+import com.example.booktracker.app.analytics.WishlistEngine
+import com.example.booktracker.app.ui.animations.rememberReduceMotion
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.material.icons.rounded.BookmarkAdd
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
 import java.util.Locale
@@ -215,4 +225,86 @@ private fun statusIcon(status: BookStatus?): ImageVector? = when (status) {
     BookStatus.PAUSED -> Icons.Rounded.Pause
     BookStatus.DNF, BookStatus.ABANDONED -> Icons.Rounded.Flag
     BookStatus.TO_READ, null -> null
+}
+
+/**
+ * The wishlist as one tile at the front of the library: the newest wished-for
+ * covers fanned like a small stack, the count under them. Wished books aren't
+ * on the shelf yet, so this is where they live in the grid; tapping opens the
+ * wishlist page. It gives a little pop when a book joins it.
+ */
+@Composable
+fun WishlistTile(wished: List<Book>, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val reduce = rememberReduceMotion()
+    val press = remember { MutableInteractionSource() }
+    val fan = remember(wished) { WishlistEngine.sorted(wished, WishlistEngine.Sort.ADDED).take(3).reversed() }
+    val count = wished.size
+
+    val pop = remember { Animatable(1f) }
+    var lastCount by remember { mutableIntStateOf(count) }
+    LaunchedEffect(count) {
+        if (count > lastCount && !reduce) {
+            pop.snapTo(1.08f)
+            pop.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow))
+        }
+        lastCount = count
+    }
+
+    Column(
+        modifier = modifier
+            .bounceOnPress(press)
+            .clip(CoverShape)
+            .combinedClickable(interactionSource = press, indication = null, onClickLabel = "Open wishlist", onClick = onClick)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(2f / 3f)
+                .graphicsLayer {
+                    scaleX = pop.value
+                    scaleY = pop.value
+                }
+                .clip(CoverShape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f), MaterialTheme.colorScheme.surfaceContainerHigh)
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            val mid = (fan.size - 1) / 2f
+            fan.forEachIndexed { i, book ->
+                val step = i - mid
+                BookCover(
+                    book,
+                    Modifier
+                        .fillMaxWidth(0.56f)
+                        .aspectRatio(2f / 3f)
+                        .graphicsLayer {
+                            rotationZ = step * 9f
+                            translationX = step * 14.dp.toPx()
+                            translationY = kotlin.math.abs(step) * 6.dp.toPx()
+                        }
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(6.dp)
+                    .size(26.dp)
+                    .background(Color.Black.copy(alpha = 0.6f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.BookmarkAdd, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text("Wishlist", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        Text(
+            if (count == 1) "1 book" else "$count books",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1
+        )
+    }
 }

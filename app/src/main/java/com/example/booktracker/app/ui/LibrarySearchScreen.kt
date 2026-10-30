@@ -210,7 +210,7 @@ private fun BookHitRow(book: Book, onClick: () -> Unit) {
                 )
             }
         }
-        StatusChip(book.status)
+        StatusChip(book)
     }
 }
 
@@ -256,17 +256,19 @@ private fun NoteHitRow(note: MarginNote, book: Book?, onClick: () -> Unit) {
     }
 }
 
+/** Where the book stands: its reading status, or "Wishlist" while it isn't on the shelf yet. */
 @Composable
-private fun StatusChip(status: String) {
-    val label = try {
-        BookStatus.valueOf(status).label
+private fun StatusChip(book: Book) {
+    val wished = book.ownership == com.example.booktracker.shared.models.Ownership.WISHLIST
+    val label = if (wished) "Wishlist" else try {
+        BookStatus.valueOf(book.status).label
     } catch (e: Exception) {
         return
     }
     Surface(
         shape = AppShape.XS,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        color = if (wished) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = if (wished) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
     ) {
         Text(
             label,

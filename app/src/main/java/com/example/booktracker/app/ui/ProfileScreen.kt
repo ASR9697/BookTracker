@@ -74,6 +74,7 @@ fun ProfileScreen(
     longestStreak: Int = streak,
     dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR,
     onOpenSettings: () -> Unit = {},
+    onOpenAppSettings: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
     onOpenFinished: () -> Unit = {},
     onOpenPlanner: () -> Unit = {},
@@ -133,14 +134,11 @@ fun ProfileScreen(
     }
 
     val entrance = rememberEntranceState()
-    // A wider column than text screens: the profile is tiles and rows, not paragraphs.
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp + windowCentredPadding(max = 840.dp, chrome = navChromeWidth()), vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        // Top Section: avatar inside the yearly-goal ring, name, personality
-        item {
+    SectionPage(
+        modifier = modifier,
+        // Avatar inside the yearly-goal ring, name, personality: the page's own big header.
+        expanded = {
+            Column {
             var showNameDialog by remember { mutableStateOf(false) }
             var showAvatarSheet by remember { mutableStateOf(false) }
             if (showNameDialog) {
@@ -263,8 +261,28 @@ fun ProfileScreen(
                     }
                 }
             }
+            }
+        },
+        collapsed = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ProfileAvatar(avatar, userName, books, Modifier.size(32.dp), initialStyle = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.width(10.dp))
+                CollapsedTitle(userName)
+            }
+        },
+        actions = {
+            IconButton(onClick = onOpenAppSettings) {
+                Icon(Icons.Rounded.Settings, contentDescription = "Settings")
+            }
         }
-
+    ) {
+    // A wider column than text screens: the profile is tiles and rows, not paragraphs.
+    val side = 16.dp + windowCentredPadding(max = 840.dp, chrome = navChromeWidth())
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = side, top = 8.dp, end = side, bottom = 16.dp + LocalNavBarClearance.current),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
         // Lifetime numbers, one compact card instead of four big tiles.
         item {
             Card(
@@ -467,6 +485,7 @@ fun ProfileScreen(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -623,7 +642,13 @@ private fun HeaderLine(icon: ImageVector, text: String) {
 
 /** Photo, chosen book cover, or the name's initial, in that order of preference. */
 @Composable
-private fun ProfileAvatar(avatar: String, userName: String, books: List<Book>, modifier: Modifier = Modifier) {
+internal fun ProfileAvatar(
+    avatar: String,
+    userName: String,
+    books: List<Book>,
+    modifier: Modifier = Modifier,
+    initialStyle: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.headlineMedium
+) {
     val coverUrl = remember(avatar, books) {
         avatar.takeIf { it.startsWith(AvatarStore.COVER_PREFIX) }
             ?.removePrefix(AvatarStore.COVER_PREFIX)
@@ -647,7 +672,7 @@ private fun ProfileAvatar(avatar: String, userName: String, books: List<Book>, m
         } else {
             Text(
                 userName.firstOrNull()?.toString()?.uppercase() ?: "R",
-                style = MaterialTheme.typography.headlineMedium,
+                style = initialStyle,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
         }

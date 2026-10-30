@@ -135,27 +135,14 @@ fun MemorizeScreen(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Notes",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                if (notes.isNotEmpty()) {
-                    Text(
-                        "${notes.size} ${if (notes.size == 1) "note" else "notes"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+    SectionPage(
+        title = "Notes",
+        line = when {
+            reviewDue > 0 -> "$reviewDue ${if (reviewDue == 1) "card" else "cards"} due for review"
+            notes.isEmpty() -> "Your highlights and thoughts"
+            else -> "${notes.size} ${if (notes.size == 1) "note" else "notes"} · all caught up"
+        },
+        actions = {
             if (view == NotesView.CARDS) {
                 IconButton(onClick = { shuffleSeed++ }) {
                     Icon(Icons.Rounded.Shuffle, contentDescription = "Shuffle cards")
@@ -187,7 +174,8 @@ fun MemorizeScreen(
                 }
             }
         }
-
+    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
         // The daily review and the word list live with the notes they come from.
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
@@ -307,7 +295,7 @@ fun MemorizeScreen(
             val feedEntrance = rememberEntranceState()
             androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid(
                 columns = androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells.Adaptive(minSize = 320.dp),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp + LocalNavBarClearance.current),
                 verticalItemSpacing = 12.dp,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxSize()
@@ -329,7 +317,7 @@ fun MemorizeScreen(
         } else if (view == NotesView.LIST) {
             val feedEntrance = rememberEntranceState()
             LazyColumn(
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp + LocalNavBarClearance.current),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
@@ -476,7 +464,9 @@ fun MemorizeScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Spacer(Modifier.height(LocalNavBarClearance.current))
         }
+    }
     }
 
     noteToEdit?.let { note ->

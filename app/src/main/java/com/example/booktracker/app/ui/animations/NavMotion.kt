@@ -11,6 +11,8 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlin.math.absoluteValue
 
@@ -50,14 +52,27 @@ object NavMotion {
  * Depth for a page in the main pager: the page you're leaving recedes a little
  * and the one you're revealing grows into place as you drag. Purely visual and
  * driven by the drag itself, so it can never lag behind your finger.
+ *
+ * The fade is a [scrim] (the screen's background colour) laid over the page, not
+ * the page's own alpha: a translucent page has to be drawn offscreen first, two
+ * full screens every frame, which is what made swiping stutter on tablets. The
+ * page sits on its own layer under the scrim, so the scrim changing redraws only
+ * one rectangle.
  */
 @OptIn(ExperimentalFoundationApi::class)
-fun Modifier.pagerDepth(state: PagerState, page: Int, reduce: Boolean): Modifier =
-    if (reduce) this
-    else graphicsLayer {
-        val distance = ((state.currentPage - page) + state.currentPageOffsetFraction).absoluteValue.coerceIn(0f, 1f)
-        val scale = 1f - 0.06f * distance
-        scaleX = scale
-        scaleY = scale
-        alpha = 1f - 0.35f * distance
-    }
+fun Modifier.pagerDepth(state: PagerState, page: Int, reduce: Boolean, scrim: Color): Modifier {
+    if (reduce) return this
+    fun distance() = ((state.currentPage - page) + state.currentPageOffsetFraction).absoluteValue.coerceIn(0f, 1f)
+    return this
+        .graphicsLayer {
+            val scale = 1f - 0.06f * distance()
+            scaleX = scale
+            scaleY = scale
+        }
+        .drawWithContent {
+            drawContent()
+            val d = distance()
+            if (d > 0f) drawRect(scrim, alpha = 0.35f * d)
+        }
+        .graphicsLayer()
+}

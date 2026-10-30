@@ -3,7 +3,6 @@ package com.example.booktracker.app.ui.animations
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.background
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -19,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.composed
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -84,7 +84,8 @@ fun Modifier.bounceOnPress(interactionSource: MutableInteractionSource) = compos
  */
 fun Modifier.shimmer(): Modifier = composed {
     val transition = rememberInfiniteTransition(label = "shimmer")
-    val translateAnim by transition.animateFloat(
+    // Read only while drawing, so a grid of loading covers redraws without recomposing.
+    val translate = transition.animateFloat(
         initialValue = -500f,
         targetValue = 2000f,
         animationSpec = infiniteRepeatable(
@@ -96,14 +97,18 @@ fun Modifier.shimmer(): Modifier = composed {
 
     // Drawn from the theme's ink so it reads on both light and dark surfaces.
     val ink = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
-    val shimmerColors = listOf(ink.copy(alpha = 0.10f), ink.copy(alpha = 0.03f), ink.copy(alpha = 0.10f))
+    val shimmerColors = remember(ink) { listOf(ink.copy(alpha = 0.10f), ink.copy(alpha = 0.03f), ink.copy(alpha = 0.10f)) }
 
-    val brush = Brush.linearGradient(
-        colors = shimmerColors,
-        start = Offset(x = translateAnim - 500f, y = translateAnim - 500f),
-        end = Offset(x = translateAnim, y = translateAnim)
-    )
-    Modifier.background(brush)
+    Modifier.drawBehind {
+        val t = translate.value
+        drawRect(
+            Brush.linearGradient(
+                colors = shimmerColors,
+                start = Offset(x = t - 500f, y = t - 500f),
+                end = Offset(x = t, y = t)
+            )
+        )
+    }
 }
 
 /**

@@ -42,6 +42,15 @@ class WishlistEngineTest {
     )
 
     @Test
+    fun `the shelf and the wishlist split the books between them`() {
+        val owned = Book(id = "owned", title = "owned", isbn = null, ownership = Ownership.OWNED)
+        val unset = Book(id = "unset", title = "unset", isbn = null)
+        val books = listOf(owned, wished("wish"), unset)
+        assertEquals(listOf("owned", "unset"), WishlistEngine.onShelf(books).map { it.id })
+        assertEquals(listOf("wish"), WishlistEngine.wishlist(books).map { it.id })
+    }
+
+    @Test
     fun `priority sort puts must-haves first and newest first within a level`() {
         val list = listOf(
             wished("maybe", WishPriority.MAYBE, addedAt = 9),
