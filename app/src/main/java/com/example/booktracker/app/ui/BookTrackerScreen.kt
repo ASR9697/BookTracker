@@ -1,5 +1,6 @@
 package com.example.booktracker.app.ui
 
+import com.example.booktracker.app.format.FormatAdaptabilityLayer
 import com.example.booktracker.app.ui.theme.AppShape
 
 import androidx.activity.compose.BackHandler
@@ -640,7 +641,8 @@ androidx.compose.animation.SharedTransitionLayout {
                                                     scope.launch {
                                                         snackbarHostState.currentSnackbarData?.dismiss()
                                                         val result = snackbarHostState.showSnackbar(
-                                                            message = "Added $delta pages",
+                                                            message = if (delta > 0) "Added ${FormatAdaptabilityLayer.countLabel(b, delta)}"
+                                                                else "Back ${FormatAdaptabilityLayer.countLabel(b, -delta)}",
                                                             actionLabel = "Undo",
                                                             duration = SnackbarDuration.Short
                                                         )

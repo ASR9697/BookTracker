@@ -114,6 +114,8 @@ import androidx.compose.ui.unit.dp
 import com.example.booktracker.app.analytics.AnalyticsEngine
 import com.example.booktracker.app.analytics.GoalEngine
 import com.example.booktracker.app.analytics.StreakEngine
+import com.example.booktracker.app.analytics.RereadMemories
+import com.example.booktracker.shared.models.ProgressUnit
 import com.example.booktracker.app.analytics.WishlistEngine
 import com.example.booktracker.app.data.HomeLayout
 import com.example.booktracker.app.data.HomeSection
@@ -682,7 +684,7 @@ fun HomeDashboard(
             modifier = Modifier.align(Alignment.TopCenter).padding(top = skyTop + 8.dp)
         ) {
             Surface(
-                shape = RoundedCornerShape(50),
+                shape = CircleShape,
                 color = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 shadowElevation = 6.dp
@@ -726,11 +728,12 @@ fun HomeDashboard(
     }
 
     bookToLog?.let { book ->
-        CustomProgressDialog(
-            unitName = if (book.totalPages > 0) "Pages" else "Units",
+        ProgressPickerSheet(
+            book = book,
+            initialPage = book.currentPage,
             onDismiss = { bookToLog = null },
-            onConfirm = { delta ->
-                onLogPages(book, delta)
+            onConfirm = { page ->
+                if (page != book.currentPage) onLogPages(book, page - book.currentPage)
                 bookToLog = null
             }
         )
@@ -753,11 +756,16 @@ private fun CurrentBookCard(
 ) {
     val zone = remember { ZoneId.systemDefault() }
     val fraction = if (book.totalPages > 0) (book.currentPage.toFloat() / book.totalPages).coerceIn(0f, 1f) else 0f
-    val startedAt = remember(sessions) { sessions.filter { it.startTime > 0 }.minOfOrNull { it.startTime } }
-    val dayLine = remember(startedAt) {
+    // On a re-read, "Day N" counts from when this read began, not the first read's first session.
+    val startedAt = remember(book, sessions) {
+        val readStart = RereadMemories.currentReadStart(book, sessions)
+        sessions.filter { it.startTime > 0 && (readStart == null || it.startTime >= readStart) }
+            .minOfOrNull { it.startTime } ?: readStart
+    }
+    val dayLine = remember(startedAt, today) {
         startedAt?.let {
-            val first = Instant.ofEpochMilli(it).atZone(zone).toLocalDate()
-            val day = ChronoUnit.DAYS.between(first, LocalDate.now(zone)).toInt() + 1
+            val first = StreakEngine.readingDate(it, zone, dayStartsAtHour)
+            val day = ChronoUnit.DAYS.between(first, today).toInt() + 1
             "Day $day · since ${first.format(DateTimeFormatter.ofPattern("MMM d"))}"
         }
     }
@@ -799,7 +807,7 @@ private fun CurrentBookCard(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .matchParentSize()
-                            .clip(MaterialTheme.shapes.small)
+                            .clip(AppShape.XS)
                             .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = (abs(drag) / 200f).coerceIn(0f, 1f)))
                     ) {
                         if (drag != 0f) {
@@ -851,13 +859,15 @@ private fun CurrentBookCard(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    val byPercent = book.progressUnit == ProgressUnit.Percentage
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
-                            "p. ${book.currentPage}",
+                            if (byPercent) "${book.currentPage}%"
+                            else "${FormatAdaptabilityLayer.unitAbbrev(book)} ${book.currentPage}",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
-                        if (book.totalPages > 0) {
+                        if (book.totalPages > 0 && !byPercent) {
                             Text(
                                 " / ${book.totalPages}",
                                 style = MaterialTheme.typography.bodyMedium,
