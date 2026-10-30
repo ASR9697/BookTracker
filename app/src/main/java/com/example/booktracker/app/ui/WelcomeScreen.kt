@@ -19,12 +19,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
@@ -110,7 +112,8 @@ fun WelcomeScreen(
                 .readableWidth()
                 .padding(horizontal = 28.dp, vertical = 24.dp)
         ) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            // A fixed height, so the dots stay put when Skip leaves on the last step.
+            Row(modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
                 StepDots(step)
                 Spacer(Modifier.weight(1f))
                 if (step < STEPS - 1) TextButton(onClick = onFinish) { Text("Skip") }
@@ -136,9 +139,16 @@ fun WelcomeScreen(
                                 placeholder = { Text("Your name") },
                                 singleLine = true,
                                 textStyle = MaterialTheme.typography.titleLarge,
-                                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
+                                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = { next() }),
                                 shape = AppShape.M,
                                 modifier = Modifier.fillMaxWidth()
+                            )
+                            val typed = name.trim()
+                            Text(
+                                if (typed.isNotEmpty()) "Home will greet you with “Hi, $typed”." else "Leave it empty and we'll keep it simple.",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         2 -> StepText("A little every day", "How many pages make a good reading day? You can change this any time in Goals.") {
