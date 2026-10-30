@@ -68,13 +68,18 @@ fun WrappedScreen(
     userName: String = "Reader",
     dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** A past year to look back on, whole; null for this year (or month) so far. */
+    year: Int? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var isYearly by remember { mutableStateOf(true) }
     val zone = remember { ZoneId.systemDefault() }
-    val today = remember(dayStartsAtHour) { StreakEngine.readingDate(System.currentTimeMillis(), zone, dayStartsAtHour) }
+    val now = remember(dayStartsAtHour) { StreakEngine.readingDate(System.currentTimeMillis(), zone, dayStartsAtHour) }
+    // A past year ends on its last day, so the engine sees all of it.
+    val pastYear = year?.takeIf { it < now.year }
+    val today = pastYear?.let { java.time.LocalDate.of(it, 12, 31) } ?: now
 
     val summary = remember(books, sessions, notes, isYearly, today) {
         WrappedEngine.summarize(books, sessions, notes, isYearly, today, zone, dayStartsAtHour)
@@ -100,16 +105,18 @@ fun WrappedScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Your Wrapped") },
+                title = { Text(pastYear?.let { "Your $it" } ?: "Your Wrapped") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(end = 8.dp)) {
-                        TickFilterChip(selected = !isYearly, onClick = { isYearly = false }, label = { Text("Month") })
-                        TickFilterChip(selected = isYearly, onClick = { isYearly = true }, label = { Text("Year") })
+                    if (pastYear == null) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(end = 8.dp)) {
+                            TickFilterChip(selected = !isYearly, onClick = { isYearly = false }, label = { Text("Month") })
+                            TickFilterChip(selected = isYearly, onClick = { isYearly = true }, label = { Text("Year") })
+                        }
                     }
                 }
             )

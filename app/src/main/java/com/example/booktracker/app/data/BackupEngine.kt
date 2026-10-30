@@ -66,7 +66,10 @@ object BackupEngine {
         /** [HomeLayout.encode] form, decoded leniently on restore. */
         val homeLayout: String? = null,
         /** A book-cover avatar only; a photo file is device-local and not carried over. */
-        val avatar: String? = null
+        val avatar: String? = null,
+        val motto: String? = null,
+        /** Note ids travel with the notes, so a pinned quote survives a restore. */
+        val pinnedNoteId: String? = null
     )
 
     suspend fun exportToUri(
@@ -170,6 +173,8 @@ object BackupEngine {
             settings.dayStartsAtHour?.let { put("dayStartsAtHour", it) }
             settings.homeLayout?.let { put("homeLayout", it) }
             settings.avatar?.takeIf { it.startsWith(AvatarStore.COVER_PREFIX) }?.let { put("avatar", it) }
+            settings.motto?.takeIf { it.isNotBlank() }?.let { put("motto", it) }
+            settings.pinnedNoteId?.takeIf { it.isNotBlank() }?.let { put("pinnedNoteId", it) }
         })
         put("books", JSONArray(snapshot.books.map { book ->
             book.toJson(coverEntry = coverEntry(book))
@@ -228,7 +233,9 @@ object BackupEngine {
                 monthlyGoalBooks = settings?.optIntOrNull("monthlyGoalBooks"),
                 dayStartsAtHour = settings?.optIntOrNull("dayStartsAtHour"),
                 homeLayout = settings?.optString("homeLayout")?.takeIf { it.isNotBlank() },
-                avatar = settings?.optString("avatar")?.takeIf { it.startsWith(AvatarStore.COVER_PREFIX) }
+                avatar = settings?.optString("avatar")?.takeIf { it.startsWith(AvatarStore.COVER_PREFIX) },
+                motto = settings?.optString("motto")?.takeIf { it.isNotBlank() },
+                pinnedNoteId = settings?.optString("pinnedNoteId")?.takeIf { it.isNotBlank() }
             )
         )
     }

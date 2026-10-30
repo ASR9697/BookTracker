@@ -90,7 +90,8 @@ private fun HeadsUpRow(item: HeadsUp.Item, onClick: () -> Unit) {
             Text(
                 item.detail,
                 style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
+                // Two lines, so a long title still leaves room for when the loan is due.
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
         }

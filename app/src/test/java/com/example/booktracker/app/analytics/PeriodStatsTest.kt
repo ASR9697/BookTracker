@@ -68,7 +68,32 @@ class PeriodStatsTest {
         assertEquals(12, year.size)
         assertEquals(7L, year[2].value)
         assertEquals(12L, year[9].value)
-        val all = PeriodStats.buckets(Period(Span.ALL), PeriodStats.bounds(Period(Span.ALL), today, firstDay = LocalDate.of(2025, 6, 1)), values, en)
-        assertEquals(listOf("'25" to 3L, "'26" to 19L), all.map { it.label to it.value })
+    }
+
+    @Test
+    fun `all time picks days, months or years by how long you've read`() {
+        val values = mapOf(LocalDate.of(2026, 10, 27) to 12L, LocalDate.of(2026, 3, 5) to 7L, LocalDate.of(2025, 6, 1) to 3L)
+        fun all(first: LocalDate) = PeriodStats.buckets(Period(Span.ALL), PeriodStats.bounds(Period(Span.ALL), today, firstDay = first), values, en)
+
+        val days = all(LocalDate.of(2026, 10, 3))
+        assertEquals(PeriodStats.Grain.DAY, days.first().grain)
+        assertEquals(28, days.size)
+
+        val summer = all(LocalDate.of(2026, 7, 9))
+        assertEquals(listOf("Jul", "Aug", "Sep", "Oct"), summer.map { it.label })
+
+        val thisYear = all(LocalDate.of(2026, 3, 5))
+        assertEquals(listOf("M", "A", "M", "J", "J", "A", "S", "O"), thisYear.map { it.label })
+        assertEquals(listOf(7L, 0L, 0L, 0L, 0L, 0L, 0L, 12L), thisYear.map { it.value })
+
+        val twoYears = all(LocalDate.of(2025, 6, 1))
+        assertEquals(17, twoYears.size)
+        assertEquals("'26", twoYears[7].label)
+        assertEquals(3L, twoYears.first().value)
+
+        val years = all(LocalDate.of(2022, 1, 1))
+        assertEquals(listOf("'22", "'23", "'24", "'25", "'26"), years.map { it.label })
+        assertEquals(PeriodStats.Grain.YEAR, years.last().grain)
+        assertEquals(19L, years.last().value)
     }
 }

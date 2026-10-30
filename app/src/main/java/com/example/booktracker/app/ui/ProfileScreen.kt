@@ -55,13 +55,13 @@ import com.example.booktracker.app.ui.animations.rememberEntranceState
 import com.example.booktracker.app.ui.animations.staggeredEntrance
 import com.example.booktracker.app.analytics.GoalEngine
 import com.example.booktracker.app.analytics.StreakEngine
+import com.example.booktracker.app.analytics.ReaderProfileEngine
 import com.example.booktracker.app.util.MarkdownExporter
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
-private const val MAX_READING_ROWS = 3
 private const val MAX_TEASER_MEDALS = 5
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,17 +74,29 @@ fun ProfileScreen(
     streak: Int,
     longestStreak: Int = streak,
     dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR,
-    onOpenSettings: () -> Unit = {},
     onOpenAppSettings: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
     onOpenFinished: () -> Unit = {},
     onOpenPlanner: () -> Unit = {},
-    onOpenWishlist: () -> Unit = {},
+    onOpenJourneyMap: () -> Unit = {},
+    /** A short result for the reader, shown as a snackbar (e.g. after exporting notes). */
+    onMessage: (String) -> Unit = {},
     onOpenBook: (Book) -> Unit = {},
     onOpenWrapped: () -> Unit = {},
     onOpenAchievements: () -> Unit = {},
     onOpenStreak: () -> Unit = {},
     onUpdateName: (String) -> Unit = {},
+    /** One line under the name, e.g. "Just one more chapter."; blank for none. */
+    motto: String = "",
+    onUpdateMotto: (String) -> Unit = {},
+    /** The favourite highlight pinned under the header; blank shows the newest. */
+    pinnedNoteId: String = "",
+    onPinNote: (String) -> Unit = {},
+    /** Opens Wrapped for a past year (or this one). */
+    onOpenYear: (Int) -> Unit = {},
+    onToggleFavorite: (Book) -> Unit = {},
+    /** Searches the library, e.g. for an author tapped in the reader card. */
+    onSearch: (String) -> Unit = {},
     badgeStatuses: List<BadgeStatus> = emptyList(),
     monthlyChallenge: BadgeStatus? = null,
     yearlyGoal: Int = 0,
@@ -103,9 +115,11 @@ fun ProfileScreen(
         StreakEngine.pagesByDay(sessions).values.sum() +
             completedBooks.filter { it.id !in trackedBookIds }.sumOf { it.totalPages }
     }
-    val readingBooks = remember(books) {
-        books.filter { it.status.equals(BookStatus.READING.name, ignoreCase = true) }
-            .sortedByDescending { it.lastUpdated }
+    val sessionCount = remember(sessions) { sessions.count { it.endTime > 0 } }
+    val setAsideCount = remember(books) { books.count(com.example.booktracker.app.analytics.FinishedShelf::isAbandoned) }
+    val plannedCount = remember(books) {
+        val todayDay = LocalDate.now(zone).toEpochDay()
+        books.count { book -> book.plannedDate?.let { Math.floorDiv(it, 86_400_000L) >= todayDay } == true }
     }
     val velocity = remember(sessions) { AnalyticsEngine.pagesPerHour(sessions) }
     val personality = remember(books, sessions) {
@@ -121,17 +135,52 @@ fun ProfileScreen(
     }
     val trackingStart = remember(books, sessions) { GoalEngine.trackingStart(books, sessions, zone) }
     val trackingSince = trackingStart?.format(DateTimeFormatter.ofPattern("MMM yyyy"))
-    val goalPace = when {
-        yearlyGoal <= 0 -> null
-        finishedThisYear >= yearlyGoal -> "goal reached"
-        else -> when (GoalEngine.calculateYearlyPace(yearlyGoal, finishedThisYear, today, trackingStart).status) {
-            GoalEngine.GoalPaceStatus.AHEAD -> "ahead"
-            GoalEngine.GoalPaceStatus.ON_TRACK -> "on track"
-            GoalEngine.GoalPaceStatus.BEHIND -> "behind"
-        }
-    }
     val hasYearToReview = remember(books, sessions, dayStartsAtHour) {
         AnalyticsEngine.hasYearToReview(books, sessions, LocalDate.now(zone).year, zone, dayStartsAtHour)
+    }
+    // Who you are as a reader: favourites, taste, the authors you come back to, your bests.
+    val favourites = remember(books) { ReaderProfileEngine.favourites(books) }
+    val taste = remember(books, sessions) { ReaderProfileEngine.tasteSentence(books, sessions, zone) }
+    val authors = remember(books) { ReaderProfileEngine.topAuthors(books) }
+    val records = remember(books, sessions, dayStartsAtHour) { ReaderProfileEngine.records(books, sessions, zone, dayStartsAtHour) }
+    var showFavouritePicker by remember { mutableStateOf(false) }
+    val level = remember(pagesRead) { ReaderProfileEngine.level(pagesRead) }
+    val years = remember(books, sessions, dayStartsAtHour) { ReaderProfileEngine.yearByYear(books, sessions, zone, dayStartsAtHour) }
+    val pinnedQuote = remember(notes, pinnedNoteId) { ReaderProfileEngine.pinnedQuote(notes, pinnedNoteId) }
+    var showQuotePicker by remember { mutableStateOf(false) }
+    var showShareCard by remember { mutableStateOf(false) }
+    if (showShareCard) {
+        ShareReaderCardSheet(
+            content = readerCardContent(
+                userName, avatar, motto, level, taste, favourites, authors,
+                books = completedBooks.size, pages = pagesRead, minutes = totalMinutes
+            ),
+            allBooks = books,
+            onDismiss = { showShareCard = false }
+        )
+    }
+    if (showQuotePicker) {
+        QuotePickerSheet(
+            favourites = remember(notes) { notes.filter { it.isFavorite && it.content.isNotBlank() }.sortedByDescending { it.timestamp } },
+            titles = remember(books) { books.associate { it.id to it.title } },
+            pinnedId = pinnedNoteId,
+            onPick = { id ->
+                onPinNote(id)
+                showQuotePicker = false
+            },
+            onDismiss = { showQuotePicker = false }
+        )
+    }
+    if (showFavouritePicker) {
+        FavouritePickerSheet(
+            finished = remember(books) {
+                com.example.booktracker.app.analytics.WishlistEngine.onShelf(books)
+                    .filter(com.example.booktracker.app.analytics.FinishedShelf::isFinished)
+                    .sortedByDescending { it.completedAt }
+            },
+            onToggle = onToggleFavorite,
+            onDismiss = { showFavouritePicker = false }
+        )
     }
 
     val entrance = rememberEntranceState()
@@ -144,27 +193,35 @@ fun ProfileScreen(
             var showAvatarSheet by remember { mutableStateOf(false) }
             if (showNameDialog) {
                 var newName by remember { mutableStateOf(userName) }
-                AlertDialog(
-                    onDismissRequest = { showNameDialog = false },
-                    title = { Text("Edit profile") },
-                    text = {
-                        OutlinedTextField(
-                            value = newName,
-                            onValueChange = { newName = it },
-                            label = { Text("Display name") },
-                            singleLine = true
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            onUpdateName(newName.trim().takeIf { it.isNotEmpty() } ?: "Reader")
-                            showNameDialog = false
-                        }) { Text("Save") }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showNameDialog = false }) { Text("Cancel") }
+                var newMotto by remember { mutableStateOf(motto) }
+                ActionSheet(
+                    onDismiss = { showNameDialog = false },
+                    icon = Icons.Rounded.Edit,
+                    title = "Edit profile",
+                    confirmLabel = "Save",
+                    onConfirm = {
+                        onUpdateName(newName.trim().takeIf { it.isNotEmpty() } ?: "Reader")
+                        if (newMotto.trim() != motto) onUpdateMotto(newMotto)
+                        showNameDialog = false
                     }
-                )
+                ) {
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it },
+                        label = { Text("Display name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = newMotto,
+                        onValueChange = { newMotto = it.take(MOTTO_MAX) },
+                        label = { Text("Reading motto (optional)") },
+                        placeholder = { Text("Just one more chapter.") },
+                        supportingText = { Text("${newMotto.length} / $MOTTO_MAX") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
             if (showAvatarSheet) {
                 AvatarPickerSheet(
@@ -240,6 +297,16 @@ fun ProfileScreen(
                             modifier = Modifier.size(16.dp)
                         )
                     }
+                    if (motto.isNotBlank()) {
+                        Text(
+                            "\u201C${motto.trim()}\u201D",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                     Text(
                         personality.takeIf { it.isNotEmpty() }?.joinToString(" · ")
                             ?: "Building your reading profile",
@@ -248,16 +315,10 @@ fun ProfileScreen(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
-                    if (yearlyGoal > 0) {
-                        Spacer(Modifier.height(4.dp))
-                        HeaderLine(
-                            icon = Icons.Rounded.Flag,
-                            text = "$finishedThisYear / $yearlyGoal books in ${today.year}" +
-                                (goalPace?.let { " · $it" } ?: "")
-                        )
-                    }
+                    Spacer(Modifier.height(6.dp))
+                    LevelChip(level, pagesRead)
                     if (trackingSince != null) {
-                        Spacer(Modifier.height(2.dp))
+                        Spacer(Modifier.height(6.dp))
                         HeaderLine(icon = Icons.Rounded.CalendarToday, text = "Tracking since $trackingSince")
                     }
                 }
@@ -272,6 +333,9 @@ fun ProfileScreen(
             }
         },
         actions = {
+            IconButton(onClick = { showShareCard = true }) {
+                Icon(Icons.Rounded.IosShare, contentDescription = "Share your reader card")
+            }
             IconButton(onClick = onOpenAppSettings) {
                 Icon(Icons.Rounded.Settings, contentDescription = "Settings")
             }
@@ -284,54 +348,62 @@ fun ProfileScreen(
         contentPadding = PaddingValues(start = side, top = 8.dp, end = side, bottom = 16.dp + LocalNavBarClearance.current),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Lifetime numbers, one compact card instead of four big tiles.
+        if (pinnedQuote != null) item {
+            PinnedQuoteCard(
+                note = pinnedQuote,
+                book = books.firstOrNull { it.id == pinnedQuote.bookId },
+                onOpenBook = onOpenBook,
+                onChange = { showQuotePicker = true },
+                modifier = Modifier.staggeredEntrance(entrance, 1)
+            )
+        }
+
+        // Ways into your record: history, finished, planner, journey map.
         item {
-            Card(
-                shape = AppShape.L,
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                modifier = Modifier.fillMaxWidth().staggeredEntrance(entrance, 1)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Row {
-                        StatTile(
-                            icon = Icons.Rounded.LocalFireDepartment,
-                            tint = MaterialTheme.colorScheme.tertiary,
-                            count = streak,
-                            flameStreak = streak,
-                            label = "day streak · best $longestStreak",
-                            modifier = Modifier.weight(1f).bounceClick { onOpenStreak() }
-                        )
-                        StatTile(
-                            icon = Icons.AutoMirrored.Rounded.MenuBook,
-                            tint = MaterialTheme.colorScheme.secondary,
-                            count = completedBooks.size,
-                            label = if (completedBooks.size == 1) "book finished" else "books finished",
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Row {
-                        StatTile(
-                            icon = Icons.Rounded.Layers,
-                            tint = MaterialTheme.colorScheme.primary,
-                            count = pagesRead,
-                            format = { "%,d".format(it) },
-                            label = "pages read",
-                            modifier = Modifier.weight(1f)
-                        )
-                        StatTile(
-                            icon = Icons.Rounded.Schedule,
-                            tint = MaterialTheme.colorScheme.primary,
-                            count = totalMinutes.toInt(),
-                            format = { AnalyticsEngine.formatMinutes(it.toLong()) },
-                            label = "time reading",
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            }
+            ProfileShortcuts(
+                sessions = sessionCount,
+                finished = completedBooks.size,
+                setAside = setAsideCount,
+                planned = plannedCount,
+                onOpenHistory = onOpenHistory,
+                onOpenFinished = onOpenFinished,
+                onOpenPlanner = onOpenPlanner,
+                onOpenJourneyMap = onOpenJourneyMap,
+                modifier = Modifier.staggeredEntrance(entrance, 1)
+            )
+        }
+
+        item {
+            FavouritesShelf(
+                favourites = favourites,
+                onOpenBook = onOpenBook,
+                onPick = { showFavouritePicker = true },
+                modifier = Modifier.staggeredEntrance(entrance, 1)
+            )
+        }
+
+        if (taste != null || authors.isNotEmpty()) item {
+            ReaderCard(taste, authors, onAuthor = onSearch, modifier = Modifier.staggeredEntrance(entrance, 2))
+        }
+
+        item {
+            LifetimeCard(
+                streak = streak,
+                longestStreak = longestStreak,
+                books = completedBooks.size,
+                pages = pagesRead,
+                minutes = totalMinutes,
+                onOpenStreak = onOpenStreak,
+                modifier = Modifier.staggeredEntrance(entrance, 2)
+            )
+        }
+
+        if (records.isNotEmpty()) item {
+            RecordsCard(records, onOpenBook, Modifier.staggeredEntrance(entrance, 3))
+        }
+
+        if (years.isNotEmpty()) item {
+            YearByYearCard(years, onYear = onOpenYear, modifier = Modifier.staggeredEntrance(entrance, 3))
         }
 
         // Wrapped stays hidden until there is a year worth sharing.
@@ -404,125 +476,28 @@ fun ProfileScreen(
             }
         }
 
-        if (readingBooks.isNotEmpty()) item {
-            Card(
-                shape = AppShape.M,
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                modifier = Modifier.fillMaxWidth().staggeredEntrance(entrance, 5)
-            ) {
-                Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                    Text(
-                        "CURRENTLY READING",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                    readingBooks.take(MAX_READING_ROWS).forEach { book ->
-                        ReadingRow(book, sessions, onClick = { onOpenBook(book) })
-                    }
-                    if (readingBooks.size > MAX_READING_ROWS) {
-                        Text(
-                            "+${readingBooks.size - MAX_READING_ROWS} more in your library",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
-                }
-            }
-        }
-
-        // Settings & Activity
+        // Export is an action, not a place: it says how it went.
         item {
-            Column(modifier = Modifier.staggeredEntrance(entrance, 6)) {
-                Text(
-                    "Your reading",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                    shape = AppShape.M
-                ) {
-                    Column {
-                        SettingsRow(
-                            icon = Icons.Rounded.History,
-                            label = "Reading history",
-                            onClick = onOpenHistory
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                        SettingsRow(
-                            icon = Icons.Rounded.DoneAll,
-                            label = "Finished & abandoned",
-                            onClick = onOpenFinished
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                        SettingsRow(
-                            icon = Icons.Rounded.Flag,
-                            label = "Reading goals",
-                            onClick = onOpenSettings
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                        SettingsRow(
-                            icon = Icons.Rounded.Event,
-                            label = "Reading planner",
-                            onClick = onOpenPlanner
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                        SettingsRow(
-                            icon = Icons.Rounded.BookmarkAdd,
-                            label = "Wishlist",
-                            onClick = onOpenWishlist
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                        SettingsRow(
-                            icon = Icons.Rounded.Share,
-                            label = "Export notes as Markdown",
-                            onClick = { MarkdownExporter.exportToMarkdown(context, books, notes) }
-                        )
-                    }
-                }
+            TextButton(
+                onClick = {
+                    val count = runCatching { MarkdownExporter.exportToMarkdown(context, books, notes) }.getOrNull()
+                    onMessage(
+                        when (count) {
+                            null -> "Couldn't export your notes"
+                            0 -> "No notes to export yet"
+                            1 -> "Exported 1 note"
+                            else -> "Exported $count notes"
+                        }
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().staggeredEntrance(entrance, 6)
+            ) {
+                Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Export notes as Markdown")
             }
         }
     }
-    }
-}
-
-@Composable
-private fun StatTile(
-    icon: ImageVector,
-    tint: Color,
-    count: Int,
-    label: String,
-    modifier: Modifier = Modifier,
-    format: (Int) -> String = { it.toString() },
-    /** When set, the icon is the living streak flame instead. */
-    flameStreak: Int? = null
-) {
-    val shown by animateCountUp(count)
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier.size(40.dp).clip(CircleShape).background(tint.copy(alpha = 0.15f)),
-            contentAlignment = Alignment.Center
-        ) {
-            if (flameStreak != null) {
-                LivingFlame(streak = flameStreak, baseSize = 20.dp, tint = tint)
-            } else {
-                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
-            }
-        }
-        Spacer(Modifier.width(12.dp))
-        Column {
-            Text(format(shown), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
-            Text(
-                label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
     }
 }
 
@@ -697,7 +672,7 @@ private fun AvatarPickerSheet(
     }
     // Books the reader has lived with come first: finished, then in progress, then the rest.
     val covers = remember(books) {
-        books.filter { it.coverUrl.isNotBlank() }.sortedBy {
+        com.example.booktracker.app.analytics.WishlistEngine.onShelf(books).filter { it.coverUrl.isNotBlank() }.sortedBy {
             when (it.status) {
                 BookStatus.FINISHED.name -> 0
                 BookStatus.READING.name -> 1
@@ -707,13 +682,8 @@ private fun AvatarPickerSheet(
     }
     val chosenCover = avatar.takeIf { it.startsWith(AvatarStore.COVER_PREFIX) }?.removePrefix(AvatarStore.COVER_PREFIX)
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(modifier = Modifier.padding(bottom = 24.dp)) {
-            Text(
-                "Profile picture",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-            )
+    ActionSheet(onDismiss = onDismiss, icon = Icons.Rounded.PhotoCamera, title = "Profile picture", dismissLabel = "Close") {
+        Column {
             SettingsRow(
                 icon = Icons.Rounded.PhotoLibrary,
                 label = "Choose a photo",
@@ -729,10 +699,9 @@ private fun AvatarPickerSheet(
                     "Or a cover from your shelf",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 8.dp)
+                    modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)
                 )
                 LazyRow(
-                    contentPadding = PaddingValues(horizontal = 24.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(covers, key = { it.id }) { book ->
@@ -742,7 +711,7 @@ private fun AvatarPickerSheet(
                             Modifier
                                 .size(width = 64.dp, height = 96.dp)
                                 .then(
-                                    if (selected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.small)
+                                    if (selected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, AppShape.XS)
                                     else Modifier
                                 )
                                 .clickable { onPickCover(book) }
@@ -750,53 +719,6 @@ private fun AvatarPickerSheet(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun ReadingRow(book: Book, sessions: List<Session>, onClick: () -> Unit) {
-    val fraction = if (book.totalPages > 0) (book.currentPage.toFloat() / book.totalPages).coerceIn(0f, 1f) else 0f
-    val progress by androidx.compose.animation.core.animateFloatAsState(targetValue = fraction, label = "progress")
-    // Time left is page velocity, so only meaningful for books tracked in pages.
-    val timeLeft = remember(book, sessions) {
-        if (book.progressUnit != ProgressUnit.Page) null
-        else AnalyticsEngine.formatEstimatedTime(
-            AnalyticsEngine.bookEstimatedMinutesLeft(book, sessions.filter { it.bookId == book.id }, sessions)
-        )
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .bounceClick(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        BookCover(book, Modifier.heroSharedElement("cover-${book.id}").size(width = 40.dp, height = 60.dp))
-        Spacer(Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                book.title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(Modifier.height(8.dp))
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
-                color = MaterialTheme.colorScheme.secondary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                gapSize = 0.dp,
-                drawStopIndicator = {}
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                listOfNotNull("${(fraction * 100).toInt()}%", timeLeft).joinToString(" · "),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }

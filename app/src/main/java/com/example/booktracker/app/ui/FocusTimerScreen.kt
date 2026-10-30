@@ -552,7 +552,7 @@ fun FocusTimerScreen(
                         }
                         // A page goal can be set or changed at any point in the session.
                         TimerChip(
-                            icon = Icons.Rounded.Flag,
+                            icon = if (goalReached) Icons.Rounded.Check else Icons.Rounded.Flag,
                             label = when {
                                 pageTarget == null -> "Page goal"
                                 goalReached -> "Goal reached"
@@ -932,7 +932,7 @@ private fun TimerChip(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(if (filled) Icons.Rounded.Check else icon, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }

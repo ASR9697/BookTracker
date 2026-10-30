@@ -41,9 +41,12 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **LoanEngine.kt** (148) - Pure logic engine for library return dates, due date countdowns, lending tracking, and urgency evaluation.
   - types: LoanEngine:14, .LoanUrgency:16, .LoanStatusInfo:23
   - fun: .activeLoan:35, .getLoanStatus:42, .allActiveLoans:125, .urgentLoans:135
-- **PeriodStats.kt** (122) - Stats over a period the reader picks: a week, a month, a year or all time, now or stepped back.
-  - types: PeriodStats:15, .Span:17, .Period:20, .Summary:66, .Bucket:93
-  - fun: .bounds:27, .label:46, .summary:69, .change:86, .buckets:99
+- **PeriodStats.kt** (148) - Stats over a period the reader picks: a week, a month, a year or all time, now or stepped back.
+  - types: PeriodStats:15, .Span:17, .Period:20, .Summary:66, .Grain:93, .Bucket:96
+  - fun: .bounds:27, .label:46, .summary:69, .change:86, .buckets:103
+- **ReaderProfileEngine.kt** (186) - Who you are as a reader, for Profile: the books you'd hand someone, the authors you come back to, your taste in a sen...
+  - types: ReaderProfileEngine:17, .Favourites:20, .Author:34, .Level:86, .YearRow:119, .Record:142
+  - fun: .favourites:23, .topAuthors:37, .tasteSentence:53, .level:99, .pinnedQuote:109, .quoteLine:116, .yearByYear:122, .records:145
 - **ReadingCalendar.kt** (56) - Aggregates completed sessions into per-day page counts for the calendar heatmap (blueprint §3A).
   - types: ReadingCalendar:12, .Summary:17
   - fun: .pagesByDay:23, .gridStart:30, .summarize:35, .level:48
@@ -102,9 +105,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **AvatarStore.kt** (38) - The profile picture, kept in filesDir/avatar apart from note photos so the note-photo sweep never touches it.
   - types: AvatarStore:17
   - fun: .importPhoto:25, .clearPhoto:34
-- **BackupEngine.kt** (534) - User-managed local backups: the whole Room DB plus settings as one versioned JSON document inside a .zip, written whe...
+- **BackupEngine.kt** (541) - User-managed local backups: the whole Room DB plus settings as one versioned JSON document inside a .zip, written whe...
   - types: BackupEngine:47, .Parsed:54, .BackupSettings:60
-  - fun: .exportToUri:72, .importFromUri:111, .encodeDocument:162, .coverEntry:184, .imageEntries:188, .localUriForEntry:193, .entryForLocalUri:203, .decodeDocument:213
+  - fun: .exportToUri:75, .importFromUri:114, .encodeDocument:165, .coverEntry:189, .imageEntries:193, .localUriForEntry:198, .entryForLocalUri:208, .decodeDocument:218
 - **BookRepository.kt** (886) - Single data access boundary for the UI and sync layers.
   - types: BookRepository:28, LibrarySearchResults:140, LibrarySnapshot:147, DeletedBook:156, RoomBookRepository:162
   - fun: .observeBooks:29, .addBook:30, .updateBook:47, .updateStatus:48, .updateFormat:49, .updateOwnership:50, .finishBook:51, .markDnf:52, .addProgress:53, .applyRemoteProgress:54, .deleteBook:56, .restoreDeleted:57, .toggleFavorite:58, .observeOpenSession:60, .observeCompletedSessions:61, .observeSessionsForBook:62, .startSession:63, .endSession:64, .endSessionDetailed:65, .addManualSession:76, .addRemoteSession:84, .deleteSession:85, .updateSession:86, .importCsv:87, .observeNotes:89, .observeAllNotes:90, .observeTotalNotesCount:91, .addNote:92, .updateCollections:100, .setProgress:101, .restartReading:102, .toggleNoteFavorite:103, .addRemoteNote:104, .deleteNote:111, .updateNote:112, .searchLibrary:120, .snapshotForBackup:121, .restoreFromBackup:122, .upsertSessions:124, .observeReviewStates:126, .saveReviewState:127, .observeWords:128, .saveWord:129, .deleteWord:130, .setFinishBy:132, .setAudiobook:134, .applySync:136
@@ -125,9 +128,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **ServiceLocator.kt** (97) - Minimal manual DI.
   - types: ServiceLocator:12
   - fun: .setTimerRunning:34, .notifyTimerExpired:53, .consumeTimerExpired:58, .repository:62, .settings:65, .dndManager:71, .wipeLibrary:81
-- **SettingsRepository.kt** (404) - User preferences: daily page goal (streaks + analytics) and yearly books goal.
+- **SettingsRepository.kt** (414) - User preferences: daily page goal (streaks + analytics) and yearly books goal.
   - types: ThemeMode:21, AppPalette:26, ReminderSettings:38, AppPrefs:48, SettingsRepository:108
-  - fun: hourInWindow:41, .isQuiet:102, .isNocturnal:104, .setReminder:192, .setDailyGoal:200, .setYearlyGoal:201, .setMonthlyGoalPages:202, .setMonthlyGoalBooks:203, .setDndDuringSession:204, .setThemeMode:205, .setUseDynamicColor:206, .setAppPalette:207, .setUserName:208, .setWorkMinutes:209, .setPreferredTimerMode:210, .setDayStartsAtHour:211, .setUseAppLock:212, .setHomeLayout:213, .setAvatar:214, .setHapticsEnabled:215, .setReduceMotion:216, .setKeepScreenOn:217, .setDriveSyncEnabled:218, .setDriveLastSync:219, .saveTimerState:230, .clearTimerState:252, .markBadgesSeen:271, .updatePrefs:352, .backupSettings:390
+  - fun: hourInWindow:41, .isQuiet:102, .isNocturnal:104, .setReminder:198, .setDailyGoal:206, .setYearlyGoal:207, .setMonthlyGoalPages:208, .setMonthlyGoalBooks:209, .setDndDuringSession:210, .setThemeMode:211, .setUseDynamicColor:212, .setAppPalette:213, .setUserName:214, .setMotto:215, .setPinnedNoteId:216, .setWorkMinutes:217, .setPreferredTimerMode:218, .setDayStartsAtHour:219, .setUseAppLock:220, .setHomeLayout:221, .setAvatar:222, .setHapticsEnabled:223, .setReduceMotion:224, .setKeepScreenOn:225, .setDriveSyncEnabled:226, .setDriveLastSync:227, .saveTimerState:238, .clearTimerState:260, .markBadgesSeen:279, .updatePrefs:360, .backupSettings:398
 
 ## app/data/bookmory
 `app/src/main/java/com/example/booktracker/app/data/bookmory/`
@@ -272,13 +275,13 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: EditBookDialog:80, LogSessionDialog:328, PastDatePickerDialog:436, Book.isEnded:467
 - **BookQuickActionsSheet.kt** (153) - What a long-press on a cover opens: the cover lifts into view with the book's title, then the things you'd want to do...
   - fun: BookQuickActionsSheet:42
-- **BookTrackerScreen.kt** (2259)
+- **BookTrackerScreen.kt** (2277)
   - types: LibraryViewMode:185, LibrarySort:209, SilentHaptics:243
-  - fun: BookTrackerApp:225, BookTrackerAppContent:249, WeekBubbles:1560, LibraryScreen:1634, formatElapsed:2160, SubScreen:2175, TimerMiniPlayer:2190
-  - nav routes: editHome:832, wishlist:838, owned/{ownership}:874, calendar:907, bookshelf:929, epubReader/{uri}:940, scanner:947, privacy:972, achievements:975, wrappedAnimated:986, wrapped:1002, planner:1018, book/{bookId}:1027, history:1041, settings:1054, streak:1135, goals:1150, finished:1192, journey_map:1206, search:1217, focus/{bookId}:1227, session_result/{bookId}:1332, review:1360, tagTidy:1379, vocabulary:1384, shelfScan:1399, tbr_swipe:1415
-- **BookTrackerViewModel.kt** (1279)
-  - types: DriveSyncState:75, .Idle:76, .Syncing:77, .NeedsConsent:78, .Done:79, .Failed:80, BookTrackerViewModel:83, .SessionResult:846
-  - fun: .clearDriveStatus:154, .setHapticsEnabled:216, .setReduceMotion:217, .setKeepScreenOn:218, .updatePrefs:224, .finishWelcome:242, .exportCsv:245, .backupNow:258, .deleteAllData:273, .openRoute:435, .consumeRoute:439, .gradeReview:443, .saveWord:452, .deleteWord:461, .setFinishBy:465, .syncDrive:470, .driveConsentShown:483, .onDriveConsent:487, .disconnectDrive:520, .setAudiobook:529, .logListening:534, .setAudioPosition:541, .addShelfBooks:546, .shareNote:567, .addScannedBook:571, .importCsv:598, .importBookmory:610, .promote:624, .promoteToReading:634, .pauseBook:640, .changeStatus:650, .toggleFavorite:660, .addProgress:664, .recordLoan:668, .markLoanReturned:677, .tidyTag:692, .updateBookDetails:701, .setFormat:713, .setOwnership:717, .setWish:731, .gotWished:742, .addToWishlist:756, .setPurchases:779, .finishBook:792, .readAgain:796, .setProgress:800, .setCollections:804, .markDnf:808, .startSession:812, .startFocus:822, .saveSession:865, .discardOpenSession:913, .leaveUnstartedFocus:929, .logManualSession:944, .delete:950, .deleteSession:957, .updateSession:961, .restore:966, .setHomeLayout:973, .setUserName:977, .setAvatarPhoto:982, .setAvatarCover:990, .clearAvatar:997, .setDailyGoal:1004, .setYearlyGoal:1008, .setMonthlyGoalPages:1012, .setMonthlyGoalBooks:1016, .setDndDuringSession:1020, .setThemeMode:1024, .setUseDynamicColor:1028, .setAppPalette:1032, .setReminder:1036, .planBook:1040, .setTimerBook:1050, .setTimerMode:1081, .setCustomWorkMinutes:1095, .countdownTotalSeconds:1103, .extendCountdown:1111, .setTimerRunning:1122, .pauseUnattended:1135, .setPageTarget:1147, .setWorkMinutes:1156, .setDayStartsAtHour:1164, .setUseAppLock:1168, .setNoiseType:1173, .endNoisePreview:1182, .setTimerVolume:1186, .sessionsFor:1191, .notesFor:1194, .addNote:1196, .updateNote:1206, .toggleNoteFavorite:1210, .deleteNote:1214, .searchLibrary:1218, .exportBackup:1221, .importBackup:1238
+  - fun: BookTrackerApp:225, BookTrackerAppContent:249, WeekBubbles:1578, LibraryScreen:1652, formatElapsed:2178, SubScreen:2193, TimerMiniPlayer:2208
+  - nav routes: editHome:841, wishlist:847, owned/{ownership}:883, calendar:916, bookshelf:938, epubReader/{uri}:949, scanner:956, privacy:981, achievements:984, wrapped:1015, planner:1031, book/{bookId}:1040, history:1054, settings:1067, streak:1148, goals:1163, finished:1205, journey_map:1219, focus/{bookId}:1245, session_result/{bookId}:1350, review:1378, tagTidy:1397, vocabulary:1402, shelfScan:1417, tbr_swipe:1433
+- **BookTrackerViewModel.kt** (1297)
+  - types: DriveSyncState:78, .Idle:79, .Syncing:80, .NeedsConsent:81, .Done:82, .Failed:83, BookTrackerViewModel:86, .SessionResult:853
+  - fun: .clearDriveStatus:161, .setHapticsEnabled:223, .setReduceMotion:224, .setKeepScreenOn:225, .updatePrefs:231, .finishWelcome:249, .exportCsv:252, .backupNow:265, .deleteAllData:280, .openRoute:442, .consumeRoute:446, .gradeReview:450, .saveWord:459, .deleteWord:468, .setFinishBy:472, .syncDrive:477, .driveConsentShown:490, .onDriveConsent:494, .disconnectDrive:527, .setAudiobook:536, .logListening:541, .setAudioPosition:548, .addShelfBooks:553, .shareNote:574, .addScannedBook:578, .importCsv:605, .importBookmory:617, .promote:631, .promoteToReading:641, .pauseBook:647, .changeStatus:657, .toggleFavorite:667, .addProgress:671, .recordLoan:675, .markLoanReturned:684, .tidyTag:699, .updateBookDetails:708, .setFormat:720, .setOwnership:724, .setWish:738, .gotWished:749, .addToWishlist:763, .setPurchases:786, .finishBook:799, .readAgain:803, .setProgress:807, .setCollections:811, .markDnf:815, .startSession:819, .startFocus:829, .saveSession:872, .discardOpenSession:920, .leaveUnstartedFocus:936, .logManualSession:951, .delete:957, .deleteSession:964, .updateSession:968, .restore:973, .setHomeLayout:980, .setPinnedNoteId:985, .setMotto:989, .setUserName:993, .setAvatarPhoto:998, .setAvatarCover:1006, .clearAvatar:1013, .setDailyGoal:1020, .setYearlyGoal:1024, .setMonthlyGoalPages:1028, .setMonthlyGoalBooks:1032, .setDndDuringSession:1036, .setThemeMode:1040, .setUseDynamicColor:1044, .setAppPalette:1048, .setReminder:1052, .planBook:1056, .setTimerBook:1066, .setTimerMode:1097, .setCustomWorkMinutes:1111, .countdownTotalSeconds:1119, .extendCountdown:1127, .setTimerRunning:1138, .pauseUnattended:1151, .setPageTarget:1163, .setWorkMinutes:1172, .setDayStartsAtHour:1180, .setUseAppLock:1184, .setNoiseType:1189, .endNoisePreview:1198, .setTimerVolume:1202, .sessionsFor:1207, .notesFor:1210, .addNote:1212, .updateNote:1222, .toggleNoteFavorite:1226, .deleteNote:1230, .searchLibrary:1234, .exportBackup:1237, .importBackup:1254
 - **BookVictoryCardDialog.kt** (901) - Interactive Single Book "Finished Wrap-Up" Victory Card Dialog.
   - fun: BookVictoryCardDialog:70, VictoryCardFrontContent:459, VictoryCardBackContent:632, JourneyStatTile:826, PreviewStatPill:870
 - **BookVictoryShareHelper.kt** (678)
@@ -312,7 +315,7 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **GoalsScreen.kt** (335) - Every reading target in one place, each with a live bar of how far along you are: today, this month, this year.
   - types: GoalProgress:42
   - fun: GoalsScreen:64, GoalCard:253, animateFloatAsStateCompat:333
-- **HeadsUpCard.kt** (100) - Home's "today" card: one line for each thing that needs the reader today ([HeadsUp]), each opening its book.
+- **HeadsUpCard.kt** (101) - Home's "today" card: one line for each thing that needs the reader today ([HeadsUp]), each opening its book.
   - fun: HeadsUpCard:42, HeadsUpRow:59
 - **HistoryScreen.kt** (287)
   - fun: HistoryScreen:69, EditSessionDialog:200, HistorySessionRow:248
@@ -320,8 +323,8 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: HomeDashboard:152, CurrentBookCard:743, NothingInProgressCard:944, Tile:983, ShortcutTile:1012, RingHeader:1046, MonthBars:1101, greeting:1148, subtitle:1161, formatMinutes:1172, yearPace:1176, pages:1188, StatusChip:1192
 - **LibraryGridCard.kt** (229) - Compact library tile sized for three across on a phone: cover with status, rating and loan marks, title and author un...
   - fun: LibraryGridCard:78, CoverPill:202, libraryStatus:214, statusIcon:221
-- **LibrarySearchScreen.kt** (280) - Universal library search over the local FTS index: every book field the user would remember (title, author, descripti...
-  - fun: LibrarySearchScreen:64, SearchSectionHeader:176, BookHitRow:186, NoteHitRow:218, StatusChip:261
+- **LibrarySearchScreen.kt** (282) - Universal library search over the local FTS index: every book field the user would remember (title, author, descripti...
+  - fun: LibrarySearchScreen:64, SearchSectionHeader:178, BookHitRow:188, NoteHitRow:220, StatusChip:263
 - **LoanComponents.kt** (456) - Reusable visual badge displaying loan status and due date countdown.
   - fun: LoanBadge:42, LoanDetailCard:109, LoanRecordDialog:323
 - **MemorizeScreen.kt** (682) - The Notes tab: every note as a scrollable feed (default) or as shuffled flashcards.
@@ -354,8 +357,15 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: rememberTabletopHinge:24
 - **PrivacyPolicyScreen.kt** (96) - Shows the bundled privacy policy (res/raw/privacy_policy.md) so it's readable offline.
   - fun: PrivacyPolicyScreen:37
-- **ProfileScreen.kt** (823)
-  - fun: ProfileScreen:69, StatTile:493, AchievementsTeaser:531, HeaderLine:636, ProfileAvatar:646, AvatarPickerSheet:687, ReadingRow:758, SettingsRow:805
+- **ProfileIdentity.kt** (475) - The books you'd hand someone: the ones you hearted, or (until you heart any) your highest rated.
+  - fun: FavouritesShelf:63, FavouritePickerSheet:110, ReaderCard:173, RecordsCard:236, PinnedQuoteCard:287, QuotePickerSheet:329, QuoteChoice:368, YearByYearCard:398, LevelChip:449
+- **ProfileScreen.kt** (745)
+  - fun: ProfileScreen:69, AchievementsTeaser:506, HeaderLine:611, ProfileAvatar:621, AvatarPickerSheet:662, SettingsRow:727
+- **ProfileSections.kt** (127) - Profile's ways into your record, two by two, each with a live count.
+  - fun: ProfileShortcuts:35, LifetimeCard:79
+- **ProfileShareCard.kt** (171) - What the reader card shows; gathered by Profile, which already has every piece.
+  - types: ReaderCardContent:39
+  - fun: ShareReaderCardSheet:54, ReaderCardFace:87, readerCardContent:159
 - **ProgressPickerSheet.kt** (398) - "How much did you read?" — the single progress entry point used by the save screen and the book detail header.
   - fun: ProgressPickerSheet:67, PageWheel:243, KeyboardEntry:355, percentLabel:396
 - **ProgressRingCover.kt** (110) - A book cover cropped to a circle with a completion arc sweeping around it.
@@ -401,8 +411,8 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: ShelfScanScreen:102, .process:122, .launchCamera:165, SpineMatch.copyWith:345, SpineRow:349, readSpines:386
 - **StatsBreakdownCards.kt** (346) - A card with a title line, the shell every Stats breakdown sits in.
   - fun: StatsCard:49, RhythmCard:76, PaceCard:125, BigNumber:141, FocusPlacesCard:153, MeterRow:186, WhatYouReadCard:219, SubHeading:270, FormatSplit:278, FinishedInPeriod:309, GoalsLink:331
-- **StatsCards.kt** (285) - Week · Month · Year · All, with ‹ › to step back through earlier ones.
-  - fun: PeriodSwitcher:46, SummaryStrip:89, SummaryNumber:124, ActivityChart:147, Bars:207, AxisLabels:255, bucketName:273, compactMinutes:280, formatValue:283
+- **StatsCards.kt** (292) - Week · Month · Year · All, with ‹ › to step back through earlier ones.
+  - fun: PeriodSwitcher:46, SummaryStrip:89, SummaryNumber:124, ActivityChart:147, Bars:207, AxisLabels:258, bucketName:280, compactMinutes:287, formatValue:290
 - **StreakHeader.kt** (256) - Top of the streak screen: the flame with current and best streak, whether today already counts, a month calendar of r...
   - fun: StreakHeader:43, StreakHero:64, HeroStat:112, MonthCalendar:121, StreakRuns:207
 - **TabletInput.kt** (78) - Right-click (mouse or trackpad) does what a long-press does on touch.
@@ -430,9 +440,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **WishlistScreen.kt** (698) - The buying side of the library: what's wished for, what it would cost against this month's budget, what a series is m...
   - types: WishFilter:64
   - fun: WishlistScreen:75, money:291, BudgetCard:299, SeriesGapsCard:346, WishRow:379, PriorityPill:486, WishEditorDialog:500, GotItFlow:643, BudgetDialog:674
-- **WrappedScreen.kt** (548) - Wrapped as a story: one idea per slide, tap the right side (or swipe) to go on, and share whichever slide is showing.
+- **WrappedScreen.kt** (555) - Wrapped as a story: one idea per slide, tap the right side (or swipe) to go on, and share whichever slide is showing.
   - types: Slide:51
-  - fun: WrappedScreen:64, shareLayerImage:191, slideColors:211, SlideFrame:222, Kicker:273, Hero:284, HeroCount:296, IntroSlide:305, VolumeSlide:321, TimeSlide:346, MiniStat:358, TopBookSlide:366, TasteSlide:393, RhythmSlide:418, PagesBarChart:437, QuoteSlide:489, SummarySlide:511
+  - fun: WrappedScreen:64, shareLayerImage:198, slideColors:218, SlideFrame:229, Kicker:280, Hero:291, HeroCount:303, IntroSlide:312, VolumeSlide:328, TimeSlide:353, MiniStat:365, TopBookSlide:373, TasteSlide:400, RhythmSlide:425, PagesBarChart:444, QuoteSlide:496, SummarySlide:518
 
 ## app/ui/animations - Reusable Compose animations
 `app/src/main/java/com/example/booktracker/app/ui/animations/`
@@ -480,9 +490,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **CsvExporter.kt** (59) - The library as a CSV in Goodreads' export layout, so it can be imported into Goodreads, StoryGraph or a spreadsheet.
   - types: CsvExporter:14
   - fun: .toGoodreadsCsv:23, .quote:56
-- **MarkdownExporter.kt** (72)
+- **MarkdownExporter.kt** (78)
   - types: MarkdownExporter:15
-  - fun: .exportToMarkdown:17
+  - fun: .exportToMarkdown:21
 
 ## app/widget - Home-screen widget
 `app/src/main/java/com/example/booktracker/app/widget/`
@@ -594,6 +604,7 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - `app/src/test/java/com/example/booktracker/app/analytics/HeadsUpTest.kt`
 - `app/src/test/java/com/example/booktracker/app/analytics/LoanEngineTest.kt`
 - `app/src/test/java/com/example/booktracker/app/analytics/PeriodStatsTest.kt`
+- `app/src/test/java/com/example/booktracker/app/analytics/ReaderProfileEngineTest.kt`
 - `app/src/test/java/com/example/booktracker/app/analytics/RereadMemoriesTest.kt`
 - `app/src/test/java/com/example/booktracker/app/analytics/ReviewEngineTest.kt`
 - `app/src/test/java/com/example/booktracker/app/analytics/StatsBreakdownTest.kt`
