@@ -773,7 +773,8 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             onEditGoal = { targetGoalType ->
                                                                 initialGoalType = targetGoalType
                                                                 showGoalDialog = true
-                                                            }
+                                                            },
+                                                            onTidyTags = { navController.navigate("tagTidy") { launchSingleTop = true } }
                                                         )
             
                                         }
@@ -1367,6 +1368,11 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                 onOpenBook = { navController.navigate("book/${it.id}") },
                                                 onBack = { navController.popBackStack() }
                                             )
+                                        }
+                                    }
+                                    composable("tagTidy") {
+                                        SubScreen(title = "Tidy tags", onBack = { navController.popBackStack() }) {
+                                            TagTidyScreen(books = books, onApply = viewModel::tidyTag)
                                         }
                                     }
                                     composable("vocabulary") {
