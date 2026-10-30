@@ -658,10 +658,12 @@ androidx.compose.animation.SharedTransitionLayout {
                                                 onOpenStats = { navigateTopLevel("stats") },
                                                 onOpenWrapped = { navController.navigate("wrapped") },
                                                 onOpenGoals = { navController.navigate("goals") { launchSingleTop = true } },
+                                                onPickNext = { navController.navigate("tbr_swipe") { launchSingleTop = true } },
                                                 // What needs the reader today: loans due, plans, releases.
                                                 banner = {
-                                                    val headsUp = remember(books) {
-                                                        com.example.booktracker.app.analytics.HeadsUp.today(books, java.time.LocalDate.now())
+                                                    val homeNotes by viewModel.allNotes.collectAsState()
+                                                    val headsUp = remember(books, homeNotes) {
+                                                        com.example.booktracker.app.analytics.HeadsUp.today(books, java.time.LocalDate.now(), notes = homeNotes)
                                                     }
                                                     HeadsUpCard(
                                                         items = headsUp,

@@ -3,9 +3,12 @@ package com.example.booktracker.app.analytics
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.LoanRecord
+import com.example.booktracker.shared.models.MarginNote
+import com.example.booktracker.shared.models.NoteType
 import com.example.booktracker.shared.models.Ownership
 import com.example.booktracker.shared.models.WishInfo
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -67,5 +70,39 @@ class HeadsUpTest {
             today, zone
         )
         assertTrue(items.isEmpty())
+    }
+
+    private fun finishedOn(id: String, day: LocalDate) = book(id) { copy(status = BookStatus.FINISHED.name, finishedAt = millis(day)) }
+
+    private fun note(bookId: String, day: LocalDate, text: String, favorite: Boolean = false, type: NoteType = NoteType.BOOK_CONTENT) =
+        MarginNote(id = "$bookId$text", bookId = bookId, content = text, timestamp = millis(day) + 3_600_000L, isFavorite = favorite, type = type)
+
+    @Test
+    fun `on this day prefers the most recent year's finished book`() {
+        val item = HeadsUp.onThisDay(
+            listOf(finishedOn("old", today.minusYears(3)), finishedOn("recent", today.minusYears(1)), finishedOn("now", today)),
+            emptyList(), today, zone
+        )
+        assertEquals("recent", item?.book?.id)
+        assertEquals("On this day in 2025", item?.title)
+        assertEquals("You finished recent", item?.detail)
+    }
+
+    @Test
+    fun `on this day falls back to a highlight, favourites first`() {
+        val books = listOf(book("b"))
+        val notes = listOf(
+            note("b", today.minusYears(1), "plain"),
+            note("b", today.minusYears(1), "loved", favorite = true),
+            note("b", today.minusYears(1), "a thought", type = NoteType.PERSONAL_THOUGHT),
+            note("b", today.minusDays(1).minusYears(1), "wrong day", favorite = true)
+        )
+        val item = HeadsUp.onThisDay(books, notes, today, zone)
+        assertEquals("“loved” · b", item?.detail)
+    }
+
+    @Test
+    fun `nothing from this date means no memory`() {
+        assertNull(HeadsUp.onThisDay(listOf(finishedOn("x", today.minusDays(2))), emptyList(), today, zone))
     }
 }

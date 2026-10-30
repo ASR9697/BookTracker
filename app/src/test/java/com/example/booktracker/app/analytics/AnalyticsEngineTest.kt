@@ -262,6 +262,22 @@ class AnalyticsEngineTest {
         assertNull(AnalyticsEngine.usualStartHour(listOf(timedAt(7, 1), timedAt(7, 2)), utc))
     }
 
+    private val hour: (Int) -> String = { "$it:00" }
+
+    @Test
+    fun `reading nudge says when and how long`() {
+        // 8 pages at 30 p/h is 16 minutes, rounded up to 20.
+        assertEquals("You usually read around 21:00 · about 20 min reaches today's goal", AnalyticsEngine.readingNudge(21, 8, 30f, hour))
+        assertEquals("You usually read around 21:00", AnalyticsEngine.readingNudge(21, 8, null, hour))
+        assertEquals("About 5 min reaches today's goal", AnalyticsEngine.readingNudge(null, 1, 60f, hour))
+    }
+
+    @Test
+    fun `reading nudge is quiet once the goal is met or without a habit`() {
+        assertNull(AnalyticsEngine.readingNudge(21, 0, 30f, hour))
+        assertNull(AnalyticsEngine.readingNudge(null, 8, null, hour))
+    }
+
     @Test
     fun `usual place wraps around midnight`() {
         val lateNights = listOf(startedAt("Bed", 23, 1), startedAt("Bed", 0, 2), startedAt("Bed", 1, 3))

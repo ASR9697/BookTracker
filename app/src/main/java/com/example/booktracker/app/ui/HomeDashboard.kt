@@ -180,6 +180,8 @@ fun HomeDashboard(
     scrollState: ScrollState = rememberScrollState(),
     headerState: TopAppBarState = rememberTopAppBarState(),
     onSearch: () -> Unit = {},
+    /** "Can't decide?": the to-read swipe. */
+    onPickNext: () -> Unit = {},
     banner: @Composable () -> Unit = {}
 ) {
     val zone = remember { ZoneId.systemDefault() }
@@ -222,6 +224,20 @@ fun HomeDashboard(
                 if (date.year == year) months[date.monthValue - 1] += pages
             }
         }
+    }
+    // Under the greeting: when you usually read and how long today's goal will take, once
+    // there's a habit to go on; otherwise the plain line.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val habitLine = remember(sessions, streak.pagesToday, streak.dailyGoal) {
+        val hourFormat = java.time.format.DateTimeFormatter.ofPattern(
+            if (android.text.format.DateFormat.is24HourFormat(context)) "HH:mm" else "h a", java.util.Locale.getDefault()
+        )
+        AnalyticsEngine.readingNudge(
+            usualHour = AnalyticsEngine.usualStartHour(sessions, zone),
+            pagesLeftToGoal = (streak.dailyGoal - streak.pagesToday).coerceAtLeast(0),
+            pagesPerHour = AnalyticsEngine.pagesPerHour(sessions),
+            hourLabel = { java.time.LocalTime.of(it, 0).format(hourFormat) }
+        )
     }
     val minutesToday = remember(sessions, streak.today, streak.dayStartsAtHour) {
         sessions.filter { StreakEngine.sessionDay(it, zone, streak.dayStartsAtHour) == streak.today }
@@ -441,6 +457,7 @@ fun HomeDashboard(
                                     fontWeight = FontWeight.SemiBold,
                                     modifier = Modifier.weight(1f)
                                 )
+                                TextButton(onClick = onPickNext) { Text("Can't decide?") }
                                 TextButton(onClick = onOpenLibrary) { Text("See all") }
                             }
                             LazyRow(
@@ -573,7 +590,7 @@ fun HomeDashboard(
             Column {
                 SectionTitle(greeting(userName), todayLine, Modifier.staggeredEntrance(entrance, 0))
                 Text(
-                    subtitle(readingBooks.isEmpty()),
+                    if (readingBooks.isEmpty()) subtitle(true) else habitLine ?: subtitle(false),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.staggeredEntrance(entrance, 1)

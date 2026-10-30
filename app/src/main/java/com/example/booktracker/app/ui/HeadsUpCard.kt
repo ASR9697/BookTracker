@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Event
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.HorizontalDivider
@@ -63,6 +64,7 @@ private fun HeadsUpRow(item: HeadsUp.Item, onClick: () -> Unit) {
         HeadsUp.Kind.LOAN_DUE -> Icons.Rounded.Schedule
         HeadsUp.Kind.PLANNED -> Icons.Rounded.Event
         HeadsUp.Kind.RELEASED -> Icons.Rounded.NewReleases
+        HeadsUp.Kind.ON_THIS_DAY -> Icons.Rounded.History
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,

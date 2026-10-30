@@ -315,6 +315,28 @@ object AnalyticsEngine {
             ?.key
     }
 
+    /**
+     * The line under Home's greeting, from the reader's habits: when they usually read
+     * and how long today's goal will take at their pace, e.g. "You usually read around
+     * 9 PM · about 20 min reaches today's goal". Null when there's nothing to say (no
+     * habit yet, or the goal is met), so Home keeps its plain line.
+     */
+    fun readingNudge(usualHour: Int?, pagesLeftToGoal: Int, pagesPerHour: Float?, hourLabel: (Int) -> String): String? {
+        if (pagesLeftToGoal <= 0) return null
+        val minutes = pagesPerHour?.takeIf { it > 0f }?.let { pace ->
+            // Rounded up to five minutes: a nudge, not a stopwatch.
+            val exact = kotlin.math.ceil(pagesLeftToGoal / pace * 60f).toInt()
+            ((exact + 4) / 5 * 5).coerceAtLeast(5)
+        }
+        val time = minutes?.let { "about $it min reaches today's goal" }
+        return when {
+            usualHour != null && time != null -> "You usually read around ${hourLabel(usualHour)} · $time"
+            usualHour != null -> "You usually read around ${hourLabel(usualHour)}"
+            time != null -> time.replaceFirstChar { it.uppercase() }
+            else -> null
+        }
+    }
+
     private val FORMAT_TAGS = BookFormat.entries.map { it.name.lowercase() }.toSet() + "ebook"
 
     /**
