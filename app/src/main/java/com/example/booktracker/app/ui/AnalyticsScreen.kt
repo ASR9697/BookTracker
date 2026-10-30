@@ -817,7 +817,7 @@ fun AnalyticsScreen(
                         modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        BookCover(url = book.coverUrl, modifier = Modifier.size(width = 48.dp, height = 72.dp))
+                        BookCover(book, Modifier.size(width = 48.dp, height = 72.dp))
                         Spacer(Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(

@@ -765,7 +765,8 @@ androidx.compose.animation.SharedTransitionLayout {
                                                         val monthlyBooks by viewModel.monthlyGoalBooks.collectAsState()
                                                         val dayStartsAtHour by viewModel.dayStartsAtHour.collectAsState()
                                                         AnalyticsScreen(
-                                                            books = books,
+                                                            // Wished-for books aren't read or owned yet: they'd skew genres and formats.
+                                                            books = com.example.booktracker.app.analytics.WishlistEngine.onShelf(books),
                                                             sessions = sessions,
                                                             dailyGoal = goal,
                                                             yearlyGoal = yearly,
