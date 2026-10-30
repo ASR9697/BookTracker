@@ -14,7 +14,6 @@ Paths are relative to `app/src/main/java/com/example/booktracker/` unless noted.
 | [Stats](#stats) | `app/ui/AnalyticsScreen.kt` | Ready to build |
 | [Home](#home) | `app/ui/HomeDashboard.kt` | Ready to build |
 | [Reading timer](#reading-timer) | `app/ui/FocusTimerScreen.kt` | Ready to build |
-| [Save session](#save-session) | `app/ui/SessionSaveScreen.kt` | Ready to build |
 
 <!-- Status: Idea → Planned, decisions open → Ready to build → In progress -->
 
@@ -403,87 +402,6 @@ Notes:
 
 ---
 
-## Save session
-
-**File:** `app/ui/SessionSaveScreen.kt` (879 lines) · **Status:** Ready to build
-
-**Goal:** confirm what you read in a few seconds and get out. It works, but it never
-shows *which* book you're saving, edits the same things in two places (a menu and the
-rows), labels a time without saying it's the end time, forgets the places you type in,
-and can save a book as finished with pages left (bug below).
-
-### Decisions
-- [x] **Open the page picker on arrival only when no pages were logged** during the
-      session; the progress row still opens it.
-- [x] **Save moves to a full-width bottom button**, "Discard session" as a text button
-      under it; the top-bar Save and options menu go.
-- [x] Extras: **A, B, C** (all).
-
-### Layout, top to bottom
-1. **Book header (new):** cover, title, "p. 120 → 164". Replaces the big "Save reading
-   session" title and its subtitle.
-2. **When:** one stamp "Today · 9:10 – 9:41 PM" (start and end), replacing the
-   unlabelled date and time stamps. Tap to edit.
-3. **Read time (kept).**
-4. **Reading progress + pace banner (kept).**
-5. **Status (kept).**
-6. **Where you read:** your own past places first (from saved session tags, most used
-   first), then the presets. Today typed places are never offered again.
-7. **Join previous session (kept).**
-8. **Focus (kept).**
-9. **A line worth keeping (kept).**
-10. **Save button + Discard**, per decision 2.
-
-### Fixes
-- **Bug:** choosing the last page sets the status to Finished, but choosing a lower
-  page afterwards leaves Finished set, so the book is saved as finished with pages
-  left. Only an auto-set Finished should follow the page; one the reader picked stays.
-- The options menu repeats "Edit read time" and "Where you read", which are rows on
-  the page; only Discard is unique (moves to the bottom, per decision 2).
-- Time picker is an `AlertDialog`; use `ActionSheet` with the `TimePicker` inside.
-- `RoundedCornerShape(50)` ×2 (Save button, outcome buttons) → `CircleShape`.
-- Time left ("~40h to finish at this pace") comes from this one session's pace, which
-  swings wildly on short sessions. Use the book's blended pace
-  (`AnalyticsEngine.bookEstimatedMinutesLeft`), as Home and the timer do.
-
-### Extras
-| # | Idea | Effort |
-|---|---|---|
-| A | Pre-select the place you usually read at this time of day | Small |
-| B | "Full note…" link under the quote field, opening `NoteSheet` (page, photo, scan) | Small |
-| C | "Pick up tomorrow at 9 pm?" one-tap reminder, using the existing nudge workers | Medium |
-
-**Chosen: all (A-C).**
-
-Notes:
-- A: a suggestion only; the place stays editable and an empty choice is allowed.
-  Needs a few past sessions at a similar hour before it guesses.
-- B: the quick field stays for one line; "Full note…" hands its text to `NoteSheet`
-  so nothing typed is lost.
-- C: a one-off reminder at the time you usually read (`bestTimeOfDay`), shown only
-  when reminders are allowed (`Notifications.canPost`). Lives with the other nudge
-  workers in `app/worker/NudgeWorkers.kt`; check it doesn't double up with the daily
-  reading reminder from Goals.
-
-### Files
-- `app/ui/SessionSaveScreen.kt`: book header, when stamp, places, status fix, bottom
-  Save, dialogs → `ActionSheet`, shapes, ETA.
-- Past places: a small pure function over sessions (e.g. in `AnalyticsEngine`, next to
-  `environmentStats`) with a test.
-- `app/ui/BookTrackerScreen.kt` (focus/save routes): pass whether pages were logged
-  in the session, for decision 1.
-- `npm run update-maps`.
-
-### PRs
-1. Fixes: status bug, ETA, dialogs, shapes. Small; the status bug can ship first.
-2. Layout: book header, when stamp, past places, bottom Save, page picker on arrival.
-3. Extras A (usual place) and B (full note link).
-4. Extra C (pick-up reminder) on its own, since it touches the workers.
-
-Not reviewed yet: `SessionResultScreen.kt`, the recap shown after saving.
-
----
-
 ## Cross-page notes
 
 - **Navigation split (Home ↔ Profile), decided:** Home's shortcuts are about your
@@ -492,6 +410,7 @@ Not reviewed yet: `SessionResultScreen.kt`, the recap shown after saving.
   layout below. AGENTS.md says the wishlist is reached from "Profile, the Home
   ownership tiles…": update that line when this ships.
 - **"On this day"** is listed under Home (extra A), not Profile (old extra B).
+- **Not reviewed yet:** `SessionResultScreen.kt`, the recap shown after saving a session.
 
 ---
 
