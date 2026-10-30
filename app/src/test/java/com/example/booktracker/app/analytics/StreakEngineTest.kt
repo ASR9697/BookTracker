@@ -2,6 +2,8 @@ package com.example.booktracker.app.analytics
 
 import com.example.booktracker.shared.models.Session
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
@@ -168,5 +170,18 @@ class StreakEngineTest {
         assertEquals(setOf(yesterday), StreakEngine.pagesByDay(listOf(late), zone).keys)
         assertEquals(setOf(yesterday), ReadingCalendar.pagesByDay(listOf(late), zone).keys)
         assertEquals(1, GoalEngine.calculateHabitConsistency(listOf(late), 30, today, zone).activeDays)
+    }
+
+    @Test
+    fun `any reading counts toward the streak but only enough pages reach the goal`() {
+        val few = StreakEngine.compute(listOf(sessionOn(today, pages = 3)), dailyGoal = 20, zone = zone, now = now, dayStartsAtHour = 0)
+        assertTrue(few.goalMetToday)
+        assertFalse(few.goalReached)
+
+        val enough = StreakEngine.compute(listOf(sessionOn(today, pages = 20)), dailyGoal = 20, zone = zone, now = now, dayStartsAtHour = 0)
+        assertTrue(enough.goalReached)
+
+        val noGoal = StreakEngine.compute(listOf(sessionOn(today, pages = 50)), dailyGoal = 0, zone = zone, now = now, dayStartsAtHour = 0)
+        assertFalse(noGoal.goalReached)
     }
 }

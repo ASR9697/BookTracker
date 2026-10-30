@@ -129,7 +129,7 @@ fun SessionResultScreen(
     val progress = if (book.totalPages > 0) endPage.toFloat() / book.totalPages else 0f
     val startProgress = if (book.totalPages > 0) result.startPage.toFloat() / book.totalPages else null
 
-    val goalJustMet = streak != null && streak.dailyGoal > 0 && streak.goalMetToday &&
+    val goalJustMet = streak != null && streak.goalReached &&
         streak.pagesToday - sessionPages < streak.dailyGoal
     val headline = when {
         finished -> "You finished it!"
@@ -333,7 +333,7 @@ fun SessionResultScreen(
                     if (streak != null && streak.dailyGoal > 0) {
                         GoalRow(
                             icon = Icons.Rounded.TrackChanges,
-                            title = if (streak.goalMetToday) "Daily goal met" else "Daily goal",
+                            title = if (streak.goalReached) "Daily goal met" else "Daily goal",
                             detail = "${streak.pagesToday} / ${streak.dailyGoal} $unit today",
                             fraction = streak.pagesToday.toFloat() / streak.dailyGoal
                         )
