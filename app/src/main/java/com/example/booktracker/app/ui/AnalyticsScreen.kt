@@ -73,6 +73,7 @@ fun AnalyticsScreen(
     monthlyGoalBooks: Int = 2,
     dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR,
     onEditGoal: (GoalType) -> Unit = {},
+    onTidyTags: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val zone = remember { ZoneId.systemDefault() }
@@ -753,8 +754,11 @@ fun AnalyticsScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Genres", style = MaterialTheme.typography.titleLarge)
-                    Spacer(Modifier.height(16.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Genres", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                        TextButton(onClick = onTidyTags) { Text("Tidy tags") }
+                    }
+                    Spacer(Modifier.height(8.dp))
                     if (booksWithGenres < MIN_BOOKS_FOR_GENRES) {
                         Text(
                             "Your genre mix appears once $MIN_BOOKS_FOR_GENRES books have genre info. " +

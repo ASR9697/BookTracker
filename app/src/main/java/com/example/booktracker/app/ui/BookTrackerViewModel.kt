@@ -691,6 +691,19 @@ class BookTrackerViewModel(
         }
     }
 
+    /**
+     * Renames [from] on every book that has it, merging into [to] if a tag of that name
+     * already exists, or removing it when [to] is blank. Touched books get a new
+     * lastUpdated so the change wins when synced.
+     */
+    fun tidyTag(from: String, to: String?) {
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            com.example.booktracker.app.analytics.TagTidy.apply(books.value, from, to)
+                .forEach { repository.updateBook(it.copy(lastUpdated = now)) }
+        }
+    }
+
     /** Saves edited book details. Progress is clamped to the (possibly new) page count. */
     fun updateBookDetails(book: Book) {
         val ceiling = if (book.totalPages > 0) book.totalPages else Int.MAX_VALUE

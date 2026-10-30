@@ -168,6 +168,7 @@ class TimerService : Service() {
                 stopping = true
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 getSystemService(NotificationManager::class.java)?.apply {
+                    cancel(Notifications.ID_TIMER)
                     cancel(Notifications.ID_TIMER_DONE)
                     cancel(Notifications.ID_GOAL_REACHED)
                 }
@@ -197,7 +198,11 @@ class TimerService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        // Stop the collectors first so none can re-post the notification, then take it down:
+        // a timer notification with no service behind it is ongoing and can't be swiped away.
+        stopping = true
         serviceScope.cancel()
+        getSystemService(NotificationManager::class.java)?.cancel(Notifications.ID_TIMER)
     }
 
     private fun onCountdownFinished() {

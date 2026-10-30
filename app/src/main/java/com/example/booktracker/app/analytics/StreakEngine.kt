@@ -18,13 +18,17 @@ object StreakEngine {
         val longestStreak: Int,
         val pagesToday: Int,
         val dailyGoal: Int,
+        /** Whether today counts toward the streak, i.e. any reading at all. For the page goal use [goalReached]. */
         val goalMetToday: Boolean,
         val activeDays: Set<LocalDate>, // To support the 7-day bubble bar
         /** "Today" under the day-start setting, so UI week bars agree with the streak. */
         val today: LocalDate = LocalDate.now(),
         /** Hour the reading day rolls over, so other screens bucket days the same way. */
         val dayStartsAtHour: Int = DEFAULT_DAY_START_HOUR
-    )
+    ) {
+        /** Whether today's pages have reached the daily page goal. False with no goal set. */
+        val goalReached: Boolean get() = dailyGoal > 0 && pagesToday >= dailyGoal
+    }
 
     fun compute(
         sessions: List<Session>,
