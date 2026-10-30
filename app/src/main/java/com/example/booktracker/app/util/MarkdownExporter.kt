@@ -14,11 +14,16 @@ import java.util.Locale
 
 object MarkdownExporter {
 
+    /**
+     * Writes every book and its notes as Markdown and opens the share sheet. Returns
+     * how many notes went in; with none, nothing is shared and 0 comes back.
+     */
     fun exportToMarkdown(
         context: Context,
         books: List<Book>,
         notes: List<MarginNote>
-    ) {
+    ): Int {
+        if (notes.isEmpty()) return 0
         val sb = StringBuilder()
         sb.append("# My Reading Notes\n\n")
         sb.append("Generated on ${SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())}\n\n")
@@ -67,5 +72,6 @@ object MarkdownExporter {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(Intent.createChooser(shareIntent, "Export reading notes"))
+        return notes.size
     }
 }

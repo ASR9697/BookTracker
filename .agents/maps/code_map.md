@@ -354,8 +354,10 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: rememberTabletopHinge:24
 - **PrivacyPolicyScreen.kt** (96) - Shows the bundled privacy policy (res/raw/privacy_policy.md) so it's readable offline.
   - fun: PrivacyPolicyScreen:37
-- **ProfileScreen.kt** (823)
-  - fun: ProfileScreen:69, StatTile:493, AchievementsTeaser:531, HeaderLine:636, ProfileAvatar:646, AvatarPickerSheet:687, ReadingRow:758, SettingsRow:805
+- **ProfileScreen.kt** (632)
+  - fun: ProfileScreen:68, AchievementsTeaser:393, HeaderLine:498, ProfileAvatar:508, AvatarPickerSheet:549, SettingsRow:614
+- **ProfileSections.kt** (127) - Profile's ways into your record, two by two, each with a live count.
+  - fun: ProfileShortcuts:35, LifetimeCard:79
 - **ProgressPickerSheet.kt** (398) - "How much did you read?" — the single progress entry point used by the save screen and the book detail header.
   - fun: ProgressPickerSheet:67, PageWheel:243, KeyboardEntry:355, percentLabel:396
 - **ProgressRingCover.kt** (110) - A book cover cropped to a circle with a completion arc sweeping around it.
@@ -480,9 +482,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **CsvExporter.kt** (59) - The library as a CSV in Goodreads' export layout, so it can be imported into Goodreads, StoryGraph or a spreadsheet.
   - types: CsvExporter:14
   - fun: .toGoodreadsCsv:23, .quote:56
-- **MarkdownExporter.kt** (72)
+- **MarkdownExporter.kt** (78)
   - types: MarkdownExporter:15
-  - fun: .exportToMarkdown:17
+  - fun: .exportToMarkdown:21
 
 ## app/widget - Home-screen widget
 `app/src/main/java/com/example/booktracker/app/widget/`

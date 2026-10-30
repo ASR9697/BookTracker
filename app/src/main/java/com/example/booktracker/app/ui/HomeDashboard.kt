@@ -1009,7 +1009,7 @@ private fun Tile(
 }
 
 @Composable
-private fun ShortcutTile(
+internal fun ShortcutTile(
     icon: ImageVector,
     title: String,
     subtitle: String,
