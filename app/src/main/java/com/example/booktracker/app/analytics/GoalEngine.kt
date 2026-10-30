@@ -42,31 +42,6 @@ object GoalEngine {
         val description: String
     )
 
-    enum class Season(
-        val title: String,
-        val emoji: String,
-        val startMonth: Int,
-        val startDay: Int,
-        val endMonth: Int,
-        val endDay: Int,
-        val defaultSprintGoal: Int = 5
-    ) {
-        SPRING("Spring Blossom Sprint", "🌸", 3, 1, 5, 31, 5),
-        SUMMER("Summer Solstice Sprint", "☀️", 6, 1, 8, 31, 5),
-        AUTUMN("Autumn Equinox Sprint", "🍂", 9, 1, 11, 30, 5),
-        WINTER("Winter Frost Sprint", "❄️", 12, 1, 2, 28, 5)
-    }
-
-    data class SeasonalSprint(
-        val season: Season,
-        val targetBooks: Int,
-        val completedBooks: Int,
-        val progress: Float,
-        val daysRemaining: Int,
-        val isCompleted: Boolean,
-        val statusMessage: String
-    )
-
     data class MonthlyGoalSummary(
         val year: Int,
         val month: Int,
@@ -194,72 +169,6 @@ object GoalEngine {
             consistencyPercent = percent,
             rating = rating,
             description = description
-        )
-    }
-
-    /**
-     * Determines current season based on local calendar date.
-     */
-    fun currentSeason(date: LocalDate = LocalDate.now()): Season {
-        val month = date.monthValue
-        return when (month) {
-            in 3..5 -> Season.SPRING
-            in 6..8 -> Season.SUMMER
-            in 9..11 -> Season.AUTUMN
-            else -> Season.WINTER
-        }
-    }
-
-    /**
-     * Evaluates active seasonal reading sprint challenge.
-     */
-    fun calculateSeasonalSprint(
-        books: List<Book>,
-        date: LocalDate = LocalDate.now(),
-        zone: ZoneId = ZoneId.systemDefault(),
-        sprintGoal: Int = 5
-    ): SeasonalSprint {
-        val season = currentSeason(date)
-        val year = date.year
-
-        // Determine start and end date for season
-        val (startDate, endDate) = when (season) {
-            Season.SPRING -> LocalDate.of(year, 3, 1) to LocalDate.of(year, 5, 31)
-            Season.SUMMER -> LocalDate.of(year, 6, 1) to LocalDate.of(year, 8, 31)
-            Season.AUTUMN -> LocalDate.of(year, 9, 1) to LocalDate.of(year, 11, 30)
-            Season.WINTER -> {
-                val startYear = if (date.monthValue == 12) year else year - 1
-                val endYear = startYear + 1
-                val febDays = LocalDate.of(endYear, 2, 1).lengthOfMonth()
-                LocalDate.of(startYear, 12, 1) to LocalDate.of(endYear, 2, febDays)
-            }
-        }
-
-        val completedThisSeason = books
-            .filter { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) && it.completedAt > 0L }
-            .count {
-                val finishedDate = Instant.ofEpochMilli(it.completedAt).atZone(zone).toLocalDate()
-                !finishedDate.isBefore(startDate) && !finishedDate.isAfter(endDate)
-            }
-
-        val daysRemaining = java.time.temporal.ChronoUnit.DAYS.between(date, endDate).toInt().coerceAtLeast(0)
-        val progress = (completedThisSeason.toFloat() / sprintGoal.coerceAtLeast(1)).coerceIn(0f, 1f)
-        val isCompleted = completedThisSeason >= sprintGoal
-
-        val message = when {
-            isCompleted -> "Sprint Completed! 🏆 You finished $completedThisSeason of $sprintGoal books!"
-            completedThisSeason == 0 -> "$sprintGoal books to finish · $daysRemaining days left in season"
-            else -> "$completedThisSeason/$sprintGoal completed · ${sprintGoal - completedThisSeason} books to go in $daysRemaining days"
-        }
-
-        return SeasonalSprint(
-            season = season,
-            targetBooks = sprintGoal,
-            completedBooks = completedThisSeason,
-            progress = progress,
-            daysRemaining = daysRemaining,
-            isCompleted = isCompleted,
-            statusMessage = message
         )
     }
 

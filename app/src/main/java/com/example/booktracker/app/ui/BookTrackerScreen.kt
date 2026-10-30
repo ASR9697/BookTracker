@@ -768,17 +768,13 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             // Wished-for books aren't read or owned yet: they'd skew genres and formats.
                                                             books = com.example.booktracker.app.analytics.WishlistEngine.onShelf(books),
                                                             sessions = sessions,
-                                                            dailyGoal = goal,
                                                             yearlyGoal = yearly,
-                                                            monthlyGoalPages = monthlyPages,
-                                                            monthlyGoalBooks = monthlyBooks,
                                                             dayStartsAtHour = dayStartsAtHour,
-                                                            onEditGoal = { targetGoalType ->
-                                                                initialGoalType = targetGoalType
-                                                                showGoalDialog = true
-                                                            },
                                                             onTidyTags = { navController.navigate("tagTidy") { launchSingleTop = true } },
-                                                            onSpanChange = { span -> viewModel.updatePrefs { it.copy(statsSpan = span.name) } }
+                                                            onSpanChange = { span -> viewModel.updatePrefs { it.copy(statsSpan = span.name) } },
+                                                            onOpenGoals = { navController.navigate("goals") { launchSingleTop = true } },
+                                                            onOpenFinished = { navController.navigate("finished") },
+                                                            onOpenBook = { navController.navigate("book/${it.id}") }
                                                         )
             
                                         }

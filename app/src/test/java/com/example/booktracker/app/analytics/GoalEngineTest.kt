@@ -206,30 +206,4 @@ class GoalEngineTest {
         assertEquals(30, consistency.totalDays)
         assertEquals(50, consistency.consistencyPercent)
     }
-
-    @Test
-    fun `calculate seasonal sprint identifies season and tracks challenge`() {
-        val zone = ZoneId.of("UTC")
-        val octDate = LocalDate.of(2026, 10, 15)
-        assertEquals(GoalEngine.Season.AUTUMN, GoalEngine.currentSeason(octDate))
-
-        val octTime = octDate.atStartOfDay(zone).toInstant().toEpochMilli()
-        val books = listOf(
-            Book(id = "b1", title = "B1", isbn = null, status = BookStatus.FINISHED.name, lastUpdated = octTime),
-            Book(id = "b2", title = "B2", isbn = null, status = BookStatus.FINISHED.name, lastUpdated = octTime)
-        )
-
-        val sprint = GoalEngine.calculateSeasonalSprint(
-            books = books,
-            date = octDate,
-            zone = zone,
-            sprintGoal = 5
-        )
-
-        assertEquals(GoalEngine.Season.AUTUMN, sprint.season)
-        assertEquals(2, sprint.completedBooks)
-        assertEquals(5, sprint.targetBooks)
-        assertEquals(0.4f, sprint.progress, 0.01f)
-        assertTrue(sprint.daysRemaining > 0)
-    }
 }

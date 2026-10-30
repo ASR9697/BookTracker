@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
@@ -97,7 +98,7 @@ fun SummaryStrip(summary: PeriodStats.Summary, before: PeriodStats.Summary?, com
                     before?.let { PeriodStats.change(summary.books, it.books) }, Modifier.weight(1f))
                 SummaryNumber("%,d".format(summary.pages), "pages",
                     before?.let { PeriodStats.change(summary.pages, it.pages) }, Modifier.weight(1f))
-                SummaryNumber(AnalyticsEngine.formatMinutes(summary.minutes), "read",
+                SummaryNumber(compactMinutes(summary.minutes), "read",
                     before?.let { PeriodStats.change(summary.minutes, it.minutes) }, Modifier.weight(1f))
                 SummaryNumber("${summary.activeDays}", if (summary.activeDays == 1) "day" else "days",
                     before?.let { PeriodStats.change(summary.activeDays, it.activeDays) }, Modifier.weight(1f))
@@ -117,7 +118,7 @@ fun SummaryStrip(summary: PeriodStats.Summary, before: PeriodStats.Summary?, com
 @Composable
 private fun SummaryNumber(value: String, label: String, change: Int?, modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
-        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1)
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (change != null) {
             Text(
@@ -242,7 +243,8 @@ private fun AxisLabels(buckets: List<PeriodStats.Bucket>, span: PeriodStats.Span
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 softWrap = false,
-                modifier = Modifier.weight(1f)
+                // A day's slot in a month is narrower than "29": let the label spill over its neighbours.
+                modifier = Modifier.weight(1f).wrapContentWidth(Alignment.CenterHorizontally, unbounded = true)
             )
         }
     }
@@ -253,6 +255,10 @@ private fun bucketName(bucket: PeriodStats.Bucket, span: PeriodStats.Span): Stri
     PeriodStats.Span.YEAR -> bucket.start.format(DateTimeFormatter.ofPattern("MMMM", Locale.getDefault()))
     PeriodStats.Span.ALL -> bucket.start.year.toString()
 }
+
+/** A quarter of a phone's width: "45m", "2h 15m", then whole hours from ten on. */
+private fun compactMinutes(minutes: Long): String =
+    if (minutes >= 600) "${minutes / 60}h" else AnalyticsEngine.formatMinutes(minutes)
 
 private fun formatValue(value: Long, minutes: Boolean): String =
     if (minutes) AnalyticsEngine.formatMinutes(value) else "%,d pages".format(value)
