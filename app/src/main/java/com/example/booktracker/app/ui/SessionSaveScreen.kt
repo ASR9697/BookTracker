@@ -12,11 +12,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -26,11 +26,13 @@ import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Speed
-import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Place
 import androidx.compose.material.icons.rounded.CenterFocusStrong
 import androidx.compose.material.icons.automirrored.rounded.CallMerge
+import androidx.compose.material.icons.automirrored.rounded.NoteAdd
+import com.example.booktracker.shared.models.NoteType
 import com.example.booktracker.shared.models.Session
 import androidx.compose.material.icons.rounded.FormatQuote
 import androidx.compose.animation.togetherWith
@@ -38,19 +40,16 @@ import androidx.compose.ui.draw.clip
 import com.example.booktracker.app.ui.animations.staggeredEntrance
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.material.icons.rounded.NotificationsActive
+import com.example.booktracker.app.notifications.Notifications
+import com.example.booktracker.app.worker.NudgeScheduler
 import com.example.booktracker.app.analytics.AnalyticsEngine
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -76,6 +75,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.booktracker.app.format.FormatAdaptabilityLayer
 import com.example.booktracker.shared.models.Book
@@ -89,6 +89,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val saveDateFormat = DateTimeFormatter.ofPattern("MMM d, yyyy")
+private const val MAX_PLACE_CHIPS = 8
 
 /**
  * The one review step every finished session passes through, whether it came from
@@ -113,7 +114,11 @@ fun SessionSaveScreen(
     /** Shorter than this with no pages read asks before saving; 0 never asks. */
     minSessionSeconds: Int = 0,
     /** Open the camera on the page number rather than the page wheel. */
-    scanFirst: Boolean = false
+    scanFirst: Boolean = false,
+    /** Every saved session: time left, past places and the usual place. */
+    sessions: List<Session> = emptyList(),
+    /** Saves a note right away, from "Full note…". */
+    onAddNote: (page: Int, text: String, type: NoteType, images: List<String>) -> Unit = { _, _, _, _ -> }
 ) {
     val zone = remember { ZoneId.systemDefault() }
     val haptic = LocalHapticFeedback.current
@@ -129,8 +134,26 @@ fun SessionSaveScreen(
     var durationSeconds by remember { mutableIntStateOf(initialDurationSeconds) }
     var status by remember { mutableStateOf<BookStatus?>(null) }
     var tag by remember { mutableStateOf("") }
+    // Where you usually read at this hour, filled in as a suggestion until you pick yourself.
+    var tagPicked by remember { mutableStateOf(false) }
+    val usualPlace = remember(sessions) {
+        AnalyticsEngine.usualPlace(sessions, Instant.ofEpochMilli(initialStartTime).atZone(zone).hour, zone)
+    }
+    androidx.compose.runtime.LaunchedEffect(usualPlace) {
+        if (!tagPicked && usualPlace != null) tag = usualPlace
+    }
     var focus by remember { mutableIntStateOf(0) }
     var quote by remember { mutableStateOf("") }
+    var showNoteSheet by remember { mutableStateOf(false) }
+    var notesAdded by remember { mutableIntStateOf(0) }
+    // "Pick up tomorrow at 9 PM?": at the hour you usually start reading, or this session's.
+    var remindToPickUp by remember { mutableStateOf(false) }
+    val pickUpAt = remember(sessions) {
+        val hour = AnalyticsEngine.usualStartHour(sessions, zone)
+            ?: Instant.ofEpochMilli(initialStartTime).atZone(zone).hour
+        NudgeScheduler.pickUpTime(LocalDateTime.now(zone), hour)
+    }
+    val canNotify = remember { Notifications.canPost(context) }
     var joinPrevious by remember { mutableStateOf(false) }
     var showTooShort by remember { mutableStateOf(false) }
     var scanOnOpen by remember { mutableStateOf(false) }
@@ -146,10 +169,11 @@ fun SessionSaveScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var showPagePicker by remember { mutableStateOf(false) }
-    // The page is the one thing the timer can't know, so ask for it on arrival, once.
+    // The page is the one thing the timer can't know, so ask for it on arrival, once,
+    // unless pages were already logged during the session (timer taps, the Home card).
     var askedForPage by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        if (!askedForPage) {
+        if (!askedForPage && initialPage == sessionStartPage) {
             askedForPage = true
             kotlinx.coroutines.delay(250)
             scanOnOpen = scanFirst
@@ -159,12 +183,16 @@ fun SessionSaveScreen(
     var showDurationEditor by remember { mutableStateOf(false) }
     var showDiscardConfirm by remember { mutableStateOf(false) }
     var showTagPicker by remember { mutableStateOf(false) }
-    var showOptions by remember { mutableStateOf(false) }
+    val places = remember(sessions) { AnalyticsEngine.pastPlaces(sessions) }
 
     val unit = FormatAdaptabilityLayer.unitAbbrev(book)
     val complete = book.totalPages > 0 && endPage >= book.totalPages
 
     val effectiveStatus = status ?: if (complete) BookStatus.FINISHED else BookStatus.READING
+    // Only a book you're still reading has somewhere to pick up from, and a reminder
+    // that would land in quiet hours would be skipped, so it isn't offered.
+    val quietAtPickUp = LocalAppPrefs.current.isQuiet(pickUpAt.hour)
+    val offerPickUp = canNotify && !quietAtPickUp && effectiveStatus == BookStatus.READING
 
     val commit = {
         saveHaptics.confirm()
@@ -179,7 +207,8 @@ fun SessionSaveScreen(
                 status = effectiveStatus,
                 focus = focus,
                 quote = quote,
-                mergeWithId = previousSession?.id?.takeIf { joinPrevious }
+                mergeWithId = previousSession?.id?.takeIf { joinPrevious },
+                remindAt = pickUpAt.takeIf { remindToPickUp && offerPickUp }
             )
         )
     }
@@ -195,77 +224,41 @@ fun SessionSaveScreen(
         containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = {},
+                title = { Text("Save session") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 },
-                actions = {
-                    Box {
-                        IconButton(
-                            onClick = { showOptions = true },
-                            modifier = Modifier
-                                .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
-                                .size(44.dp)
-                        ) {
-                            Icon(
-                                Icons.Rounded.Tune,
-                                contentDescription = "Session options",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showOptions,
-                            onDismissRequest = { showOptions = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Edit read time") },
-                                leadingIcon = { Icon(Icons.Rounded.Timer, contentDescription = null) },
-                                onClick = {
-                                    showOptions = false
-                                    showDurationEditor = true
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Where you read") },
-                                leadingIcon = { Icon(Icons.Rounded.Place, contentDescription = null) },
-                                onClick = {
-                                    showOptions = false
-                                    showTagPicker = true
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = {
-                                    Text("Discard session", color = MaterialTheme.colorScheme.error)
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Rounded.Delete,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                },
-                                onClick = {
-                                    showOptions = false
-                                    showDiscardConfirm = true
-                                }
-                            )
-                        }
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = { if (tooShort) showTooShort = true else commit() },
-                        shape = RoundedCornerShape(50),
-                        modifier = Modifier.padding(end = 12.dp)
-                    ) {
-                        Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Save", fontWeight = FontWeight.SemiBold)
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
+        },
+        // Save sits under the thumb; Discard is quieter, just below it.
+        bottomBar = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .navigationBarsPadding()
+                    .readableWidth()
+                    .padding(start = 24.dp, end = 24.dp, top = 12.dp)
+            ) {
+                Button(
+                    onClick = { if (tooShort) showTooShort = true else commit() },
+                    shape = AppShape.M,
+                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                ) {
+                    Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Save session", style = MaterialTheme.typography.titleSmall)
+                }
+                TextButton(
+                    onClick = { showDiscardConfirm = true },
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Text("Discard session", color = MaterialTheme.colorScheme.error)
+                }
+            }
         }
     ) { padding ->
         Column(
@@ -277,25 +270,44 @@ fun SessionSaveScreen(
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp)
         ) {
-            Spacer(Modifier.height(16.dp))
-            Text(
-                "Save reading session",
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Bold
-            )
             Spacer(Modifier.height(8.dp))
-            Text(
-                "Check the page you stopped on, then save.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(Modifier.height(40.dp))
-
+            // Which book this is, and how far the session took it.
             Row(verticalAlignment = Alignment.CenterVertically) {
-                EditableStamp(endDateTime.toLocalDate().format(saveDateFormat)) { showDatePicker = true }
+                BookCover(book, Modifier.heroSharedElement("cover-${book.id}").size(width = 56.dp, height = 84.dp))
+                Spacer(Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        book.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        if (endPage != sessionStartPage) "$unit $sessionStartPage → $endPage" else "$unit $endPage",
+                        style = MaterialTheme.typography.titleSmall.copy(fontFeatureSettings = "tnum"),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // When the session ran: the day, then start to end (start follows the read time).
+            val endDay = endDateTime.toLocalDate()
+            val today = LocalDate.now(zone)
+            val dayLabel = when (endDay) {
+                today -> "Today"
+                today.minusDays(1) -> "Yesterday"
+                else -> endDay.format(saveDateFormat)
+            }
+            val startTime = endDateTime.minusSeconds(durationSeconds.toLong()).toLocalTime()
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                EditableStamp(dayLabel) { showDatePicker = true }
                 Spacer(Modifier.width(12.dp))
-                EditableStamp(endDateTime.toLocalTime().format(saveTimeFormat)) { showTimePicker = true }
+                EditableStamp(
+                    "${startTime.format(saveTimeFormat)} – ${endDateTime.toLocalTime().format(saveTimeFormat)}"
+                ) { showTimePicker = true }
             }
 
             Spacer(Modifier.height(20.dp))
@@ -327,10 +339,16 @@ fun SessionSaveScreen(
             }
             val sessionSpeedText = remember(sessionPpm) { AnalyticsEngine.formatSessionPpm(sessionPpm) }
             val remainingPages = if (book.totalPages > 0) (book.totalPages - endPage).coerceAtLeast(0) else 0
-            val remainingMinutes = if (remainingPages > 0 && sessionPpm != null && sessionPpm > 0f) {
-                (remainingPages / sessionPpm).toLong()
-            } else null
-            val remainingEtaText = remember(remainingMinutes) { AnalyticsEngine.formatEstimatedTime(remainingMinutes) }
+            // The book's usual pace, not this session's: one short sitting swings far too much.
+            val remainingEtaText = remember(endPage, sessions) {
+                AnalyticsEngine.formatEstimatedTime(
+                    AnalyticsEngine.bookEstimatedMinutesLeft(
+                        book.copy(currentPage = endPage),
+                        sessions.filter { it.bookId == book.id },
+                        sessions
+                    )
+                )
+            }
 
             if (deltaPages > 0) {
                 Spacer(Modifier.height(12.dp))
@@ -361,7 +379,7 @@ fun SessionSaveScreen(
                             if (remainingPages > 0 && remainingEtaText != null) {
                                 Spacer(Modifier.height(2.dp))
                                 Text(
-                                    "~${remainingEtaText.removeSuffix(" left")} to finish the book at this pace",
+                                    "About ${remainingEtaText.removeSuffix(" left")} to finish the book",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -388,10 +406,42 @@ fun SessionSaveScreen(
 
                 modifier = Modifier.staggeredEntrance(entrance, 4),
                 icon = { Icon(Icons.Rounded.Place, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp)) },
-                label = "Where you read",
+                label = if (!tagPicked && tag.isNotBlank() && tag == usualPlace) "Where you read · your usual spot" else "Where you read",
                 value = tag.ifBlank { "Not set" },
                 onClick = { showTagPicker = true }
             )
+
+            if (offerPickUp) {
+                Spacer(Modifier.height(12.dp))
+                val day = pickUpAt.toLocalDate()
+                val today = LocalDate.now(zone)
+                val whenLabel = when (day) {
+                    today -> "tonight"
+                    today.plusDays(1) -> "tomorrow"
+                    else -> day.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, Locale.getDefault())
+                } + " at " + pickUpAt.toLocalTime().format(saveTimeFormat)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(AppShape.L)
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                        .clickable { remindToPickUp = !remindToPickUp }
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.NotificationsActive, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                    Spacer(Modifier.width(20.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Remind me $whenLabel", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(
+                            "To pick this book up where you left off. Skipped if you read it before then.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    androidx.compose.material3.Switch(checked = remindToPickUp, onCheckedChange = { remindToPickUp = it })
+                }
+            }
 
             if (previousSession != null) {
                 Spacer(Modifier.height(12.dp))
@@ -432,6 +482,21 @@ fun SessionSaveScreen(
                 shape = AppShape.L,
                 modifier = Modifier.fillMaxWidth()
             )
+            // A longer note, a photo or a scanned passage: the full note sheet, carrying the line over.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { showNoteSheet = true }) {
+                    Icon(Icons.AutoMirrored.Rounded.NoteAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Full note…")
+                }
+                if (notesAdded > 0) {
+                    Text(
+                        if (notesAdded == 1) "1 note saved" else "$notesAdded notes saved",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
 
             if (complete && status != BookStatus.DNF) {
                 Spacer(Modifier.height(16.dp))
@@ -478,27 +543,23 @@ fun SessionSaveScreen(
             initialMinute = endDateTime.minute,
             is24Hour = is24Hour
         )
-        AlertDialog(
-            onDismissRequest = { showTimePicker = false },
-            title = { Text("Session time") },
-            text = {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    TimePicker(state = state)
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    endDateTime = LocalDateTime.of(
-                        endDateTime.toLocalDate(),
-                        LocalTime.of(state.hour, state.minute)
-                    )
-                    showTimePicker = false
-                }) { Text("OK") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+        ActionSheet(
+            onDismiss = { showTimePicker = false },
+            icon = Icons.Rounded.Schedule,
+            title = "When you stopped",
+            confirmLabel = "Save",
+            onConfirm = {
+                endDateTime = LocalDateTime.of(
+                    endDateTime.toLocalDate(),
+                    LocalTime.of(state.hour, state.minute)
+                )
+                showTimePicker = false
             }
-        )
+        ) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                TimePicker(state = state)
+            }
+        }
     }
 
     if (showPagePicker) {
@@ -514,7 +575,12 @@ fun SessionSaveScreen(
             },
             onConfirm = {
                 endPage = it
-                if (book.totalPages > 0 && it >= book.totalPages) status = BookStatus.FINISHED
+                // Finished goes with the last page: reaching it finishes the book, and
+                // stepping back from it undoes that rather than saving "finished" with pages left.
+                if (book.totalPages > 0) {
+                    if (it >= book.totalPages) status = BookStatus.FINISHED
+                    else if (status == BookStatus.FINISHED) status = null
+                }
                 showPagePicker = false
                 scanOnOpen = false
             }
@@ -555,10 +621,29 @@ fun SessionSaveScreen(
     if (showTagPicker) {
         TagPickerDialog(
             initial = tag,
+            pastPlaces = places,
             onDismiss = { showTagPicker = false },
             onConfirm = {
                 tag = it
+                tagPicked = true
                 showTagPicker = false
+            }
+        )
+    }
+
+    if (showNoteSheet) {
+        NoteSheet(
+            suggestedPage = endPage,
+            totalPages = book.totalPages,
+            pageLabel = FormatAdaptabilityLayer.getDisplayUnit(book).trimEnd('s'),
+            initialText = quote,
+            onDismiss = { showNoteSheet = false },
+            onConfirm = { page, text, type, images ->
+                onAddNote(page, text, type, images)
+                notesAdded++
+                // The line now lives in the saved note; keeping it here would save it twice.
+                quote = ""
+                showNoteSheet = false
             }
         )
     }
@@ -618,7 +703,9 @@ data class SessionDraft(
     val focus: Int,
     val quote: String,
     /** The earlier session to join this one onto, when the reader chose to. */
-    val mergeWithId: String?
+    val mergeWithId: String?,
+    /** When to remind the reader to pick the book up again; null for no reminder. */
+    val remindAt: LocalDateTime? = null
 )
 
 private fun formatShort(seconds: Int): String =
@@ -758,7 +845,7 @@ private fun OutcomeButton(
     onClick: () -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(50),
+        shape = CircleShape,
         color = if (selected) MaterialTheme.colorScheme.primary
         else MaterialTheme.colorScheme.surfaceContainerHighest,
         contentColor = if (selected) MaterialTheme.colorScheme.onPrimary
@@ -825,10 +912,16 @@ private fun DurationEditorDialog(
 @Composable
 private fun TagPickerDialog(
     initial: String,
+    pastPlaces: List<String>,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
-    val presets = listOf("Bed", "Coffee Shop", "Commute", "Couch", "Desk", "Tea")
+    // Your own places first, topped up with the starters you haven't used.
+    val presets = remember(pastPlaces) {
+        val starters = listOf("Bed", "Coffee Shop", "Commute", "Couch", "Desk", "Tea")
+            .filterNot { s -> pastPlaces.any { it.equals(s, ignoreCase = true) } }
+        (pastPlaces + starters).take(MAX_PLACE_CHIPS)
+    }
     var custom by remember { mutableStateOf(if (initial in presets) "" else initial) }
     var selected by remember { mutableStateOf(initial.takeIf { it in presets }) }
 

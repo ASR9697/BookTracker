@@ -1265,6 +1265,7 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                             .activeReadingSeconds.collectAsState()
                                                         val saveSessions by viewModel.completedSessions.collectAsState()
                                                         val savePrefs = LocalAppPrefs.current
+                                                        val saveContext = androidx.compose.ui.platform.LocalContext.current
                                                         // Reviewing a session stops its clock, whichever way the reader got here
                                                         // (timer, notification, widget), so the time can't drift while they edit.
                                                         LaunchedEffect(bookId) {
@@ -1299,6 +1300,8 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                                 previousSession = previous,
                                                                 minSessionSeconds = savePrefs.minSessionSeconds,
                                                                 scanFirst = savePrefs.scanOnFinish,
+                                                                sessions = saveSessions,
+                                                                onAddNote = { page, text, type, images -> viewModel.addNote(bookId, page, text, type, images) },
                                                                 onSave = { draft ->
                                                                     viewModel.saveSession(
                                                                         book = book,
@@ -1314,6 +1317,9 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                                         navController.navigate("session_result/$bookId") {
                                                                             popUpTo(MAIN_ROUTE) { inclusive = false }
                                                                         }
+                                                                    }
+                                                                    draft.remindAt?.let {
+                                                                        com.example.booktracker.app.worker.NudgeScheduler.schedulePickUp(saveContext, bookId, it)
                                                                     }
                                                                     pendingOutcome = draft.status?.takeIf {
                                                                         it == BookStatus.FINISHED || it == BookStatus.DNF
