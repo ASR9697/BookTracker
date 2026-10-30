@@ -55,6 +55,7 @@ import com.example.booktracker.app.ui.animations.rememberEntranceState
 import com.example.booktracker.app.ui.animations.staggeredEntrance
 import com.example.booktracker.app.analytics.GoalEngine
 import com.example.booktracker.app.analytics.StreakEngine
+import com.example.booktracker.app.analytics.ReaderProfileEngine
 import com.example.booktracker.app.util.MarkdownExporter
 import java.time.LocalDate
 import java.time.ZoneId
@@ -85,6 +86,12 @@ fun ProfileScreen(
     onOpenAchievements: () -> Unit = {},
     onOpenStreak: () -> Unit = {},
     onUpdateName: (String) -> Unit = {},
+    /** One line under the name, e.g. "Just one more chapter."; blank for none. */
+    motto: String = "",
+    onUpdateMotto: (String) -> Unit = {},
+    onToggleFavorite: (Book) -> Unit = {},
+    /** Searches the library, e.g. for an author tapped in the reader card. */
+    onSearch: (String) -> Unit = {},
     badgeStatuses: List<BadgeStatus> = emptyList(),
     monthlyChallenge: BadgeStatus? = null,
     yearlyGoal: Int = 0,
@@ -126,6 +133,23 @@ fun ProfileScreen(
     val hasYearToReview = remember(books, sessions, dayStartsAtHour) {
         AnalyticsEngine.hasYearToReview(books, sessions, LocalDate.now(zone).year, zone, dayStartsAtHour)
     }
+    // Who you are as a reader: favourites, taste, the authors you come back to, your bests.
+    val favourites = remember(books) { ReaderProfileEngine.favourites(books) }
+    val taste = remember(books, sessions) { ReaderProfileEngine.tasteSentence(books, sessions, zone) }
+    val authors = remember(books) { ReaderProfileEngine.topAuthors(books) }
+    val records = remember(books, sessions, dayStartsAtHour) { ReaderProfileEngine.records(books, sessions, zone, dayStartsAtHour) }
+    var showFavouritePicker by remember { mutableStateOf(false) }
+    if (showFavouritePicker) {
+        FavouritePickerSheet(
+            finished = remember(books) {
+                com.example.booktracker.app.analytics.WishlistEngine.onShelf(books)
+                    .filter(com.example.booktracker.app.analytics.FinishedShelf::isFinished)
+                    .sortedByDescending { it.completedAt }
+            },
+            onToggle = onToggleFavorite,
+            onDismiss = { showFavouritePicker = false }
+        )
+    }
 
     val entrance = rememberEntranceState()
     SectionPage(
@@ -137,6 +161,7 @@ fun ProfileScreen(
             var showAvatarSheet by remember { mutableStateOf(false) }
             if (showNameDialog) {
                 var newName by remember { mutableStateOf(userName) }
+                var newMotto by remember { mutableStateOf(motto) }
                 ActionSheet(
                     onDismiss = { showNameDialog = false },
                     icon = Icons.Rounded.Edit,
@@ -144,6 +169,7 @@ fun ProfileScreen(
                     confirmLabel = "Save",
                     onConfirm = {
                         onUpdateName(newName.trim().takeIf { it.isNotEmpty() } ?: "Reader")
+                        if (newMotto.trim() != motto) onUpdateMotto(newMotto)
                         showNameDialog = false
                     }
                 ) {
@@ -151,6 +177,15 @@ fun ProfileScreen(
                         value = newName,
                         onValueChange = { newName = it },
                         label = { Text("Display name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = newMotto,
+                        onValueChange = { newMotto = it.take(MOTTO_MAX) },
+                        label = { Text("Reading motto (optional)") },
+                        placeholder = { Text("Just one more chapter.") },
+                        supportingText = { Text("${newMotto.length} / $MOTTO_MAX") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -230,6 +265,16 @@ fun ProfileScreen(
                             modifier = Modifier.size(16.dp)
                         )
                     }
+                    if (motto.isNotBlank()) {
+                        Text(
+                            "\u201C${motto.trim()}\u201D",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                     Text(
                         personality.takeIf { it.isNotEmpty() }?.joinToString(" · ")
                             ?: "Building your reading profile",
@@ -282,6 +327,19 @@ fun ProfileScreen(
         }
 
         item {
+            FavouritesShelf(
+                favourites = favourites,
+                onOpenBook = onOpenBook,
+                onPick = { showFavouritePicker = true },
+                modifier = Modifier.staggeredEntrance(entrance, 1)
+            )
+        }
+
+        if (taste != null || authors.isNotEmpty()) item {
+            ReaderCard(taste, authors, onAuthor = onSearch, modifier = Modifier.staggeredEntrance(entrance, 2))
+        }
+
+        item {
             LifetimeCard(
                 streak = streak,
                 longestStreak = longestStreak,
@@ -289,8 +347,12 @@ fun ProfileScreen(
                 pages = pagesRead,
                 minutes = totalMinutes,
                 onOpenStreak = onOpenStreak,
-                modifier = Modifier.staggeredEntrance(entrance, 1)
+                modifier = Modifier.staggeredEntrance(entrance, 2)
             )
+        }
+
+        if (records.isNotEmpty()) item {
+            RecordsCard(records, onOpenBook, Modifier.staggeredEntrance(entrance, 3))
         }
 
         // Wrapped stays hidden until there is a year worth sharing.

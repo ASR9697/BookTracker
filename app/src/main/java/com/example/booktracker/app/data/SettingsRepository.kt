@@ -117,6 +117,7 @@ class SettingsRepository(context: Context) {
     private val useDynamicColorKey = booleanPreferencesKey("use_dynamic_color")
     private val appPaletteKey = androidx.datastore.preferences.core.stringPreferencesKey("app_palette")
     private val userNameKey = androidx.datastore.preferences.core.stringPreferencesKey("user_name")
+    private val mottoKey = androidx.datastore.preferences.core.stringPreferencesKey("reader_motto")
     private val workMinutesKey = intPreferencesKey("work_minutes")
     private val preferredTimerModeKey = androidx.datastore.preferences.core.stringPreferencesKey("preferred_timer_mode")
     private val dayStartsAtHourKey = intPreferencesKey("day_starts_at_hour")
@@ -157,6 +158,8 @@ class SettingsRepository(context: Context) {
         }
     }
     val userName: Flow<String> = appContext.settingsDataStore.data.map { it[userNameKey] ?: "Reader" }
+    /** A line under the name on Profile, e.g. "Just one more chapter."; blank for none. */
+    val motto: Flow<String> = appContext.settingsDataStore.data.map { it[mottoKey] ?: "" }
     val workMinutes: Flow<Int> = appContext.settingsDataStore.data.map { it[workMinutesKey] ?: 25 }
     /**
      * The timer mode the reader last chose ("STOPWATCH" or "COUNTDOWN"), so the
@@ -206,6 +209,7 @@ class SettingsRepository(context: Context) {
     suspend fun setUseDynamicColor(enabled: Boolean) { appContext.settingsDataStore.edit { it[useDynamicColorKey] = enabled } }
     suspend fun setAppPalette(palette: AppPalette) { appContext.settingsDataStore.edit { it[appPaletteKey] = palette.name } }
     suspend fun setUserName(name: String) { appContext.settingsDataStore.edit { it[userNameKey] = name } }
+    suspend fun setMotto(motto: String) { appContext.settingsDataStore.edit { it[mottoKey] = motto } }
     suspend fun setWorkMinutes(mins: Int) { appContext.settingsDataStore.edit { it[workMinutesKey] = mins } }
     suspend fun setPreferredTimerMode(mode: String) { appContext.settingsDataStore.edit { it[preferredTimerModeKey] = mode } }
     suspend fun setDayStartsAtHour(hour: Int) { appContext.settingsDataStore.edit { it[dayStartsAtHourKey] = hour } }
@@ -394,7 +398,8 @@ class SettingsRepository(context: Context) {
         monthlyGoalBooks = monthlyGoalBooks.first(),
         dayStartsAtHour = dayStartsAtHour.first(),
         homeLayout = homeLayout.first().encode(),
-        avatar = avatar.first()
+        avatar = avatar.first(),
+        motto = motto.first()
     )
 
     companion object {

@@ -784,6 +784,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                         val badgeStatuses by viewModel.badgeStatuses.collectAsState()
                                                         val streak by viewModel.streak.collectAsState()
                                                         val userName by viewModel.userName.collectAsState()
+                                                        val motto by viewModel.motto.collectAsState()
                                                         val allNotes by viewModel.allNotes.collectAsState()
                                                         val monthlyChallenge by viewModel.monthlyChallenge.collectAsState()
                                                         val yearlyGoal by viewModel.yearlyGoal.collectAsState()
@@ -801,6 +802,10 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             onSetAvatarCover = { viewModel.setAvatarCover(it.id) },
                                                             onClearAvatar = viewModel::clearAvatar,
                                                             userName = userName,
+                                                            motto = motto,
+                                                            onUpdateMotto = viewModel::setMotto,
+                                                            onToggleFavorite = viewModel::toggleFavorite,
+                                                            onSearch = { query -> navController.navigate("search?q=" + android.net.Uri.encode(query)) },
                                                             books = books,
                                                             sessions = sessions,
                                                             notes = allNotes,
@@ -1214,9 +1219,14 @@ androidx.compose.animation.SharedTransitionLayout {
                                             )
                                         }
                                     }
-                                    composable("search") {
+                                    // An optional query starts the search, e.g. an author tapped on Profile.
+                                    composable(
+                                        "search?q={q}",
+                                        arguments = listOf(androidx.navigation.navArgument("q") { type = androidx.navigation.NavType.StringType; defaultValue = "" })
+                                    ) { searchEntry ->
                 
                                         androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {                LibrarySearchScreen(
+                                                            initialQuery = searchEntry.arguments?.getString("q").orEmpty(),
                                                             onSearch = viewModel::searchLibrary,
                                                             onOpenBook = { bookId -> navController.navigate("book/$bookId") },
                                                             onBack = { navController.popBackStack() }

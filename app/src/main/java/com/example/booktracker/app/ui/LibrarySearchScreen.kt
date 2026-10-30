@@ -64,9 +64,11 @@ import kotlinx.coroutines.delay
 fun LibrarySearchScreen(
     onSearch: suspend (String) -> LibrarySearchResults,
     onOpenBook: (String) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    /** Search to start with, e.g. an author tapped on Profile. */
+    initialQuery: String = ""
 ) {
-    var query by remember { mutableStateOf("") }
+    var query by remember { mutableStateOf(initialQuery) }
     var results by remember { mutableStateOf(LibrarySearchResults()) }
     val focusRequester = remember { FocusRequester() }
 

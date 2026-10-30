@@ -72,6 +72,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** Longest reading motto kept: one line under the name on Profile. */
+const val MOTTO_MAX = 80
+
 sealed interface DriveSyncState {
     data object Idle : DriveSyncState
     data object Syncing : DriveSyncState
@@ -130,6 +133,8 @@ class BookTrackerViewModel(
     val reminder: StateFlow<ReminderSettings> = settings.reminder
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ReminderSettings(false, 20, 0))
 
+    val motto: StateFlow<String> = settings.motto
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
     val userName: StateFlow<String> = settings.userName
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "Reader")
 
@@ -974,6 +979,10 @@ class BookTrackerViewModel(
         viewModelScope.launch { settings.setHomeLayout(layout) }
     }
 
+    fun setMotto(motto: String) {
+        viewModelScope.launch { settings.setMotto(motto.trim().take(MOTTO_MAX)) }
+    }
+
     fun setUserName(name: String) {
         viewModelScope.launch { settings.setUserName(name.trim().ifBlank { "Reader" }) }
     }
@@ -1246,6 +1255,7 @@ class BookTrackerViewModel(
                 parsed.settings.monthlyGoalBooks?.let { settings.setMonthlyGoalBooks(it) }
                 parsed.settings.dayStartsAtHour?.let { settings.setDayStartsAtHour(it) }
                 parsed.settings.homeLayout?.let { settings.setHomeLayout(HomeLayout.decode(it)) }
+                parsed.settings.motto?.let { settings.setMotto(it) }
                 parsed.settings.avatar?.let { settings.setAvatar(it) }
                 onDone(parsed.snapshot.books.size)
             } catch (e: Exception) {
