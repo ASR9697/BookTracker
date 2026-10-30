@@ -134,16 +134,7 @@ fun AnalyticsScreen(
     }
     var monthlyTargetMode by remember { mutableStateOf(GoalType.MONTHLY_PAGES) }
 
-    val genreDistribution = remember(books) {
-        val distribution = mutableMapOf<String, Int>()
-        books.forEach { book ->
-            val tags = book.genres.ifEmpty { book.classification.tags }
-            tags.forEach { tag ->
-                distribution[tag] = (distribution[tag] ?: 0) + 1
-            }
-        }
-        distribution.toList().sortedByDescending { it.second }
-    }
+    val genreDistribution = remember(books) { AnalyticsEngine.genreMix(books) }
     val booksWithGenres = remember(books) { books.count { it.genres.isNotEmpty() || it.classification.tags.isNotEmpty() } }
     
     val formatDistribution = remember(books) {
@@ -1093,6 +1084,10 @@ fun PieChart(
         MaterialTheme.colorScheme.tertiaryContainer,
     )
     
+    // The catch-all slice is neutral so it doesn't read as one more genre.
+    val otherColor = MaterialTheme.colorScheme.outline
+    fun colorAt(index: Int) = if (data[index].first == AnalyticsEngine.OTHER_GENRE) otherColor else colors[index % colors.size]
+
     val total = data.sumOf { it.second }.toFloat().coerceAtLeast(1f) // never NaN slices
     val proportions = data.map { it.second.toFloat() / total }
     val onSurface = MaterialTheme.colorScheme.onSurface
@@ -1120,7 +1115,7 @@ fun PieChart(
                 
                 proportions.forEachIndexed { index, proportion ->
                     val sweepAngle = proportion * 360f * animationProgress
-                    val color = colors[index % colors.size]
+                    val color = colorAt(index)
                     
                     drawArc(
                         color = color,
@@ -1143,7 +1138,7 @@ fun PieChart(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             data.forEachIndexed { index, (label, count) ->
-                val color = colors[index % colors.size]
+                val color = colorAt(index)
                 val percentage = ((count.toFloat() / total) * 100).roundToInt()
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(12.dp).background(color, CircleShape))

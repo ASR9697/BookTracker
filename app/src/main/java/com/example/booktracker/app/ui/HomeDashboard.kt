@@ -83,8 +83,11 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarState
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -142,7 +145,7 @@ private const val FRESH_LOG_WINDOW_MS = 5 * 60_000L
 /** How tall the sky behind the greeting is, below the app bar. */
 private val SKY_HEIGHT = 200.dp
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun HomeDashboard(
     books: List<Book>,
@@ -174,6 +177,7 @@ fun HomeDashboard(
     reviewStarted: Boolean = false,
     onOpenReview: () -> Unit = {},
     scrollState: ScrollState = rememberScrollState(),
+    headerState: TopAppBarState = rememberTopAppBarState(),
     onSearch: () -> Unit = {},
     banner: @Composable () -> Unit = {}
 ) {
@@ -564,6 +568,7 @@ fun HomeDashboard(
 
     Box(modifier = modifier.fillMaxSize()) {
     SectionPage(
+        state = headerState,
         seeThrough = homeSky,
         backdrop = { collapsedPx ->
             // Behind the header and cards, drifting at half the scroll's speed and fading as it leaves.

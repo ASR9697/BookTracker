@@ -64,6 +64,7 @@ import kotlin.math.roundToInt
 private const val MAX_READING_ROWS = 3
 private const val MAX_TEASER_MEDALS = 5
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     userName: String,
@@ -647,7 +648,9 @@ internal fun ProfileAvatar(
     userName: String,
     books: List<Book>,
     modifier: Modifier = Modifier,
-    initialStyle: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.headlineMedium
+    initialStyle: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.headlineMedium,
+    containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primaryContainer,
+    initialColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onPrimaryContainer
 ) {
     val coverUrl = remember(avatar, books) {
         avatar.takeIf { it.startsWith(AvatarStore.COVER_PREFIX) }
@@ -656,7 +659,7 @@ internal fun ProfileAvatar(
     }
     val photo = avatar.takeIf { it.startsWith(AvatarStore.PHOTO_PREFIX) }?.removePrefix(AvatarStore.PHOTO_PREFIX)
     Box(
-        modifier = modifier.clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+        modifier = modifier.clip(CircleShape).background(containerColor),
         contentAlignment = Alignment.Center
     ) {
         val image = photo ?: coverUrl
@@ -673,7 +676,7 @@ internal fun ProfileAvatar(
             Text(
                 userName.firstOrNull()?.toString()?.uppercase() ?: "R",
                 style = initialStyle,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color = initialColor
             )
         }
     }

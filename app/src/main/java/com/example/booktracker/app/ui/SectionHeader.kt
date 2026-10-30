@@ -77,6 +77,9 @@ val LocalNavBarClearance = compositionLocalOf { 0.dp }
  * [seeThrough] leaves the expanded header clear so a [backdrop] (Home's sky)
  * shows behind it; it fills in as it collapses. Slots get `collapse`, 0 when
  * open and 1 when shut, to read in draw or layer blocks.
+ *
+ * Pass [state] when the content's scroll state is hoisted, so the header is
+ * kept and restored alongside it instead of opening over a scrolled page.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,9 +90,9 @@ fun SectionPage(
     actions: @Composable RowScope.(collapse: () -> Float) -> Unit = {},
     seeThrough: Boolean = false,
     backdrop: @Composable BoxScope.(collapsedPx: () -> Float) -> Unit = {},
+    state: TopAppBarState = rememberTopAppBarState(),
     content: @Composable () -> Unit
 ) {
-    val state = rememberTopAppBarState()
     val behavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(state)
     Box(modifier.fillMaxSize()) {
         backdrop { -state.heightOffset }
@@ -101,6 +104,7 @@ fun SectionPage(
 }
 
 /** [SectionPage] with the usual header: a [title] and a live [line] under it, plus anything [below] them. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SectionPage(
     title: String,

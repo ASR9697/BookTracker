@@ -141,6 +141,8 @@ import androidx.compose.material.icons.rounded.Home
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -250,8 +252,10 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
         .sortedByDescending { it.lastUpdated }
     var showAddDialog by remember { mutableStateOf(false) }
     var addQuery by remember { mutableStateOf("") }
-    // Hoisted so Home keeps its place while you visit other sections.
+    // Hoisted so Home keeps its place while you visit other sections; the header
+    // state lives beside it so a restored page never shows an open header over scrolled cards.
     val homeScroll = rememberScrollState()
+    val homeHeader = androidx.compose.material3.rememberTopAppBarState()
     var pendingOutcome by remember { mutableStateOf<Pair<String, BookStatus>?>(null) }
     var showGoalDialog by remember { mutableStateOf(false) }
     var initialGoalType by remember { mutableStateOf(GoalType.YEARLY_BOOKS) }
@@ -392,7 +396,8 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
     }
 
     // The bottom bar floats over the sections on phones: it slips away while you scroll
-    // down through a section and comes back as soon as you scroll up or change section.
+    // down through a section and comes back as soon as you scroll up or change section,
+    // or when you push on past the end of the section, where scrolling up is the last thing you'd do.
     var navHidden by remember { mutableStateOf(false) }
     LaunchedEffect(settledRoute) { navHidden = false }
     val navHider = remember {
@@ -404,6 +409,7 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
             ): androidx.compose.ui.geometry.Offset {
                 if (consumed.y < -NAV_HIDE_SLOP) navHidden = true
                 else if (consumed.y > NAV_HIDE_SLOP) navHidden = false
+                else if (available.y < -NAV_HIDE_SLOP) navHidden = false
                 return androidx.compose.ui.geometry.Offset.Zero
             }
         }
@@ -609,6 +615,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                 reviewStarted = homeReviewStates.isNotEmpty(),
                                                 onOpenReview = { navController.navigate("review") { launchSingleTop = true } },
                                                 scrollState = homeScroll,
+                                                headerState = homeHeader,
                                                 onSearch = { navController.navigate("search") },
                                                 layout = homeLayout,
                                                 onEditHome = { navController.navigate("editHome") },
@@ -1070,9 +1077,11 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             yearlyGoal = yearly,
                                                             reminder = reminder,
                                                             finishedCount = finishedBooks.size,
-                                                            readingSinceYear = finishedBooks.minOfOrNull { it.completedAt }?.let {
+                                                            readingSinceYear = finishedBooks.map { it.completedAt }.filter { it > 0 }.minOrNull()?.let {
                                                                 java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).year
                                                             },
+                                                            avatar = avatarForTab,
+                                                            books = books,
                                                             driveConnected = driveConnected,
                                                             onOpenGoals = { navController.navigate("goals") { launchSingleTop = true } },
                                                             onExportCsv = { uri, onDone -> viewModel.exportCsv(context, uri, onDone) },
@@ -1550,7 +1559,18 @@ fun WeekBubbles(streak: StreakEngine.StreakInfo, modifier: Modifier = Modifier) 
             val isActive = streak.activeDays.contains(day)
             val isToday = day == today
             val isFuture = day.isAfter(today)
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // One spoken label per day, since the letter alone says nothing about the flame.
+            val dayName = day.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, locale)
+            val dayState = when {
+                isActive -> "read"
+                isFuture -> "still to come"
+                else -> "not read"
+            }
+            val spoken = if (isToday) "Today, $dayName, $dayState" else "$dayName, $dayState"
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.clearAndSetSemantics { contentDescription = spoken }
+            ) {
                 Box(
                     modifier = Modifier
                         .size(30.dp)
@@ -1714,7 +1734,8 @@ fun LibraryScreen(
         },
         below = {
             SearchPill(
-                text = if (books.isEmpty()) "Search for a book" else "Search ${books.size} ${if (books.size == 1) "book" else "books"}",
+                // Counts the shelf like the title does; wished-for books still turn up in results.
+                text = if (shelf.isEmpty()) "Search for a book" else "Search ${shelf.size} ${if (shelf.size == 1) "book" else "books"}",
                 onSearch = onSearch,
                 onScan = onScan,
                 modifier = Modifier.padding(top = 14.dp)
