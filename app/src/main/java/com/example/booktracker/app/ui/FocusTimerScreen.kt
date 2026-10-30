@@ -26,7 +26,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.NoteAdd
@@ -261,17 +260,22 @@ fun FocusTimerScreen(
         if (isZenMode) isZenMode = false else leave()
     }
 
-    // Slow breathing glow behind the play button while the clock runs.
-    val infiniteTransition = rememberInfiniteTransition(label = "focus_breath")
-    val breath by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 4000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "breath"
-    )
+    // Slow breathing glow behind the play button while the clock runs; still under reduce motion.
+    val reduceMotion = com.example.booktracker.app.ui.animations.rememberReduceMotion()
+    val breath = if (reduceMotion) 0f else {
+        val infiniteTransition = rememberInfiniteTransition(label = "focus_breath")
+        val pulse by infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 4000, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "breath"
+        )
+        pulse
+    }
+    var showProgressPicker by remember { mutableStateOf(false) }
 
     val displaySeconds = if (mode == TimerMode.STOPWATCH) elapsedSeconds else timeLeftSeconds
     val chrome = onBackground.copy(alpha = 0.12f)
@@ -306,7 +310,7 @@ fun FocusTimerScreen(
         modifier = Modifier
             .weight(1f)
             .fillMaxHeight()
-            .background(if (isZenMode) Color(0xFF090D14) else background)
+            .background(if (isZenMode) com.example.booktracker.app.ui.theme.ZenNight else background)
             .focusRequester(keyFocus)
             .onKeyEvent { event ->
                 if (event.type == KeyEventType.KeyUp && event.key == Key.Spacebar) {
@@ -373,7 +377,7 @@ fun FocusTimerScreen(
                             Spacer(Modifier.width(8.dp))
                             Surface(
                                 onClick = finish,
-                                shape = RoundedCornerShape(50),
+                                shape = CircleShape,
                                 color = onBackground.copy(alpha = 0.18f),
                                 contentColor = onBackground,
                                 modifier = Modifier.height(42.dp)
@@ -423,7 +427,7 @@ fun FocusTimerScreen(
             )
             AnimatedVisibility(visible = sessionDelta > 0 && !isZenMode, enter = fadeIn(), exit = fadeOut()) {
                 Surface(
-                    shape = RoundedCornerShape(50),
+                    shape = CircleShape,
                     color = onBackground.copy(alpha = 0.12f),
                     contentColor = onBackground,
                     modifier = Modifier.padding(top = 12.dp)
@@ -549,7 +553,9 @@ fun FocusTimerScreen(
                                 )
                             }
                             Spacer(Modifier.height(6.dp))
-                            // Page stepper: the page is saved as you go.
+                            // Page stepper: the page is saved as you go. +/- for one page;
+                            // tap the number to jump (or scan the page) after reading a stretch.
+                            val unit = FormatAdaptabilityLayer.unitAbbrev(book)
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconButton(
                                     onClick = {
@@ -557,16 +563,19 @@ fun FocusTimerScreen(
                                         sessionCurrentPage -= 1
                                     },
                                     enabled = sessionCurrentPage > 0,
-                                    modifier = Modifier.size(32.dp)
+                                    modifier = Modifier.size(48.dp)
                                 ) {
-                                    Icon(Icons.Rounded.Remove, contentDescription = "Page back", tint = onBackground, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Rounded.Remove, contentDescription = "Page back", tint = onBackground, modifier = Modifier.size(20.dp))
                                 }
                                 Text(
-                                    if (book.totalPages > 0) "p. $sessionCurrentPage / ${book.totalPages}" else "p. $sessionCurrentPage",
+                                    if (book.totalPages > 0) "$unit $sessionCurrentPage / ${book.totalPages}" else "$unit $sessionCurrentPage",
                                     style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"),
                                     fontWeight = FontWeight.Bold,
                                     color = onBackground,
-                                    modifier = Modifier.padding(horizontal = 4.dp)
+                                    modifier = Modifier
+                                        .clip(AppShape.XS)
+                                        .clickable(onClickLabel = "Choose page") { showProgressPicker = true }
+                                        .padding(horizontal = 6.dp, vertical = 8.dp)
                                 )
                                 IconButton(
                                     onClick = {
@@ -574,9 +583,9 @@ fun FocusTimerScreen(
                                         sessionCurrentPage = (sessionCurrentPage + 1).coerceAtMost(maxPage)
                                     },
                                     enabled = sessionCurrentPage < maxPage,
-                                    modifier = Modifier.size(32.dp)
+                                    modifier = Modifier.size(48.dp)
                                 ) {
-                                    Icon(Icons.Rounded.Add, contentDescription = "Page forward", tint = onBackground, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Rounded.Add, contentDescription = "Page forward", tint = onBackground, modifier = Modifier.size(20.dp))
                                 }
                             }
                             Text(
@@ -656,25 +665,29 @@ fun FocusTimerScreen(
     }
     }
 
+    if (showProgressPicker) {
+        ProgressPickerSheet(
+            book = book,
+            initialPage = sessionCurrentPage,
+            sessionStartPage = sessionStartPage,
+            sessionSeconds = activeReadingSeconds,
+            onDismiss = { showProgressPicker = false },
+            onConfirm = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                sessionCurrentPage = it.coerceIn(0, maxPage)
+                showProgressPicker = false
+            }
+        )
+    }
+
     if (showCountdownSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showCountdownSheet = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        ActionSheet(
+            onDismiss = { showCountdownSheet = false },
+            icon = Icons.Rounded.HourglassBottom,
+            title = "Countdown",
+            message = "Read for a set time. You'll get an alert when it's up."
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 32.dp)
-            ) {
-                Text("Countdown", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text(
-                    "Read for a set time. You'll get an alert when it's up.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(16.dp))
+            Column {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -729,8 +742,7 @@ fun FocusTimerScreen(
     if (showSoundscapeSheet) {
         ModalBottomSheet(
             onDismissRequest = { showSoundscapeSheet = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ) {
             Column(
                 modifier = Modifier
@@ -843,7 +855,7 @@ private fun TimerChip(
     Surface(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(50),
+        shape = CircleShape,
         color = if (filled) tint.copy(alpha = 0.18f) else Color.Transparent,
         contentColor = tint.copy(alpha = if (enabled) 0.9f else 0.6f),
         border = androidx.compose.foundation.BorderStroke(1.dp, tint.copy(alpha = 0.3f))
@@ -874,24 +886,16 @@ private fun PageGoalSheet(
     val maxPage = if (book.totalPages > 0) book.totalPages else Int.MAX_VALUE
     var typed by remember { mutableStateOf(currentTarget?.toString().orEmpty()) }
     val typedPage = typed.toIntOrNull()?.takeIf { it in (startPage + 1)..maxPage }
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    ActionSheet(
+        onDismiss = onDismiss,
+        icon = Icons.Rounded.Flag,
+        title = "Page goal",
+        message = "How far do you want to get? This session started on $unit $startPage.",
+        confirmLabel = "Set goal",
+        onConfirm = { onSet(typedPage) },
+        confirmEnabled = typedPage != null
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp)
-        ) {
-            Text("Page goal", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(
-                "How far do you want to get? This session started on $unit $startPage.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(16.dp))
+        Column {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(10, 20, 30, 50).filter { startPage + it <= maxPage }.forEach { step ->
                     TickFilterChip(
@@ -909,19 +913,16 @@ private fun PageGoalSheet(
                 }
             }
             Spacer(Modifier.height(16.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = typed,
-                    onValueChange = { typed = it.filter(Char::isDigit).take(6) },
-                    label = { Text("Read to ${word.trimEnd('s')}") },
-                    singleLine = true,
-                    isError = typed.isNotEmpty() && typedPage == null,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(Modifier.width(12.dp))
-                Button(onClick = { onSet(typedPage) }, enabled = typedPage != null) { Text("Set") }
-            }
+            // A typed page is set with the sheet's main button.
+            OutlinedTextField(
+                value = typed,
+                onValueChange = { typed = it.filter(Char::isDigit).take(6) },
+                label = { Text("Read to ${word.trimEnd('s')}") },
+                singleLine = true,
+                isError = typed.isNotEmpty() && typedPage == null,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
+            )
             if (currentTarget != null) {
                 Spacer(Modifier.height(8.dp))
                 TextButton(onClick = { onSet(null) }) { Text("No page goal") }

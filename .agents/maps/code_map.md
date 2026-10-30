@@ -296,9 +296,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **FloatingNavBar.kt** (255) - The main navigation as a floating pill.
   - types: NavTab:57
   - fun: FloatingNavBar:85, .clamped:95
-- **FocusTimerScreen.kt** (1122) - The reading timer.
-  - types: TimerPhase:61, TimerMode:62
-  - fun: formatTimerClock:67, FocusTimerScreen:85, TimerChip:835, PageGoalSheet:865, PickUpCard:935, relativeDay:985, StillReadingCard:998, TimerIconButton:1032, PlayButton:1051
+- **FocusTimerScreen.kt** (1123) - The reading timer.
+  - types: TimerPhase:60, TimerMode:61
+  - fun: formatTimerClock:66, FocusTimerScreen:84, TimerChip:847, PageGoalSheet:877, PickUpCard:936, relativeDay:986, StillReadingCard:999, TimerIconButton:1033, PlayButton:1052
 - **GoalEditDialog.kt** (217)
   - types: GoalType:23
   - fun: GoalEditDialog:32
@@ -452,9 +452,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 
 - **AppIcon.kt** (61) - The launcher icons the reader can pick.
   - types: AppIcon:15
-- **Color.kt** (642)
-  - types: PaletteColors:105
-  - fun: getPaletteColors:627
+- **Color.kt** (645)
+  - types: PaletteColors:108
+  - fun: getPaletteColors:630
 - **Shape.kt** (33) - The app's five corner sizes.
   - types: AppShape:13
 - **Theme.kt** (128)
