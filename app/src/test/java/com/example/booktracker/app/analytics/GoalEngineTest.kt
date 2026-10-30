@@ -4,6 +4,7 @@ import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.Session
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -138,6 +139,21 @@ class GoalEngineTest {
         )
         assertEquals(GoalEngine.GoalPaceStatus.BEHIND, withOldStart.status)
         assertEquals(270, withOldStart.dayOfYear)
+    }
+
+    @Test
+    fun `on-track pace is not called short of target`() {
+        // Tracking from Jul 13, goal 10, 6 done on Oct 30: ~6.4 expected (on track), ~9.4 projected.
+        val pace = GoalEngine.calculateYearlyPace(
+            yearlyGoal = 10,
+            completedBooksThisYear = 6,
+            date = LocalDate.of(2026, 10, 30),
+            trackingStart = LocalDate.of(2026, 7, 13)
+        )
+        assertEquals(GoalEngine.GoalPaceStatus.ON_TRACK, pace.status)
+        assertEquals(9, pace.projectedFinishBooks)
+        assertFalse(pace.projectionMessage.contains("short"))
+        assertTrue(pace.projectionMessage.contains("just shy"))
     }
 
     @Test

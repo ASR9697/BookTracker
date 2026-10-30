@@ -74,6 +74,7 @@ import com.example.booktracker.app.notifications.Notifications
 import com.example.booktracker.app.ui.animations.Motion
 import com.example.booktracker.app.ui.animations.rememberReduceMotion
 import com.example.booktracker.app.ui.theme.AppIcon
+import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookFormat
 import java.io.File
 import java.time.LocalTime
@@ -142,6 +143,9 @@ fun SettingsScreen(
     reminder: ReminderSettings? = null,
     finishedCount: Int = 0,
     readingSinceYear: Int? = null,
+    /** The profile picture as stored by [com.example.booktracker.app.data.AvatarStore], and the books a cover avatar may point at. */
+    avatar: String = "",
+    books: List<Book> = emptyList(),
     driveConnected: Boolean = false,
     onOpenGoals: () -> Unit = {},
     onExportCsv: (Uri, (Boolean) -> Unit) -> Unit = { _, _ -> },
@@ -198,6 +202,8 @@ fun SettingsScreen(
                         onUserNameChange = onUserNameChange,
                         finishedCount = finishedCount,
                         readingSinceYear = readingSinceYear,
+                        avatar = avatar,
+                        books = books,
                         summaries = mapOf(
                             SettingsPage.APPEARANCE to listOf(
                                 if (useDynamicColor) "Wallpaper colours" else palette.title,
@@ -277,12 +283,14 @@ private fun SettingsHub(
     onUserNameChange: (String) -> Unit,
     finishedCount: Int,
     readingSinceYear: Int?,
+    avatar: String,
+    books: List<Book>,
     summaries: Map<SettingsPage, String>,
     goalsSummary: String,
     onOpen: (SettingsPage) -> Unit,
     onOpenGoals: () -> Unit
 ) {
-    ProfileCard(userName, onUserNameChange, finishedCount, readingSinceYear)
+    ProfileCard(userName, onUserNameChange, finishedCount, readingSinceYear, avatar, books)
 
     @Composable
     fun row(page: SettingsPage) = SettingRow(page.icon, page.title, summaries[page], onClick = { onOpen(page) })
@@ -309,7 +317,14 @@ private fun SettingsHub(
 }
 
 @Composable
-private fun ProfileCard(userName: String, onUserNameChange: (String) -> Unit, finishedCount: Int, readingSinceYear: Int?) {
+private fun ProfileCard(
+    userName: String,
+    onUserNameChange: (String) -> Unit,
+    finishedCount: Int,
+    readingSinceYear: Int?,
+    avatar: String,
+    books: List<Book>
+) {
     var editing by remember { mutableStateOf(false) }
     val scheme = MaterialTheme.colorScheme
     Surface(
@@ -322,25 +337,24 @@ private fun ProfileCard(userName: String, onUserNameChange: (String) -> Unit, fi
             .clickable(onClickLabel = "Edit your name") { editing = true }
     ) {
         Row(modifier = Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(scheme.primary, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    userName.trim().firstOrNull()?.uppercase() ?: "R",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = scheme.onPrimary
-                )
-            }
+            // The same picture as on Profile; the initial stands out from the card in the primary colour.
+            ProfileAvatar(
+                avatar = avatar,
+                userName = userName.trim(),
+                books = books,
+                modifier = Modifier.size(56.dp),
+                initialStyle = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                containerColor = scheme.primary,
+                initialColor = scheme.onPrimary
+            )
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(userName.ifBlank { "Reader" }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
                     when {
                         finishedCount == 0 -> "Your first finished book is waiting"
+                        // "since" only reads right once there's more than one year behind it.
+                        readingSinceYear == java.time.Year.now().value -> "$finishedCount ${if (finishedCount == 1) "book" else "books"} finished in $readingSinceYear"
                         readingSinceYear != null -> "$finishedCount ${if (finishedCount == 1) "book" else "books"} finished since $readingSinceYear"
                         else -> "$finishedCount ${if (finishedCount == 1) "book" else "books"} finished"
                     },

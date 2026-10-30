@@ -1,4 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Nocturnal Reader</string>
+    <string name="empty_shelf">Start reading a book on your phone</string>
+    <string name="open">Open</string>
+    <string name="of_total">of %1$d</string>
+    <string name="page_short">p. %1$d</string>
+    <string name="goal_progress">%1$d of %2$d today</string>
+    <string name="goal_met">Goal met</string>
+    <string name="phase_reading">Reading</string>
+    <string name="phase_focus">Focus</string>
+    <string name="phase_break">Break</string>
+    <string name="on_phone">on phone</string>
+    <string name="on_watch">on watch</string>
+    <string name="minutes_short">%1$d min</string>
+
+    <string name="read">Read</string>
+    <string name="action_add_one">Add a page</string>
+    <string name="action_add_ten">Add ten pages</string>
+    <string name="action_voice_note">Dictate a note</string>
+    <string name="action_start_session">Start a reading session</string>
+    <string name="action_pause">Pause</string>
+    <string name="action_resume">Resume</string>
+    <string name="action_finish">Finish session</string>
+
+    <string name="finish_title">Save session?</string>
+    <string name="finish_summary">%1$s · %2$s</string>
+    <string name="discard">Discard</string>
+    <string name="save">Save</string>
+
+    <string name="session_channel">Reading session</string>
+    <string name="session_reading">Reading %1$s</string>
+    <string name="session_paused">Paused · %1$s</string>
+
+    <string name="complication_label">Reading goal</string>
+    <string name="complication_book">Book</string>
+    <string name="streak_complication_label">Reading streak</string>
+    <plurals name="streak_days">
+        <item quantity="one">%1$d-day streak</item>
+        <item quantity="other">%1$d-day streak</item>
+    </plurals>
+    <string name="plan_to_go">%1$d to go · by %2$s</string>
+    <string name="plan_on_track">On plan · by %1$s</string>
+    <string name="plan_overdue">Was due %1$s</string>
+    <string name="tile_plan_to_go">%1$d to go today</string>
+
+    <string name="read_for">Read for</string>
+    <string name="no_limit">No limit</string>
+    <string name="allow_on_time">Buzz on time when the screen is off</string>
+    <string name="times_up">Time\'s up</string>
+    <string name="times_up_text">Tap to save your session</string>
+    <string name="session_alert_channel">Reading timer alerts</string>
+    <string name="how_focused">How focused were you?</string>
+    <string name="focus_level">Focus %1$d of 5</string>
+    <string name="tile_label">Reading</string>
+    <plurals name="pages_today">
+        <item quantity="one">%1$d page today</item>
+        <item quantity="other">%1$d pages today</item>
+    </plurals>
+    <plurals name="pages_delta">
+        <item quantity="one">%1$+d page</item>
+        <item quantity="other">%1$+d pages</item>
+    </plurals>
+    <string name="tile_description">Your book, today\'s goal and quick page buttons</string>
 </resources>

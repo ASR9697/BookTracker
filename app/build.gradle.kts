@@ -51,6 +51,13 @@ android {
             // (never debug-signed — Play rejects debug certificates).
             signingConfig = if (keystorePropertiesFile.exists()) signingConfigs.getByName("release") else null
         }
+        // Release code (R8, not debuggable) signed with the debug key, so it installs
+        // over a debug build. Judge smoothness here: debug builds of Compose stutter.
+        create("profile") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
     }
     buildFeatures {
         compose = true

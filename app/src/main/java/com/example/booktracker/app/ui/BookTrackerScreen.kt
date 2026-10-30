@@ -133,10 +133,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.material.icons.automirrored.rounded.LibraryBooks
+import androidx.compose.material.icons.rounded.EditNote
+import androidx.compose.material.icons.rounded.Home
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -171,12 +177,16 @@ import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.Session
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 enum class LibraryViewMode { GRID, BOOKSHELF }
 
 /** The one destination that hosts the five main sections in a pager. */
 private const val MAIN_ROUTE = "main"
+
+/** Scroll (px per frame) that counts as meaning it, for hiding or showing the bottom bar. */
+private const val NAV_HIDE_SLOP = 2f
 // `page` is optional: the timer passes its live page, every other entry uses the book's.
 private const val SESSION_SAVE_ROUTE = "session_save/{bookId}?page={page}"
 /** How soon after one session another must start for the save screen to offer joining them. */
@@ -187,9 +197,9 @@ const val ADD_BOOK_ACTION = "action/addBook"
 
 /** The five main sections, in bottom-bar order. */
 private val MainTabs = listOf(
-    NavTab("home", "Home", Icons.Rounded.AutoStories),
-    NavTab("library", "Library", Icons.AutoMirrored.Rounded.MenuBook),
-    NavTab("memorize", "Notes", Icons.Rounded.Style),
+    NavTab("home", "Home", Icons.Rounded.Home),
+    NavTab("library", "Library", Icons.AutoMirrored.Rounded.LibraryBooks),
+    NavTab("memorize", "Notes", Icons.Rounded.EditNote),
     NavTab("stats", "Stats", Icons.Rounded.Insights),
     NavTab("profile", "Profile", Icons.Rounded.Person)
 )
@@ -242,9 +252,10 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
         .sortedByDescending { it.lastUpdated }
     var showAddDialog by remember { mutableStateOf(false) }
     var addQuery by remember { mutableStateOf("") }
-    // Hoisted so the Add book button can shrink once Home scrolls under it.
+    // Hoisted so Home keeps its place while you visit other sections; the header
+    // state lives beside it so a restored page never shows an open header over scrolled cards.
     val homeScroll = rememberScrollState()
-    val homeAtTop by remember { derivedStateOf { homeScroll.value == 0 } }
+    val homeHeader = androidx.compose.material3.rememberTopAppBarState()
     var pendingOutcome by remember { mutableStateOf<Pair<String, BookStatus>?>(null) }
     var showGoalDialog by remember { mutableStateOf(false) }
     var initialGoalType by remember { mutableStateOf(GoalType.YEARLY_BOOKS) }
@@ -277,6 +288,8 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
     // On the main screen the visible section acts as the route, so everything keyed
     // on "home", "library"... (top bar, Add button, gear) keeps working.
     val currentRoute = if (onMain) TAB_ORDER[mainPager.currentPage] else navRoute
+    // The section a swipe or tap has landed on; currentRoute flips halfway through the drag.
+    val settledRoute = if (onMain) TAB_ORDER[mainPager.settledPage] else navRoute
 
     val isTopLevelRoute = currentRoute in TOP_LEVEL_ROUTES
     // Phones: floating bottom bar. Tablets: a rail. Big windows: a labelled side drawer.
@@ -286,18 +299,27 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
     val showDrawer = isTopLevelRoute && widthTier == WidthTier.LARGE
     val openScanner: () -> Unit = { navController.navigate("scanner") { launchSingleTop = true } }
     val tabScope = rememberCoroutineScope()
+    // A far jump (Profile to Home) lands next to the target and slides only the last
+    // step, so the sections in between are never built just to be scrolled past.
+    val showSection: (Int) -> Unit = { page ->
+        tabScope.launch {
+            val from = mainPager.currentPage
+            if (abs(page - from) > 1) mainPager.scrollToPage(if (page > from) page - 1 else page + 1)
+            mainPager.animateScrollToPage(page, animationSpec = tween(Motion.LONG, easing = Motion.Emphasized))
+        }
+    }
     val navigateTopLevel: (String) -> Unit = { route ->
         val page = TAB_ORDER.indexOf(route)
         if (page >= 0) {
             if (navController.currentDestination?.route != MAIN_ROUTE) navController.popBackStack(MAIN_ROUTE, inclusive = false)
-            tabScope.launch { mainPager.animateScrollToPage(page, animationSpec = tween(Motion.LONG, easing = Motion.Emphasized)) }
+            showSection(page)
         } else {
             navController.navigate(route)
         }
     }
     // Back from any other section returns to Home first, as it did before the pager.
     BackHandler(enabled = onMain && mainPager.currentPage != 0) {
-        tabScope.launch { mainPager.animateScrollToPage(0, animationSpec = tween(Motion.LONG, easing = Motion.Emphasized)) }
+        showSection(0)
     }
     // The shelf's preview card sits where the Add button would; the button steps aside for it.
     var libraryOverlayOpen by remember { mutableStateOf(false) }
@@ -373,44 +395,46 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
         )
     }
 
-    // On phones Home's sky runs up behind a see-through bar; the other sections sit below a bar
-    // that tucks away as their content scrolls up and returns when it scrolls back.
-    val barOverlaysContent = onMain && widthTier == WidthTier.COMPACT
-    val homeOverSky = barOverlaysContent && currentRoute == "home"
-    val barScroll = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    val barUserName by viewModel.userName.collectAsState()
-    val homeFadePx = with(LocalDensity.current) { HOME_HEADER_FADE_DP.dp.toPx() }
-    LaunchedEffect(currentRoute) {
-        // Every section starts with the bar showing.
-        val from = barScroll.state.heightOffset
-        if (from != 0f) {
-            animate(from, 0f, animationSpec = tween(Motion.MEDIUM)) { value, _ -> barScroll.state.heightOffset = value }
+    // The bottom bar floats over the sections on phones: it slips away while you scroll
+    // down through a section and comes back as soon as you scroll up or change section,
+    // or when you push on past the end of the section, where scrolling up is the last thing you'd do.
+    var navHidden by remember { mutableStateOf(false) }
+    LaunchedEffect(settledRoute) { navHidden = false }
+    val navHider = remember {
+        object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: androidx.compose.ui.geometry.Offset,
+                available: androidx.compose.ui.geometry.Offset,
+                source: androidx.compose.ui.input.nestedscroll.NestedScrollSource
+            ): androidx.compose.ui.geometry.Offset {
+                if (consumed.y < -NAV_HIDE_SLOP) navHidden = true
+                else if (consumed.y > NAV_HIDE_SLOP) navHidden = false
+                else if (available.y < -NAV_HIDE_SLOP) navHidden = false
+                return androidx.compose.ui.geometry.Offset.Zero
+            }
         }
     }
-    val appName = androidx.compose.ui.res.stringResource(com.example.booktracker.app.R.string.app_name)
-    val barTitle = when {
-        currentRoute == "home" -> if (homeOverSky) greeting(barUserName) else appName
-        else -> MainTabs.firstOrNull { it.route == currentRoute }?.label ?: appName
+    val navSlide by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (navHidden && showBottomNav) 1f else 0f,
+        animationSpec = if (reduceMotion) tween(Motion.SHORT) else tween(Motion.MEDIUM, easing = Motion.Emphasized),
+        label = "navSlide"
+    )
+    val reviewDueForTab by viewModel.reviewQueue.collectAsState()
+    val avatarForTab by viewModel.avatar.collectAsState()
+    val nameForTab by viewModel.userName.collectAsState()
+    val navTabs = MainTabs.map { tab ->
+        when (tab.route) {
+            "memorize" -> tab.copy(badge = (reviewDueForTab?.size ?: 0) > 0)
+            "profile" -> tab.copy(image = { modifier ->
+                ProfileAvatar(avatarForTab, nameForTab, books, modifier, initialStyle = MaterialTheme.typography.labelLarge)
+            })
+            else -> tab
+        }
     }
 
     Scaffold(
-        modifier = if (homeOverSky) Modifier else Modifier.nestedScroll(barScroll.nestedScrollConnection),
-        topBar = {
-            if (isTopLevelRoute) {
-                AppTopBar(
-                    title = barTitle,
-                    overSky = homeOverSky,
-                    skyFade = { (homeScroll.value / homeFadePx).coerceIn(0f, 1f) },
-                    scrollBehavior = if (homeOverSky) null else barScroll,
-                    showSettings = currentRoute == "profile",
-                    onSearch = { navController.navigate("search") },
-                    onScan = openScanner,
-                    onSettings = { navController.navigate("settings") { launchSingleTop = true } }
-                )
-            }
-        },
         bottomBar = {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.fillMaxWidth().graphicsLayer { translationY = navSlide * size.height }) {
                 val activeTimerBook by viewModel.activeTimerBook.collectAsState()
                 val timerIsRunning by viewModel.timerIsRunning.collectAsState()
                 val timeLeftSeconds by viewModel.timeLeftSeconds.collectAsState()
@@ -453,45 +477,32 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
 
                 if (showBottomNav) {
                     FloatingNavBar(
-                        tabs = MainTabs,
+                        tabs = navTabs,
                         position = {
                             if (onMain) mainPager.currentPage + mainPager.currentPageOffsetFraction
                             else TAB_ORDER.indexOf(currentRoute).toFloat()
                         },
-                        onSelect = navigateTopLevel
+                        onSelect = navigateTopLevel,
+                        // Add book rides beside the bar where adding makes sense.
+                        onAdd = { showAddDialog = true }.takeIf {
+                            currentRoute == "home" || (currentRoute == "library" && !libraryOverlayOpen)
+                        }
                     )
                 }
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            // On tablets the rail or drawer carries Add book instead.
-            androidx.compose.animation.AnimatedVisibility(
-                visible = widthTier == WidthTier.COMPACT &&
-                    (currentRoute == "home" || (currentRoute == "library" && !libraryOverlayOpen)),
-                enter = androidx.compose.animation.scaleIn(Motion.press()) + fadeIn(),
-                exit = androidx.compose.animation.scaleOut(tween(Motion.SHORT)) + fadeOut(tween(Motion.SHORT))
-            ) {
-                ExtendedFloatingActionButton(
-                    onClick = { showAddDialog = true },
-                    expanded = currentRoute != "home" || homeAtTop,
-                    icon = { Icon(Icons.Rounded.Add, contentDescription = "Add book") },
-                    text = { Text("Add book") },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-        }
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
-        // The bar's own height, kept out of the Row while it floats over Home.
-        val barHeight = innerPadding.calculateTopPadding()
+        // Sections draw their own headers under the status bar, and on phones run on under
+        // the floating bottom bar, leaving room for it at the end of their scroll.
+        val navClearance = if (showBottomNav) innerPadding.calculateBottomPadding() else 0.dp
         Row(
             modifier = Modifier.fillMaxSize().padding(
                 start = innerPadding.calculateStartPadding(layoutDirection),
-                top = if (barOverlaysContent) 0.dp else barHeight,
+                top = if (onMain) 0.dp else innerPadding.calculateTopPadding(),
                 end = innerPadding.calculateEndPadding(layoutDirection),
-                bottom = innerPadding.calculateBottomPadding()
+                bottom = if (showBottomNav) 0.dp else innerPadding.calculateBottomPadding()
             )
         ) {
             if (showRail) {
@@ -582,10 +593,15 @@ androidx.compose.animation.SharedTransitionLayout {
                                                 modifier = Modifier.fillMaxSize()
                                             ) { page ->
                                                 // Home reaches up under the bar; the rest start below it.
-                                                val pageTop = if (barOverlaysContent && TAB_ORDER[page] != "home") barHeight else 0.dp
-                                                Box(Modifier.fillMaxSize().pagerDepth(mainPager, page, reduceMotion).padding(top = pageTop)) {
+                                                Box(
+                                                    Modifier
+                                                        .fillMaxSize()
+                                                        .pagerDepth(mainPager, page, reduceMotion, MaterialTheme.colorScheme.background)
+                                                        .nestedScroll(navHider)
+                                                ) {
+                                                CompositionLocalProvider(LocalNavBarClearance provides navClearance) {
                                                 // Only the settled page may own cover animations; see LocalHeroEnabled.
-                                                androidx.compose.runtime.CompositionLocalProvider(LocalHeroEnabled provides (page == mainPager.settledPage)) {
+                                                CompositionLocalProvider(LocalHeroEnabled provides (page == mainPager.settledPage)) {
                                                 when (TAB_ORDER[page]) {
                                                     "home" -> {
                                             val openSession by viewModel.openSession.collectAsState()
@@ -599,7 +615,8 @@ androidx.compose.animation.SharedTransitionLayout {
                                                 reviewStarted = homeReviewStates.isNotEmpty(),
                                                 onOpenReview = { navController.navigate("review") { launchSingleTop = true } },
                                                 scrollState = homeScroll,
-                                                behindBar = barOverlaysContent,
+                                                headerState = homeHeader,
+                                                onSearch = { navController.navigate("search") },
                                                 layout = homeLayout,
                                                 onEditHome = { navController.navigate("editHome") },
                                                 onOpenOwnership = {
@@ -670,6 +687,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                                 onChangeStatus = { book, status -> viewModel.changeStatus(book, status) },
                                                                 onSaveNote = { book, page, text, type, images -> viewModel.addNote(book.id, page, text, type, images) },
                                                                 onOverlayChange = { libraryOverlayOpen = it },
+                                                                onOpenWishlist = { navController.navigate("wishlist") { launchSingleTop = true } },
                                                                 onToggleWishlist = { book ->
                                                                     val adding = book.ownership != Ownership.WISHLIST
                                                                     viewModel.setOwnership(book, if (adding) Ownership.WISHLIST else Ownership.NONE)
@@ -798,10 +816,12 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             onOpenWishlist = { navController.navigate("wishlist") },
                                                             onOpenBook = { navController.navigate("book/${it.id}") },
                                                             onOpenWrapped = { navController.navigate("wrappedAnimated") },
+                                                            onOpenAppSettings = { navController.navigate("settings") { launchSingleTop = true } },
                                                             onUpdateName = viewModel::setUserName
                                                         )
             
                                         }
+                                                }
                                                 }
                                                 }
                                                 }
@@ -908,7 +928,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                     composable("bookshelf") {
                                         SubScreen(title = "Bookshelf", onBack = { navController.popBackStack() }) {
                                             VirtualBookshelfView(
-                                                books = books,
+                                                books = com.example.booktracker.app.analytics.WishlistEngine.onShelf(books),
                                                 onOpenBook = { navController.navigate("book/${it.id}") },
                                                 onStartReading = { navController.navigate("focus/${it.id}") },
                                                 modifier = Modifier.fillMaxSize(),
@@ -1057,9 +1077,11 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             yearlyGoal = yearly,
                                                             reminder = reminder,
                                                             finishedCount = finishedBooks.size,
-                                                            readingSinceYear = finishedBooks.minOfOrNull { it.completedAt }?.let {
+                                                            readingSinceYear = finishedBooks.map { it.completedAt }.filter { it > 0 }.minOrNull()?.let {
                                                                 java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).year
                                                             },
+                                                            avatar = avatarForTab,
+                                                            books = books,
                                                             driveConnected = driveConnected,
                                                             onOpenGoals = { navController.navigate("goals") { launchSingleTop = true } },
                                                             onExportCsv = { uri, onDone -> viewModel.exportCsv(context, uri, onDone) },
@@ -1537,7 +1559,18 @@ fun WeekBubbles(streak: StreakEngine.StreakInfo, modifier: Modifier = Modifier) 
             val isActive = streak.activeDays.contains(day)
             val isToday = day == today
             val isFuture = day.isAfter(today)
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // One spoken label per day, since the letter alone says nothing about the flame.
+            val dayName = day.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, locale)
+            val dayState = when {
+                isActive -> "read"
+                isFuture -> "still to come"
+                else -> "not read"
+            }
+            val spoken = if (isToday) "Today, $dayName, $dayState" else "$dayName, $dayState"
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.clearAndSetSemantics { contentDescription = spoken }
+            ) {
                 Box(
                     modifier = Modifier
                         .size(30.dp)
@@ -1598,7 +1631,8 @@ fun LibraryScreen(
     onChangeStatus: (Book, BookStatus) -> Unit = { _, _ -> },
     onSaveNote: (Book, Int, String, com.example.booktracker.shared.models.NoteType, List<String>) -> Unit = { _, _, _, _, _ -> },
     onOverlayChange: (Boolean) -> Unit = {},
-    onToggleWishlist: (Book) -> Unit = {}
+    onToggleWishlist: (Book) -> Unit = {},
+    onOpenWishlist: () -> Unit = {}
 ) {
     var noteFor by remember { mutableStateOf<Book?>(null) }
     val gridEntrance = com.example.booktracker.app.ui.animations.rememberEntranceState()
@@ -1630,6 +1664,10 @@ fun LibraryScreen(
     var showMoreMenu by remember { mutableStateOf(false) }
     var showCollectionMenu by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
+    // Wished-for books aren't on the shelf yet: they wait in the Wishlist tile, and only
+    // join the grid when the Ownership filter asks for them.
+    val shelf = remember(books) { com.example.booktracker.app.analytics.WishlistEngine.onShelf(books) }
+    val wished = remember(books) { com.example.booktracker.app.analytics.WishlistEngine.wishlist(books) }
 
     val epubPickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
@@ -1650,8 +1688,9 @@ fun LibraryScreen(
     }
     if (selectedOwnership != null && selectedOwnership !in ownershipCounts) selectedOwnership = null
 
-    val displayBooks = remember(books, selectedFilter, showFavoritesOnly, showLoansOnly, selectedCollection, selectedFormat, selectedOwnership, sortOrder) {
-        books.filter { book ->
+    val pool = if (selectedOwnership == Ownership.WISHLIST) books else shelf
+    val displayBooks = remember(pool, selectedFilter, showFavoritesOnly, showLoansOnly, selectedCollection, selectedFormat, selectedOwnership, sortOrder) {
+        pool.filter { book ->
             val statusMatches = when (selectedFilter) {
                 null -> true
                 BookStatus.TO_READ -> book.status.equals(BookStatus.TO_READ.name, ignoreCase = true) || book.status.equals("BACKLOG", ignoreCase = true)
@@ -1682,6 +1721,40 @@ fun LibraryScreen(
         }
     }
 
+    val readingCount = remember(shelf) { shelf.count { it.status.equals(BookStatus.READING.name, ignoreCase = true) } }
+    val noFilters = selectedFilter == null && !showFavoritesOnly && !showLoansOnly &&
+        selectedCollection == null && selectedFormat == null && selectedOwnership == null
+    val showWishTile = wished.isNotEmpty() && noFilters && viewMode == LibraryViewMode.GRID
+    SectionPage(
+        title = "Library",
+        line = when {
+            shelf.isEmpty() -> if (wished.isEmpty()) "Start your shelf" else "${wished.size} on your wishlist"
+            readingCount > 0 -> "${shelf.size} ${if (shelf.size == 1) "book" else "books"} · $readingCount reading"
+            else -> "${shelf.size} ${if (shelf.size == 1) "book" else "books"}"
+        },
+        below = {
+            SearchPill(
+                // Counts the shelf like the title does; wished-for books still turn up in results.
+                text = if (shelf.isEmpty()) "Search for a book" else "Search ${shelf.size} ${if (shelf.size == 1) "book" else "books"}",
+                onSearch = onSearch,
+                onScan = onScan,
+                modifier = Modifier.padding(top = 14.dp)
+            )
+        },
+        actions = { collapse ->
+            // The search field leaves with the big header; its icon takes over in the slim bar.
+            val shut by remember { derivedStateOf { collapse() > 0.6f } }
+            androidx.compose.animation.AnimatedVisibility(
+                visible = shut,
+                enter = fadeIn() + androidx.compose.animation.scaleIn(initialScale = 0.8f),
+                exit = fadeOut() + androidx.compose.animation.scaleOut(targetScale = 0.8f)
+            ) {
+                IconButton(onClick = onSearch) {
+                    Icon(Icons.Rounded.Search, contentDescription = "Search library")
+                }
+            }
+        }
+    ) {
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -1692,14 +1765,14 @@ fun LibraryScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             val filters = listOf(
-                null to "All (${books.size})",
-                BookStatus.READING to "${BookStatus.READING.label} (${books.count { it.status.equals(BookStatus.READING.name, ignoreCase = true) }})",
-                BookStatus.TO_READ to "${BookStatus.TO_READ.label} (${books.count { it.status.equals(BookStatus.TO_READ.name, ignoreCase = true) || it.status.equals("BACKLOG", ignoreCase = true) }})",
-                BookStatus.SHORTLIST to "${BookStatus.SHORTLIST.label} (${books.count { it.status.equals(BookStatus.SHORTLIST.name, ignoreCase = true) }})",
-                BookStatus.UP_NEXT to "${BookStatus.UP_NEXT.label} (${books.count { it.status.equals(BookStatus.UP_NEXT.name, ignoreCase = true) }})",
-                BookStatus.PAUSED to "${BookStatus.PAUSED.label} (${books.count { it.status.equals(BookStatus.PAUSED.name, ignoreCase = true) }})",
-                BookStatus.FINISHED to "${BookStatus.FINISHED.label} (${books.count { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) }})",
-                BookStatus.DNF to "${BookStatus.DNF.label} (${books.count { it.status.equals(BookStatus.DNF.name, ignoreCase = true) || it.status.equals(BookStatus.ABANDONED.name, ignoreCase = true) }})"
+                null to "All (${pool.size})",
+                BookStatus.READING to "${BookStatus.READING.label} (${pool.count { it.status.equals(BookStatus.READING.name, ignoreCase = true) }})",
+                BookStatus.TO_READ to "${BookStatus.TO_READ.label} (${pool.count { it.status.equals(BookStatus.TO_READ.name, ignoreCase = true) || it.status.equals("BACKLOG", ignoreCase = true) }})",
+                BookStatus.SHORTLIST to "${BookStatus.SHORTLIST.label} (${pool.count { it.status.equals(BookStatus.SHORTLIST.name, ignoreCase = true) }})",
+                BookStatus.UP_NEXT to "${BookStatus.UP_NEXT.label} (${pool.count { it.status.equals(BookStatus.UP_NEXT.name, ignoreCase = true) }})",
+                BookStatus.PAUSED to "${BookStatus.PAUSED.label} (${pool.count { it.status.equals(BookStatus.PAUSED.name, ignoreCase = true) }})",
+                BookStatus.FINISHED to "${BookStatus.FINISHED.label} (${pool.count { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) }})",
+                BookStatus.DNF to "${BookStatus.DNF.label} (${pool.count { it.status.equals(BookStatus.DNF.name, ignoreCase = true) || it.status.equals(BookStatus.ABANDONED.name, ignoreCase = true) }})"
             )
 
             filters.forEach { (status, label) ->
@@ -1924,8 +1997,8 @@ fun LibraryScreen(
         }
 
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            if (displayBooks.isEmpty()) {
-                if (books.isEmpty()) {
+            if (displayBooks.isEmpty() && !showWishTile) {
+                if (shelf.isEmpty()) {
                     // Library is completely empty
                     Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                         androidx.compose.material3.Surface(
@@ -2041,17 +2114,27 @@ fun LibraryScreen(
                     androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
                         // Three across on a phone; bigger covers on tablets.
                         columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(minSize = coverTileMinWidth()),
-                        contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 88.dp),
+                        contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp + LocalNavBarClearance.current),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
+                        if (showWishTile) {
+                            item(key = "wishlist") {
+                                WishlistTile(
+                                    wished = wished,
+                                    onClick = onOpenWishlist,
+                                    modifier = Modifier.animateItem().staggeredEntrance(gridEntrance, 0)
+                                )
+                            }
+                        }
+                        val firstBook = if (showWishTile) 1 else 0
                         itemsIndexed(displayBooks, key = { _, book -> book.id }) { index, book ->
                             LibraryGridCard(
                                 book = book,
                                 modifier = Modifier
                                     .animateItem()
-                                    .staggeredEntrance(gridEntrance, index),
+                                    .staggeredEntrance(gridEntrance, firstBook + index),
                                 onClick = { onOpenBook(book) },
                                 onStartReading = { onStartReading(book) },
                                 onDelete = { onDelete(book) },
@@ -2064,6 +2147,7 @@ fun LibraryScreen(
                 }
             }
         }
+    }
     }
     }
 }

@@ -134,16 +134,7 @@ fun AnalyticsScreen(
     }
     var monthlyTargetMode by remember { mutableStateOf(GoalType.MONTHLY_PAGES) }
 
-    val genreDistribution = remember(books) {
-        val distribution = mutableMapOf<String, Int>()
-        books.forEach { book ->
-            val tags = book.genres.ifEmpty { book.classification.tags }
-            tags.forEach { tag ->
-                distribution[tag] = (distribution[tag] ?: 0) + 1
-            }
-        }
-        distribution.toList().sortedByDescending { it.second }
-    }
+    val genreDistribution = remember(books) { AnalyticsEngine.genreMix(books) }
     val booksWithGenres = remember(books) { books.count { it.genres.isNotEmpty() || it.classification.tags.isNotEmpty() } }
     
     val formatDistribution = remember(books) {
@@ -157,11 +148,18 @@ fun AnalyticsScreen(
 
     val entrance = rememberEntranceState()
 
+    val pagesThisYear = remember(pagesByDay, today) { pagesByDay.filterKeys { it.year == today.year }.values.sum() }
+    SectionPage(
+        title = "Stats",
+        line = if (pagesThisYear > 0) String.format(java.util.Locale.getDefault(), "%,d pages read in %d", pagesThisYear, today.year)
+        else "Your reading, in numbers",
+        modifier = modifier
+    ) {
     // One column on a phone; on a tablet the cards sit side by side, two or three across.
     LazyVerticalStaggeredGrid(
         columns = StaggeredGridCells.Adaptive(minSize = 360.dp),
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp + LocalNavBarClearance.current),
         verticalItemSpacing = 24.dp,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -853,6 +851,7 @@ fun AnalyticsScreen(
             }
         }
     }
+    }
 }
 
 /** Average focus per time of day and per place, with the best of each called out. */
@@ -1085,6 +1084,10 @@ fun PieChart(
         MaterialTheme.colorScheme.tertiaryContainer,
     )
     
+    // The catch-all slice is neutral so it doesn't read as one more genre.
+    val otherColor = MaterialTheme.colorScheme.outline
+    fun colorAt(index: Int) = if (data[index].first == AnalyticsEngine.OTHER_GENRE) otherColor else colors[index % colors.size]
+
     val total = data.sumOf { it.second }.toFloat().coerceAtLeast(1f) // never NaN slices
     val proportions = data.map { it.second.toFloat() / total }
     val onSurface = MaterialTheme.colorScheme.onSurface
@@ -1112,7 +1115,7 @@ fun PieChart(
                 
                 proportions.forEachIndexed { index, proportion ->
                     val sweepAngle = proportion * 360f * animationProgress
-                    val color = colors[index % colors.size]
+                    val color = colorAt(index)
                     
                     drawArc(
                         color = color,
@@ -1135,7 +1138,7 @@ fun PieChart(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             data.forEachIndexed { index, (label, count) ->
-                val color = colors[index % colors.size]
+                val color = colorAt(index)
                 val percentage = ((count.toFloat() / total) * 100).roundToInt()
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(12.dp).background(color, CircleShape))

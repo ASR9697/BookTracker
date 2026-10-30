@@ -141,6 +141,8 @@ object GoalEngine {
                 "Year-end forecast appears after ${MIN_DAYS_FOR_PROJECTION} days of reading"
             projected > safeGoal -> "Projected to finish ${bookCount(projected)} by Dec 31 (+${projected - safeGoal} above target)"
             projected == safeGoal -> "Projected to reach exactly ${bookCount(projected)} by Dec 31"
+            // Within the on-track band a small gap gets magnified by the projection; don't call it short.
+            status == GoalPaceStatus.ON_TRACK -> "Projected to finish ${bookCount(projected)}, just shy of your ${bookCount(safeGoal)}"
             else -> "Projected to finish ${bookCount(projected)} (${safeGoal - projected} short of target)"
         }
 

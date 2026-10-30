@@ -280,6 +280,25 @@ object AnalyticsEngine {
             .groupingBy { it }.eachCount()
             .maxByOrNull { it.value }?.key
 
+    /** Label of the slice [genreMix] folds the smaller genres into. */
+    const val OTHER_GENRE = "Other"
+
+    /**
+     * Books per genre for the genre chart, largest first. Format tags are skipped
+     * as in [topGenre]. Past the top [keep], genres fold into one [OTHER_GENRE]
+     * slice so the chart stays readable; a single leftover genre keeps its own name.
+     */
+    fun genreMix(books: List<Book>, keep: Int = 6): List<Pair<String, Int>> {
+        val counts = books
+            .flatMap { it.genres }
+            .filter { tag -> tag.trim().removePrefix("#").trim().let { it.isNotEmpty() && it.lowercase() !in FORMAT_TAGS } }
+            .groupingBy { it }.eachCount()
+            .toList()
+            .sortedByDescending { it.second }
+        if (counts.size <= keep + 1) return counts
+        return counts.take(keep) + (OTHER_GENRE to counts.drop(keep).sumOf { it.second })
+    }
+
     /**
      * Short traits for the profile header, e.g. ["Night reader", "32-min sessions",
      * "loves Fantasy"]. Each trait is left out until there is data behind it.

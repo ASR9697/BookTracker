@@ -258,7 +258,7 @@ fun SessionResultScreen(
                 Text(
                     buildString {
                         append(if (sessionPages > 0) "$pageUnit ${result.startPage} → $endPage" else "$pageUnit $endPage")
-                        if (book.totalPages > 0) append(" · ${(progress * 100).roundToInt()}% through")
+                        if (book.totalPages > 0) append(" · ${(progress * 100).toInt()}% through")
                     },
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant

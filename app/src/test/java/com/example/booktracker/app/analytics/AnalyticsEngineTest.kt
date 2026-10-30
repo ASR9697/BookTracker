@@ -2,6 +2,7 @@ package com.example.booktracker.app.analytics
 
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
+import com.example.booktracker.shared.models.Classification
 import com.example.booktracker.shared.models.Session
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -177,5 +178,29 @@ class AnalyticsEngineTest {
         )
         assertTrue(AnalyticsEngine.hasYearToReview(listOf(finished), emptyList(), 2026, zone))
         assertFalse(AnalyticsEngine.hasYearToReview(listOf(finished), emptyList(), 2027, zone))
+    }
+
+    private fun tagged(vararg tags: String) =
+        Book(id = tags.joinToString(), title = "T", isbn = null, classification = Classification(emptyList(), tags.toList()))
+
+    @Test
+    fun `genre mix folds the long tail into Other and skips format tags`() {
+        val books = listOf(
+            tagged("#Audiobook", "#Nonfiction", "#Psychology"),
+            tagged("#Nonfiction", "#Philosophy"),
+            tagged("A", "B", "C", "D", "E")
+        )
+        val mix = AnalyticsEngine.genreMix(books, keep = 3)
+        assertEquals(listOf("#Nonfiction" to 2), mix.take(1))
+        assertEquals(4, mix.size)
+        // Top 3 are Nonfiction, Psychology and Philosophy; A to E fold into Other.
+        assertEquals(AnalyticsEngine.OTHER_GENRE to 5, mix.last())
+        assertTrue(mix.none { it.first == "#Audiobook" })
+    }
+
+    @Test
+    fun `genre mix keeps a lone leftover genre by name`() {
+        val mix = AnalyticsEngine.genreMix(listOf(tagged("A", "B", "C")), keep = 2)
+        assertEquals(listOf("A", "B", "C"), mix.map { it.first })
     }
 }

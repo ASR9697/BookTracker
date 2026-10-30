@@ -44,8 +44,8 @@ object ReadingGenome {
             }
         }
 
-        // Find candidates
-        val candidates = books.filter {
+        // Find candidates: books on the reader's own pile, not ones still on the wishlist.
+        val candidates = WishlistEngine.onShelf(books).filter {
             it.status == BookStatus.TO_READ.name ||
                 it.status == BookStatus.SHORTLIST.name ||
                 it.status == BookStatus.UP_NEXT.name

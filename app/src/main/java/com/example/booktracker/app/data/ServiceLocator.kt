@@ -13,9 +13,6 @@ object ServiceLocator {
     @Volatile
     private var database: AppDatabase? = null
 
-    private val _timerControlEvents = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 5)
-    val timerControlEvents: kotlinx.coroutines.flow.SharedFlow<String> = _timerControlEvents
-
     // Global Timer State
     val timerBookId = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val timerBookTitle = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
@@ -59,10 +56,6 @@ object ServiceLocator {
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     fun consumeTimerExpired() {
         _timerExpiredEvents.resetReplayCache()
-    }
-
-    fun emitTimerControlEvent(action: String) {
-        _timerControlEvents.tryEmit(action)
     }
 
     fun repository(context: Context): BookRepository =

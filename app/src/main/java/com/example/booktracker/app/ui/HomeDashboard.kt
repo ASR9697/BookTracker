@@ -48,6 +48,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -60,7 +61,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.automirrored.rounded.NoteAdd
 import androidx.compose.material.icons.rounded.Add
@@ -78,8 +83,11 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarState
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -106,6 +114,7 @@ import androidx.compose.ui.unit.dp
 import com.example.booktracker.app.analytics.AnalyticsEngine
 import com.example.booktracker.app.analytics.GoalEngine
 import com.example.booktracker.app.analytics.StreakEngine
+import com.example.booktracker.app.analytics.WishlistEngine
 import com.example.booktracker.app.data.HomeLayout
 import com.example.booktracker.app.data.HomeSection
 import com.example.booktracker.shared.models.Book
@@ -136,7 +145,7 @@ private const val FRESH_LOG_WINDOW_MS = 5 * 60_000L
 /** How tall the sky behind the greeting is, below the app bar. */
 private val SKY_HEIGHT = 200.dp
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun HomeDashboard(
     books: List<Book>,
@@ -168,7 +177,8 @@ fun HomeDashboard(
     reviewStarted: Boolean = false,
     onOpenReview: () -> Unit = {},
     scrollState: ScrollState = rememberScrollState(),
-    behindBar: Boolean = false,
+    headerState: TopAppBarState = rememberTopAppBarState(),
+    onSearch: () -> Unit = {},
     banner: @Composable () -> Unit = {}
 ) {
     val zone = remember { ZoneId.systemDefault() }
@@ -218,7 +228,7 @@ fun HomeDashboard(
     }
     val upNext = remember(books) {
         val order = listOf(BookStatus.UP_NEXT.name, BookStatus.SHORTLIST.name, BookStatus.TO_READ.name, "BACKLOG")
-        books.filter { b -> order.any { it.equals(b.status, ignoreCase = true) } }
+        WishlistEngine.onShelf(books).filter { b -> order.any { it.equals(b.status, ignoreCase = true) } }
             .sortedWith(compareBy<Book> { b -> order.indexOfFirst { it.equals(b.status, ignoreCase = true) } }
                 .thenByDescending { it.lastUpdated })
             .take(12)
@@ -504,10 +514,11 @@ fun HomeDashboard(
                                 onClick = onOpenCalendar,
                                 modifier = Modifier.weight(1f)
                             )
+                            val shelfCount = WishlistEngine.onShelf(books).size
                             ShortcutTile(
                                 icon = Icons.Rounded.ViewWeek,
                                 title = "Bookshelf",
-                                subtitle = "${books.size} ${if (books.size == 1) "book" else "books"}",
+                                subtitle = "$shelfCount ${if (shelfCount == 1) "book" else "books"}",
                                 onClick = onOpenBookshelf,
                                 modifier = Modifier.weight(1f)
                             )
@@ -537,61 +548,88 @@ fun HomeDashboard(
             }
     }
 
-    // With the bar floating over Home, the sky and greeting start at the top of the screen.
-    val barInset = if (behindBar) WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp else 0.dp
+    // The sky starts at the top of the screen, behind the header's slim bar.
+    val skyTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + SECTION_BAR_HEIGHT
     val density = LocalDensity.current
-    val fadePx = with(density) { HOME_HEADER_FADE_DP.dp.toPx() }
-    val skyGonePx = with(density) { (barInset + SKY_HEIGHT).toPx() * 2f }
+    val skyGonePx = with(density) { (skyTop + SKY_HEIGHT).toPx() * 2f }
     val skyOnScreen by remember { derivedStateOf { scrollState.value < skyGonePx } }
+    val homeSky = LocalAppPrefs.current.homeSky
+
+    // What today looks like so far, in the words under the greeting.
+    val goal = streak.dailyGoal
+    val pagesToday = streak.pagesToday
+    val todayLine = when {
+        goal > 0 && pagesToday >= goal -> "Goal met · ${pages(pagesToday)} today"
+        goal > 0 && pagesToday > 0 -> "${pages(goal - pagesToday)} to today's goal"
+        goal > 0 -> "${pages(goal)} makes today count"
+        pagesToday > 0 -> "${pages(pagesToday)} today"
+        else -> null
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
-    // Behind the scrolling content, moving at half its speed and fading as it leaves.
-    if (LocalAppPrefs.current.homeSky) TimeOfDaySky(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(barInset + SKY_HEIGHT)
-            .graphicsLayer {
-                translationY = -scrollState.value * 0.5f
-                alpha = 1f - (scrollState.value / skyGonePx).coerceIn(0f, 1f)
-            },
-        bodyTop = barInset + 24.dp,
-        active = LocalHeroEnabled.current && skyOnScreen
-    )
+    SectionPage(
+        state = headerState,
+        seeThrough = homeSky,
+        backdrop = { collapsedPx ->
+            // Behind the header and cards, drifting at half the scroll's speed and fading as it leaves.
+            if (homeSky) TimeOfDaySky(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(skyTop + SKY_HEIGHT)
+                    .graphicsLayer {
+                        val moved = collapsedPx() + scrollState.value
+                        translationY = -collapsedPx() - scrollState.value * 0.5f
+                        alpha = 1f - (moved / skyGonePx).coerceIn(0f, 1f)
+                    },
+                bodyTop = skyTop + 24.dp,
+                active = LocalHeroEnabled.current && skyOnScreen
+            )
+        },
+        expanded = {
+            Column {
+                SectionTitle(greeting(userName), todayLine, Modifier.staggeredEntrance(entrance, 0))
+                Text(
+                    subtitle(readingBooks.isEmpty()),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.staggeredEntrance(entrance, 1)
+                )
+            }
+        },
+        // Scrolled down, the greeting gives way to today at a glance: the streak and the day's goal.
+        collapsed = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatusChip(onClick = onOpenStreak) {
+                    LivingFlame(streak = streak.currentStreak, baseSize = 18.dp)
+                    Text("${streak.currentStreak}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                }
+                if (goal > 0) {
+                    StatusChip(onClick = { onEditGoal(GoalType.DAILY_PAGES) }) {
+                        CircularProgressIndicator(
+                            progress = { (pagesToday.toFloat() / goal).coerceIn(0f, 1f) },
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.5.dp,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                            gapSize = 0.dp
+                        )
+                        Text("$pagesToday / $goal", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        },
+        actions = {
+            IconButton(onClick = onSearch) {
+                Icon(Icons.Rounded.Search, contentDescription = "Search library")
+            }
+        }
+    ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .padding(bottom = 96.dp),
+            .padding(top = 4.dp, bottom = 16.dp + LocalNavBarClearance.current),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Scrolls slower than the cards and shrinks away; on phones the bar's title takes over.
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .graphicsLayer {
-                    val f = (scrollState.value / fadePx).coerceIn(0f, 1f)
-                    translationY = scrollState.value * 0.35f
-                    alpha = if (behindBar) 1f - f else 1f
-                    scaleX = 1f - 0.08f * f
-                    scaleY = scaleX
-                    transformOrigin = TransformOrigin(0f, 0.5f)
-                }
-                .padding(start = 20.dp, end = 20.dp, top = barInset + (if (behindBar) 8.dp else 12.dp), bottom = 8.dp)
-        ) {
-            Text(
-                greeting(userName),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.staggeredEntrance(entrance, 0)
-            )
-            Text(
-                subtitle(readingBooks.isEmpty()),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.staggeredEntrance(entrance, 1)
-            )
-        }
-
         Box(modifier = if (twoColumns) Modifier.fillMaxWidth() else Modifier.readableWidth()) { banner() }
 
         val sections = layout.visible.withIndex().toList()
@@ -626,6 +664,7 @@ fun HomeDashboard(
             Text("Edit home screen")
         }
     }
+    }
 
         if (celebrating) {
             ConfettiExplosion(
@@ -640,7 +679,7 @@ fun HomeDashboard(
             visible = celebrating,
             enter = slideInVertically(tween(Motion.MEDIUM, easing = Motion.EmphasizedDecelerate)) { -it } + fadeIn(),
             exit = fadeOut(tween(Motion.MEDIUM)),
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = barInset + 8.dp)
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = skyTop + 8.dp)
         ) {
             Surface(
                 shape = RoundedCornerShape(50),
@@ -788,7 +827,8 @@ private fun CurrentBookCard(
                     )
                 }
                 Spacer(Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f).height(132.dp)) {
+                // At least the cover's height, but free to grow with large text.
+                Column(modifier = Modifier.weight(1f).heightIn(min = 132.dp)) {
                     Text(
                         book.title,
                         style = MaterialTheme.typography.titleMedium,
@@ -1010,6 +1050,8 @@ private fun RingHeader(title: String, fraction: Float) {
         }
     }
     val shownPercent by animateCountUp((fraction * 100).toInt())
+    // The ring grows with the font scale so "140%" still fits inside it.
+    val ringSize = 48.dp * LocalDensity.current.fontScale.coerceAtLeast(1f)
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             title,
@@ -1018,7 +1060,7 @@ private fun RingHeader(title: String, fraction: Float) {
             modifier = Modifier.weight(1f)
         )
         Box(
-            modifier = Modifier.size(48.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value },
+            modifier = Modifier.size(ringSize).graphicsLayer { scaleX = pop.value; scaleY = pop.value },
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -1132,4 +1174,21 @@ private fun yearPace(finished: Int, goal: Int, today: LocalDate, trackingStart: 
         GoalEngine.GoalPaceStatus.BEHIND -> "$diff behind pace"
         GoalEngine.GoalPaceStatus.ON_TRACK -> "On track"
     }
+}
+
+private fun pages(n: Int) = if (n == 1) "1 page" else "$n pages"
+
+/** A tappable capsule in Home's slim bar. */
+@Composable
+private fun StatusChip(onClick: () -> Unit, content: @Composable RowScope.() -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        content = content
+    )
 }

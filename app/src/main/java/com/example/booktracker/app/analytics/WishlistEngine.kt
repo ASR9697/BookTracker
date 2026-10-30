@@ -24,6 +24,12 @@ object WishlistEngine {
 
     fun wishlist(books: List<Book>): List<Book> = books.filter { it.ownership == Ownership.WISHLIST }
 
+    /**
+     * Books that are actually the reader's: everything but the wishlist. A wished-for
+     * book isn't on the shelf yet, so piles, counts and "what next" lists leave it out.
+     */
+    fun onShelf(books: List<Book>): List<Book> = books.filter { it.ownership != Ownership.WISHLIST }
+
     fun info(book: Book): WishInfo = book.wish ?: WishInfo(addedAt = book.dateAdded)
 
     fun sorted(list: List<Book>, sort: Sort): List<Book> = when (sort) {

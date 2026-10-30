@@ -96,6 +96,7 @@
                 <data android:scheme="wear" android:host="*" android:pathPrefix="/progress" />
                 <data android:scheme="wear" android:host="*" android:pathPrefix="/timer_control" />
                 <data android:scheme="wear" android:host="*" android:pathPrefix="/note" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/session" />
             </intent-filter>
         </service>
 
