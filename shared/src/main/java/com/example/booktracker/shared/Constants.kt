@@ -65,7 +65,6 @@ object Constants {
     const val KEY_TIMER_SECONDS = "timer_seconds"
     /** While running, epoch ms the watch counts from: a countdown's end, or a stopwatch's start. */
     const val KEY_TIMER_ANCHOR = "timer_anchor"
-    const val KEY_TIMER_PHASE = "timer_phase_name" // "WORK", "BREAK"
     const val KEY_TIMER_MODE = "timer_mode" // "COUNTDOWN", "STOPWATCH"
     const val KEY_TIMER_BOOK_ID = "timer_book_id"
     const val KEY_TIMER_CONTROL_ACTION = "timer_action"

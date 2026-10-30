@@ -17,7 +17,6 @@ import com.example.booktracker.app.data.ServiceLocator
 import com.example.booktracker.app.format.FormatAdaptabilityLayer
 import com.example.booktracker.app.notifications.Notifications
 import com.example.booktracker.app.ui.TimerMode
-import com.example.booktracker.app.ui.TimerPhase
 import com.example.booktracker.app.widget.DeepLink
 import com.example.booktracker.app.widget.WidgetArt
 import java.util.Locale
@@ -113,7 +112,6 @@ class TimerService : Service() {
             }
         }
 
-        serviceScope.launch { ServiceLocator.timerPhase.collect { updateNotification() } }
         serviceScope.launch { ServiceLocator.timerMode.collect { updateNotification() } }
         serviceScope.launch { ServiceLocator.timerBookTitle.collect { updateNotification() } }
         serviceScope.launch { ServiceLocator.timerIsRunning.collect { updateNotification() } }
@@ -304,7 +302,6 @@ class TimerService : Service() {
         val bookTitle = shownTitle()
         val countdown = mode == TimerMode.COUNTDOWN
         val timeValue = if (countdown) ServiceLocator.timeLeftSeconds.value else ServiceLocator.elapsedSeconds.value
-        val phase = ServiceLocator.timerPhase.value
         val session = info?.takeIf { it.bookId == ServiceLocator.timerBookId.value }
         val expired = countdown && timeValue <= 0
 
@@ -314,8 +311,7 @@ class TimerService : Service() {
             bookTitle != null -> "Paused: $bookTitle"
             !isRunning -> "Session paused"
             !countdown -> "Reading session"
-            phase == TimerPhase.WORK -> "Deep focus"
-            else -> "Take a break"
+            else -> "Deep focus"
         }
         // Position first, since it's what the actions change; the clock sits in the header.
         val pageLine = session?.let {
@@ -415,7 +411,6 @@ object TimerPersistence {
         settings.saveTimerState(
             mode = ServiceLocator.timerMode.value.name,
             bookId = bookId,
-            phase = ServiceLocator.timerPhase.value.name,
             isRunning = running,
             timeLeft = ServiceLocator.timeLeftSeconds.value,
             elapsed = ServiceLocator.elapsedSeconds.value,

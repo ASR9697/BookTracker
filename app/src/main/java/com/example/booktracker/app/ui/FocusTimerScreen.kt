@@ -57,7 +57,6 @@ import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.NoteType
 import java.util.Locale
 
-enum class TimerPhase { WORK, BREAK }
 enum class TimerMode { COUNTDOWN, STOPWATCH }
 
 private const val STILL_READING_AFTER_SECONDS = 30 * 60
@@ -90,7 +89,6 @@ fun FocusTimerScreen(
     onAddNote: (page: Int, text: String, type: NoteType, images: List<String>) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val phase by viewModel.timerPhase.collectAsState()
     val mode by viewModel.timerMode.collectAsState()
     val isRunning by viewModel.timerIsRunning.collectAsState()
     // Paper-book readers set the phone down; keep the display awake while the timer is open.
@@ -106,9 +104,9 @@ fun FocusTimerScreen(
     val volume by viewModel.timerVolume.collectAsState()
     val completedSessions by viewModel.completedSessions.collectAsState()
     val openSession by viewModel.openSession.collectAsState()
-    // Re-read when the phase or preset changes so the countdown ring has the right length.
+    // Re-read when the preset changes so the countdown ring has the right length.
     val workMinutes by viewModel.workMinutes.collectAsState()
-    val countdownTotal = remember(phase, workMinutes, timeLeftSeconds == 0) { viewModel.countdownTotalSeconds() }
+    val countdownTotal = remember(workMinutes, timeLeftSeconds == 0) { viewModel.countdownTotalSeconds() }
     val countdownDone = mode == TimerMode.COUNTDOWN && timeLeftSeconds <= 0
     val notStarted = !isRunning && !countdownDone &&
         (if (mode == TimerMode.STOPWATCH) elapsedSeconds == 0 else timeLeftSeconds >= countdownTotal)
@@ -412,7 +410,6 @@ fun FocusTimerScreen(
             Text(
                 text = when {
                     countdownDone -> "Time's up. Tap to save your session"
-                    phase == TimerPhase.BREAK && isRunning -> "Break. Rest your eyes"
                     isRunning && goalReached -> "Page goal reached · keep going if you like"
                     isRunning && livePaceStr != null -> "Reading · $livePaceStr"
                     isRunning && bookSpeedStr != null -> "Reading · usually $bookSpeedStr"
@@ -474,7 +471,7 @@ fun FocusTimerScreen(
                             goalPages != null -> (sessionDelta.toFloat() / goalPages).coerceIn(0f, 1f)
                             else -> null
                         },
-                        ringColor = if (phase == TimerPhase.BREAK) Color(0xFF6EE7A0) else onBackground,
+                        ringColor = onBackground,
                         foreground = onBackground,
                         background = background,
                         glow = if (isRunning) breath else 0f,
@@ -490,7 +487,6 @@ fun FocusTimerScreen(
                     // after that it's shown for reference.
                     val countdownLabel = when {
                         mode == TimerMode.STOPWATCH -> "Set countdown"
-                        phase == TimerPhase.BREAK -> "Break · ${countdownTotal / 60} min"
                         else -> "${countdownTotal / 60} min countdown"
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {

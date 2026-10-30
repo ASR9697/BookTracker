@@ -113,12 +113,12 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **NoteImageStore.kt** (116) - Photos attached to notes live in filesDir/note_images as downscaled JPEGs, referenced from notes as "file://" URIs, l...
   - types: NoteImageStore:20
   - fun: .dir:29, .newCaptureFile:32, .import:39, .writeUpright:47, .saveBitmap:69, .localFile:76, .sweepOrphans:86, .sampleSize:92
-- **ServiceLocator.kt** (96) - Minimal manual DI.
+- **ServiceLocator.kt** (95) - Minimal manual DI.
   - types: ServiceLocator:12
-  - fun: .setTimerRunning:33, .notifyTimerExpired:52, .consumeTimerExpired:57, .repository:61, .settings:64, .dndManager:70, .wipeLibrary:80
-- **SettingsRepository.kt** (402) - User preferences: daily page goal (streaks + analytics) and yearly books goal.
+  - fun: .setTimerRunning:32, .notifyTimerExpired:51, .consumeTimerExpired:56, .repository:60, .settings:63, .dndManager:69, .wipeLibrary:79
+- **SettingsRepository.kt** (394) - User preferences: daily page goal (streaks + analytics) and yearly books goal.
   - types: ThemeMode:21, AppPalette:26, ReminderSettings:38, AppPrefs:48, SettingsRepository:104
-  - fun: hourInWindow:41, .isQuiet:98, .isNocturnal:100, .setReminder:191, .setDailyGoal:199, .setYearlyGoal:200, .setMonthlyGoalPages:201, .setMonthlyGoalBooks:202, .setDndDuringSession:203, .setThemeMode:204, .setUseDynamicColor:205, .setAppPalette:206, .setUserName:207, .setWorkMinutes:208, .setPreferredTimerMode:209, .setBreakMinutes:210, .setDayStartsAtHour:211, .setUseAppLock:212, .setHomeLayout:213, .setAvatar:214, .setHapticsEnabled:215, .setReduceMotion:216, .setKeepScreenOn:217, .setDriveSyncEnabled:218, .setDriveLastSync:219, .saveTimerState:231, .clearTimerState:255, .markBadgesSeen:275, .updatePrefs:352, .backupSettings:388
+  - fun: hourInWindow:41, .isQuiet:98, .isNocturnal:100, .setReminder:188, .setDailyGoal:196, .setYearlyGoal:197, .setMonthlyGoalPages:198, .setMonthlyGoalBooks:199, .setDndDuringSession:200, .setThemeMode:201, .setUseDynamicColor:202, .setAppPalette:203, .setUserName:204, .setWorkMinutes:205, .setPreferredTimerMode:206, .setDayStartsAtHour:207, .setUseAppLock:208, .setHomeLayout:209, .setAvatar:210, .setHapticsEnabled:211, .setReduceMotion:212, .setKeepScreenOn:213, .setDriveSyncEnabled:214, .setDriveLastSync:215, .saveTimerState:226, .clearTimerState:248, .markBadgesSeen:267, .updatePrefs:344, .backupSettings:380
 
 ## app/data/bookmory
 `app/src/main/java/com/example/booktracker/app/data/bookmory/`
@@ -208,9 +208,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 ## app/service - Foreground reading-timer service
 `app/src/main/java/com/example/booktracker/app/service/`
 
-- **TimerService.kt** (428)
-  - types: TimerService:34, TimerPersistence:406
-  - fun: .save:407
+- **TimerService.kt** (423)
+  - types: TimerService:33, TimerPersistence:402
+  - fun: .save:403
 
 ## app/sync - Phone side of Wear OS sync
 `app/src/main/java/com/example/booktracker/app/sync/`
@@ -227,9 +227,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **SyncMerge.kt** (91) - Three-way merge of the library between this phone and the copy in Drive, against the copy both last agreed on (the ba...
   - types: SyncMerge:15, .Changes:62
   - fun: .merge:17, .mergeById:34, .changes:76
-- **WearBridge.kt** (208) - Keeps the watch in step with the phone for as long as the app process lives, which covers the UI, the timer service a...
-  - types: WearBridge:34
-  - fun: .start:74, .applyTimerControl:147
+- **WearBridge.kt** (203) - Keeps the watch in step with the phone for as long as the app process lives, which covers the UI, the timer service a...
+  - types: WearBridge:33
+  - fun: .start:72, .applyTimerControl:143
 - **WearSyncService.kt** (107) - Receives data items from the watch (page progress, dictated margin notes, sessions timed on the wrist and timer taps)...
   - types: WearSyncService:20
 
@@ -263,13 +263,13 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: EditBookDialog:80, LogSessionDialog:328, PastDatePickerDialog:436, Book.isEnded:467
 - **BookQuickActionsSheet.kt** (153) - What a long-press on a cover opens: the cover lifts into view with the book's title, then the things you'd want to do...
   - fun: BookQuickActionsSheet:42
-- **BookTrackerScreen.kt** (2260)
+- **BookTrackerScreen.kt** (2258)
   - types: LibraryViewMode:184, LibrarySort:208, SilentHaptics:242
-  - fun: BookTrackerApp:224, BookTrackerAppContent:248, WeekBubbles:1561, LibraryScreen:1635, formatElapsed:2161, SubScreen:2176, TimerMiniPlayer:2191
-  - nav routes: editHome:833, wishlist:839, owned/{ownership}:875, calendar:908, bookshelf:930, epubReader/{uri}:941, scanner:948, privacy:973, achievements:976, wrappedAnimated:987, wrapped:1003, planner:1019, book/{bookId}:1028, history:1042, settings:1055, streak:1136, goals:1151, finished:1193, journey_map:1207, search:1218, focus/{bookId}:1228, session_result/{bookId}:1333, review:1361, tagTidy:1380, vocabulary:1385, shelfScan:1400, tbr_swipe:1416
-- **BookTrackerViewModel.kt** (1286)
-  - types: DriveSyncState:75, .Idle:76, .Syncing:77, .NeedsConsent:78, .Done:79, .Failed:80, BookTrackerViewModel:83, .SessionResult:853
-  - fun: .clearDriveStatus:154, .setHapticsEnabled:216, .setReduceMotion:217, .setKeepScreenOn:218, .updatePrefs:224, .finishWelcome:242, .exportCsv:245, .backupNow:258, .deleteAllData:273, .openRoute:442, .consumeRoute:446, .gradeReview:450, .saveWord:459, .deleteWord:468, .setFinishBy:472, .syncDrive:477, .driveConsentShown:490, .onDriveConsent:494, .disconnectDrive:527, .setAudiobook:536, .logListening:541, .setAudioPosition:548, .addShelfBooks:553, .shareNote:574, .addScannedBook:578, .importCsv:605, .importBookmory:617, .promote:631, .promoteToReading:641, .pauseBook:647, .changeStatus:657, .toggleFavorite:667, .addProgress:671, .recordLoan:675, .markLoanReturned:684, .tidyTag:699, .updateBookDetails:708, .setFormat:720, .setOwnership:724, .setWish:738, .gotWished:749, .addToWishlist:763, .setPurchases:786, .finishBook:799, .readAgain:803, .setProgress:807, .setCollections:811, .markDnf:815, .startSession:819, .startFocus:829, .saveSession:872, .discardOpenSession:920, .leaveUnstartedFocus:936, .logManualSession:951, .delete:957, .deleteSession:964, .updateSession:968, .restore:973, .setHomeLayout:980, .setUserName:984, .setAvatarPhoto:989, .setAvatarCover:997, .clearAvatar:1004, .setDailyGoal:1011, .setYearlyGoal:1015, .setMonthlyGoalPages:1019, .setMonthlyGoalBooks:1023, .setDndDuringSession:1027, .setThemeMode:1031, .setUseDynamicColor:1035, .setAppPalette:1039, .setReminder:1043, .planBook:1047, .setTimerBook:1057, .setTimerPhase:1072, .setTimerMode:1095, .setCustomWorkMinutes:1109, .countdownTotalSeconds:1119, .setTimerRunning:1128, .pauseUnattended:1141, .setPageTarget:1153, .setWorkMinutes:1162, .setBreakMinutes:1170, .setDayStartsAtHour:1177, .setUseAppLock:1181, .setNoiseType:1185, .setTimerVolume:1193, .sessionsFor:1198, .notesFor:1201, .addNote:1203, .updateNote:1213, .toggleNoteFavorite:1217, .deleteNote:1221, .searchLibrary:1225, .exportBackup:1228, .importBackup:1245
+  - fun: BookTrackerApp:224, BookTrackerAppContent:248, WeekBubbles:1559, LibraryScreen:1633, formatElapsed:2159, SubScreen:2174, TimerMiniPlayer:2189
+  - nav routes: editHome:831, wishlist:837, owned/{ownership}:873, calendar:906, bookshelf:928, epubReader/{uri}:939, scanner:946, privacy:971, achievements:974, wrappedAnimated:985, wrapped:1001, planner:1017, book/{bookId}:1026, history:1040, settings:1053, streak:1134, goals:1149, finished:1191, journey_map:1205, search:1216, focus/{bookId}:1226, session_result/{bookId}:1331, review:1359, tagTidy:1378, vocabulary:1383, shelfScan:1398, tbr_swipe:1414
+- **BookTrackerViewModel.kt** (1255)
+  - types: DriveSyncState:75, .Idle:76, .Syncing:77, .NeedsConsent:78, .Done:79, .Failed:80, BookTrackerViewModel:83, .SessionResult:845
+  - fun: .clearDriveStatus:154, .setHapticsEnabled:216, .setReduceMotion:217, .setKeepScreenOn:218, .updatePrefs:224, .finishWelcome:242, .exportCsv:245, .backupNow:258, .deleteAllData:273, .openRoute:435, .consumeRoute:439, .gradeReview:443, .saveWord:452, .deleteWord:461, .setFinishBy:465, .syncDrive:470, .driveConsentShown:483, .onDriveConsent:487, .disconnectDrive:520, .setAudiobook:529, .logListening:534, .setAudioPosition:541, .addShelfBooks:546, .shareNote:567, .addScannedBook:571, .importCsv:598, .importBookmory:610, .promote:624, .promoteToReading:634, .pauseBook:640, .changeStatus:650, .toggleFavorite:660, .addProgress:664, .recordLoan:668, .markLoanReturned:677, .tidyTag:692, .updateBookDetails:701, .setFormat:713, .setOwnership:717, .setWish:731, .gotWished:742, .addToWishlist:756, .setPurchases:779, .finishBook:792, .readAgain:796, .setProgress:800, .setCollections:804, .markDnf:808, .startSession:812, .startFocus:822, .saveSession:864, .discardOpenSession:912, .leaveUnstartedFocus:928, .logManualSession:943, .delete:949, .deleteSession:956, .updateSession:960, .restore:965, .setHomeLayout:972, .setUserName:976, .setAvatarPhoto:981, .setAvatarCover:989, .clearAvatar:996, .setDailyGoal:1003, .setYearlyGoal:1007, .setMonthlyGoalPages:1011, .setMonthlyGoalBooks:1015, .setDndDuringSession:1019, .setThemeMode:1023, .setUseDynamicColor:1027, .setAppPalette:1031, .setReminder:1035, .planBook:1039, .setTimerBook:1049, .setTimerMode:1079, .setCustomWorkMinutes:1093, .countdownTotalSeconds:1101, .setTimerRunning:1104, .pauseUnattended:1117, .setPageTarget:1129, .setWorkMinutes:1138, .setDayStartsAtHour:1146, .setUseAppLock:1150, .setNoiseType:1154, .setTimerVolume:1162, .sessionsFor:1167, .notesFor:1170, .addNote:1172, .updateNote:1182, .toggleNoteFavorite:1186, .deleteNote:1190, .searchLibrary:1194, .exportBackup:1197, .importBackup:1214
 - **BookVictoryCardDialog.kt** (901) - Interactive Single Book "Finished Wrap-Up" Victory Card Dialog.
   - fun: BookVictoryCardDialog:70, VictoryCardFrontContent:459, VictoryCardBackContent:632, JourneyStatTile:826, PreviewStatPill:870
 - **BookVictoryShareHelper.kt** (678)
@@ -296,9 +296,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **FloatingNavBar.kt** (255) - The main navigation as a floating pill.
   - types: NavTab:57
   - fun: FloatingNavBar:85, .clamped:95
-- **FocusTimerScreen.kt** (1123) - The reading timer.
-  - types: TimerPhase:60, TimerMode:61
-  - fun: formatTimerClock:66, FocusTimerScreen:84, TimerChip:847, PageGoalSheet:877, PickUpCard:936, relativeDay:986, StillReadingCard:999, TimerIconButton:1033, PlayButton:1052
+- **FocusTimerScreen.kt** (1119) - The reading timer.
+  - types: TimerMode:60
+  - fun: formatTimerClock:65, FocusTimerScreen:83, TimerChip:843, PageGoalSheet:873, PickUpCard:932, relativeDay:982, StillReadingCard:995, TimerIconButton:1029, PlayButton:1048
 - **GoalEditDialog.kt** (217)
   - types: GoalType:23
   - fun: GoalEditDialog:32
@@ -528,7 +528,7 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 ## shared - Constants shared by phone and watch
 `shared/src/main/java/com/example/booktracker/shared/`
 
-- **Constants.kt** (76) - Contract for the phone <-> watch Wearable Data Layer.
+- **Constants.kt** (75) - Contract for the phone <-> watch Wearable Data Layer.
   - types: Constants:16
 
 ## shared/models - Domain models shared by phone and watch
@@ -548,15 +548,15 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - types: ReadingTileService:33
 - **StreakComplicationService.kt** (49) - Reading days in a row, with a flame, for a slot on the watch face.
   - types: StreakComplicationService:17
-- **WatchStore.kt** (295) - The watch's view of the phone's data: what the phone last published, plus page taps made here that the phone hasn't e...
-  - types: ActiveBook:16, FinishPlan:31, Shelf:48, LocalPage:66, PhoneTimer:69, WatchStore:90
-  - fun: .leftToday:42, .secondsAt:77, .parseShelf:96, .parseTimer:122, .loadSynced:132, .loadShelf:148, .withLocalPages:155, .overlay:170, .addPages:192, .movePage:197, .sendPage:210, .publishProgress:215, .publishNote:224, .publishTimerAction:235, .publishSession:243, .refreshSurfaces:258, .refreshComplication:267, .prefs:293
+- **WatchStore.kt** (293) - The watch's view of the phone's data: what the phone last published, plus page taps made here that the phone hasn't e...
+  - types: ActiveBook:16, FinishPlan:31, Shelf:48, LocalPage:66, PhoneTimer:69, WatchStore:89
+  - fun: .leftToday:42, .secondsAt:76, .parseShelf:95, .parseTimer:121, .loadSynced:130, .loadShelf:146, .withLocalPages:153, .overlay:168, .addPages:190, .movePage:195, .sendPage:208, .publishProgress:213, .publishNote:222, .publishTimerAction:233, .publishSession:241, .refreshSurfaces:256, .refreshComplication:265, .prefs:291
 - **WearActivity.kt** (195)
   - types: WearActions:25, WearActivity:38
   - fun: .addPages:26, .voiceNote:27, .phoneTimer:28, .startSession:30, .setSessionRunning:31, .expireSession:32, .finishSession:33, .discardSession:34, .allowOnTimeBuzz:35
-- **WearScreens.kt** (723)
-  - types: PageDialog:655, BookClock:664
-  - fun: WearApp:81, BookPage:161, Rings:367, ProgressLine:404, StartDialog:448, FocusPicker:486, ClockLine:521, AmbientScreen:555, QuietButton:588, QuietIcon:608, BrightIcon:615, PrimaryPill:630, .secondsAt:673, clockFor:676, formatClock:706
+- **WearScreens.kt** (718)
+  - types: PageDialog:654, BookClock:663
+  - fun: WearApp:81, BookPage:161, Rings:367, ProgressLine:404, StartDialog:448, FocusPicker:486, ClockLine:521, AmbientScreen:554, QuietButton:587, QuietIcon:607, BrightIcon:614, PrimaryPill:629, .secondsAt:671, clockFor:674, formatClock:701
 - **WearTheme.kt** (109) - The reader's palette from the phone, as plain ARGB so the app and the tile colour themselves the same way.
   - types: WatchPalette:18
   - fun: NocturnalTheme:82

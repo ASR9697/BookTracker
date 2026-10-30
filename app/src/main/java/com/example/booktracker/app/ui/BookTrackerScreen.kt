@@ -441,7 +441,6 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
                 val timeLeftSeconds by viewModel.timeLeftSeconds.collectAsState()
                 val elapsedSeconds by viewModel.elapsedSeconds.collectAsState()
                 val timerMode by viewModel.timerMode.collectAsState()
-                val timerPhase by viewModel.timerPhase.collectAsState()
                 val bottomNavHaptic = LocalHapticFeedback.current
 
                 androidx.compose.animation.AnimatedVisibility(
@@ -464,7 +463,6 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
                                 ) -> "READY"
                                 !timerIsRunning -> "PAUSED"
                                 timerMode == TimerMode.STOPWATCH -> "READING"
-                                timerPhase == TimerPhase.BREAK -> "BREAK"
                                 else -> "DEEP FOCUS"
                             },
                             onPlayPause = { viewModel.setTimerRunning(!timerIsRunning) },

@@ -9,7 +9,6 @@
     <string name="goal_met">Goal met</string>
     <string name="phase_reading">Reading</string>
     <string name="phase_focus">Focus</string>
-    <string name="phase_break">Break</string>
     <string name="on_phone">on phone</string>
     <string name="on_watch">on watch</string>
     <string name="minutes_short">%1$d min</string>

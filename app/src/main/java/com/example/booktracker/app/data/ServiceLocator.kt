@@ -16,7 +16,6 @@ object ServiceLocator {
     // Global Timer State
     val timerBookId = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val timerBookTitle = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
-    val timerPhase = kotlinx.coroutines.flow.MutableStateFlow(com.example.booktracker.app.ui.TimerPhase.WORK)
     // Count-up until the saved preference loads (see BookTrackerViewModel.applyPreferredTimerMode).
     val timerMode = kotlinx.coroutines.flow.MutableStateFlow(com.example.booktracker.app.ui.TimerMode.STOPWATCH)
     val timerIsRunning = kotlinx.coroutines.flow.MutableStateFlow(false)
