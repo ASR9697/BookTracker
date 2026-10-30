@@ -282,6 +282,25 @@ object AnalyticsEngine {
             )
             .map { group -> group.maxBy { it.endTime }.environmentTag.trim() }
 
+    /** Tagged sessions near an hour it takes to call a place "usual". */
+    const val MIN_SESSIONS_FOR_USUAL_PLACE = 3
+
+    /**
+     * Where the reader usually reads around [hour] (sessions starting within two hours
+     * either side). Null until [MIN_SESSIONS_FOR_USUAL_PLACE] of them name the same
+     * place and that place is more than half of them: a guess, so only a clear habit.
+     */
+    fun usualPlace(sessions: List<Session>, hour: Int, zone: ZoneId = ZoneId.systemDefault()): String? {
+        val near = sessions.filter { s ->
+            if (s.environmentTag.isBlank() || s.startTime <= 0) return@filter false
+            val gap = kotlin.math.abs(Instant.ofEpochMilli(s.startTime).atZone(zone).hour - hour)
+            minOf(gap, 24 - gap) <= 2
+        }
+        val top = pastPlaces(near).firstOrNull() ?: return null
+        val count = near.count { it.environmentTag.trim().equals(top, ignoreCase = true) }
+        return top.takeIf { count >= MIN_SESSIONS_FOR_USUAL_PLACE && count * 2 > near.size }
+    }
+
     private val FORMAT_TAGS = BookFormat.entries.map { it.name.lowercase() }.toSet() + "ebook"
 
     /**

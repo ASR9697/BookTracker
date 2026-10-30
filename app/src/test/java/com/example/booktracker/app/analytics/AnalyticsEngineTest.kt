@@ -222,4 +222,43 @@ class AnalyticsEngineTest {
     fun `past places break ties by the most recent`() {
         assertEquals(listOf("Park", "Cafe"), AnalyticsEngine.pastPlaces(listOf(at("Cafe", 1), at("Park", 2))))
     }
+
+    private val utc = ZoneId.of("UTC")
+
+    /** A session tagged [tag] starting at [hour]:00 UTC on day [day]. */
+    private fun startedAt(tag: String, hour: Int, day: Int = 0): Session {
+        val start = (day * 24L + hour) * 3_600_000L + 1
+        return Session(id = "$tag$hour$day", environmentTag = tag, startTime = start, endTime = start + 60_000L)
+    }
+
+    @Test
+    fun `usual place needs a clear habit near the hour`() {
+        val nights = listOf(
+            startedAt("Bed", 22, 1), startedAt("Bed", 23, 2), startedAt("bed", 21, 3),
+            startedAt("Couch", 22, 4),
+            startedAt("Train", 8, 5), startedAt("Train", 8, 6), startedAt("Train", 9, 7)
+        )
+        assertEquals("bed", AnalyticsEngine.usualPlace(nights, 22, utc))
+        assertEquals("Train", AnalyticsEngine.usualPlace(nights, 8, utc))
+        // Nothing tagged near 3 pm.
+        assertNull(AnalyticsEngine.usualPlace(nights, 15, utc))
+    }
+
+    @Test
+    fun `usual place wraps around midnight`() {
+        val lateNights = listOf(startedAt("Bed", 23, 1), startedAt("Bed", 0, 2), startedAt("Bed", 1, 3))
+        assertEquals("Bed", AnalyticsEngine.usualPlace(lateNights, 23, utc))
+    }
+
+    @Test
+    fun `usual place stays quiet without enough sessions or a majority`() {
+        val two = listOf(startedAt("Bed", 22, 1), startedAt("Bed", 22, 2))
+        assertNull(AnalyticsEngine.usualPlace(two, 22, utc))
+        val split = listOf(
+            startedAt("Bed", 22, 1), startedAt("Bed", 22, 2), startedAt("Bed", 22, 3),
+            startedAt("Couch", 22, 4), startedAt("Couch", 22, 5), startedAt("Desk", 22, 6)
+        )
+        // Bed is the most used but only half of them.
+        assertNull(AnalyticsEngine.usualPlace(split, 22, utc))
+    }
 }

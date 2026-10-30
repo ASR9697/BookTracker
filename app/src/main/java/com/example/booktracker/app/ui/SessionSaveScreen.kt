@@ -31,6 +31,8 @@ import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Place
 import androidx.compose.material.icons.rounded.CenterFocusStrong
 import androidx.compose.material.icons.automirrored.rounded.CallMerge
+import androidx.compose.material.icons.automirrored.rounded.NoteAdd
+import com.example.booktracker.shared.models.NoteType
 import com.example.booktracker.shared.models.Session
 import androidx.compose.material.icons.rounded.FormatQuote
 import androidx.compose.animation.togetherWith
@@ -110,8 +112,10 @@ fun SessionSaveScreen(
     minSessionSeconds: Int = 0,
     /** Open the camera on the page number rather than the page wheel. */
     scanFirst: Boolean = false,
-    /** Every saved session, for the time-left estimate. */
-    sessions: List<Session> = emptyList()
+    /** Every saved session: time left, past places and the usual place. */
+    sessions: List<Session> = emptyList(),
+    /** Saves a note right away, from "Full note…". */
+    onAddNote: (page: Int, text: String, type: NoteType, images: List<String>) -> Unit = { _, _, _, _ -> }
 ) {
     val zone = remember { ZoneId.systemDefault() }
     val haptic = LocalHapticFeedback.current
@@ -127,8 +131,18 @@ fun SessionSaveScreen(
     var durationSeconds by remember { mutableIntStateOf(initialDurationSeconds) }
     var status by remember { mutableStateOf<BookStatus?>(null) }
     var tag by remember { mutableStateOf("") }
+    // Where you usually read at this hour, filled in as a suggestion until you pick yourself.
+    var tagPicked by remember { mutableStateOf(false) }
+    val usualPlace = remember(sessions) {
+        AnalyticsEngine.usualPlace(sessions, Instant.ofEpochMilli(initialStartTime).atZone(zone).hour, zone)
+    }
+    androidx.compose.runtime.LaunchedEffect(usualPlace) {
+        if (!tagPicked && usualPlace != null) tag = usualPlace
+    }
     var focus by remember { mutableIntStateOf(0) }
     var quote by remember { mutableStateOf("") }
+    var showNoteSheet by remember { mutableStateOf(false) }
+    var notesAdded by remember { mutableIntStateOf(0) }
     var joinPrevious by remember { mutableStateOf(false) }
     var showTooShort by remember { mutableStateOf(false) }
     var scanOnOpen by remember { mutableStateOf(false) }
@@ -376,7 +390,7 @@ fun SessionSaveScreen(
 
                 modifier = Modifier.staggeredEntrance(entrance, 4),
                 icon = { Icon(Icons.Rounded.Place, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp)) },
-                label = "Where you read",
+                label = if (!tagPicked && tag.isNotBlank() && tag == usualPlace) "Where you read · your usual spot" else "Where you read",
                 value = tag.ifBlank { "Not set" },
                 onClick = { showTagPicker = true }
             )
@@ -420,6 +434,21 @@ fun SessionSaveScreen(
                 shape = AppShape.L,
                 modifier = Modifier.fillMaxWidth()
             )
+            // A longer note, a photo or a scanned passage: the full note sheet, carrying the line over.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { showNoteSheet = true }) {
+                    Icon(Icons.AutoMirrored.Rounded.NoteAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Full note…")
+                }
+                if (notesAdded > 0) {
+                    Text(
+                        if (notesAdded == 1) "1 note saved" else "$notesAdded notes saved",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
 
             if (complete && status != BookStatus.DNF) {
                 Spacer(Modifier.height(16.dp))
@@ -548,7 +577,25 @@ fun SessionSaveScreen(
             onDismiss = { showTagPicker = false },
             onConfirm = {
                 tag = it
+                tagPicked = true
                 showTagPicker = false
+            }
+        )
+    }
+
+    if (showNoteSheet) {
+        NoteSheet(
+            suggestedPage = endPage,
+            totalPages = book.totalPages,
+            pageLabel = FormatAdaptabilityLayer.getDisplayUnit(book).trimEnd('s'),
+            initialText = quote,
+            onDismiss = { showNoteSheet = false },
+            onConfirm = { page, text, type, images ->
+                onAddNote(page, text, type, images)
+                notesAdded++
+                // The line now lives in the saved note; keeping it here would save it twice.
+                quote = ""
+                showNoteSheet = false
             }
         )
     }

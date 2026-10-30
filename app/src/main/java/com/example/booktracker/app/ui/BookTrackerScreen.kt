@@ -1300,6 +1300,7 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
                                                                 minSessionSeconds = savePrefs.minSessionSeconds,
                                                                 scanFirst = savePrefs.scanOnFinish,
                                                                 sessions = saveSessions,
+                                                                onAddNote = { page, text, type, images -> viewModel.addNote(bookId, page, text, type, images) },
                                                                 onSave = { draft ->
                                                                     viewModel.saveSession(
                                                                         book = book,
