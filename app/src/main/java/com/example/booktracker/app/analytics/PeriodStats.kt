@@ -89,12 +89,16 @@ object PeriodStats {
         return Math.round((now.toDouble() - b) / b * 100).toInt()
     }
 
-    /** One bar of the activity chart: its first day, a short axis label, and the total. */
-    data class Bucket(val start: LocalDate, val label: String, val value: Long)
+    /** How much time one bar of the activity chart covers. */
+    enum class Grain { DAY, MONTH, YEAR }
+
+    /** One bar of the activity chart: its first day, a short axis label, the total, and what it covers. */
+    data class Bucket(val start: LocalDate, val label: String, val value: Long, val grain: Grain = Grain.DAY)
 
     /**
-     * The activity chart's bars: days for a week or a month, months for a year, years
-     * for all time. [values] is per-day pages or minutes.
+     * The activity chart's bars: days for a week or a month, months for a year. All time
+     * picks whatever fits how long you've been reading: days within a month, months up
+     * to three years, years beyond. [values] is per-day pages or minutes.
      */
     fun buckets(
         period: Period,
@@ -109,13 +113,35 @@ object PeriodStats {
                 else day.dayOfMonth.toString()
                 Bucket(day, label, values[day] ?: 0L)
             }.toList()
-        Span.YEAR -> (1..12).map { m ->
-            val start = range.start.withMonth(m)
-            val end = start.withDayOfMonth(start.lengthOfMonth())
-            Bucket(start, start.month.getDisplayName(TextStyle.NARROW, locale), values.filterKeys { it in start..end }.values.sum())
-        }
-        Span.ALL -> (range.start.year..range.endInclusive.year).map { y ->
-            Bucket(LocalDate.of(y, 1, 1), "'${(y % 100).toString().padStart(2, '0')}", values.filterKeys { it.year == y }.values.sum())
+        Span.YEAR -> months(range.start.withMonth(1), range.start.withMonth(12), values, locale, yearMarks = false, TextStyle.NARROW)
+        Span.ALL -> {
+            val first = range.start.withDayOfMonth(1)
+            val last = range.endInclusive.withDayOfMonth(1)
+            val monthCount = (last.year - first.year) * 12 + last.monthValue - first.monthValue + 1
+            when {
+                monthCount <= 1 -> buckets(Period(Span.MONTH), range, values, locale)
+                monthCount <= MAX_MONTH_BARS -> months(
+                    first, last, values, locale, yearMarks = first.year != last.year,
+                    // A few wide bars have room for "Jul", which a lone "J" can't tell from June.
+                    style = if (monthCount <= 6) TextStyle.SHORT else TextStyle.NARROW
+                )
+                else -> (range.start.year..range.endInclusive.year).map { y ->
+                    Bucket(LocalDate.of(y, 1, 1), yearLabel(y), values.filterKeys { it.year == y }.values.sum(), Grain.YEAR)
+                }
+            }
         }
     }
+
+    /** All time shows months until it would need more than this many bars. */
+    private const val MAX_MONTH_BARS = 36
+
+    /** One bar per month from [first] to [last]; with [yearMarks], each January is labelled with its year. */
+    private fun months(first: LocalDate, last: LocalDate, values: Map<LocalDate, Long>, locale: Locale, yearMarks: Boolean, style: TextStyle) =
+        generateSequence(first) { it.plusMonths(1) }.takeWhile { it <= last }.map { start ->
+            val end = start.withDayOfMonth(start.lengthOfMonth())
+            val label = if (yearMarks && start.monthValue == 1) yearLabel(start.year) else start.month.getDisplayName(style, locale)
+            Bucket(start, label, values.filterKeys { it in start..end }.values.sum(), Grain.MONTH)
+        }.toList()
+
+    private fun yearLabel(year: Int) = "'${(year % 100).toString().padStart(2, '0')}"
 }

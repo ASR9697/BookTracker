@@ -41,9 +41,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **LoanEngine.kt** (148) - Pure logic engine for library return dates, due date countdowns, lending tracking, and urgency evaluation.
   - types: LoanEngine:14, .LoanUrgency:16, .LoanStatusInfo:23
   - fun: .activeLoan:35, .getLoanStatus:42, .allActiveLoans:125, .urgentLoans:135
-- **PeriodStats.kt** (122) - Stats over a period the reader picks: a week, a month, a year or all time, now or stepped back.
-  - types: PeriodStats:15, .Span:17, .Period:20, .Summary:66, .Bucket:93
-  - fun: .bounds:27, .label:46, .summary:69, .change:86, .buckets:99
+- **PeriodStats.kt** (148) - Stats over a period the reader picks: a week, a month, a year or all time, now or stepped back.
+  - types: PeriodStats:15, .Span:17, .Period:20, .Summary:66, .Grain:93, .Bucket:96
+  - fun: .bounds:27, .label:46, .summary:69, .change:86, .buckets:103
 - **ReaderProfileEngine.kt** (183) - Who you are as a reader, for Profile: the books you'd hand someone, the authors you come back to, your taste in a sen...
   - types: ReaderProfileEngine:17, .Favourites:20, .Author:34, .Level:86, .YearRow:116, .Record:139
   - fun: .favourites:23, .topAuthors:37, .tasteSentence:53, .level:99, .pinnedQuote:109, .yearByYear:119, .records:142
@@ -411,8 +411,8 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: ShelfScanScreen:102, .process:122, .launchCamera:165, SpineMatch.copyWith:345, SpineRow:349, readSpines:386
 - **StatsBreakdownCards.kt** (346) - A card with a title line, the shell every Stats breakdown sits in.
   - fun: StatsCard:49, RhythmCard:76, PaceCard:125, BigNumber:141, FocusPlacesCard:153, MeterRow:186, WhatYouReadCard:219, SubHeading:270, FormatSplit:278, FinishedInPeriod:309, GoalsLink:331
-- **StatsCards.kt** (285) - Week · Month · Year · All, with ‹ › to step back through earlier ones.
-  - fun: PeriodSwitcher:46, SummaryStrip:89, SummaryNumber:124, ActivityChart:147, Bars:207, AxisLabels:255, bucketName:273, compactMinutes:280, formatValue:283
+- **StatsCards.kt** (292) - Week · Month · Year · All, with ‹ › to step back through earlier ones.
+  - fun: PeriodSwitcher:46, SummaryStrip:89, SummaryNumber:124, ActivityChart:147, Bars:207, AxisLabels:258, bucketName:280, compactMinutes:287, formatValue:290
 - **StreakHeader.kt** (256) - Top of the streak screen: the flame with current and best streak, whether today already counts, a month calendar of r...
   - fun: StreakHeader:43, StreakHero:64, HeroStat:112, MonthCalendar:121, StreakRuns:207
 - **TabletInput.kt** (78) - Right-click (mouse or trackpad) does what a long-press does on touch.

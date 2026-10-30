@@ -189,7 +189,7 @@ fun ActivityChart(
             } else {
                 Bars(buckets, max, picked, ghost, onPick = { picked = if (picked == it) null else it })
                 Spacer(Modifier.height(6.dp))
-                AxisLabels(buckets, span)
+                AxisLabels(buckets)
                 Text(
                     "Total ${formatValue(buckets.sumOf { it.value }, showMinutes)}" +
                         (if (buckets.size > 1) " · best ${formatValue(buckets.maxOf { it.value }, showMinutes)}" else "") +
@@ -250,12 +250,19 @@ private fun Bars(buckets: List<PeriodStats.Bucket>, max: Long, picked: Int?, gho
     }
 }
 
-/** Axis labels under the bars; a month shows every seventh day so they don't crowd. */
+/**
+ * Axis labels under the bars, thinned so they don't crowd: past a week of days, every
+ * seventh day; past a year of months, every third month and each year's mark.
+ */
 @Composable
-private fun AxisLabels(buckets: List<PeriodStats.Bucket>, span: PeriodStats.Span) {
+private fun AxisLabels(buckets: List<PeriodStats.Bucket>) {
     Row(modifier = Modifier.fillMaxWidth()) {
         buckets.forEachIndexed { i, bucket ->
-            val show = span != PeriodStats.Span.MONTH || i % 7 == 0
+            val show = when (bucket.grain) {
+                PeriodStats.Grain.DAY -> buckets.size <= 7 || i % 7 == 0
+                PeriodStats.Grain.MONTH -> buckets.size <= 12 || i % 3 == 0 || bucket.label.startsWith("'")
+                PeriodStats.Grain.YEAR -> true
+            }
             Text(
                 if (show) bucket.label else "",
                 style = MaterialTheme.typography.labelSmall,
@@ -270,10 +277,10 @@ private fun AxisLabels(buckets: List<PeriodStats.Bucket>, span: PeriodStats.Span
     }
 }
 
-private fun bucketName(bucket: PeriodStats.Bucket, span: PeriodStats.Span): String = when (span) {
-    PeriodStats.Span.WEEK, PeriodStats.Span.MONTH -> bucket.start.format(DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault()))
-    PeriodStats.Span.YEAR -> bucket.start.format(DateTimeFormatter.ofPattern("MMMM", Locale.getDefault()))
-    PeriodStats.Span.ALL -> bucket.start.year.toString()
+private fun bucketName(bucket: PeriodStats.Bucket, span: PeriodStats.Span): String = when (bucket.grain) {
+    PeriodStats.Grain.DAY -> bucket.start.format(DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault()))
+    PeriodStats.Grain.MONTH -> bucket.start.format(DateTimeFormatter.ofPattern(if (span == PeriodStats.Span.YEAR) "MMMM" else "MMMM yyyy", Locale.getDefault()))
+    PeriodStats.Grain.YEAR -> bucket.start.year.toString()
 }
 
 /** A quarter of a phone's width: "45m", "2h 15m", then whole hours from ten on. */
