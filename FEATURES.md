@@ -147,6 +147,5 @@ This file acts as the central source of truth for all implemented and planned fe
 ### 🗣️ Vocabulary & Active Learning
 - [ ] **Daily 3-Minute Vocabulary Sprint**: Gamified flashcard drill in the Notes/Review tab utilizing the built-in `ReviewEngine` (Leitner spaced repetition) to test readers on unfamiliar words and literary terms captured during reading sessions, with review streak tracking and on-device pronunciation.
 
-
-
-
+### 🤖 Hands-Free Voice & Assistant Integration (Gemini / Google Assistant)
+- [ ] **Hands-Free Reading Logger via Gemini & Google Assistant**: Log reading progress hands-free using voice commands through Gemini or Google Assistant on Android (e.g., *"In Book Tracker, add 10 pages to Dune"*). Uses Android App Actions (`shortcuts.xml`) and the Android App Functions SDK (`androidx.appfunctions`) with fuzzy title matching across currently reading books, background session logging, automatic widget/streak updates, and a lock-screen confirmation notification with a 1-tap "Undo" action. 100% free, private, and runs entirely on-device without external servers or API keys.
