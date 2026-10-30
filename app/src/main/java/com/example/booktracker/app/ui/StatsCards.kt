@@ -103,7 +103,12 @@ fun SummaryStrip(summary: PeriodStats.Summary, before: PeriodStats.Summary?, com
                 SummaryNumber("${summary.activeDays}", if (summary.activeDays == 1) "day" else "days",
                     before?.let { PeriodStats.change(summary.activeDays, it.activeDays) }, Modifier.weight(1f))
             }
-            if (comparedWith != null && before != null) {
+            // Only when there's a percentage above to explain.
+            val anyChange = before != null && listOf(
+                PeriodStats.change(summary.books, before.books), PeriodStats.change(summary.pages, before.pages),
+                PeriodStats.change(summary.minutes, before.minutes), PeriodStats.change(summary.activeDays, before.activeDays)
+            ).any { it != null }
+            if (comparedWith != null && anyChange) {
                 Spacer(Modifier.height(8.dp))
                 Text(
                     "Compared with $comparedWith",

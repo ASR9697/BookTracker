@@ -401,8 +401,8 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: ShelfScanScreen:102, .process:122, .launchCamera:165, SpineMatch.copyWith:345, SpineRow:349, readSpines:386
 - **StatsBreakdownCards.kt** (346) - A card with a title line, the shell every Stats breakdown sits in.
   - fun: StatsCard:49, RhythmCard:76, PaceCard:125, BigNumber:141, FocusPlacesCard:153, MeterRow:186, WhatYouReadCard:219, SubHeading:270, FormatSplit:278, FinishedInPeriod:309, GoalsLink:331
-- **StatsCards.kt** (280) - Week · Month · Year · All, with ‹ › to step back through earlier ones.
-  - fun: PeriodSwitcher:46, SummaryStrip:89, SummaryNumber:119, ActivityChart:142, Bars:202, AxisLabels:250, bucketName:268, compactMinutes:275, formatValue:278
+- **StatsCards.kt** (285) - Week · Month · Year · All, with ‹ › to step back through earlier ones.
+  - fun: PeriodSwitcher:46, SummaryStrip:89, SummaryNumber:124, ActivityChart:147, Bars:207, AxisLabels:255, bucketName:273, compactMinutes:280, formatValue:283
 - **StreakHeader.kt** (256) - Top of the streak screen: the flame with current and best streak, whether today already counts, a month calendar of r...
   - fun: StreakHeader:43, StreakHero:64, HeroStat:112, MonthCalendar:121, StreakRuns:207
 - **TabletInput.kt** (78) - Right-click (mouse or trackpad) does what a long-press does on touch.
