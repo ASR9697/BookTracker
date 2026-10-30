@@ -832,6 +832,7 @@ class BookTrackerViewModel(
                 ServiceLocator.elapsedSeconds.value = 0
                 ServiceLocator.timerPausedAt.value = null
                 ServiceLocator.sessionPageTarget.value = null
+                ServiceLocator.countdownExtraSeconds.value = 0
                 val workMins = ServiceLocator.customWorkMinutes.value ?: workMinutes.value
                 ServiceLocator.timeLeftSeconds.value = workMins * 60
                 ServiceLocator.consumeTimerExpired()
@@ -1053,6 +1054,7 @@ class BookTrackerViewModel(
             ServiceLocator.timerIsRunning.value = false
             ServiceLocator.timerPausedAt.value = null
             ServiceLocator.sessionPageTarget.value = null
+            ServiceLocator.countdownExtraSeconds.value = 0
             ServiceLocator.consumeTimerExpired()
             soundscapeEngine.stop()
             viewModelScope.launch {
@@ -1097,9 +1099,25 @@ class BookTrackerViewModel(
         }
     }
 
-    /** Length of the countdown in seconds, for progress rings. */
+    /** Length of the countdown in seconds (with any "+5 min" added), for progress rings. */
     fun countdownTotalSeconds(): Int =
-        ((ServiceLocator.customWorkMinutes.value ?: workMinutes.value) * 60).coerceAtLeast(1)
+        ((ServiceLocator.customWorkMinutes.value ?: workMinutes.value) * 60 +
+            ServiceLocator.countdownExtraSeconds.value).coerceAtLeast(1)
+
+    /**
+     * More time on a countdown that has run out, so the reader keeps going in the
+     * same session instead of saving and starting over. Restarts the clock.
+     */
+    fun extendCountdown(minutes: Int) {
+        if (ServiceLocator.timerMode.value != TimerMode.COUNTDOWN) return
+        val added = minutes * 60
+        ServiceLocator.countdownExtraSeconds.value += added
+        ServiceLocator.timeLeftSeconds.value = ServiceLocator.timeLeftSeconds.value.coerceAtLeast(0) + added
+        ServiceLocator.consumeTimerExpired()
+        appContext.getSystemService(android.app.NotificationManager::class.java)
+            ?.cancel(com.example.booktracker.app.notifications.Notifications.ID_TIMER_DONE)
+        setTimerRunning(true)
+    }
 
     fun setTimerRunning(isRunning: Boolean) {
         // A finished countdown can't resume from 00:00; the reader saves it instead.

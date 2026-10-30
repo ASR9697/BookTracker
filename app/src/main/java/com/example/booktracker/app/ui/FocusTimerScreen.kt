@@ -34,6 +34,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -61,6 +62,9 @@ enum class TimerMode { COUNTDOWN, STOPWATCH }
 
 private const val STILL_READING_AFTER_SECONDS = 30 * 60
 private const val STILL_READING_GRACE_SECONDS = 5 * 60
+private const val ZEN_DIM_AFTER_MS = 10_000L
+private const val ZEN_DIM_ALPHA = 0.22f
+private const val EXTEND_MINUTES = 5
 
 private fun formatTimerClock(totalSeconds: Int): String {
     val hrs = totalSeconds / 3600
@@ -225,6 +229,16 @@ fun FocusTimerScreen(
     val pausedForSeconds = pausedAt?.takeIf { !isRunning }?.let { ((nowMillis - it) / 1000).toInt().coerceAtLeast(0) }
 
     var isZenMode by remember { mutableStateOf(false) }
+    // In zen the clock fades to a dim glow after a while; a tap anywhere brings it back.
+    var zenWake by remember { mutableIntStateOf(0) }
+    var zenDimmed by remember { mutableStateOf(false) }
+    LaunchedEffect(isZenMode, zenWake) {
+        zenDimmed = false
+        if (isZenMode) {
+            kotlinx.coroutines.delay(ZEN_DIM_AFTER_MS)
+            zenDimmed = true
+        }
+    }
     var showSoundscapeSheet by remember { mutableStateOf(false) }
     var showNoteSheet by remember { mutableStateOf(false) }
     var showCountdownSheet by remember { mutableStateOf(false) }
@@ -273,6 +287,11 @@ fun FocusTimerScreen(
         )
         pulse
     }
+    val zenClockAlpha by animateFloatAsState(
+        targetValue = if (isZenMode && zenDimmed) ZEN_DIM_ALPHA else 1f,
+        animationSpec = if (reduceMotion) snap() else tween(durationMillis = 1500),
+        label = "zenDim"
+    )
     var showProgressPicker by remember { mutableStateOf(false) }
 
     val displaySeconds = if (mode == TimerMode.STOPWATCH) elapsedSeconds else timeLeftSeconds
@@ -321,6 +340,7 @@ fun FocusTimerScreen(
             .focusable()
             .pointerInput(Unit) {
                 detectTapGestures(
+                    onTap = { zenWake++ },
                     onDoubleTap = {
                         haptics.confirm()
                         isZenMode = !isZenMode
@@ -404,12 +424,14 @@ fun FocusTimerScreen(
                     // Fixed-width digits, so the clock doesn't jiggle every second.
                     fontFeatureSettings = "tnum"
                 ),
-                color = onBackground
+                color = onBackground,
+                modifier = Modifier.alpha(zenClockAlpha)
             )
             Spacer(Modifier.height(4.dp))
             Text(
+                modifier = Modifier.alpha(zenClockAlpha),
                 text = when {
-                    countdownDone -> "Time's up. Tap to save your session"
+                    countdownDone -> "Time's up. Save, or keep going for 5 more minutes"
                     isRunning && goalReached -> "Page goal reached · keep going if you like"
                     isRunning && livePaceStr != null -> "Reading · $livePaceStr"
                     isRunning && bookSpeedStr != null -> "Reading · usually $bookSpeedStr"
@@ -490,7 +512,19 @@ fun FocusTimerScreen(
                         else -> "${countdownTotal / 60} min countdown"
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        if (notStarted || mode == TimerMode.COUNTDOWN) {
+                        if (countdownDone) {
+                            // Time's up: keep going in the same session rather than starting over.
+                            TimerChip(
+                                icon = Icons.Rounded.MoreTime,
+                                label = "+$EXTEND_MINUTES min",
+                                tint = onBackground,
+                                filled = true,
+                                onClick = {
+                                    haptics.confirm()
+                                    viewModel.extendCountdown(EXTEND_MINUTES)
+                                }
+                            )
+                        } else if (notStarted || mode == TimerMode.COUNTDOWN) {
                             TimerChip(
                                 icon = if (mode == TimerMode.STOPWATCH) Icons.Rounded.Timer else Icons.Rounded.HourglassBottom,
                                 label = countdownLabel,

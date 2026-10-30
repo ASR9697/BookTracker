@@ -331,13 +331,15 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
         if (libraryListDetail) libraryPaneBookId = book.id else navController.navigate("book/${book.id}")
     }
 
-    // A finished countdown opens the save screen wherever the reader is. The event
-    // is replayed until consumed, so it also fires on returning to the app.
+    // A finished countdown opens the save screen wherever the reader is, except on the
+    // timer itself, which offers Save or "+5 min" there. The event is replayed until
+    // consumed, so it also fires on returning to the app.
     LaunchedEffect(navController) {
         com.example.booktracker.app.data.ServiceLocator.timerExpiredEvents.collect {
             val bookId = com.example.booktracker.app.data.ServiceLocator.timerBookId.value
             com.example.booktracker.app.data.ServiceLocator.consumeTimerExpired()
-            if (bookId != null && navController.currentDestination?.route != SESSION_SAVE_ROUTE) {
+            val route = navController.currentDestination?.route
+            if (bookId != null && route != SESSION_SAVE_ROUTE && route?.startsWith("focus/") != true) {
                 navController.navigate("session_save/$bookId") { launchSingleTop = true }
             }
         }
