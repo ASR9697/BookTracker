@@ -321,7 +321,6 @@ class BookTrackerViewModel(
         bookList.find { it.id == id }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    val timerPhase: StateFlow<TimerPhase> = ServiceLocator.timerPhase.asStateFlow()
     val timerMode: StateFlow<TimerMode> = ServiceLocator.timerMode.asStateFlow()
     val timerIsRunning: StateFlow<Boolean> = ServiceLocator.timerIsRunning.asStateFlow()
     val timeLeftSeconds: StateFlow<Int> = ServiceLocator.timeLeftSeconds.asStateFlow()
@@ -329,9 +328,6 @@ class BookTrackerViewModel(
 
     val workMinutes: StateFlow<Int> = settings.workMinutes
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 25)
-
-    val breakMinutes: StateFlow<Int> = settings.breakMinutes
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 5)
 
     private val _noiseType = MutableStateFlow(NoiseType.NONE)
     val noiseType: StateFlow<NoiseType> = _noiseType
@@ -400,9 +396,6 @@ class BookTrackerViewModel(
             } else {
                 ServiceLocator.timerMode.value = TimerMode.COUNTDOWN
                 ServiceLocator.timeLeftSeconds.value = settings.activeTimerTimeLeft.firstOrNull() ?: 0
-                if (settings.activeTimerPhase.firstOrNull() == TimerPhase.BREAK.name) {
-                    ServiceLocator.timerPhase.value = TimerPhase.BREAK
-                }
             }
             ServiceLocator.activeReadingSeconds.value = settings.activeTimerActiveReading.firstOrNull() ?: 0
             ServiceLocator.sessionPageTarget.value = settings.activeTimerPageTarget.firstOrNull()
@@ -839,7 +832,7 @@ class BookTrackerViewModel(
                 ServiceLocator.elapsedSeconds.value = 0
                 ServiceLocator.timerPausedAt.value = null
                 ServiceLocator.sessionPageTarget.value = null
-                ServiceLocator.timerPhase.value = TimerPhase.WORK
+                ServiceLocator.countdownExtraSeconds.value = 0
                 val workMins = ServiceLocator.customWorkMinutes.value ?: workMinutes.value
                 ServiceLocator.timeLeftSeconds.value = workMins * 60
                 ServiceLocator.consumeTimerExpired()
@@ -1061,19 +1054,12 @@ class BookTrackerViewModel(
             ServiceLocator.timerIsRunning.value = false
             ServiceLocator.timerPausedAt.value = null
             ServiceLocator.sessionPageTarget.value = null
+            ServiceLocator.countdownExtraSeconds.value = 0
             ServiceLocator.consumeTimerExpired()
             soundscapeEngine.stop()
             viewModelScope.launch {
                 settings.clearTimerState()
             }
-        }
-    }
-
-    fun setTimerPhase(phase: TimerPhase) {
-        ServiceLocator.timerPhase.value = phase
-        if (ServiceLocator.timerMode.value == TimerMode.COUNTDOWN) {
-            val workMins = ServiceLocator.customWorkMinutes.value ?: workMinutes.value
-            ServiceLocator.timeLeftSeconds.value = if (phase == TimerPhase.WORK) workMins * 60 else breakMinutes.value * 60
         }
     }
 
@@ -1108,21 +1094,29 @@ class BookTrackerViewModel(
 
     fun setCustomWorkMinutes(mins: Int?) {
         ServiceLocator.customWorkMinutes.value = mins
-        if (ServiceLocator.timerMode.value == TimerMode.COUNTDOWN &&
-            ServiceLocator.timerPhase.value == TimerPhase.WORK &&
-            !ServiceLocator.timerIsRunning.value) {
+        if (ServiceLocator.timerMode.value == TimerMode.COUNTDOWN && !ServiceLocator.timerIsRunning.value) {
             ServiceLocator.timeLeftSeconds.value = (mins ?: workMinutes.value) * 60
         }
     }
 
-    /** Length of the current countdown phase in seconds, for progress rings. */
-    fun countdownTotalSeconds(): Int {
-        val minutes = if (ServiceLocator.timerPhase.value == TimerPhase.BREAK) {
-            breakMinutes.value
-        } else {
-            ServiceLocator.customWorkMinutes.value ?: workMinutes.value
-        }
-        return (minutes * 60).coerceAtLeast(1)
+    /** Length of the countdown in seconds (with any "+5 min" added), for progress rings. */
+    fun countdownTotalSeconds(): Int =
+        ((ServiceLocator.customWorkMinutes.value ?: workMinutes.value) * 60 +
+            ServiceLocator.countdownExtraSeconds.value).coerceAtLeast(1)
+
+    /**
+     * More time on a countdown that has run out, so the reader keeps going in the
+     * same session instead of saving and starting over. Restarts the clock.
+     */
+    fun extendCountdown(minutes: Int) {
+        if (ServiceLocator.timerMode.value != TimerMode.COUNTDOWN) return
+        val added = minutes * 60
+        ServiceLocator.countdownExtraSeconds.value += added
+        ServiceLocator.timeLeftSeconds.value = ServiceLocator.timeLeftSeconds.value.coerceAtLeast(0) + added
+        ServiceLocator.consumeTimerExpired()
+        appContext.getSystemService(android.app.NotificationManager::class.java)
+            ?.cancel(com.example.booktracker.app.notifications.Notifications.ID_TIMER_DONE)
+        setTimerRunning(true)
     }
 
     fun setTimerRunning(isRunning: Boolean) {
@@ -1162,14 +1156,7 @@ class BookTrackerViewModel(
     fun setWorkMinutes(mins: Int) {
         viewModelScope.launch { settings.setWorkMinutes(mins) }
         ServiceLocator.customWorkMinutes.value = null
-        if (ServiceLocator.timerPhase.value == TimerPhase.WORK && !ServiceLocator.timerIsRunning.value) {
-            ServiceLocator.timeLeftSeconds.value = mins * 60
-        }
-    }
-
-    fun setBreakMinutes(mins: Int) {
-        viewModelScope.launch { settings.setBreakMinutes(mins) }
-        if (ServiceLocator.timerPhase.value == TimerPhase.BREAK && !ServiceLocator.timerIsRunning.value) {
+        if (!ServiceLocator.timerIsRunning.value) {
             ServiceLocator.timeLeftSeconds.value = mins * 60
         }
     }
@@ -1182,12 +1169,18 @@ class BookTrackerViewModel(
         viewModelScope.launch { settings.setUseAppLock(enabled) }
     }
 
-    fun setNoiseType(type: NoiseType) {
+    /** [preview] plays the sound even with the clock stopped, while the reader is choosing. */
+    fun setNoiseType(type: NoiseType, preview: Boolean = false) {
         _noiseType.value = type
-        if (ServiceLocator.timerIsRunning.value) {
+        if (ServiceLocator.timerIsRunning.value || preview) {
             if (type == NoiseType.NONE) soundscapeEngine.stop()
             else soundscapeEngine.play(type)
         }
+    }
+
+    /** The sound picker closed: a preview stops unless the clock is running. */
+    fun endNoisePreview() {
+        if (!ServiceLocator.timerIsRunning.value) soundscapeEngine.stop()
     }
 
     fun setTimerVolume(vol: Float) {

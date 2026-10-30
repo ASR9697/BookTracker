@@ -16,6 +16,9 @@ val CoverCloth = listOf(
 )
 val CoverInk = Color(0xFFF4EDE1)
 
+/** The reading timer's zen backdrop: near-black in either theme, so only the clock is lit. */
+val ZenNight = Color(0xFF090D14)
+
 // Baseline Fallbacks
 val Background = Color(0xFF141218)
 val Surface = Color(0xFF141218)

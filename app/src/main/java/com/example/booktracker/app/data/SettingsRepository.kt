@@ -52,6 +52,8 @@ data class AppPrefs(
     val defaultFormat: BookFormat = BookFormat.Paperback,
     /** The timer asks "still reading?" after a long stretch untouched, and pauses if nobody answers. */
     val stillReadingCheck: Boolean = true,
+    /** While the timer is open, the volume keys step the page forward and back. */
+    val volumeKeysTurnPages: Boolean = false,
     /** Finishing a session opens the camera on the page number instead of the page wheel. */
     val scanOnFinish: Boolean = false,
     /** A session shorter than this with no pages is treated as an accident; 0 keeps everything. */
@@ -115,7 +117,6 @@ class SettingsRepository(context: Context) {
     private val userNameKey = androidx.datastore.preferences.core.stringPreferencesKey("user_name")
     private val workMinutesKey = intPreferencesKey("work_minutes")
     private val preferredTimerModeKey = androidx.datastore.preferences.core.stringPreferencesKey("preferred_timer_mode")
-    private val breakMinutesKey = intPreferencesKey("break_minutes")
     private val dayStartsAtHourKey = intPreferencesKey("day_starts_at_hour")
     private val useAppLockKey = booleanPreferencesKey("use_app_lock")
     private val reminderEnabledKey = booleanPreferencesKey("reminder_enabled")
@@ -131,7 +132,6 @@ class SettingsRepository(context: Context) {
 
     private val activeTimerModeKey = androidx.datastore.preferences.core.stringPreferencesKey("active_timer_mode")
     private val activeTimerBookIdKey = androidx.datastore.preferences.core.stringPreferencesKey("active_timer_book_id")
-    private val activeTimerPhaseKey = androidx.datastore.preferences.core.stringPreferencesKey("active_timer_phase")
     private val activeTimerIsRunningKey = androidx.datastore.preferences.core.booleanPreferencesKey("active_timer_is_running")
     private val activeTimerTimeLeftKey = intPreferencesKey("active_timer_time_left")
     private val activeTimerElapsedKey = intPreferencesKey("active_timer_elapsed")
@@ -162,7 +162,6 @@ class SettingsRepository(context: Context) {
      * just want to track their time, not race a clock.
      */
     val preferredTimerMode: Flow<String> = appContext.settingsDataStore.data.map { it[preferredTimerModeKey] ?: "STOPWATCH" }
-    val breakMinutes: Flow<Int> = appContext.settingsDataStore.data.map { it[breakMinutesKey] ?: 5 }
     val dayStartsAtHour: Flow<Int> = appContext.settingsDataStore.data.map { it[dayStartsAtHourKey] ?: 3 } // Default 3 AM
     val useAppLock: Flow<Boolean> = appContext.settingsDataStore.data.map { it[useAppLockKey] ?: false }
     val homeLayout: Flow<HomeLayout> = appContext.settingsDataStore.data.map { HomeLayout.decode(it[homeLayoutKey]) }
@@ -207,7 +206,6 @@ class SettingsRepository(context: Context) {
     suspend fun setUserName(name: String) { appContext.settingsDataStore.edit { it[userNameKey] = name } }
     suspend fun setWorkMinutes(mins: Int) { appContext.settingsDataStore.edit { it[workMinutesKey] = mins } }
     suspend fun setPreferredTimerMode(mode: String) { appContext.settingsDataStore.edit { it[preferredTimerModeKey] = mode } }
-    suspend fun setBreakMinutes(mins: Int) { appContext.settingsDataStore.edit { it[breakMinutesKey] = mins } }
     suspend fun setDayStartsAtHour(hour: Int) { appContext.settingsDataStore.edit { it[dayStartsAtHourKey] = hour } }
     suspend fun setUseAppLock(enabled: Boolean) { appContext.settingsDataStore.edit { it[useAppLockKey] = enabled } }
     suspend fun setHomeLayout(layout: HomeLayout) { appContext.settingsDataStore.edit { it[homeLayoutKey] = layout.encode() } }
@@ -220,7 +218,6 @@ class SettingsRepository(context: Context) {
 
     val activeTimerMode: Flow<String?> = appContext.settingsDataStore.data.map { it[activeTimerModeKey] }
     val activeTimerBookId: Flow<String?> = appContext.settingsDataStore.data.map { it[activeTimerBookIdKey] }
-    val activeTimerPhase: Flow<String?> = appContext.settingsDataStore.data.map { it[activeTimerPhaseKey] }
     val activeTimerIsRunning: Flow<Boolean?> = appContext.settingsDataStore.data.map { it[activeTimerIsRunningKey] }
     val activeTimerTimeLeft: Flow<Int?> = appContext.settingsDataStore.data.map { it[activeTimerTimeLeftKey] }
     val activeTimerElapsed: Flow<Int?> = appContext.settingsDataStore.data.map { it[activeTimerElapsedKey] }
@@ -231,7 +228,6 @@ class SettingsRepository(context: Context) {
     suspend fun saveTimerState(
         mode: String?,
         bookId: String?,
-        phase: String?,
         isRunning: Boolean?,
         timeLeft: Int?,
         elapsed: Int?,
@@ -242,7 +238,6 @@ class SettingsRepository(context: Context) {
         appContext.settingsDataStore.edit { prefs ->
             if (mode != null) prefs[activeTimerModeKey] = mode else prefs.remove(activeTimerModeKey)
             if (bookId != null) prefs[activeTimerBookIdKey] = bookId else prefs.remove(activeTimerBookIdKey)
-            if (phase != null) prefs[activeTimerPhaseKey] = phase else prefs.remove(activeTimerPhaseKey)
             if (isRunning != null) prefs[activeTimerIsRunningKey] = isRunning else prefs.remove(activeTimerIsRunningKey)
             if (timeLeft != null) prefs[activeTimerTimeLeftKey] = timeLeft else prefs.remove(activeTimerTimeLeftKey)
             if (elapsed != null) prefs[activeTimerElapsedKey] = elapsed else prefs.remove(activeTimerElapsedKey)
@@ -256,7 +251,6 @@ class SettingsRepository(context: Context) {
         appContext.settingsDataStore.edit { prefs ->
             prefs.remove(activeTimerModeKey)
             prefs.remove(activeTimerBookIdKey)
-            prefs.remove(activeTimerPhaseKey)
             prefs.remove(activeTimerIsRunningKey)
             prefs.remove(activeTimerTimeLeftKey)
             prefs.remove(activeTimerElapsedKey)
@@ -284,6 +278,7 @@ class SettingsRepository(context: Context) {
         val showTimeLeft = booleanPreferencesKey("pref_show_time_left")
         val defaultFormat = androidx.datastore.preferences.core.stringPreferencesKey("pref_default_format")
         val stillReadingCheck = booleanPreferencesKey("pref_still_reading_check")
+        val volumeKeysTurnPages = booleanPreferencesKey("pref_volume_keys_turn_pages")
         val scanOnFinish = booleanPreferencesKey("pref_scan_on_finish")
         val minSessionSeconds = intPreferencesKey("pref_min_session_seconds")
         val monthlyBookBudget = intPreferencesKey("pref_monthly_book_budget")
@@ -318,6 +313,7 @@ class SettingsRepository(context: Context) {
             showTimeLeft = p[PrefKeys.showTimeLeft] ?: d.showTimeLeft,
             defaultFormat = p[PrefKeys.defaultFormat]?.let { name -> BookFormat.entries.firstOrNull { it.name == name } } ?: d.defaultFormat,
             stillReadingCheck = p[PrefKeys.stillReadingCheck] ?: d.stillReadingCheck,
+            volumeKeysTurnPages = p[PrefKeys.volumeKeysTurnPages] ?: d.volumeKeysTurnPages,
             scanOnFinish = p[PrefKeys.scanOnFinish] ?: d.scanOnFinish,
             minSessionSeconds = p[PrefKeys.minSessionSeconds] ?: d.minSessionSeconds,
             monthlyBookBudget = p[PrefKeys.monthlyBookBudget] ?: d.monthlyBookBudget,
@@ -356,6 +352,7 @@ class SettingsRepository(context: Context) {
             p[PrefKeys.showTimeLeft] = next.showTimeLeft
             p[PrefKeys.defaultFormat] = next.defaultFormat.name
             p[PrefKeys.stillReadingCheck] = next.stillReadingCheck
+            p[PrefKeys.volumeKeysTurnPages] = next.volumeKeysTurnPages
             p[PrefKeys.scanOnFinish] = next.scanOnFinish
             p[PrefKeys.minSessionSeconds] = next.minSessionSeconds.coerceIn(0, 600)
             p[PrefKeys.monthlyBookBudget] = next.monthlyBookBudget.coerceAtLeast(0)

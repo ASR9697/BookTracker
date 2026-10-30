@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.focusable
@@ -26,7 +27,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.NoteAdd
@@ -35,6 +35,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -58,11 +59,13 @@ import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.NoteType
 import java.util.Locale
 
-enum class TimerPhase { WORK, BREAK }
 enum class TimerMode { COUNTDOWN, STOPWATCH }
 
 private const val STILL_READING_AFTER_SECONDS = 30 * 60
 private const val STILL_READING_GRACE_SECONDS = 5 * 60
+private const val ZEN_DIM_AFTER_MS = 10_000L
+private const val ZEN_DIM_ALPHA = 0.22f
+private const val EXTEND_MINUTES = 5
 
 private fun formatTimerClock(totalSeconds: Int): String {
     val hrs = totalSeconds / 3600
@@ -91,7 +94,6 @@ fun FocusTimerScreen(
     onAddNote: (page: Int, text: String, type: NoteType, images: List<String>) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val phase by viewModel.timerPhase.collectAsState()
     val mode by viewModel.timerMode.collectAsState()
     val isRunning by viewModel.timerIsRunning.collectAsState()
     // Paper-book readers set the phone down; keep the display awake while the timer is open.
@@ -107,9 +109,9 @@ fun FocusTimerScreen(
     val volume by viewModel.timerVolume.collectAsState()
     val completedSessions by viewModel.completedSessions.collectAsState()
     val openSession by viewModel.openSession.collectAsState()
-    // Re-read when the phase or preset changes so the countdown ring has the right length.
+    // Re-read when the preset changes so the countdown ring has the right length.
     val workMinutes by viewModel.workMinutes.collectAsState()
-    val countdownTotal = remember(phase, workMinutes, timeLeftSeconds == 0) { viewModel.countdownTotalSeconds() }
+    val countdownTotal = remember(workMinutes, timeLeftSeconds == 0) { viewModel.countdownTotalSeconds() }
     val countdownDone = mode == TimerMode.COUNTDOWN && timeLeftSeconds <= 0
     val notStarted = !isRunning && !countdownDone &&
         (if (mode == TimerMode.STOPWATCH) elapsedSeconds == 0 else timeLeftSeconds >= countdownTotal)
@@ -228,8 +230,19 @@ fun FocusTimerScreen(
     val pausedForSeconds = pausedAt?.takeIf { !isRunning }?.let { ((nowMillis - it) / 1000).toInt().coerceAtLeast(0) }
 
     var isZenMode by remember { mutableStateOf(false) }
+    // In zen the clock fades to a dim glow after a while; a tap anywhere brings it back.
+    var zenWake by remember { mutableIntStateOf(0) }
+    var zenDimmed by remember { mutableStateOf(false) }
+    LaunchedEffect(isZenMode, zenWake) {
+        zenDimmed = false
+        if (isZenMode) {
+            kotlinx.coroutines.delay(ZEN_DIM_AFTER_MS)
+            zenDimmed = true
+        }
+    }
     var showSoundscapeSheet by remember { mutableStateOf(false) }
     var showNoteSheet by remember { mutableStateOf(false) }
+    var dictateNote by remember { mutableStateOf(false) }
     var showCountdownSheet by remember { mutableStateOf(false) }
 
     val haptic = LocalHapticFeedback.current
@@ -261,17 +274,27 @@ fun FocusTimerScreen(
         if (isZenMode) isZenMode = false else leave()
     }
 
-    // Slow breathing glow behind the play button while the clock runs.
-    val infiniteTransition = rememberInfiniteTransition(label = "focus_breath")
-    val breath by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 4000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "breath"
+    // Slow breathing glow behind the play button while the clock runs; still under reduce motion.
+    val reduceMotion = com.example.booktracker.app.ui.animations.rememberReduceMotion()
+    val breath = if (reduceMotion) 0f else {
+        val infiniteTransition = rememberInfiniteTransition(label = "focus_breath")
+        val pulse by infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 4000, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "breath"
+        )
+        pulse
+    }
+    val zenClockAlpha by animateFloatAsState(
+        targetValue = if (isZenMode && zenDimmed) ZEN_DIM_ALPHA else 1f,
+        animationSpec = if (reduceMotion) snap() else tween(durationMillis = 1500),
+        label = "zenDim"
     )
+    var showProgressPicker by remember { mutableStateOf(false) }
 
     val displaySeconds = if (mode == TimerMode.STOPWATCH) elapsedSeconds else timeLeftSeconds
     val chrome = onBackground.copy(alpha = 0.12f)
@@ -306,19 +329,35 @@ fun FocusTimerScreen(
         modifier = Modifier
             .weight(1f)
             .fillMaxHeight()
-            .background(if (isZenMode) Color(0xFF090D14) else background)
+            .background(if (isZenMode) com.example.booktracker.app.ui.theme.ZenNight else background)
             .focusRequester(keyFocus)
             .onKeyEvent { event ->
-                if (event.type == KeyEventType.KeyUp && event.key == Key.Spacebar) {
-                    if (countdownDone) finish() else viewModel.setTimerRunning(!isRunning)
-                    true
-                } else {
-                    false
+                val volumeStep = when (event.key) {
+                    Key.VolumeUp -> 1
+                    Key.VolumeDown -> -1
+                    else -> 0
+                }
+                when {
+                    event.type == KeyEventType.KeyUp && event.key == Key.Spacebar -> {
+                        if (countdownDone) finish() else viewModel.setTimerRunning(!isRunning)
+                        true
+                    }
+                    // Volume keys turn the page when the reader opted in; both the press and
+                    // the release are taken so the system volume doesn't move as well.
+                    volumeStep != 0 && prefs.volumeKeysTurnPages -> {
+                        if (event.type == KeyEventType.KeyDown) {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            sessionCurrentPage = (sessionCurrentPage + volumeStep).coerceIn(0, maxPage)
+                        }
+                        true
+                    }
+                    else -> false
                 }
             }
             .focusable()
             .pointerInput(Unit) {
                 detectTapGestures(
+                    onTap = { zenWake++ },
                     onDoubleTap = {
                         haptics.confirm()
                         isZenMode = !isZenMode
@@ -373,7 +412,7 @@ fun FocusTimerScreen(
                             Spacer(Modifier.width(8.dp))
                             Surface(
                                 onClick = finish,
-                                shape = RoundedCornerShape(50),
+                                shape = CircleShape,
                                 color = onBackground.copy(alpha = 0.18f),
                                 contentColor = onBackground,
                                 modifier = Modifier.height(42.dp)
@@ -402,13 +441,14 @@ fun FocusTimerScreen(
                     // Fixed-width digits, so the clock doesn't jiggle every second.
                     fontFeatureSettings = "tnum"
                 ),
-                color = onBackground
+                color = onBackground,
+                modifier = Modifier.alpha(zenClockAlpha)
             )
             Spacer(Modifier.height(4.dp))
             Text(
+                modifier = Modifier.alpha(zenClockAlpha),
                 text = when {
-                    countdownDone -> "Time's up. Tap to save your session"
-                    phase == TimerPhase.BREAK && isRunning -> "Break. Rest your eyes"
+                    countdownDone -> "Time's up. Save, or keep going for 5 more minutes"
                     isRunning && goalReached -> "Page goal reached · keep going if you like"
                     isRunning && livePaceStr != null -> "Reading · $livePaceStr"
                     isRunning && bookSpeedStr != null -> "Reading · usually $bookSpeedStr"
@@ -423,7 +463,7 @@ fun FocusTimerScreen(
             )
             AnimatedVisibility(visible = sessionDelta > 0 && !isZenMode, enter = fadeIn(), exit = fadeOut()) {
                 Surface(
-                    shape = RoundedCornerShape(50),
+                    shape = CircleShape,
                     color = onBackground.copy(alpha = 0.12f),
                     contentColor = onBackground,
                     modifier = Modifier.padding(top = 12.dp)
@@ -470,7 +510,7 @@ fun FocusTimerScreen(
                             goalPages != null -> (sessionDelta.toFloat() / goalPages).coerceIn(0f, 1f)
                             else -> null
                         },
-                        ringColor = if (phase == TimerPhase.BREAK) Color(0xFF6EE7A0) else onBackground,
+                        ringColor = onBackground,
                         foreground = onBackground,
                         background = background,
                         glow = if (isRunning) breath else 0f,
@@ -486,11 +526,22 @@ fun FocusTimerScreen(
                     // after that it's shown for reference.
                     val countdownLabel = when {
                         mode == TimerMode.STOPWATCH -> "Set countdown"
-                        phase == TimerPhase.BREAK -> "Break · ${countdownTotal / 60} min"
                         else -> "${countdownTotal / 60} min countdown"
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        if (notStarted || mode == TimerMode.COUNTDOWN) {
+                        if (countdownDone) {
+                            // Time's up: keep going in the same session rather than starting over.
+                            TimerChip(
+                                icon = Icons.Rounded.MoreTime,
+                                label = "+$EXTEND_MINUTES min",
+                                tint = onBackground,
+                                filled = true,
+                                onClick = {
+                                    haptics.confirm()
+                                    viewModel.extendCountdown(EXTEND_MINUTES)
+                                }
+                            )
+                        } else if (notStarted || mode == TimerMode.COUNTDOWN) {
                             TimerChip(
                                 icon = if (mode == TimerMode.STOPWATCH) Icons.Rounded.Timer else Icons.Rounded.HourglassBottom,
                                 label = countdownLabel,
@@ -549,7 +600,9 @@ fun FocusTimerScreen(
                                 )
                             }
                             Spacer(Modifier.height(6.dp))
-                            // Page stepper: the page is saved as you go.
+                            // Page stepper: the page is saved as you go. +/- for one page;
+                            // tap the number to jump (or scan the page) after reading a stretch.
+                            val unit = FormatAdaptabilityLayer.unitAbbrev(book)
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconButton(
                                     onClick = {
@@ -557,16 +610,19 @@ fun FocusTimerScreen(
                                         sessionCurrentPage -= 1
                                     },
                                     enabled = sessionCurrentPage > 0,
-                                    modifier = Modifier.size(32.dp)
+                                    modifier = Modifier.size(48.dp)
                                 ) {
-                                    Icon(Icons.Rounded.Remove, contentDescription = "Page back", tint = onBackground, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Rounded.Remove, contentDescription = "Page back", tint = onBackground, modifier = Modifier.size(20.dp))
                                 }
                                 Text(
-                                    if (book.totalPages > 0) "p. $sessionCurrentPage / ${book.totalPages}" else "p. $sessionCurrentPage",
+                                    if (book.totalPages > 0) "$unit $sessionCurrentPage / ${book.totalPages}" else "$unit $sessionCurrentPage",
                                     style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"),
                                     fontWeight = FontWeight.Bold,
                                     color = onBackground,
-                                    modifier = Modifier.padding(horizontal = 4.dp)
+                                    modifier = Modifier
+                                        .clip(AppShape.XS)
+                                        .clickable(onClickLabel = "Choose page") { showProgressPicker = true }
+                                        .padding(horizontal = 6.dp, vertical = 8.dp)
                                 )
                                 IconButton(
                                     onClick = {
@@ -574,9 +630,9 @@ fun FocusTimerScreen(
                                         sessionCurrentPage = (sessionCurrentPage + 1).coerceAtMost(maxPage)
                                     },
                                     enabled = sessionCurrentPage < maxPage,
-                                    modifier = Modifier.size(32.dp)
+                                    modifier = Modifier.size(48.dp)
                                 ) {
-                                    Icon(Icons.Rounded.Add, contentDescription = "Page forward", tint = onBackground, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Rounded.Add, contentDescription = "Page forward", tint = onBackground, modifier = Modifier.size(20.dp))
                                 }
                             }
                             Text(
@@ -591,15 +647,31 @@ fun FocusTimerScreen(
                             )
                         }
                         Spacer(Modifier.width(8.dp))
-                        FilledIconButton(
-                            onClick = { showNoteSheet = true },
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = onBackground.copy(alpha = 0.16f),
-                                contentColor = onBackground
-                            ),
-                            modifier = Modifier.size(52.dp)
+                        // Tap to write a note; hold to start dictating straight away.
+                        Surface(
+                            shape = CircleShape,
+                            color = onBackground.copy(alpha = 0.16f),
+                            contentColor = onBackground,
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(CircleShape)
+                                .combinedClickable(
+                                    onClickLabel = "Add a note",
+                                    onLongClickLabel = "Dictate a note",
+                                    onLongClick = {
+                                        haptics.longPress()
+                                        dictateNote = true
+                                        showNoteSheet = true
+                                    },
+                                    onClick = {
+                                        dictateNote = false
+                                        showNoteSheet = true
+                                    }
+                                )
                         ) {
-                            Icon(Icons.AutoMirrored.Rounded.NoteAdd, contentDescription = "Add a note")
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.AutoMirrored.Rounded.NoteAdd, contentDescription = "Add a note, or hold to dictate")
+                            }
                         }
                     }
                 }
@@ -656,25 +728,29 @@ fun FocusTimerScreen(
     }
     }
 
+    if (showProgressPicker) {
+        ProgressPickerSheet(
+            book = book,
+            initialPage = sessionCurrentPage,
+            sessionStartPage = sessionStartPage,
+            sessionSeconds = activeReadingSeconds,
+            onDismiss = { showProgressPicker = false },
+            onConfirm = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                sessionCurrentPage = it.coerceIn(0, maxPage)
+                showProgressPicker = false
+            }
+        )
+    }
+
     if (showCountdownSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showCountdownSheet = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        ActionSheet(
+            onDismiss = { showCountdownSheet = false },
+            icon = Icons.Rounded.HourglassBottom,
+            title = "Countdown",
+            message = "Read for a set time. You'll get an alert when it's up."
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 32.dp)
-            ) {
-                Text("Countdown", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text(
-                    "Read for a set time. You'll get an alert when it's up.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(16.dp))
+            Column {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -728,9 +804,11 @@ fun FocusTimerScreen(
 
     if (showSoundscapeSheet) {
         ModalBottomSheet(
-            onDismissRequest = { showSoundscapeSheet = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+            onDismissRequest = {
+                showSoundscapeSheet = false
+                viewModel.endNoisePreview()
+            },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ) {
             Column(
                 modifier = Modifier
@@ -765,7 +843,8 @@ fun FocusTimerScreen(
                                 .fillMaxWidth()
                                 .clickable {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    viewModel.setNoiseType(type)
+                                    // Heard right away, even before the clock starts.
+                                    viewModel.setNoiseType(type, preview = true)
                                 }
                         ) {
                             Row(
@@ -820,6 +899,7 @@ fun FocusTimerScreen(
             totalPages = book.totalPages,
             pageLabel = FormatAdaptabilityLayer.getDisplayUnit(book).trimEnd('s'),
             draftKey = book.id,
+            startDictating = dictateNote,
             onDismiss = { showNoteSheet = false },
             onConfirm = { page, text, type, images ->
                 onAddNote(page, text, type, images)
@@ -843,7 +923,7 @@ private fun TimerChip(
     Surface(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(50),
+        shape = CircleShape,
         color = if (filled) tint.copy(alpha = 0.18f) else Color.Transparent,
         contentColor = tint.copy(alpha = if (enabled) 0.9f else 0.6f),
         border = androidx.compose.foundation.BorderStroke(1.dp, tint.copy(alpha = 0.3f))
@@ -874,24 +954,16 @@ private fun PageGoalSheet(
     val maxPage = if (book.totalPages > 0) book.totalPages else Int.MAX_VALUE
     var typed by remember { mutableStateOf(currentTarget?.toString().orEmpty()) }
     val typedPage = typed.toIntOrNull()?.takeIf { it in (startPage + 1)..maxPage }
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    ActionSheet(
+        onDismiss = onDismiss,
+        icon = Icons.Rounded.Flag,
+        title = "Page goal",
+        message = "How far do you want to get? This session started on $unit $startPage.",
+        confirmLabel = "Set goal",
+        onConfirm = { onSet(typedPage) },
+        confirmEnabled = typedPage != null
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp)
-        ) {
-            Text("Page goal", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(
-                "How far do you want to get? This session started on $unit $startPage.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(16.dp))
+        Column {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(10, 20, 30, 50).filter { startPage + it <= maxPage }.forEach { step ->
                     TickFilterChip(
@@ -909,19 +981,16 @@ private fun PageGoalSheet(
                 }
             }
             Spacer(Modifier.height(16.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = typed,
-                    onValueChange = { typed = it.filter(Char::isDigit).take(6) },
-                    label = { Text("Read to ${word.trimEnd('s')}") },
-                    singleLine = true,
-                    isError = typed.isNotEmpty() && typedPage == null,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(Modifier.width(12.dp))
-                Button(onClick = { onSet(typedPage) }, enabled = typedPage != null) { Text("Set") }
-            }
+            // A typed page is set with the sheet's main button.
+            OutlinedTextField(
+                value = typed,
+                onValueChange = { typed = it.filter(Char::isDigit).take(6) },
+                label = { Text("Read to ${word.trimEnd('s')}") },
+                singleLine = true,
+                isError = typed.isNotEmpty() && typedPage == null,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
+            )
             if (currentTarget != null) {
                 Spacer(Modifier.height(8.dp))
                 TextButton(onClick = { onSet(null) }) { Text("No page goal") }

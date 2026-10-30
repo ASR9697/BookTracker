@@ -70,7 +70,6 @@ data class PhoneTimer(
     val bookId: String?,
     val running: Boolean,
     val countdown: Boolean,
-    val onBreak: Boolean,
     val seconds: Int,
     val anchor: Long
 ) {
@@ -123,7 +122,6 @@ object WatchStore {
         bookId = dataMap.getString(Constants.KEY_TIMER_BOOK_ID),
         running = dataMap.getBoolean(Constants.KEY_TIMER_RUNNING),
         countdown = dataMap.getString(Constants.KEY_TIMER_MODE) == "COUNTDOWN",
-        onBreak = dataMap.getString(Constants.KEY_TIMER_PHASE) == "BREAK",
         seconds = dataMap.getInt(Constants.KEY_TIMER_SECONDS),
         anchor = dataMap.getLong(Constants.KEY_TIMER_ANCHOR)
     )

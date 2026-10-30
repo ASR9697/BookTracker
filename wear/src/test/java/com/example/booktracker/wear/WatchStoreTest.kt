@@ -57,11 +57,11 @@ class WatchStoreTest {
 
     @Test
     fun `the phone clock counts from its anchor`() {
-        val countdown = PhoneTimer("a", running = true, countdown = true, onBreak = false, seconds = 600, anchor = now + 300_000)
+        val countdown = PhoneTimer("a", running = true, countdown = true, seconds = 600, anchor = now + 300_000)
         assertEquals(300, countdown.secondsAt(now))
         assertEquals(0, countdown.secondsAt(now + 400_000))
 
-        val stopwatch = PhoneTimer("a", running = true, countdown = false, onBreak = false, seconds = 0, anchor = now - 90_000)
+        val stopwatch = PhoneTimer("a", running = true, countdown = false, seconds = 0, anchor = now - 90_000)
         assertEquals(90, stopwatch.secondsAt(now))
 
         val paused = stopwatch.copy(running = false, seconds = 42)

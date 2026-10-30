@@ -631,6 +631,11 @@ private fun ReadingPage(
             prefs.stillReadingCheck
         ) { on -> onPrefsChange { it.copy(stillReadingCheck = on) } }
         SwitchSetting(
+            "Volume keys turn the page",
+            "While the timer is open: volume up for the next page, down to go back",
+            prefs.volumeKeysTurnPages
+        ) { on -> onPrefsChange { it.copy(volumeKeysTurnPages = on) } }
+        SwitchSetting(
             "Scan the page when you finish",
             "Saving a session opens the camera on the page number",
             prefs.scanOnFinish

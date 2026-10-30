@@ -537,7 +537,6 @@ private fun ClockLine(clock: BookClock, onExpired: () -> Unit) {
             style = MaterialTheme.typography.titleMedium,
             color = when {
                 !clock.running -> MaterialTheme.colorScheme.onSurfaceVariant
-                clock.onBreak -> MaterialTheme.colorScheme.secondary
                 else -> MaterialTheme.colorScheme.primary
             }
         )
@@ -665,7 +664,6 @@ private class BookClock(
     val running: Boolean,
     @StringRes val label: Int,
     val onPhone: Boolean,
-    val onBreak: Boolean,
     /** Counting down to zero rather than up. */
     val countdown: Boolean,
     private val seconds: (Long) -> Int
@@ -683,7 +681,6 @@ private fun clockFor(book: ActiveBook?, session: WristSession?, timer: PhoneTime
             else -> R.string.phase_focus
         },
         onPhone = false,
-        onBreak = false,
         countdown = session.countdown
     ) { now ->
         // Rounded up, so a countdown shows 00:00 only once it has really run out.
@@ -693,11 +690,9 @@ private fun clockFor(book: ActiveBook?, session: WristSession?, timer: PhoneTime
         running = timer.running,
         label = when {
             !timer.countdown -> R.string.phase_reading
-            timer.onBreak -> R.string.phase_break
             else -> R.string.phase_focus
         },
         onPhone = true,
-        onBreak = timer.onBreak,
         countdown = timer.countdown
     ) { timer.secondsAt(it) }
     else -> null

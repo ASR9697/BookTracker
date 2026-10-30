@@ -11,7 +11,6 @@ import com.example.booktracker.app.data.AppPalette
 import com.example.booktracker.app.data.ServiceLocator
 import com.example.booktracker.app.service.TimerPersistence
 import com.example.booktracker.app.ui.TimerMode
-import com.example.booktracker.app.ui.TimerPhase
 import com.example.booktracker.shared.Constants
 import com.example.booktracker.shared.models.BookStatus
 import com.google.android.gms.wearable.DataMap
@@ -61,13 +60,12 @@ object WearBridge {
         val bookId: String?,
         val running: Boolean,
         val mode: TimerMode,
-        val phase: TimerPhase,
         val seconds: Int,
         val anchor: Long
     ) {
         /** Same clock as [other] once the ticking is set aside. */
         fun sameAs(other: TimerSnapshot): Boolean =
-            bookId == other.bookId && running == other.running && mode == other.mode && phase == other.phase &&
+            bookId == other.bookId && running == other.running && mode == other.mode &&
                 if (running) abs(anchor - other.anchor) < ANCHOR_SLACK_MS else seconds == other.seconds
     }
 
@@ -111,9 +109,8 @@ object WearBridge {
                     Triple(running, left, elapsed)
                 },
                 ServiceLocator.timerMode,
-                ServiceLocator.timerPhase,
                 ServiceLocator.timerBookId
-            ) { (running, left, elapsed), mode, phase, bookId ->
+            ) { (running, left, elapsed), mode, bookId ->
                 val countdown = mode == TimerMode.COUNTDOWN
                 val seconds = if (countdown) left else elapsed
                 val now = System.currentTimeMillis()
@@ -121,7 +118,6 @@ object WearBridge {
                     bookId = bookId,
                     running = running && bookId != null,
                     mode = mode,
-                    phase = phase,
                     seconds = seconds,
                     anchor = if (countdown) now + seconds * 1000L else now - seconds * 1000L
                 )
@@ -190,7 +186,6 @@ object WearBridge {
             dataMap.putBoolean(Constants.KEY_TIMER_RUNNING, timer.running)
             dataMap.putInt(Constants.KEY_TIMER_SECONDS, timer.seconds)
             dataMap.putLong(Constants.KEY_TIMER_ANCHOR, if (timer.running) timer.anchor else 0L)
-            dataMap.putString(Constants.KEY_TIMER_PHASE, timer.phase.name)
             dataMap.putString(Constants.KEY_TIMER_MODE, timer.mode.name)
             timer.bookId?.let { dataMap.putString(Constants.KEY_TIMER_BOOK_ID, it) }
         }.asPutDataRequest().setUrgent()
