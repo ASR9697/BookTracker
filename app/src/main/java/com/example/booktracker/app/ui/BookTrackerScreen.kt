@@ -777,7 +777,8 @@ androidx.compose.animation.SharedTransitionLayout {
                                                                 initialGoalType = targetGoalType
                                                                 showGoalDialog = true
                                                             },
-                                                            onTidyTags = { navController.navigate("tagTidy") { launchSingleTop = true } }
+                                                            onTidyTags = { navController.navigate("tagTidy") { launchSingleTop = true } },
+                                                            onSpanChange = { span -> viewModel.updatePrefs { it.copy(statsSpan = span.name) } }
                                                         )
             
                                         }

@@ -52,6 +52,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import com.example.booktracker.app.analytics.AnalyticsEngine
 import com.example.booktracker.app.analytics.ReadingCalendar
 import com.example.booktracker.app.analytics.StreakEngine
+import com.example.booktracker.app.analytics.PeriodStats
 import com.example.booktracker.shared.models.Book
 import com.example.booktracker.shared.models.BookStatus
 import com.example.booktracker.shared.models.Session
@@ -74,6 +75,8 @@ fun AnalyticsScreen(
     dayStartsAtHour: Int = StreakEngine.DEFAULT_DAY_START_HOUR,
     onEditGoal: (GoalType) -> Unit = {},
     onTidyTags: () -> Unit = {},
+    /** Remembers the period the reader picked, for next time. */
+    onSpanChange: (PeriodStats.Span) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val zone = remember { ZoneId.systemDefault() }
@@ -88,16 +91,6 @@ fun AnalyticsScreen(
 
     var showMinutes by remember { mutableStateOf(false) }
 
-    val last7Days = remember(today, pagesByDay, minutesByDay, showMinutes) {
-        (0..6).map { i ->
-            val date = today.minusDays((6 - i).toLong())
-            val value =
-                if (showMinutes) (minutesByDay[date] ?: 0L)
-                else (pagesByDay[date] ?: 0).toLong()
-            date to value
-        }
-    }
-    val maxIn7Days = last7Days.maxOfOrNull { it.second }?.coerceAtLeast(1L) ?: 1L
 
     val finishedBooks = books
         .filter { it.status.equals(BookStatus.FINISHED.name, ignoreCase = true) }
@@ -149,10 +142,32 @@ fun AnalyticsScreen(
 
     val entrance = rememberEntranceState()
 
-    val pagesThisYear = remember(pagesByDay, today) { pagesByDay.filterKeys { it.year == today.year }.values.sum() }
+    // The period everything below follows; the span is remembered, stepping back isn't.
+    val prefs = LocalAppPrefs.current
+    var period by remember(prefs.statsSpan) {
+        mutableStateOf(PeriodStats.Period(PeriodStats.Span.entries.firstOrNull { it.name == prefs.statsSpan } ?: PeriodStats.Span.MONTH))
+    }
+    val finishDays = remember(finishedBooks, dayStartsAtHour) {
+        finishedBooks.map { StreakEngine.readingDate(it.completedAt, zone, dayStartsAtHour) }
+    }
+    val firstDay = remember(pagesByDay, minutesByDay, finishDays) { (pagesByDay.keys + minutesByDay.keys + finishDays).minOrNull() }
+    val range = PeriodStats.bounds(period, today, prefs.weekStartsSunday, firstDay)
+    val periodLabel = PeriodStats.label(period, today, prefs.weekStartsSunday)
+    val periodSummary = remember(range, pagesByDay, minutesByDay, finishDays) {
+        PeriodStats.summary(range, pagesByDay, minutesByDay, finishDays)
+    }
+    val before = if (period.span == PeriodStats.Span.ALL) null else remember(period, today, pagesByDay, minutesByDay, finishDays) {
+        PeriodStats.summary(PeriodStats.bounds(period.previous, today, prefs.weekStartsSunday), pagesByDay, minutesByDay, finishDays)
+    }
+    val comparedWith = PeriodStats.label(period.previous, today, prefs.weekStartsSunday)
+        .let { if (it.startsWith("Last") || it.startsWith("This")) it.lowercase() else it }
+    val buckets = remember(period, range, showMinutes, pagesByDay, minutesByDay) {
+        PeriodStats.buckets(period, range, if (showMinutes) minutesByDay else pagesByDay.mapValues { it.value.toLong() })
+    }
+
     SectionPage(
         title = "Stats",
-        line = if (pagesThisYear > 0) String.format(java.util.Locale.getDefault(), "%,d pages read in %d", pagesThisYear, today.year)
+        line = if (periodSummary.pages > 0) String.format(java.util.Locale.getDefault(), "%,d pages · %s", periodSummary.pages, periodLabel)
         else "Your reading, in numbers",
         modifier = modifier
     ) {
@@ -164,6 +179,24 @@ fun AnalyticsScreen(
         verticalItemSpacing = 24.dp,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        item(span = StaggeredGridItemSpan.FullLine) {
+            PeriodSwitcher(
+                period = period,
+                label = periodLabel,
+                onSpan = { span ->
+                    period = PeriodStats.Period(span)
+                    onSpanChange(span)
+                },
+                onStep = { period = it }
+            )
+        }
+        item(span = StaggeredGridItemSpan.FullLine) {
+            SummaryStrip(periodSummary, before, comparedWith)
+        }
+        item(span = StaggeredGridItemSpan.FullLine) {
+            ActivityChart(buckets, period.span, showMinutes, onShowMinutes = { showMinutes = it })
+        }
+
         staggeredItem(entrance, 0) {
             // Bookmory Yearly Reading Target with Pace
             Card(
@@ -592,59 +625,6 @@ fun AnalyticsScreen(
 
         }
 
-        staggeredItem(entrance, 4) {
-            // Last-7-days activity, switchable between pages and reading time.
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                shape = AppShape.M,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            if (showMinutes) "Time read" else "Pages read",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            TickFilterChip(
-                                selected = !showMinutes,
-                                onClick = { showMinutes = false },
-                                label = { Text("Pages") },
-                                shape = CircleShape
-                            )
-                            TickFilterChip(
-                                selected = showMinutes,
-                                onClick = { showMinutes = true },
-                                label = { Text("Minutes") },
-                                shape = CircleShape
-                            )
-                        }
-                    }
-                    if (last7Days.all { it.second == 0L }) {
-                        // A flat line of zeros reads as broken; say what will fill it instead.
-                        Spacer(Modifier.height(16.dp))
-                        Text(
-                            if (showMinutes) "No timed reading in the last 7 days. Use the timer on Home and your minutes show up here."
-                            else "No pages logged in the last 7 days. Update your page on Home and your week shows up here.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        Spacer(Modifier.height(24.dp))
-                        SmoothLineChart(
-                            data = last7Days,
-                            maxValue = maxIn7Days,
-                            modifier = Modifier.fillMaxWidth().height(160.dp).padding(top = 16.dp, bottom = 8.dp, start = 8.dp, end = 8.dp)
-                        )
-                    }
-                }
-            }
-        }
-
         // Reading-time stats from recorded session durations.
         staggeredItem(entrance, 5) {
             Card(
@@ -928,146 +908,6 @@ private fun TimeStat(icon: ImageVector, value: String, label: String) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-    }
-}
-
-@Composable
-fun SmoothLineChart(
-    data: List<Pair<java.time.LocalDate, Long>>,
-    maxValue: Long,
-    modifier: Modifier = Modifier,
-    lineColor: Color = MaterialTheme.colorScheme.primary,
-    gradientColors: List<Color> = listOf(
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.0f)
-    )
-) {
-    if (data.isEmpty()) return
-    
-    var animationPlayed by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    androidx.compose.runtime.LaunchedEffect(Unit) {
-        animationPlayed = true
-    }
-    
-    val animationProgress by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (animationPlayed) 1f else 0f,
-        animationSpec = androidx.compose.animation.core.tween(
-            durationMillis = 1500,
-            easing = androidx.compose.animation.core.FastOutSlowInEasing
-        ),
-        label = "chartAnimation"
-    )
-    
-    val textStyle = MaterialTheme.typography.labelSmall
-    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
-    val textMeasurer = rememberTextMeasurer()
-    
-    Canvas(modifier = modifier) {
-        val width = size.width
-        val height = size.height - 30.dp.toPx() // Leave room for labels
-        
-        val pointSpacing = if (data.size > 1) width / (data.size - 1) else width
-        
-        val points = data.mapIndexed { index, (_, value) ->
-            val normalizedValue = if (maxValue > 0) value.toFloat() / maxValue else 0f
-            // Y is inverted in canvas (0 is top), animate the Y growth
-            val x = index * pointSpacing
-            val y = height - ((normalizedValue * animationProgress) * height)
-            Offset(x, y)
-        }
-        
-        val path = Path()
-        if (points.isNotEmpty()) {
-            path.moveTo(points.first().x, points.first().y)
-            
-            for (i in 0 until points.size - 1) {
-                val p0 = points[i]
-                val p1 = points[i + 1]
-                
-                // Calculate control points for smooth bezier curve
-                val controlPoint1 = Offset((p0.x + p1.x) / 2, p0.y)
-                val controlPoint2 = Offset((p0.x + p1.x) / 2, p1.y)
-                
-                path.cubicTo(
-                    controlPoint1.x, controlPoint1.y,
-                    controlPoint2.x, controlPoint2.y,
-                    p1.x, p1.y
-                )
-            }
-        }
-        
-        // Draw the gradient fill
-        val fillPath = Path().apply {
-            addPath(path)
-            if (points.isNotEmpty()) {
-                lineTo(points.last().x, height)
-                lineTo(points.first().x, height)
-                close()
-            }
-        }
-        
-        drawPath(
-            path = fillPath,
-            brush = Brush.verticalGradient(
-                colors = gradientColors,
-                startY = 0f,
-                endY = height
-            )
-        )
-        
-        drawPath(
-            path = path,
-            color = lineColor,
-            style = Stroke(width = 4.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
-        )
-
-        points.forEachIndexed { index, point ->
-            val (_, value) = data[index]
-            val date = data[index].first
-            val dayName = date.dayOfWeek.name.take(1)
-            
-            // Draw a circle for each data point
-            drawCircle(
-                color = lineColor,
-                radius = 4.dp.toPx(),
-                center = point
-            )
-            drawCircle(
-                color = Color.White,
-                radius = 2.dp.toPx(),
-                center = point
-            )
-            
-            // Draw value text above the point if > 0
-            if (value > 0) {
-                val textLayoutResult = textMeasurer.measure(
-                    text = value.toString(),
-                    style = textStyle
-                )
-                drawText(
-                    textLayoutResult = textLayoutResult,
-                    color = onSurfaceVariant,
-                    topLeft = Offset(
-                        x = point.x - (textLayoutResult.size.width / 2f),
-                        y = point.y - textLayoutResult.size.height - 8.dp.toPx()
-                    )
-                )
-            }
-            
-            // Draw day label below
-            val dayLayoutResult = textMeasurer.measure(
-                text = dayName,
-                style = textStyle
-            )
-            drawText(
-                textLayoutResult = dayLayoutResult,
-                color = onSurfaceVariant,
-                topLeft = Offset(
-                    x = point.x - (dayLayoutResult.size.width / 2f),
-                    y = height + 8.dp.toPx()
-                )
-            )
-        }
     }
 }
 
