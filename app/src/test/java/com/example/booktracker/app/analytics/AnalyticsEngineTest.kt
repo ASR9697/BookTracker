@@ -203,4 +203,23 @@ class AnalyticsEngineTest {
         val mix = AnalyticsEngine.genreMix(listOf(tagged("A", "B", "C")), keep = 2)
         assertEquals(listOf("A", "B", "C"), mix.map { it.first })
     }
+
+    private fun at(tag: String, end: Long) = Session(id = "$tag$end", environmentTag = tag, endTime = end)
+
+    @Test
+    fun `past places put the most used first and merge spellings`() {
+        val places = AnalyticsEngine.pastPlaces(
+            listOf(
+                at("Train", 1), at("Balcony", 2), at("train ", 3), at("", 4),
+                at("Library", 5), at("Balcony", 6), at("TRAIN", 7)
+            )
+        )
+        // Train ×3 (shown as last typed), Balcony ×2, Library ×1; blank tags skipped.
+        assertEquals(listOf("TRAIN", "Balcony", "Library"), places)
+    }
+
+    @Test
+    fun `past places break ties by the most recent`() {
+        assertEquals(listOf("Park", "Cafe"), AnalyticsEngine.pastPlaces(listOf(at("Cafe", 1), at("Park", 2))))
+    }
 }

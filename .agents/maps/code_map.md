@@ -17,9 +17,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 ## app/analytics - Pure stats engines (goals, streaks, badges, loans); unit-tested
 `app/src/main/java/com/example/booktracker/app/analytics/`
 
-- **AnalyticsEngine.kt** (338) - Time-based reading analytics over completed sessions.
+- **AnalyticsEngine.kt** (353) - Time-based reading analytics over completed sessions.
   - types: AnalyticsEngine:20, .CompletionPrediction:139, .TimeSummary:203, .EnvironmentStat:248
-  - fun: .hasYearToReview:32, .timedSessions:47, .pagesPerHour:57, .readingSpeedPpm:67, .sessionSpeedPpm:73, .formatReadingSpeed:79, .formatSessionPpm:90, .estimatedMinutesLeft:96, .bookEstimatedMinutesLeft:108, .bookPagesPerHour:121, .formatEstimatedTime:130, .predictCompletionDate:149, .minutesByDay:194, .summarizeTime:209, .bestTimeOfDay:231, .environmentStats:256, .topGenre:276, .genreMix:291, .readerPersonality:306, .formatMinutes:332
+  - fun: .hasYearToReview:32, .timedSessions:47, .pagesPerHour:57, .readingSpeedPpm:67, .sessionSpeedPpm:73, .formatReadingSpeed:79, .formatSessionPpm:90, .estimatedMinutesLeft:96, .bookEstimatedMinutesLeft:108, .bookPagesPerHour:121, .formatEstimatedTime:130, .predictCompletionDate:149, .minutesByDay:194, .summarizeTime:209, .bestTimeOfDay:231, .environmentStats:256, .pastPlaces:274, .topGenre:291, .genreMix:306, .readerPersonality:321, .formatMinutes:347
 - **BadgeEngine.kt** (413)
   - types: BadgeInput:15, Badge:23, BadgeStatus:36, BadgeEngine:49, .MonthInput:335
   - fun: .statuses:274, .evaluate:277, .nextUp:281, .withEarnedDates:291, .monthlyChallenge:378
@@ -379,9 +379,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **SessionResultScreen.kt** (536) - Post-save recap.
   - types: StatSentenceScope:496
   - fun: SessionResultScreen:94, formatSessionTime:405, paceComparison:409, RowScope.StatTile:420, Pill:440, GoalRow:458, .append:498, .highlight:499, StatSentence:503
-- **SessionSaveScreen.kt** (889) - The one review step every finished session passes through, whether it came from the focus timer or the home card.
-  - types: SessionDraft:622
-  - fun: SessionSaveScreen:102, formatShort:634, focusLabel:637, FocusPicker:648, EditableStamp:691, SaveRow:707, OutcomeButton:764, DurationEditorDialog:791, TagPickerDialog:836, formatClock:885
+- **SessionSaveScreen.kt** (875) - The one review step every finished session passes through, whether it came from the focus timer or the home card.
+  - types: SessionDraft:602
+  - fun: SessionSaveScreen:97, formatShort:614, focusLabel:617, FocusPicker:628, EditableStamp:671, SaveRow:687, OutcomeButton:744, DurationEditorDialog:771, TagPickerDialog:816, formatClock:871
 - **SettingsScreen.kt** (1407) - Settings as a hub: a profile card, then one row per area with its current value, each opening a page of its own.
   - types: SettingsPage:92
   - fun: SettingsScreen:112, notificationSummary:261, relative:275, SettingsHub:281, .row:296, ProfileCard:320, AppearancePage:397, ThemePreview:479, PaletteGrid:505, ReadingPage:564, NotificationsPage:663, PrivacyPage:721, DataPage:768, StorageCard:921, StorageLine:960, dirSize:968, DeleteAllCard:971, BookmoryResultDialog:1032, MotionPage:1069, AboutPage:1083, SettingsGroup:1113, GroupLabel:1120, GroupDivider:1130, SettingRow:1135, SwitchSetting:1162, InfoNote:1184, hourLabel:1199, HourChoice:1203, HourRange:1212, HourDropdown:1225, folderName:1243, AppIconPicker:1249, SettingsCard:1318, SwitchRow:1339, LinkRow:1357, snap:1377, SettingsSectionTitle:1381, formatTime:1391, appVersionName:1396, Context.safeStartActivity:1401

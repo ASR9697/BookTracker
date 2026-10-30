@@ -12,11 +12,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -28,7 +28,6 @@ import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Speed
-import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Place
 import androidx.compose.material.icons.rounded.CenterFocusStrong
 import androidx.compose.material.icons.automirrored.rounded.CallMerge
@@ -40,18 +39,12 @@ import com.example.booktracker.app.ui.animations.staggeredEntrance
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.example.booktracker.app.analytics.AnalyticsEngine
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -77,6 +70,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.booktracker.app.format.FormatAdaptabilityLayer
 import com.example.booktracker.shared.models.Book
@@ -90,6 +84,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val saveDateFormat = DateTimeFormatter.ofPattern("MMM d, yyyy")
+private const val MAX_PLACE_CHIPS = 8
 
 /**
  * The one review step every finished session passes through, whether it came from
@@ -149,10 +144,11 @@ fun SessionSaveScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var showPagePicker by remember { mutableStateOf(false) }
-    // The page is the one thing the timer can't know, so ask for it on arrival, once.
+    // The page is the one thing the timer can't know, so ask for it on arrival, once,
+    // unless pages were already logged during the session (timer taps, the Home card).
     var askedForPage by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        if (!askedForPage) {
+        if (!askedForPage && initialPage == sessionStartPage) {
             askedForPage = true
             kotlinx.coroutines.delay(250)
             scanOnOpen = scanFirst
@@ -162,7 +158,7 @@ fun SessionSaveScreen(
     var showDurationEditor by remember { mutableStateOf(false) }
     var showDiscardConfirm by remember { mutableStateOf(false) }
     var showTagPicker by remember { mutableStateOf(false) }
-    var showOptions by remember { mutableStateOf(false) }
+    val places = remember(sessions) { AnalyticsEngine.pastPlaces(sessions) }
 
     val unit = FormatAdaptabilityLayer.unitAbbrev(book)
     val complete = book.totalPages > 0 && endPage >= book.totalPages
@@ -198,77 +194,41 @@ fun SessionSaveScreen(
         containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = {},
+                title = { Text("Save session") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 },
-                actions = {
-                    Box {
-                        IconButton(
-                            onClick = { showOptions = true },
-                            modifier = Modifier
-                                .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
-                                .size(44.dp)
-                        ) {
-                            Icon(
-                                Icons.Rounded.Tune,
-                                contentDescription = "Session options",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showOptions,
-                            onDismissRequest = { showOptions = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Edit read time") },
-                                leadingIcon = { Icon(Icons.Rounded.Timer, contentDescription = null) },
-                                onClick = {
-                                    showOptions = false
-                                    showDurationEditor = true
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Where you read") },
-                                leadingIcon = { Icon(Icons.Rounded.Place, contentDescription = null) },
-                                onClick = {
-                                    showOptions = false
-                                    showTagPicker = true
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = {
-                                    Text("Discard session", color = MaterialTheme.colorScheme.error)
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Rounded.Delete,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                },
-                                onClick = {
-                                    showOptions = false
-                                    showDiscardConfirm = true
-                                }
-                            )
-                        }
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = { if (tooShort) showTooShort = true else commit() },
-                        shape = CircleShape,
-                        modifier = Modifier.padding(end = 12.dp)
-                    ) {
-                        Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Save", fontWeight = FontWeight.SemiBold)
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
+        },
+        // Save sits under the thumb; Discard is quieter, just below it.
+        bottomBar = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .navigationBarsPadding()
+                    .readableWidth()
+                    .padding(start = 24.dp, end = 24.dp, top = 12.dp)
+            ) {
+                Button(
+                    onClick = { if (tooShort) showTooShort = true else commit() },
+                    shape = AppShape.M,
+                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                ) {
+                    Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Save session", style = MaterialTheme.typography.titleSmall)
+                }
+                TextButton(
+                    onClick = { showDiscardConfirm = true },
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Text("Discard session", color = MaterialTheme.colorScheme.error)
+                }
+            }
         }
     ) { padding ->
         Column(
@@ -280,25 +240,44 @@ fun SessionSaveScreen(
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp)
         ) {
-            Spacer(Modifier.height(16.dp))
-            Text(
-                "Save reading session",
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Bold
-            )
             Spacer(Modifier.height(8.dp))
-            Text(
-                "Check the page you stopped on, then save.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(Modifier.height(40.dp))
-
+            // Which book this is, and how far the session took it.
             Row(verticalAlignment = Alignment.CenterVertically) {
-                EditableStamp(endDateTime.toLocalDate().format(saveDateFormat)) { showDatePicker = true }
+                BookCover(book, Modifier.heroSharedElement("cover-${book.id}").size(width = 56.dp, height = 84.dp))
+                Spacer(Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        book.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        if (endPage != sessionStartPage) "$unit $sessionStartPage → $endPage" else "$unit $endPage",
+                        style = MaterialTheme.typography.titleSmall.copy(fontFeatureSettings = "tnum"),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // When the session ran: the day, then start to end (start follows the read time).
+            val endDay = endDateTime.toLocalDate()
+            val today = LocalDate.now(zone)
+            val dayLabel = when (endDay) {
+                today -> "Today"
+                today.minusDays(1) -> "Yesterday"
+                else -> endDay.format(saveDateFormat)
+            }
+            val startTime = endDateTime.minusSeconds(durationSeconds.toLong()).toLocalTime()
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                EditableStamp(dayLabel) { showDatePicker = true }
                 Spacer(Modifier.width(12.dp))
-                EditableStamp(endDateTime.toLocalTime().format(saveTimeFormat)) { showTimePicker = true }
+                EditableStamp(
+                    "${startTime.format(saveTimeFormat)} – ${endDateTime.toLocalTime().format(saveTimeFormat)}"
+                ) { showTimePicker = true }
             }
 
             Spacer(Modifier.height(20.dp))
@@ -565,6 +544,7 @@ fun SessionSaveScreen(
     if (showTagPicker) {
         TagPickerDialog(
             initial = tag,
+            pastPlaces = places,
             onDismiss = { showTagPicker = false },
             onConfirm = {
                 tag = it
@@ -835,10 +815,16 @@ private fun DurationEditorDialog(
 @Composable
 private fun TagPickerDialog(
     initial: String,
+    pastPlaces: List<String>,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
-    val presets = listOf("Bed", "Coffee Shop", "Commute", "Couch", "Desk", "Tea")
+    // Your own places first, topped up with the starters you haven't used.
+    val presets = remember(pastPlaces) {
+        val starters = listOf("Bed", "Coffee Shop", "Commute", "Couch", "Desk", "Tea")
+            .filterNot { s -> pastPlaces.any { it.equals(s, ignoreCase = true) } }
+        (pastPlaces + starters).take(MAX_PLACE_CHIPS)
+    }
     var custom by remember { mutableStateOf(if (initial in presets) "" else initial) }
     var selected by remember { mutableStateOf(initial.takeIf { it in presets }) }
 

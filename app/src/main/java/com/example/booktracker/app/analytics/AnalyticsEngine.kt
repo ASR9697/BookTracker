@@ -267,6 +267,21 @@ object AnalyticsEngine {
             }
             .sortedByDescending { it.totalPages }
 
+    /**
+     * Places the reader has tagged sessions with, most used first (ties: most recent).
+     * Spellings that differ only in case or spacing are one place, shown as last typed.
+     */
+    fun pastPlaces(sessions: List<Session>): List<String> =
+        sessions
+            .filter { it.environmentTag.isNotBlank() }
+            .groupBy { it.environmentTag.trim().lowercase() }
+            .values
+            .sortedWith(
+                compareByDescending<List<Session>> { it.size }
+                    .thenByDescending { group -> group.maxOf { it.endTime } }
+            )
+            .map { group -> group.maxBy { it.endTime }.environmentTag.trim() }
+
     private val FORMAT_TAGS = BookFormat.entries.map { it.name.lowercase() }.toSet() + "ebook"
 
     /**
