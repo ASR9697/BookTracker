@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -79,7 +80,6 @@ import androidx.compose.material.icons.rounded.Timeline
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -121,6 +121,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -506,13 +507,17 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
         // Sections draw their own headers under the status bar, and on phones run on under
         // the floating bottom bar, leaving room for it at the end of their scroll.
         val navClearance = if (showBottomNav) innerPadding.calculateBottomPadding() else 0.dp
+        // A book's page colours the status bar with its cover too; its top bar keeps clear of it.
+        val underStatusBar = onMain || navRoute == "book/{bookId}"
+        val contentPadding = PaddingValues(
+            start = innerPadding.calculateStartPadding(layoutDirection),
+            top = if (underStatusBar) 0.dp else innerPadding.calculateTopPadding(),
+            end = innerPadding.calculateEndPadding(layoutDirection),
+            bottom = if (showBottomNav) 0.dp else innerPadding.calculateBottomPadding()
+        )
         Row(
-            modifier = Modifier.fillMaxSize().padding(
-                start = innerPadding.calculateStartPadding(layoutDirection),
-                top = if (onMain) 0.dp else innerPadding.calculateTopPadding(),
-                end = innerPadding.calculateEndPadding(layoutDirection),
-                bottom = if (showBottomNav) 0.dp else innerPadding.calculateBottomPadding()
-            )
+            // Consumed, so a screen's own top bar doesn't leave a second status bar's worth of space.
+            modifier = Modifier.fillMaxSize().padding(contentPadding).consumeWindowInsets(contentPadding)
         ) {
             if (showRail) {
                 NavigationRail(
@@ -601,6 +606,17 @@ androidx.compose.animation.SharedTransitionLayout {
                                                 key = { TAB_ORDER[it] },
                                                 modifier = Modifier.fillMaxSize()
                                             ) { page ->
+                                                // A section that only comes into range as the off-screen neighbour of a page the
+                                                // pager is gliding to waits until the glide stops, so the trip only builds what's seen.
+                                                val wanted by remember(page) {
+                                                    derivedStateOf {
+                                                        !mainPager.isScrollInProgress || page == mainPager.targetPage ||
+                                                            mainPager.layoutInfo.visiblePagesInfo.any { it.index == page }
+                                                    }
+                                                }
+                                                var built by remember(page) { mutableStateOf(false) }
+                                                val showPage = built || wanted
+                                                SideEffect { if (showPage) built = true }
                                                 // Home reaches up under the bar; the rest start below it.
                                                 Box(
                                                     Modifier
@@ -608,6 +624,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                         .pagerDepth(mainPager, page, reduceMotion, MaterialTheme.colorScheme.background)
                                                         .nestedScroll(navHider)
                                                 ) {
+                                                if (showPage) {
                                                 CompositionLocalProvider(LocalNavBarClearance provides navClearance) {
                                                 // Only the settled page may own cover animations; see LocalHeroEnabled.
                                                 CompositionLocalProvider(
@@ -855,6 +872,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                         )
             
                                         }
+                                                }
                                                 }
                                                 }
                                                 }
@@ -1574,26 +1592,23 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
         if (endingBook == null) {
             showEndTimerDialog = false
         } else {
-            AlertDialog(
-                onDismissRequest = { showEndTimerDialog = false },
-                title = { Text("End this reading session?") },
-                text = { Text("Save it to keep the time and pages in your stats, or discard it.") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        showEndTimerDialog = false
-                        viewModel.setTimerRunning(false)
-                        navController.navigate("session_save/${endingBook.id}") { launchSingleTop = true }
-                    }) { Text("Save") }
+            ActionSheet(
+                onDismiss = { showEndTimerDialog = false },
+                title = "End this reading session?",
+                icon = Icons.Rounded.Timer,
+                message = "Save it to keep the time and pages in your stats, or discard it.",
+                confirmLabel = "Save session",
+                onConfirm = {
+                    showEndTimerDialog = false
+                    viewModel.setTimerRunning(false)
+                    navController.navigate("session_save/${endingBook.id}") { launchSingleTop = true }
                 },
-                dismissButton = {
-                    Row {
-                        TextButton(onClick = { showEndTimerDialog = false }) { Text("Keep reading") }
-                        TextButton(onClick = {
-                            showEndTimerDialog = false
-                            viewModel.discardOpenSession(endingBook.id)
-                        }) { Text("Discard", color = MaterialTheme.colorScheme.error) }
-                    }
-                }
+                alternateLabel = "Discard",
+                onAlternate = {
+                    showEndTimerDialog = false
+                    viewModel.discardOpenSession(endingBook.id)
+                },
+                dismissLabel = "Keep reading"
             )
         }
     }

@@ -38,7 +38,8 @@ import com.example.booktracker.app.ui.theme.AppShape
  * a line of explanation, optional [content], and up to two actions, the main
  * one full width. Reachable with a thumb and in keeping with the rest of the
  * app. [destructive] paints the main action in the error colour and gives it
- * a reject buzz.
+ * a reject buzz. [alternateLabel] adds a third choice between the two, for
+ * throwing the thing away (discard rather than save), in the error colour.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,6 +54,8 @@ fun ActionSheet(
     destructive: Boolean = false,
     dismissLabel: String? = "Cancel",
     onDismissAction: () -> Unit = onDismiss,
+    alternateLabel: String? = null,
+    onAlternate: (() -> Unit)? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null
 ) {
     val haptics = rememberHaptics()
@@ -109,6 +112,15 @@ fun ActionSheet(
                     ) else ButtonDefaults.buttonColors(),
                     modifier = Modifier.fillMaxWidth().height(52.dp)
                 ) { Text(confirmLabel, style = MaterialTheme.typography.titleSmall) }
+            }
+            if (alternateLabel != null && onAlternate != null) {
+                TextButton(
+                    onClick = {
+                        haptics.reject()
+                        onAlternate()
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) { Text(alternateLabel, color = MaterialTheme.colorScheme.error) }
             }
             if (dismissLabel != null) {
                 TextButton(onClick = onDismissAction, modifier = Modifier.fillMaxWidth().height(48.dp)) {
