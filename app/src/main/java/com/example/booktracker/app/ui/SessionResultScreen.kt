@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -124,7 +125,7 @@ fun SessionResultScreen(
     val usualPph = remember(bookSessions, result.sessionId) {
         AnalyticsEngine.pagesPerHour(bookSessions.filter { it.id != result.sessionId })
     }
-    val paceComparison = paceComparison(sessionPpm, usualPph)
+    val paceComparison = paceComparison(sessionPpm, usualPph, result.durationSeconds, sessionPages)
 
     val progress = if (book.totalPages > 0) endPage.toFloat() / book.totalPages else 0f
     val startProgress = if (book.totalPages > 0) result.startPage.toFloat() / book.totalPages else null
@@ -151,6 +152,8 @@ fun SessionResultScreen(
     }
 
     val accent = rememberCoverAccent(book.coverUrl)
+    val wide = LocalWidthTier.current.atLeastExpanded
+    val contentWidth = if (wide) WideRecapWidth else ReadableWidth
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -176,7 +179,7 @@ fun SessionResultScreen(
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surface)
                     .navigationBarsPadding()
-                    .readableWidth()
+                    .readableWidth(contentWidth)
                     .padding(horizontal = 24.dp, vertical = 12.dp)
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -205,25 +208,8 @@ fun SessionResultScreen(
             }
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .readableWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 24.dp)
-        ) {
-            Text(headline, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(6.dp))
-            Text(
-                Instant.ofEpochMilli(result.savedAt).atZone(zone).format(resultDateFormat),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(Modifier.height(24.dp))
-
+        // The session itself: the shareable card.
+        val recap: @Composable ColumnScope.() -> Unit = {
             // The shareable part: recorded into a layer so Share sends exactly this card.
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -283,9 +269,9 @@ fun SessionResultScreen(
                     }
                 }
             }
-
-            Spacer(Modifier.height(12.dp))
-
+        }
+        // What's left of the book after it.
+        val bookLeft: @Composable ColumnScope.() -> Unit = {
             if (finished) {
                 StatSentence { highlight("You finished this book.") }
             } else if (book.totalPages > 0 || minutesLeft != null) {
@@ -302,7 +288,9 @@ fun SessionResultScreen(
                     append(".")
                 }
             }
-
+        }
+        // What it counted towards, and on a re-read what you wrote last time.
+        val countedTowards: @Composable ColumnScope.() -> Unit = {
             // What this session counted towards.
             val finishBy = remember(book, endPage, bookSessions, streak) {
                 streak?.let {
@@ -315,7 +303,7 @@ fun SessionResultScreen(
                     .maxByOrNull { it.fraction }
             }
             if (streak != null || finishBy != null || nextBadge != null) {
-                Spacer(Modifier.height(24.dp))
+                if (!wide) Spacer(Modifier.height(24.dp))
                 Text(
                     "Counted towards",
                     style = MaterialTheme.typography.titleSmall,
@@ -375,6 +363,41 @@ fun SessionResultScreen(
                 MemoriesReachedCard(reached)
             }
         }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .readableWidth(contentWidth)
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 24.dp)
+        ) {
+            Text(headline, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                Instant.ofEpochMilli(result.savedAt).atZone(zone).format(resultDateFormat),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            if (wide) {
+                Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) { recap() }
+                    Column(Modifier.weight(1f)) {
+                        bookLeft()
+                        Spacer(Modifier.height(20.dp))
+                        countedTowards()
+                    }
+                }
+            } else {
+                recap()
+                Spacer(Modifier.height(12.dp))
+                bookLeft()
+                countedTowards()
+            }
+        }
     }
     if (celebrate) {
         com.example.booktracker.app.ui.animations.ConfettiExplosion(
@@ -401,15 +424,33 @@ fun SessionResultScreen(
     }
 }
 
-/** "8s" under a minute, otherwise "25m" / "1h 5m". */
-private fun formatSessionTime(seconds: Int): String =
-    if (seconds < 60) "${seconds.coerceAtLeast(0)}s" else AnalyticsEngine.formatMinutes(seconds / 60L)
+/** "8s" under a minute, "4m 30s" under ten (so it matches the save screen), otherwise "25m" / "1h 5m". */
+private fun formatSessionTime(seconds: Int): String = when {
+    seconds < 60 -> "${seconds.coerceAtLeast(0)}s"
+    seconds < 600 && seconds % 60 != 0 -> "${seconds / 60}m ${seconds % 60}s"
+    else -> AnalyticsEngine.formatMinutes(seconds / 60L)
+}
 
-/** This session's pace against the book's usual; null until both are known. */
-private fun paceComparison(sessionPpm: Float?, usualPph: Float?): String? {
+/** Shortest sitting, and fewest pages, a pace comparison means anything for. */
+private const val PACE_MIN_SECONDS = 5 * 60
+private const val PACE_MIN_PAGES = 3
+
+/** On a wide window the recap and what it counted towards sit side by side, no scrolling. */
+private val WideRecapWidth = 1120.dp
+
+/**
+ * This session's pace against the book's usual; null until both are known, and for
+ * sessions too short to say anything (a two-minute sitting logged as +20 pages read
+ * as "1602% faster"). Beyond double or half it says so in words, not a percentage.
+ */
+private fun paceComparison(sessionPpm: Float?, usualPph: Float?, seconds: Int, pages: Int): String? {
     if (sessionPpm == null || usualPph == null || usualPph <= 0f) return null
-    val diff = ((sessionPpm * 60f / usualPph) - 1f) * 100f
+    if (seconds < PACE_MIN_SECONDS || pages < PACE_MIN_PAGES) return null
+    val ratio = sessionPpm * 60f / usualPph
+    val diff = (ratio - 1f) * 100f
     return when {
+        ratio >= 2f -> "More than twice your usual pace in this book"
+        ratio <= 0.5f -> "Under half your usual pace in this book"
         diff >= 5f -> "${diff.roundToInt()}% faster than your usual in this book"
         diff <= -5f -> "${(-diff).roundToInt()}% slower than your usual in this book"
         else -> "Right on your usual pace for this book"

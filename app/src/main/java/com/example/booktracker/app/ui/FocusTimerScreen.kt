@@ -66,6 +66,9 @@ private const val STILL_READING_GRACE_SECONDS = 5 * 60
 private const val ZEN_DIM_AFTER_MS = 10_000L
 private const val ZEN_DIM_ALPHA = 0.22f
 private const val EXTEND_MINUTES = 5
+/** How long the play button breathes after the clock starts, and one breath, in and out. */
+private const val BREATHE_FOR_MS = 60_000L
+private const val BREATH_PERIOD_S = 8f
 
 private fun formatTimerClock(totalSeconds: Int): String {
     val hrs = totalSeconds / 3600
@@ -117,17 +120,19 @@ fun FocusTimerScreen(
         (if (mode == TimerMode.STOPWATCH) elapsedSeconds == 0 else timeLeftSeconds >= countdownTotal)
 
     // The timer runs as a foreground service; on Android 13+ its notification
-    // needs this permission. Asked here, when the reader first uses the timer.
+    // needs this permission. Asked when the reader first starts the clock, so the
+    // reason is right there; the clock starts either way.
     val context = androidx.compose.ui.platform.LocalContext.current
     val notificationPermission = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
     ) { }
-    LaunchedEffect(Unit) {
-        if (!com.example.booktracker.app.notifications.Notifications.canPost(context) &&
+    fun toggleClock() {
+        if (!isRunning && !com.example.booktracker.app.notifications.Notifications.canPost(context) &&
             android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU
         ) {
             notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
+        viewModel.setTimerRunning(!isRunning)
     }
 
     val bookSessions = remember(book.id, completedSessions) {
@@ -274,20 +279,25 @@ fun FocusTimerScreen(
         if (isZenMode) isZenMode = false else leave()
     }
 
-    // Slow breathing glow behind the play button while the clock runs; still under reduce motion.
+    // Slow breathing glow behind the play button for the first minute after the clock
+    // starts, then a steady glow: an hour on a stand shouldn't redraw the screen every
+    // frame. Read only while drawing, so the breath never recomposes the screen.
     val reduceMotion = com.example.booktracker.app.ui.animations.rememberReduceMotion()
-    val breath = if (reduceMotion) 0f else {
-        val infiniteTransition = rememberInfiniteTransition(label = "focus_breath")
-        val pulse by infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 4000, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "breath"
-        )
-        pulse
+    var breathing by remember { mutableStateOf(false) }
+    LaunchedEffect(isRunning) {
+        breathing = isRunning
+        if (isRunning) {
+            kotlinx.coroutines.delay(BREATHE_FOR_MS)
+            breathing = false
+        }
+    }
+    val breathClock = com.example.booktracker.app.ui.animations.rememberAmbientClock(breathing && !reduceMotion)
+    val breath: () -> Float = {
+        when {
+            reduceMotion -> 0f
+            breathing -> (1f - kotlin.math.cos(2f * kotlin.math.PI.toFloat() * breathClock.value / BREATH_PERIOD_S)) / 2f
+            else -> 0.5f
+        }
     }
     val zenClockAlpha by animateFloatAsState(
         targetValue = if (isZenMode && zenDimmed) ZEN_DIM_ALPHA else 1f,
@@ -339,7 +349,7 @@ fun FocusTimerScreen(
                 }
                 when {
                     event.type == KeyEventType.KeyUp && event.key == Key.Spacebar -> {
-                        if (countdownDone) finish() else viewModel.setTimerRunning(!isRunning)
+                        if (countdownDone) finish() else toggleClock()
                         true
                     }
                     // Volume keys turn the page when the reader opted in; both the press and
@@ -513,10 +523,10 @@ fun FocusTimerScreen(
                         ringColor = onBackground,
                         foreground = onBackground,
                         background = background,
-                        glow = if (isRunning) breath else 0f,
+                        glow = { if (isRunning) breath() else 0f },
                         onClick = {
                             haptics.confirm()
-                            if (countdownDone) finish() else viewModel.setTimerRunning(!isRunning)
+                            if (countdownDone) finish() else toggleClock()
                         }
                     )
 
@@ -1124,7 +1134,8 @@ private fun PlayButton(
     ringColor: Color,
     foreground: Color,
     background: Color,
-    glow: Float,
+    /** Read while drawing, so a changing glow redraws only this button. */
+    glow: () -> Float,
     onClick: () -> Unit
 ) {
     Box(modifier = Modifier.size(148.dp), contentAlignment = Alignment.Center) {
@@ -1132,6 +1143,7 @@ private fun PlayButton(
             val stroke = 4.dp.toPx()
             val inset = stroke / 2f
             val arcSize = Size(size.width - stroke, size.height - stroke)
+            val glow = glow()
             if (glow > 0f) {
                 drawCircle(
                     brush = Brush.radialGradient(
