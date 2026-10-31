@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -50,7 +51,7 @@ fun PeriodSwitcher(
     onStep: (PeriodStats.Period) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
+    val chips: @Composable () -> Unit = {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             PeriodStats.Span.entries.forEach { span ->
                 TickFilterChip(
@@ -61,20 +62,36 @@ fun PeriodSwitcher(
                 )
             }
         }
-        if (period.span != PeriodStats.Span.ALL) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                IconButton(onClick = { onStep(period.previous) }) {
-                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = "Earlier")
-                }
-                Text(
-                    label,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(onClick = { onStep(period.next) }, enabled = !period.isCurrent) {
-                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = "Later")
+    }
+    val stepper: @Composable (Modifier) -> Unit = { labelModifier ->
+        IconButton(onClick = { onStep(period.previous) }) {
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = "Earlier")
+        }
+        Text(
+            label,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            modifier = labelModifier
+        )
+        IconButton(onClick = { onStep(period.next) }, enabled = !period.isCurrent) {
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = "Later")
+        }
+    }
+    val stepping = period.span != PeriodStats.Span.ALL
+    if (LocalWidthTier.current.atLeastExpanded) {
+        // Wide: one row, with the arrows hugging the period instead of a screen apart.
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.fillMaxWidth()) {
+            chips()
+            Spacer(Modifier.weight(1f))
+            if (stepping) stepper(Modifier.widthIn(min = 160.dp))
+        }
+    } else {
+        Column(modifier = modifier.fillMaxWidth()) {
+            chips()
+            if (stepping) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    stepper(Modifier.weight(1f))
                 }
             }
         }
@@ -123,7 +140,12 @@ fun SummaryStrip(summary: PeriodStats.Summary, before: PeriodStats.Summary?, com
 @Composable
 private fun SummaryNumber(value: String, label: String, change: Int?, modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
-        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+        // Wide cards spread the four numbers far apart, so they read larger there, like the pace figures.
+        if (LocalWidthTier.current.atLeastExpanded) {
+            Text(value, style = MaterialTheme.typography.headlineSmall, maxLines = 1)
+        } else {
+            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+        }
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (change != null) {
             Text(

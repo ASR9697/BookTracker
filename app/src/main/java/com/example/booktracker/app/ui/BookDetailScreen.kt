@@ -212,16 +212,16 @@ private fun BookDetailTabRow(
         color = MaterialTheme.colorScheme.surface,
         modifier = modifier.fillMaxWidth()
     ) {
+        Column {
         // Scrollable so each tab takes the width its label and count need; fixed equal
         // widths squeezed "Sessions" plus its badge until the count wrapped onto two lines.
+        // Its own divider would end after the last tab, so the full-width one sits below it.
         PrimaryScrollableTabRow(
             selectedTabIndex = selectedTab.ordinal,
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.primary,
             edgePadding = 8.dp,
-            divider = {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-            }
+            divider = {}
         ) {
             BookDetailTab.entries.forEach { tab ->
                 Tab(
@@ -267,6 +267,8 @@ private fun BookDetailTabRow(
                 )
             }
         }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+        }
     }
 }
 
@@ -308,7 +310,8 @@ fun BookDetailScreen(
     onSetAudiobook: (minutes: Int, speed: Float) -> Unit = { _, _ -> },
     onLogListening: (minutes: Int) -> Unit = {},
     onSetAudioPosition: (position: Int) -> Unit = {},
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    showBack: Boolean = true
 ) {
     var selectedTab by remember { mutableStateOf(BookDetailTab.OVERVIEW) }
     var showAddNote by remember { mutableStateOf(false) }
@@ -1011,12 +1014,14 @@ fun BookDetailScreen(
                 }
             },
             navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = "Back",
-                        tint = barContent
-                    )
+                if (showBack) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = "Back",
+                            tint = barContent
+                        )
+                    }
                 }
             },
             actions = {

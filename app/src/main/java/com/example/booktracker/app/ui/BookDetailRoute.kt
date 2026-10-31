@@ -14,7 +14,8 @@ import kotlinx.coroutines.launch
  * A book's page wired to the ViewModel. It is its own route on phones and the
  * right-hand pane beside the library on tablets, so both share this one
  * wiring. [onBack] pops the route or closes the pane; [onStartReading] opens
- * the timer for the book id it is given.
+ * the timer for the book id it is given. [showBack] is false for the book the
+ * pane shows before one is picked, where there is nothing to go back to.
  */
 @Composable
 fun BookDetailRoute(
@@ -25,7 +26,8 @@ fun BookDetailRoute(
     snackbarHostState: SnackbarHostState,
     onDeleteWithUndo: (Book) -> Unit,
     onStartReading: (String) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    showBack: Boolean = true
 ) {
     val scope = rememberCoroutineScope()
     val sessions by remember(bookId) { viewModel.sessionsFor(bookId) }.collectAsState(initial = emptyList())
@@ -92,6 +94,7 @@ fun BookDetailRoute(
             snack("Listening logged")
         },
         onSetAudioPosition = { position -> book?.let { viewModel.setAudioPosition(it, position) } },
-        onBack = onBack
+        onBack = onBack,
+        showBack = showBack
     )
 }

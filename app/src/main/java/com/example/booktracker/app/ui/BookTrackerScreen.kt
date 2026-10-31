@@ -603,7 +603,10 @@ androidx.compose.animation.SharedTransitionLayout {
                                                 ) {
                                                 CompositionLocalProvider(LocalNavBarClearance provides navClearance) {
                                                 // Only the settled page may own cover animations; see LocalHeroEnabled.
-                                                CompositionLocalProvider(LocalHeroEnabled provides (page == mainPager.settledPage)) {
+                                                CompositionLocalProvider(
+                                                    LocalHeroEnabled provides (page == mainPager.settledPage),
+                                                    com.example.booktracker.app.ui.animations.LocalAmbientMotion provides (page == mainPager.settledPage)
+                                                ) {
                                                 when (TAB_ORDER[page]) {
                                                     "home" -> {
                                             val openSession by viewModel.openSession.collectAsState()
@@ -677,6 +680,7 @@ androidx.compose.animation.SharedTransitionLayout {
                                                         val library: @Composable () -> Unit = {
                                                             LibraryScreen(
                                                                 books = books,
+                                                                selectedBookId = if (libraryListDetail) libraryPaneBookId ?: readingBooks.firstOrNull()?.id else null,
                                                                 onDelete = onDeleteWithUndo,
                                                                 onOpenBook = openBookFromLibrary,
                                                                 onStartReading = { navController.navigate("focus/${it.id}") },
@@ -704,21 +708,33 @@ androidx.compose.animation.SharedTransitionLayout {
                                                             library()
                                                         } else {
                                                             // A book that was deleted (or never loaded) leaves the pane empty.
-                                                            val paneBookId = libraryPaneBookId?.takeIf { id -> books.any { it.id == id } }
-                                                            BackHandler(enabled = paneBookId != null && page == mainPager.currentPage) {
+                                                            val pickedId = libraryPaneBookId?.takeIf { id -> books.any { it.id == id } }
+                                                            BackHandler(enabled = pickedId != null && page == mainPager.currentPage) {
                                                                 libraryPaneBookId = null
                                                             }
+                                                            // Until one is picked, the pane shows the book being read rather than sitting empty.
+                                                            val paneBookId = pickedId ?: readingBooks.firstOrNull()?.id
+                                                            // A book page is the heaviest thing in the pager, so the pane builds it once the
+                                                            // library has settled on screen, not while sliding in from another section.
+                                                            var paneReady by remember { mutableStateOf(false) }
+                                                            val settledHere = page == mainPager.settledPage
+                                                            LaunchedEffect(settledHere) { if (settledHere) paneReady = true }
                                                             Row(modifier = Modifier.fillMaxSize()) {
-                                                                Box(modifier = Modifier.weight(0.42f).fillMaxHeight()) { library() }
+                                                                // The pane is phone-width, so its grid sizes covers for a phone: four across, not two.
+                                                                androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.weight(0.5f).fillMaxHeight()) {
+                                                                    CompositionLocalProvider(LocalWidthTier provides WidthTier.forWidth(maxWidth.value.toInt())) {
+                                                                        library()
+                                                                    }
+                                                                }
                                                                 androidx.compose.material3.VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                                                                Box(modifier = Modifier.weight(0.58f).fillMaxHeight()) {
+                                                                Box(modifier = Modifier.weight(0.5f).fillMaxHeight()) {
                                                                     if (paneBookId == null) {
                                                                         EmptyState(
                                                                             icon = Icons.AutoMirrored.Rounded.MenuBook,
                                                                             title = "Pick a book",
                                                                             message = "Its page opens here, right beside your library."
                                                                         )
-                                                                    } else {
+                                                                    } else androidx.compose.animation.AnimatedVisibility(visible = paneReady, enter = fadeIn(tween(Motion.MEDIUM))) {
                                                                         // The grid's covers are still on screen, so the pane's cover must not claim the same hero key.
                                                                         androidx.compose.runtime.key(paneBookId) {
                                                                             CompositionLocalProvider(LocalHeroEnabled provides false) {
@@ -730,7 +746,8 @@ androidx.compose.animation.SharedTransitionLayout {
                                                                                     snackbarHostState = snackbarHostState,
                                                                                     onDeleteWithUndo = onDeleteWithUndo,
                                                                                     onStartReading = { id -> navController.navigate("focus/$id") },
-                                                                                    onBack = { libraryPaneBookId = null }
+                                                                                    onBack = { libraryPaneBookId = null },
+                                                                                    showBack = pickedId != null
                                                                                 )
                                                                             }
                                                                         }
@@ -1651,6 +1668,7 @@ fun WeekBubbles(streak: StreakEngine.StreakInfo, modifier: Modifier = Modifier) 
 @Composable
 fun LibraryScreen(
     books: List<Book>,
+    selectedBookId: String? = null,
     onDelete: (Book) -> Unit,
     onOpenBook: (Book) -> Unit,
     onStartReading: (Book) -> Unit,
@@ -2153,6 +2171,7 @@ fun LibraryScreen(
                         itemsIndexed(displayBooks, key = { _, book -> book.id }) { index, book ->
                             LibraryGridCard(
                                 book = book,
+                                selected = book.id == selectedBookId,
                                 modifier = Modifier
                                     .animateItem()
                                     .staggeredEntrance(gridEntrance, index),

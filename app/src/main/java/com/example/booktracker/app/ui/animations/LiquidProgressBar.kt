@@ -17,6 +17,9 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.PI
 import kotlin.math.sin
 
+/** How long the wave keeps moving after it appears or its level changes. */
+private const val WAVE_SETTLE_MS = 4000L
+
 /**
  * High-performance, ambient liquid wave progress bar.
  * Renders dual travelling sine waves with a fluid crest highlight and micro-bubbles,
@@ -44,38 +47,18 @@ fun LiquidWaveProgressBar(
         label = "liquidProgressSpring"
     )
 
-    // Infinite wave phase translation
-    val infiniteTransition = rememberInfiniteTransition(label = "liquidWavePhase")
-    val wavePhase1 by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 2f * PI.toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = speedMillis, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "wavePhase1"
-    )
-
-    val wavePhase2 by infiniteTransition.animateFloat(
-        initialValue = 2f * PI.toFloat(),
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = (speedMillis * 1.45f).toInt(), easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "wavePhase2"
-    )
-
-    // Gentle shimmer across the fluid surface
-    val shimmerOffset by infiniteTransition.animateFloat(
-        initialValue = -0.5f,
-        targetValue = 1.5f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmerOffset"
-    )
+    // Waves and sheen run on the shared ambient clock, still off screen and for reduced
+    // motion. They slosh for a few seconds when the bar appears or its level changes,
+    // then rest: a bar that moved forever kept the whole window redrawing.
+    val reduce = rememberReduceMotion()
+    var sloshing by remember { mutableStateOf(true) }
+    LaunchedEffect(progress) {
+        sloshing = true
+        kotlinx.coroutines.delay(WAVE_SETTLE_MS)
+        sloshing = false
+    }
+    val clock = rememberAmbientClock(!reduce && sloshing && LocalAmbientMotion.current)
+    val twoPi = 2f * PI.toFloat()
 
     Box(
         modifier = modifier
@@ -96,6 +79,11 @@ fun LiquidWaveProgressBar(
             )
 
             if (animatedProgress <= 0.005f) return@Canvas
+
+            val millis = clock.value * 1000f
+            val wavePhase1 = twoPi * (millis % speedMillis) / speedMillis
+            val wavePhase2 = twoPi - twoPi * (millis % (speedMillis * 1.45f)) / (speedMillis * 1.45f)
+            val shimmerOffset = -0.5f + 2f * (millis % 3000f) / 3000f
 
             val fillWidth = width * animatedProgress
             val waveAmp = if (animatedProgress >= 0.98f) 0.5f else amplitude.coerceAtMost(totalHeight * 0.4f)
@@ -168,7 +156,8 @@ fun LiquidWaveProgressBar(
                     )
                 )
 
-                // Animated light beam reflection sweeping across fluid
+                // Animated light beam reflection sweeping across fluid; gone once the wave rests.
+                if (!sloshing || reduce) return@clipRect
                 val shimmerX = width * shimmerOffset
                 drawRect(
                     brush = Brush.horizontalGradient(

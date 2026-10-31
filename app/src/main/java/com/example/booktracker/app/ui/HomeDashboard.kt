@@ -583,7 +583,7 @@ fun HomeDashboard(
                         alpha = 1f - (moved / skyGonePx).coerceIn(0f, 1f)
                     },
                 bodyTop = skyTop + 24.dp,
-                active = LocalHeroEnabled.current && skyOnScreen
+                active = com.example.booktracker.app.ui.animations.LocalAmbientMotion.current && skyOnScreen
             )
         },
         expanded = {

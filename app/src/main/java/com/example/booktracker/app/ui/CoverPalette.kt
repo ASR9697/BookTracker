@@ -37,7 +37,10 @@ data class CoverAccent(
      * loads or when the cover yields no usable swatch.
      */
     fun immersiveBackground(fallback: Color): Color {
-        val base = dominant ?: vibrant ?: return fallback
+        // A white or cream cover's dominant swatch only dims to slate grey; its vivid
+        // swatch (the blue on a white jacket) is what the eye reads as the book's colour.
+        val washedOut = dominant?.let { saturation(it) < WASHED_OUT } ?: true
+        val base = (if (washedOut) vibrant else null) ?: dominant ?: vibrant ?: return fallback
         val blended = base.copy(alpha = 0.55f).compositeOver(NightBase)
         // Pale covers (white, cream) would still leave white text unreadable;
         // pull them further toward the night base to keep roughly 4.5:1 contrast.
@@ -46,6 +49,15 @@ data class CoverAccent(
 
     private companion object {
         val NightBase = Color(0xFF1B2430)
+
+        /** HSV saturation below which a swatch reads as white, grey or cream. */
+        const val WASHED_OUT = 0.2f
+
+        fun saturation(color: Color): Float {
+            val max = maxOf(color.red, color.green, color.blue)
+            val min = minOf(color.red, color.green, color.blue)
+            return if (max == 0f) 0f else (max - min) / max
+        }
     }
 }
 
