@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -429,6 +432,8 @@ fun BookDetailScreen(
         // Wide windows (a landscape tablet, not the library's side pane): the header
         // stays put on the left while the tabs scroll on the right.
         val twoPane = maxWidth >= TWO_PANE_MIN_WIDTH
+        // In two panes the top bar is solid, so both panes start below it: the status bar plus the bar itself.
+        val barBottom = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
 
         // Compact colour-washed header: title on top, small cover at the left,
         // imprint details beside it, and the action pill straddling its edge.
@@ -450,13 +455,14 @@ fun BookDetailScreen(
                     .width(HEADER_PANE_WIDTH)
                     .fillMaxHeight()
                     .verticalScroll(rememberScrollState())
+                    // The header leaves room for a bar of 96dp (status bar included) above its title.
+                    .padding(top = (barBottom - 96.dp + 24.dp).coerceAtLeast(0.dp))
             ) { header() }
         }
         LazyColumn(
             state = listState,
             modifier = Modifier.weight(1f).fillMaxHeight(),
-            // In two panes the top bar sits over the tabs, so they start below it.
-            contentPadding = PaddingValues(top = if (twoPane) 72.dp else 0.dp, bottom = 120.dp)
+            contentPadding = PaddingValues(top = if (twoPane) barBottom + 8.dp else 0.dp, bottom = 120.dp)
         ) {
             if (!twoPane) {
                 item { header() }
@@ -1118,9 +1124,10 @@ fun BookDetailScreen(
         )
 
         // Persistent timer | note pill, mirroring the one on the header so the
-        // two primary actions stay reachable however far down the page you are.
+        // two primary actions stay reachable however far down the page you are. In two
+        // panes the header (and its pill) never scrolls away, so it isn't needed.
         androidx.compose.animation.AnimatedVisibility(
-            visible = headerScrolled,
+            visible = headerScrolled && !twoPane,
             enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn(initialScale = 0.8f),
             exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut(targetScale = 0.8f),
             modifier = Modifier

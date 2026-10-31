@@ -257,8 +257,8 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **AchievementsScreen.kt** (514)
   - types: BadgeFilter:43
   - fun: AchievementsScreen:47, AchievementSummary:140, MonthlyChallengeCard:197, NextUpCard:242, BadgeCard:274, TierTag:335, BadgeMedallion:353, BadgeProgressBar:396, formatEarned:417, getBadgeTierColor:421, BadgeDetailDialog:432
-- **ActionSheet.kt** (121) - The app's stand-in for a stock dialog: a bottom sheet with an icon, a title, a line of explanation, optional [content...
-  - fun: ActionSheet:45
+- **ActionSheet.kt** (133) - The app's stand-in for a stock dialog: a bottom sheet with an icon, a title, a line of explanation, optional [content...
+  - fun: ActionSheet:46
 - **Adaptive.kt** (83) - How much room the window gives us, in the Material breakpoints: phones are [COMPACT]; portrait tablets and unfolded f...
   - types: WidthTier:22
   - fun: Modifier.readableWidth:47, BoxWithConstraintsScope.centredPadding:54, windowCentredPadding:63, navChromeWidth:70, coverTileMinWidth:78
@@ -274,17 +274,17 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: BookCover:49, BookCover:59, TypesetCover:113
 - **BookDetailRoute.kt** (101) - A book's page wired to the ViewModel.
   - fun: BookDetailRoute:21, .snack:37
-- **BookDetailScreen.kt** (2810)
-  - types: BookDetailTab:176, NoteSort:2017
-  - fun: SectionItem:191, BookDetailTabRow:204, BookDetailScreen:277, DetailHeader:1342, ActionPill:1428, StatusPill:1471, statusLabel:1498, StatusPickerDialog:1511, AboutCard:1554, FormatCard:1599, OwnershipCard:1645, PlannerCard:1744, BookStatsCard:1782, StatCell:1869, ReadingStreakCard:1892, dayCount:1965, RatingCard:1968, ReviewCard:2007, NoteSortToggle:2024, NoteType.label:2063, NoteType.shortLabel:2069, NoteCard:2076, MetadataChips:2233, MetaChip:2254, ProgressAndDaysRow:2277, CollectionsCard:2393, CollectionPickerDialog:2447, SessionRow:2523, EditSessionDialog:2609, LedgerCard:2659, DetailCard:2794
+- **BookDetailScreen.kt** (2817)
+  - types: BookDetailTab:179, NoteSort:2024
+  - fun: SectionItem:194, BookDetailTabRow:207, BookDetailScreen:280, DetailHeader:1349, ActionPill:1435, StatusPill:1478, statusLabel:1505, StatusPickerDialog:1518, AboutCard:1561, FormatCard:1606, OwnershipCard:1652, PlannerCard:1751, BookStatsCard:1789, StatCell:1876, ReadingStreakCard:1899, dayCount:1972, RatingCard:1975, ReviewCard:2014, NoteSortToggle:2031, NoteType.label:2070, NoteType.shortLabel:2076, NoteCard:2083, MetadataChips:2240, MetaChip:2261, ProgressAndDaysRow:2284, CollectionsCard:2400, CollectionPickerDialog:2454, SessionRow:2530, EditSessionDialog:2616, LedgerCard:2666, DetailCard:2801
 - **BookEditDialogs.kt** (469) - Edits a book's details after it has been added — fixing a wrong page count or a missing cover is otherwise impossible.
   - fun: EditBookDialog:80, LogSessionDialog:328, PastDatePickerDialog:436, Book.isEnded:467
 - **BookQuickActionsSheet.kt** (153) - What a long-press on a cover opens: the cover lifts into view with the book's title, then the things you'd want to do...
   - fun: BookQuickActionsSheet:42
-- **BookTrackerScreen.kt** (2307)
-  - types: LibraryViewMode:186, LibrarySort:210, SilentHaptics:244
-  - fun: BookTrackerApp:226, BookTrackerAppContent:250, WeekBubbles:1606, LibraryScreen:1680, formatElapsed:2208, SubScreen:2223, TimerMiniPlayer:2238
-  - nav routes: editHome:865, wishlist:871, owned/{ownership}:907, calendar:940, bookshelf:962, epubReader/{uri}:973, scanner:980, privacy:1005, achievements:1008, wrapped:1039, planner:1055, book/{bookId}:1064, history:1078, settings:1091, streak:1172, goals:1187, finished:1229, journey_map:1243, focus/{bookId}:1269, session_result/{bookId}:1374, review:1402, tagTidy:1421, vocabulary:1426, shelfScan:1441, tbr_swipe:1457
+- **BookTrackerScreen.kt** (2322)
+  - types: LibraryViewMode:187, LibrarySort:211, SilentHaptics:245
+  - fun: BookTrackerApp:227, BookTrackerAppContent:251, WeekBubbles:1621, LibraryScreen:1695, formatElapsed:2223, SubScreen:2238, TimerMiniPlayer:2253
+  - nav routes: editHome:883, wishlist:889, owned/{ownership}:925, calendar:958, bookshelf:980, epubReader/{uri}:991, scanner:998, privacy:1023, achievements:1026, wrapped:1057, planner:1073, book/{bookId}:1082, history:1096, settings:1109, streak:1190, goals:1205, finished:1247, journey_map:1261, focus/{bookId}:1287, session_result/{bookId}:1392, review:1420, tagTidy:1439, vocabulary:1444, shelfScan:1459, tbr_swipe:1475
 - **BookTrackerViewModel.kt** (1297)
   - types: DriveSyncState:78, .Idle:79, .Syncing:80, .NeedsConsent:81, .Done:82, .Failed:83, BookTrackerViewModel:86, .SessionResult:853
   - fun: .clearDriveStatus:161, .setHapticsEnabled:223, .setReduceMotion:224, .setKeepScreenOn:225, .updatePrefs:231, .finishWelcome:249, .exportCsv:252, .backupNow:265, .deleteAllData:280, .openRoute:442, .consumeRoute:446, .gradeReview:450, .saveWord:459, .deleteWord:468, .setFinishBy:472, .syncDrive:477, .driveConsentShown:490, .onDriveConsent:494, .disconnectDrive:527, .setAudiobook:536, .logListening:541, .setAudioPosition:548, .addShelfBooks:553, .shareNote:574, .addScannedBook:578, .importCsv:605, .importBookmory:617, .promote:631, .promoteToReading:641, .pauseBook:647, .changeStatus:657, .toggleFavorite:667, .addProgress:671, .recordLoan:675, .markLoanReturned:684, .tidyTag:699, .updateBookDetails:708, .setFormat:720, .setOwnership:724, .setWish:738, .gotWished:749, .addToWishlist:763, .setPurchases:786, .finishBook:799, .readAgain:803, .setProgress:807, .setCollections:811, .markDnf:815, .startSession:819, .startFocus:829, .saveSession:872, .discardOpenSession:920, .leaveUnstartedFocus:936, .logManualSession:951, .delete:957, .deleteSession:964, .updateSession:968, .restore:973, .setHomeLayout:980, .setPinnedNoteId:985, .setMotto:989, .setUserName:993, .setAvatarPhoto:998, .setAvatarCover:1006, .clearAvatar:1013, .setDailyGoal:1020, .setYearlyGoal:1024, .setMonthlyGoalPages:1028, .setMonthlyGoalBooks:1032, .setDndDuringSession:1036, .setThemeMode:1040, .setUseDynamicColor:1044, .setAppPalette:1048, .setReminder:1052, .planBook:1056, .setTimerBook:1066, .setTimerMode:1097, .setCustomWorkMinutes:1111, .countdownTotalSeconds:1119, .extendCountdown:1127, .setTimerRunning:1138, .pauseUnattended:1151, .setPageTarget:1163, .setWorkMinutes:1172, .setDayStartsAtHour:1180, .setUseAppLock:1184, .setNoiseType:1189, .endNoisePreview:1198, .setTimerVolume:1202, .sessionsFor:1207, .notesFor:1210, .addNote:1212, .updateNote:1222, .toggleNoteFavorite:1226, .deleteNote:1230, .searchLibrary:1234, .exportBackup:1237, .importBackup:1254
