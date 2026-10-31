@@ -247,7 +247,7 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel) {
         LocalHapticFeedback provides if (haptics) systemHaptics else SilentHaptics,
         LocalWidthTier provides widthTier
     ) {
-        BookTrackerAppContent(viewModel)
+        com.example.booktracker.app.ui.animations.AmbientWakeHost { BookTrackerAppContent(viewModel) }
     }
 }
 

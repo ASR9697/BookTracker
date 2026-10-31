@@ -1,5 +1,8 @@
 package com.example.booktracker.app.ui.animations
 
+import android.app.ActivityManager
+import android.content.Context
+import android.os.SystemClock
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -14,6 +17,11 @@ import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.State
@@ -35,8 +43,16 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import java.time.LocalTime
 import kotlin.math.PI
@@ -55,24 +71,111 @@ private const val FLAME_FULL_GROWTH_DAYS = 30
 val LocalAmbientMotion = compositionLocalOf { true }
 
 /**
+ * False once the reader has left the screen alone for a while, and always on low-end
+ * phones; see [AmbientWakeHost]. Ambient loops slow to a stop while it's false.
+ */
+val LocalAmbientAwake = compositionLocalOf { true }
+
+/** How long ambient motion carries on after the last touch. */
+private const val AMBIENT_AWAKE_MS = 12_000L
+
+/** Seconds ambient time takes to slow to a stop, or to get going again. */
+private const val AMBIENT_EASE_SECONDS = 1.5f
+
+/**
  * Seconds of ambient time, ticking while [running] and holding still otherwise,
  * so a page that is off screen or a reader who asked for less motion costs no
  * frames. Read it only while drawing, so the loop redraws without recomposing.
  *
  * It ticks every frame on purpose: throttled to ~30 a second, a 144 Hz tablet
  * dropped its refresh rate for the app and scrolling over the sky stuttered.
+ * Instead it rests completely while the reader isn't touching anything
+ * ([LocalAmbientAwake]), unless [whileIdle] says the loop has its own limit.
  */
 @Composable
-fun rememberAmbientClock(running: Boolean): State<Float> {
+fun rememberAmbientClock(running: Boolean, whileIdle: Boolean = false): State<Float> {
     val seconds = remember { mutableFloatStateOf(0f) }
+    val awake by rememberUpdatedState(whileIdle || LocalAmbientAwake.current)
     if (running) {
         LaunchedEffect(Unit) {
-            // Carry on from where it stopped, so nothing jumps when the page comes back.
-            val start = withInfiniteAnimationFrameMillis { it } - (seconds.floatValue * 1000f).toLong()
-            while (isActive) withInfiniteAnimationFrameMillis { seconds.floatValue = (it - start) / 1000f }
+            var speed = 0f
+            var last = 0L
+            while (isActive) {
+                if (!awake && speed == 0f) {
+                    // Nobody's around: no frames at all until the next touch.
+                    snapshotFlow { awake }.first { it }
+                    last = 0L
+                }
+                withInfiniteAnimationFrameMillis { now ->
+                    val dt = if (last == 0L) 0f else (now - last) / 1000f
+                    last = now
+                    // Eased both ways, so it never freezes mid-twinkle or jumps back to life.
+                    val step = dt / AMBIENT_EASE_SECONDS
+                    speed = if (awake) (speed + step).coerceAtMost(1f) else (speed - step).coerceAtLeast(0f)
+                    // Time carries on from where it stopped, so nothing jumps when the page comes back.
+                    seconds.floatValue += dt * speed
+                }
+            }
         }
     }
     return seconds
+}
+
+/**
+ * Keeps ambient motion (the Home sky, the streak flame, sloshing bars) going only
+ * while the reader is around: from a touch anywhere in [content], or the app
+ * coming back to the front, until [AMBIENT_AWAKE_MS] after the last one. Left
+ * alone on Home, the sky redrew the whole window 144 times a second and kept
+ * over a CPU core busy. On low-end phones it stays still from the start.
+ */
+@Composable
+fun AmbientWakeHost(content: @Composable () -> Unit) {
+    val context = LocalContext.current
+    val lowEnd = remember(context) { isLowEndDevice(context) }
+    var awake by remember { mutableStateOf(!lowEnd) }
+    val lastWake = remember { longArrayOf(SystemClock.uptimeMillis()) }
+    val wake = {
+        lastWake[0] = SystemClock.uptimeMillis()
+        if (!awake && !lowEnd) awake = true
+    }
+    LaunchedEffect(lowEnd) {
+        if (lowEnd) return@LaunchedEffect
+        while (true) {
+            if (awake) {
+                val left = lastWake[0] + AMBIENT_AWAKE_MS - SystemClock.uptimeMillis()
+                if (left > 0) delay(left) else awake = false
+            } else {
+                snapshotFlow { awake }.first { it }
+            }
+        }
+    }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) wake() }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    Box(
+        // Watches touches on their way down without taking them.
+        Modifier.pointerInput(Unit) {
+            awaitPointerEventScope {
+                while (true) {
+                    awaitPointerEvent(PointerEventPass.Initial)
+                    wake()
+                }
+            }
+        }
+    ) {
+        CompositionLocalProvider(LocalAmbientAwake provides awake, content = content)
+    }
+}
+
+/** Android Go phones, and others with 3 GB of memory or less (they report a little under). */
+private fun isLowEndDevice(context: Context): Boolean {
+    val manager = context.getSystemService(ActivityManager::class.java) ?: return false
+    if (manager.isLowRamDevice) return true
+    val memory = ActivityManager.MemoryInfo().also(manager::getMemoryInfo)
+    return memory.totalMem <= 3L * 1024 * 1024 * 1024
 }
 
 /** A smooth swing between [low] and [high], one round trip every [period] seconds. */
