@@ -55,6 +55,8 @@ import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.BookmarkAdd
 import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Menu
+import androidx.compose.material.icons.automirrored.rounded.MenuOpen
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.ui.text.font.FontWeight
@@ -84,6 +86,7 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -132,12 +135,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import android.net.Uri
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Dp
+import androidx.compose.animation.core.VectorConverter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material.icons.automirrored.rounded.LibraryBooks
 import androidx.compose.material.icons.rounded.EditNote
@@ -231,8 +238,10 @@ fun BookTrackerApp(viewModel: BookTrackerViewModel) {
     // The window's width, not the screen's: split-screen on a tablet gets the phone layout.
     val widthTier = WidthTier.forWidth(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp)
     val prefs by viewModel.prefs.collectAsState()
+    val sideNavCollapsed by viewModel.sideNavCollapsed.collectAsState()
     CompositionLocalProvider(
         LocalAppPrefs provides prefs,
+        LocalSideNavCollapsed provides (sideNavCollapsed == true),
         com.example.booktracker.app.ui.animations.LocalAppFeel provides
             com.example.booktracker.app.ui.animations.AppFeel(reduceMotion = reduceMotion, haptics = haptics),
         LocalHapticFeedback provides if (haptics) systemHaptics else SilentHaptics,
@@ -296,11 +305,15 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
     val settledRoute = if (onMain) TAB_ORDER[mainPager.settledPage] else navRoute
 
     val isTopLevelRoute = currentRoute in TOP_LEVEL_ROUTES
-    // Phones: floating bottom bar. Tablets: a rail. Big windows: a labelled side drawer.
+    // Phones and portrait tablets: floating bottom bar. Landscape: a rail, or on big windows
+    // a labelled side drawer the reader can fold down to the rail.
     val widthTier = LocalWidthTier.current
-    val showBottomNav = isTopLevelRoute && widthTier == WidthTier.COMPACT
-    val showRail = isTopLevelRoute && (widthTier == WidthTier.MEDIUM || widthTier == WidthTier.EXPANDED)
-    val showDrawer = isTopLevelRoute && widthTier == WidthTier.LARGE
+    val showBottomNav = isTopLevelRoute && !widthTier.atLeastExpanded
+    val sideNavCollapsed by viewModel.sideNavCollapsed.collectAsState()
+    // Waits the frame it takes to read the saved choice, so it doesn't slide there at launch.
+    val showSideNav = isTopLevelRoute && widthTier.atLeastExpanded && sideNavCollapsed != null
+    val sideNavCanOpen = widthTier == WidthTier.LARGE
+    val sideNavOpen = sideNavCanOpen && sideNavCollapsed == false
     val openScanner: () -> Unit = { navController.navigate("scanner") { launchSingleTop = true } }
     val tabScope = rememberCoroutineScope()
     // A far jump (Profile to Home) lands next to the target and slides only the last
@@ -478,7 +491,7 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
                             onOpenFullTimer = { navController.navigate("focus/${book.id}") { launchSingleTop = true } },
                             // On a tablet it sits under the content, clear of the rail or drawer, at a readable width.
                             modifier = Modifier
-                                .padding(start = if (showRail || showDrawer) navChromeWidth() else 0.dp)
+                                .padding(start = if (showSideNav) navChromeWidth() else 0.dp)
                                 .readableWidth()
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                         )
@@ -515,75 +528,121 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
             end = innerPadding.calculateEndPadding(layoutDirection),
             bottom = if (showBottomNav) 0.dp else innerPadding.calculateBottomPadding()
         )
-        Row(
+        // Folding the side navigation lays the sections out once at their new width and slides
+        // them there, rather than measuring the library grid again on every frame of the slide.
+        val sideNavTarget = when {
+            !showSideNav -> 0.dp
+            sideNavOpen -> NAV_DRAWER_WIDTH
+            else -> NAV_RAIL_WIDTH
+        }
+        val sideNavWidth = remember { androidx.compose.animation.core.Animatable(sideNavTarget, Dp.VectorConverter) }
+        LaunchedEffect(sideNavTarget) {
+            // Only folding slides; the strip comes and goes with the main sections at once.
+            if (reduceMotion || sideNavTarget == 0.dp || sideNavWidth.value == 0.dp) sideNavWidth.snapTo(sideNavTarget)
+            else sideNavWidth.animateTo(sideNavTarget, tween(Motion.MEDIUM, easing = Motion.Emphasized))
+        }
+        Box(
             // Consumed, so a screen's own top bar doesn't leave a second status bar's worth of space.
             modifier = Modifier.fillMaxSize().padding(contentPadding).consumeWindowInsets(contentPadding)
         ) {
-            if (showRail) {
-                NavigationRail(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.85f),
-                    header = {
-                        androidx.compose.material3.FloatingActionButton(
-                            onClick = { showAddDialog = true },
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
+            if (showSideNav) {
+                val toggleSideNav = { viewModel.setSideNavCollapsed(sideNavOpen) }
+                Box(
+                    modifier = Modifier
+                        // The drawer slides out from under the rail rather than popping in.
+                        .layout { measurable, constraints ->
+                            val width = sideNavWidth.value.roundToPx()
+                            val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+                            layout(width, placeable.height) { placeable.place(0, 0) }
+                        }
+                        .fillMaxHeight()
+                        .clipToBounds()
+                        .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.85f))
+                ) {
+                    if (!sideNavOpen) {
+                        NavigationRail(
+                            containerColor = Color.Transparent,
+                            header = {
+                                if (sideNavCanOpen) {
+                                    IconButton(onClick = toggleSideNav, modifier = Modifier.padding(bottom = 8.dp)) {
+                                        Icon(Icons.Rounded.Menu, contentDescription = "Show section names")
+                                    }
+                                }
+                                androidx.compose.material3.FloatingActionButton(
+                                    onClick = { showAddDialog = true },
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                ) {
+                                    Icon(Icons.Rounded.Add, contentDescription = "Add book")
+                                }
+                            }
                         ) {
-                            Icon(Icons.Rounded.Add, contentDescription = "Add book")
+                            Spacer(Modifier.weight(1f))
+                            MainTabs.forEach { tab ->
+                                NavigationRailItem(
+                                    selected = currentRoute == tab.route,
+                                    onClick = { navigateTopLevel(tab.route) },
+                                    icon = { Icon(tab.icon, contentDescription = tab.label) },
+                                    label = { Text(tab.label) }
+                                )
+                            }
+                            Spacer(Modifier.weight(1f))
+                        }
+                    } else {
+                        androidx.compose.material3.PermanentDrawerSheet(
+                            // Laid out at full width even while the strip is still opening.
+                            modifier = Modifier.wrapContentWidth(Alignment.Start, unbounded = true).width(NAV_DRAWER_WIDTH),
+                            drawerContainerColor = Color.Transparent
+                        ) {
+                            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp)) {
+                                IconButton(onClick = toggleSideNav, modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)) {
+                                    Icon(Icons.AutoMirrored.Rounded.MenuOpen, contentDescription = "Fold to icons")
+                                }
+                                ExtendedFloatingActionButton(
+                                    onClick = { showAddDialog = true },
+                                    icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
+                                    text = { Text("Add book") },
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.padding(start = 4.dp, bottom = 20.dp)
+                                )
+                                MainTabs.forEach { tab ->
+                                    androidx.compose.material3.NavigationDrawerItem(
+                                        selected = currentRoute == tab.route,
+                                        onClick = { navigateTopLevel(tab.route) },
+                                        icon = { Icon(tab.icon, contentDescription = null) },
+                                        label = { Text(tab.label) },
+                                        modifier = Modifier.padding(vertical = 2.dp)
+                                    )
+                                }
+                                androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                                androidx.compose.material3.NavigationDrawerItem(
+                                    selected = false,
+                                    onClick = { navController.navigate("review") { launchSingleTop = true } },
+                                    icon = { Icon(Icons.Rounded.Style, contentDescription = null) },
+                                    label = { Text("Daily review") }
+                                )
+                                androidx.compose.material3.NavigationDrawerItem(
+                                    selected = false,
+                                    onClick = { navController.navigate("settings") { launchSingleTop = true } },
+                                    icon = { Icon(Icons.Rounded.Settings, contentDescription = null) },
+                                    label = { Text("Settings") }
+                                )
+                            }
                         }
                     }
-                ) {
-                    Spacer(Modifier.weight(1f))
-                    MainTabs.forEach { tab ->
-                        NavigationRailItem(
-                            selected = currentRoute == tab.route,
-                            onClick = { navigateTopLevel(tab.route) },
-                            icon = { Icon(tab.icon, contentDescription = tab.label) },
-                            label = { Text(tab.label) }
-                        )
-                    }
-                    Spacer(Modifier.weight(1f))
                 }
             }
-            if (showDrawer) {
-                androidx.compose.material3.PermanentDrawerSheet(
-                    modifier = Modifier.width(248.dp),
-                    drawerContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.85f)
-                ) {
-                    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp)) {
-                        ExtendedFloatingActionButton(
-                            onClick = { showAddDialog = true },
-                            icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
-                            text = { Text("Add book") },
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.padding(start = 4.dp, bottom = 20.dp)
-                        )
-                        MainTabs.forEach { tab ->
-                            androidx.compose.material3.NavigationDrawerItem(
-                                selected = currentRoute == tab.route,
-                                onClick = { navigateTopLevel(tab.route) },
-                                icon = { Icon(tab.icon, contentDescription = null) },
-                                label = { Text(tab.label) },
-                                modifier = Modifier.padding(vertical = 2.dp)
-                            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = sideNavTarget)
+                    .graphicsLayer {
+                        if (sideNavTarget > 0.dp && sideNavWidth.value > 0.dp) {
+                            translationX = (sideNavWidth.value - sideNavTarget).toPx()
                         }
-                        androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-                        androidx.compose.material3.NavigationDrawerItem(
-                            selected = false,
-                            onClick = { navController.navigate("review") { launchSingleTop = true } },
-                            icon = { Icon(Icons.Rounded.Style, contentDescription = null) },
-                            label = { Text("Daily review") }
-                        )
-                        androidx.compose.material3.NavigationDrawerItem(
-                            selected = false,
-                            onClick = { navController.navigate("settings") { launchSingleTop = true } },
-                            icon = { Icon(Icons.Rounded.Settings, contentDescription = null) },
-                            label = { Text("Settings") }
-                        )
                     }
-                }
-            }
-            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            ) {
 androidx.compose.animation.SharedTransitionLayout {
                     androidx.compose.runtime.CompositionLocalProvider(LocalSharedTransitionScope provides this) {
                                         NavHost(

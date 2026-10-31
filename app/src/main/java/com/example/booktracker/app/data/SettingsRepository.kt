@@ -115,6 +115,7 @@ class SettingsRepository(context: Context) {
     private val dndKey = booleanPreferencesKey("dnd_during_session")
     private val themeModeKey = intPreferencesKey("theme_mode")
     private val useDynamicColorKey = booleanPreferencesKey("use_dynamic_color")
+    private val sideNavCollapsedKey = booleanPreferencesKey("side_nav_collapsed")
     private val appPaletteKey = androidx.datastore.preferences.core.stringPreferencesKey("app_palette")
     private val userNameKey = androidx.datastore.preferences.core.stringPreferencesKey("user_name")
     private val mottoKey = androidx.datastore.preferences.core.stringPreferencesKey("reader_motto")
@@ -150,6 +151,11 @@ class SettingsRepository(context: Context) {
     val dndDuringSession: Flow<Boolean> = appContext.settingsDataStore.data.map { it[dndKey] ?: false }
     val themeMode: Flow<Int> = appContext.settingsDataStore.data.map { it[themeModeKey] ?: ThemeMode.SYSTEM.ordinal }
     val useDynamicColor: Flow<Boolean> = appContext.settingsDataStore.data.map { it[useDynamicColorKey] ?: false }
+    /**
+     * In landscape on a big tablet, the side navigation folded down to a rail of icons. Kept out of
+     * [AppPrefs] on purpose: a change there rebuilds the whole app in one frame, mid-animation.
+     */
+    val sideNavCollapsed: Flow<Boolean> = appContext.settingsDataStore.data.map { it[sideNavCollapsedKey] ?: false }
     val appPalette: Flow<AppPalette> = appContext.settingsDataStore.data.map { prefs ->
         val name = prefs[appPaletteKey] ?: AppPalette.BOOKMORY_AMBER.name
         try {
@@ -210,6 +216,7 @@ class SettingsRepository(context: Context) {
     suspend fun setDndDuringSession(enabled: Boolean) { appContext.settingsDataStore.edit { it[dndKey] = enabled } }
     suspend fun setThemeMode(mode: Int) { appContext.settingsDataStore.edit { it[themeModeKey] = mode } }
     suspend fun setUseDynamicColor(enabled: Boolean) { appContext.settingsDataStore.edit { it[useDynamicColorKey] = enabled } }
+    suspend fun setSideNavCollapsed(collapsed: Boolean) { appContext.settingsDataStore.edit { it[sideNavCollapsedKey] = collapsed } }
     suspend fun setAppPalette(palette: AppPalette) { appContext.settingsDataStore.edit { it[appPaletteKey] = palette.name } }
     suspend fun setUserName(name: String) { appContext.settingsDataStore.edit { it[userNameKey] = name } }
     suspend fun setMotto(motto: String) { appContext.settingsDataStore.edit { it[mottoKey] = motto } }

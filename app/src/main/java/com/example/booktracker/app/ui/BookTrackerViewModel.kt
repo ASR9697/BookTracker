@@ -120,6 +120,10 @@ class BookTrackerViewModel(
     val useDynamicColor: StateFlow<Boolean> = settings.useDynamicColor
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    /** Null until read, so the side navigation appears at its saved width instead of sliding there. */
+    val sideNavCollapsed: StateFlow<Boolean?> = settings.sideNavCollapsed
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     val appPalette: StateFlow<AppPalette> = settings.appPalette
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppPalette.BOOKMORY_AMBER)
 
@@ -1043,6 +1047,10 @@ class BookTrackerViewModel(
 
     fun setUseDynamicColor(enabled: Boolean) {
         viewModelScope.launch { settings.setUseDynamicColor(enabled) }
+    }
+
+    fun setSideNavCollapsed(collapsed: Boolean) {
+        viewModelScope.launch { settings.setSideNavCollapsed(collapsed) }
     }
 
     fun setAppPalette(palette: AppPalette) {
