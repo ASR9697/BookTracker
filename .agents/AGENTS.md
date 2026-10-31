@@ -2,7 +2,7 @@
 
 **CRITICAL RULES:**
 1. **MAP FIRST:** `.agents/maps/code_map.md` lists every Kotlin file with its purpose, size, and declarations as `name:line`. Grep it for a feature word (e.g. `Rating`, `Loan`, `timer`) or read the section for the domain, then `Read` the target file with `offset`/`limit` at that line. Do not grep the source tree or read big files whole until the map has failed you.
-2. **KEEP IT FRESH:** After adding, renaming, moving, or deleting a file, class, or function, run `npm run update-maps`. `npm run check-maps` exits 1 if the map is stale; the pre-commit hook in `.githooks/` runs it (enable once per clone with `npm run install-hooks`).
+2. **KEEP IT FRESH:** After adding, renaming, moving, or deleting a file, class, or function, run `npm run update-maps`. `npm run check-maps` exits 1 if the map is stale; the pre-commit hook in `.githooks/` runs it (enable once per clone with `npm run install-hooks`). CI (`.github/workflows/checks.yml`) runs it on every PR too, with the unit tests, lint, the phone and watch builds, and a check that the database schema is committed.
 3. **Historical architecture notes:** `docs/ARCHITECTURE_HISTORY.md`. DO NOT modify it.
 
 ## Change X -> touch these files
