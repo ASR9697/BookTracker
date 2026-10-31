@@ -312,9 +312,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **FloatingNavBar.kt** (258) - The main navigation as a floating pill.
   - types: NavTab:57
   - fun: FloatingNavBar:85, .clamped:95
-- **FocusTimerScreen.kt** (1203) - The reading timer.
+- **FocusTimerScreen.kt** (1204) - The reading timer.
   - types: TimerMode:62
-  - fun: formatTimerClock:73, FocusTimerScreen:91, .toggleClock:129, TimerChip:925, PageGoalSheet:955, PickUpCard:1014, relativeDay:1064, StillReadingCard:1077, TimerIconButton:1111, PlayButton:1130
+  - fun: formatTimerClock:73, FocusTimerScreen:91, .toggleClock:129, TimerChip:926, PageGoalSheet:956, PickUpCard:1015, relativeDay:1065, StillReadingCard:1078, TimerIconButton:1112, PlayButton:1131
 - **GoalEditDialog.kt** (217)
   - types: GoalType:23
   - fun: GoalEditDialog:32
@@ -453,9 +453,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 ## app/ui/animations - Reusable Compose animations
 `app/src/main/java/com/example/booktracker/app/ui/animations/`
 
-- **Ambient.kt** (277) - Seconds of ambient time, ticking while [running] and holding still otherwise, so a page that is off screen or a reade...
-  - types: DayPart:143, Star:152, Cloud:155
-  - fun: rememberAmbientClock:66, swing:79, LivingFlame:89, dayPart:145, TimeOfDaySky:178, crescent:248, DrawScope.drawCloud:255, DrawScope.drawShootingStar:264
+- **Ambient.kt** (380) - Seconds of ambient time, ticking while [running] and holding still otherwise, so a page that is off screen or a reade...
+  - types: DayPart:246, Star:255, Cloud:258
+  - fun: rememberAmbientClock:96, AmbientWakeHost:132, isLowEndDevice:174, swing:182, LivingFlame:192, dayPart:248, TimeOfDaySky:281, crescent:351, DrawScope.drawCloud:358, DrawScope.drawShootingStar:367
 - **Animations.kt** (139) - Adds a physical "squish" effect when the element is pressed, making it feel tactile and elastic.
   - fun: Modifier.bounceClick:30, Modifier.bounceOnPress:67, Modifier.shimmer:85, Modifier.pulseAnimation:117
 - **Confetti.kt** (155)

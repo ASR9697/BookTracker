@@ -281,7 +281,8 @@ fun FocusTimerScreen(
 
     // Slow breathing glow behind the play button for the first minute after the clock
     // starts, then a steady glow: an hour on a stand shouldn't redraw the screen every
-    // frame. Read only while drawing, so the breath never recomposes the screen.
+    // frame. Read only while drawing, so the breath never recomposes the screen. It breathes
+    // through that minute untouched: nobody touches the screen while they read.
     val reduceMotion = com.example.booktracker.app.ui.animations.rememberReduceMotion()
     var breathing by remember { mutableStateOf(false) }
     LaunchedEffect(isRunning) {
@@ -291,7 +292,7 @@ fun FocusTimerScreen(
             breathing = false
         }
     }
-    val breathClock = com.example.booktracker.app.ui.animations.rememberAmbientClock(breathing && !reduceMotion)
+    val breathClock = com.example.booktracker.app.ui.animations.rememberAmbientClock(breathing && !reduceMotion, whileIdle = true)
     val breath: () -> Float = {
         when {
             reduceMotion -> 0f
