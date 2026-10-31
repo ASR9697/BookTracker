@@ -100,6 +100,9 @@ fun FloatingNavBar(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
+            // On a portrait tablet it stays phone-sized in the middle instead of stretching edge to edge.
+            .wrapContentWidth(Alignment.CenterHorizontally)
+            .widthIn(max = 560.dp)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +38,9 @@ enum class WidthTier {
 
 val LocalWidthTier = staticCompositionLocalOf { WidthTier.COMPACT }
 
+/** The reader has folded the landscape side navigation down to icons. Dynamic: only its readers redraw on a toggle. */
+val LocalSideNavCollapsed = compositionLocalOf { false }
+
 /** Longest comfortable line for reading and forms; wider than this, text gets hard to follow. */
 val ReadableWidth: Dp = 720.dp
 
@@ -68,10 +72,15 @@ fun windowCentredPadding(max: Dp = ReadableWidth, chrome: Dp = 0.dp): Dp {
 /** Width of the side navigation next to the five main sections at the current tier. */
 @Composable
 fun navChromeWidth(): Dp = when (LocalWidthTier.current) {
-    WidthTier.COMPACT -> 0.dp
-    WidthTier.MEDIUM, WidthTier.EXPANDED -> 80.dp
-    WidthTier.LARGE -> 248.dp
+    // Phones and portrait tablets navigate from the bottom bar.
+    WidthTier.COMPACT, WidthTier.MEDIUM -> 0.dp
+    WidthTier.EXPANDED -> NAV_RAIL_WIDTH
+    WidthTier.LARGE -> if (LocalSideNavCollapsed.current) NAV_RAIL_WIDTH else NAV_DRAWER_WIDTH
 }
+
+/** The side navigation folded to icons, and opened out with labels. */
+val NAV_RAIL_WIDTH: Dp = 80.dp
+val NAV_DRAWER_WIDTH: Dp = 248.dp
 
 /** Narrowest a cover tile may get: three across on a phone, larger covers (not just more of them) on tablets. */
 @Composable
