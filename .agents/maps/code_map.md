@@ -128,7 +128,7 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **NoteDraftStore.kt** (46) - One draft per key (a book id), in SharedPreferences: small, synchronous and fine to write as the reader types.
   - types: NoteDraft:8, NoteDraftStore:27
   - fun: .load:33, .save:36, .clear:42
-- **NoteImageStore.kt** (116) - Photos attached to notes live in filesDir/note_images as downscaled JPEGs, referenced from notes as "file://" URIs, l...
+- **NoteImageStore.kt** (112) - Photos attached to notes live in filesDir/note_images as downscaled JPEGs, referenced from notes as "file://" URIs, l...
   - types: NoteImageStore:20
   - fun: .dir:29, .newCaptureFile:32, .import:39, .writeUpright:47, .saveBitmap:69, .localFile:76, .sweepOrphans:86, .sampleSize:92
 - **ServiceLocator.kt** (97) - Minimal manual DI.
@@ -290,9 +290,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: .clearDriveStatus:165, .setHapticsEnabled:227, .setReduceMotion:228, .setKeepScreenOn:229, .updatePrefs:235, .finishWelcome:253, .exportCsv:256, .backupNow:269, .deleteAllData:284, .openRoute:446, .consumeRoute:450, .gradeReview:454, .saveWord:463, .deleteWord:472, .setFinishBy:476, .syncDrive:481, .driveConsentShown:494, .onDriveConsent:498, .disconnectDrive:531, .setAudiobook:540, .logListening:545, .setAudioPosition:552, .addShelfBooks:557, .shareNote:578, .addScannedBook:582, .importCsv:609, .importBookmory:621, .promote:635, .promoteToReading:645, .pauseBook:651, .changeStatus:661, .toggleFavorite:671, .addProgress:675, .recordLoan:679, .markLoanReturned:688, .tidyTag:703, .updateBookDetails:712, .setFormat:724, .setOwnership:728, .setWish:742, .gotWished:753, .addToWishlist:767, .setPurchases:790, .finishBook:803, .readAgain:807, .setProgress:811, .setCollections:815, .markDnf:819, .startSession:823, .startFocus:833, .saveSession:876, .discardOpenSession:924, .leaveUnstartedFocus:940, .logManualSession:955, .delete:961, .deleteSession:968, .updateSession:972, .restore:977, .setHomeLayout:984, .setPinnedNoteId:989, .setMotto:993, .setUserName:997, .setAvatarPhoto:1002, .setAvatarCover:1010, .clearAvatar:1017, .setDailyGoal:1024, .setYearlyGoal:1028, .setMonthlyGoalPages:1032, .setMonthlyGoalBooks:1036, .setDndDuringSession:1040, .setThemeMode:1044, .setUseDynamicColor:1048, .setSideNavCollapsed:1052, .setAppPalette:1056, .setReminder:1060, .planBook:1064, .setTimerBook:1074, .setTimerMode:1105, .setCustomWorkMinutes:1119, .countdownTotalSeconds:1127, .extendCountdown:1135, .setTimerRunning:1146, .pauseUnattended:1159, .setPageTarget:1171, .setWorkMinutes:1180, .setDayStartsAtHour:1188, .setUseAppLock:1192, .setNoiseType:1197, .endNoisePreview:1206, .setTimerVolume:1210, .sessionsFor:1215, .notesFor:1218, .addNote:1220, .updateNote:1230, .toggleNoteFavorite:1234, .deleteNote:1238, .searchLibrary:1242, .exportBackup:1245, .importBackup:1262
 - **BookVictoryCardDialog.kt** (901) - Interactive Single Book "Finished Wrap-Up" Victory Card Dialog.
   - fun: BookVictoryCardDialog:70, VictoryCardFrontContent:459, VictoryCardBackContent:632, JourneyStatTile:826, PreviewStatPill:870
-- **BookVictoryShareHelper.kt** (678)
+- **BookVictoryShareHelper.kt** (679)
   - types: VictoryCardTheme:37, BookVictoryShareHelper:93
-  - fun: .shareVictoryCard:113
+  - fun: .shareVictoryCard:114
 - **CameraPreview.kt** (70)
   - fun: CameraPreview:19
 - **CompletionDialogs.kt** (253) - Five stars with half steps: the left half of a star sets x.5, the right half x.0.
@@ -306,9 +306,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: EditHomeScreen:66, .save:85, .moveBy:87, SectionRow:207
 - **EmptyState.kt** (84) - A friendly empty screen: an icon that gently floats inside soft rings with a spark orbiting it, a short title, what t...
   - fun: EmptyState:35
-- **FinishedScreen.kt** (418) - Every ended read: a summary of the shelf on top, then the books month by month.
+- **FinishedScreen.kt** (419) - Every ended read: a summary of the shelf on top, then the books month by month.
   - types: ShelfTab:50
-  - fun: FinishedScreen:59, ShelfSummaryCard:215, SummaryStat:273, ShelfRowCard:282, ShelfCover:295, FinishedRow:308, SetAsideRow:364, dayLabel:417
+  - fun: FinishedScreen:59, ShelfSummaryCard:216, SummaryStat:274, ShelfRowCard:283, ShelfCover:296, FinishedRow:309, SetAsideRow:365, dayLabel:418
 - **FloatingNavBar.kt** (258) - The main navigation as a floating pill.
   - types: NavTab:57
   - fun: FloatingNavBar:85, .clamped:95
@@ -338,9 +338,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: MemorizeScreen:80, NoteFeedCard:517, NotesShortcut:659
 - **MonthlyReportDialog.kt** (359) - Bookmory-style Interactive Monthly Wrap-up Dialog.
   - fun: MonthlyReportDialog:49, MiniStatBox:338
-- **MonthlyShareHelper.kt** (331)
+- **MonthlyShareHelper.kt** (332)
   - types: MonthlyCardTheme:26, MonthlyShareHelper:76
-  - fun: .shareMonthlyReport:80
+  - fun: .shareMonthlyReport:81
 - **NoteFormatting.kt** (76) - Edits to the note text for the formatting toolbar, dictation and scanning.
   - types: NoteFormatting:11
   - fun: .toggleWrap:18, .toggleBullets:43, .insertAtCursor:55, .appendParagraph:66, .unwrapLines:73
@@ -389,9 +389,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **ReadingHeatmap.kt** (634) - 52-Week Annual Reading Heatmap ("Year in Pixels").
   - types: ReadingIntensityLevel:51
   - fun: getReadingIntensity:63, getIntensityColor:74, ReadingHeatmap:98
-- **ReadingJourneyMap.kt** (448) - Finished books as a winding path, newest at the top.
+- **ReadingJourneyMap.kt** (449) - Finished books as a winding path, newest at the top.
   - types: Stop:63, .Now:64, .Year:65, .Finished:66, .Start:67
-  - fun: ReadingJourneyMap:77, journeyStops:137, stopKey:154, yearOf:161, monthLabel:166, rememberTrace:173, Modifier.pathStretch:192, trackColor:215, travelledColor:218, BookStop:221, MilestoneMarker:338, StraightStop:364, NowStop:377, StraightStopHalf:405, YearStop:416, StartStop:435
+  - fun: ReadingJourneyMap:77, journeyStops:137, stopKey:154, yearOf:161, monthLabel:167, rememberTrace:174, Modifier.pathStretch:193, trackColor:216, travelledColor:219, BookStop:222, MilestoneMarker:339, StraightStop:365, NowStop:378, StraightStopHalf:406, YearStop:417, StartStop:436
 - **ReadingPlanCards.kt** (337) - "Finish by" on the book page: pick a day, see the pages a day it takes, how today is going against that, and whether ...
   - fun: FinishByCard:71, StatusPill:163, FinishByDatePicker:189, RereadMemoriesCard:219, MemoriesReachedCard:255, MemoryNote:280, PlanCard:314, finishByLine:326
 - **ReviewScreen.kt** (343) - The daily review: today's highlights and words, one card at a time.

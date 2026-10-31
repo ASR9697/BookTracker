@@ -140,6 +140,8 @@ dependencies {
     // Foldable postures: the reading timer splits at the hinge when half-open (tabletop).
     implementation("androidx.window:window:1.3.0")
     implementation("androidx.palette:palette-ktx:1.0.0")
+    // Reads photo orientation (note photos, avatars) across formats and vendors.
+    implementation("androidx.exifinterface:exifinterface:1.4.2")
 
     implementation("androidx.core:core-splashscreen:1.0.1")
 

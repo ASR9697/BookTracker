@@ -75,7 +75,8 @@ enum class MonthlyCardTheme(
 
 object MonthlyShareHelper {
 
-    private val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
+    // A getter, so a change of language shows without restarting the app.
+    private val monthFormatter get() = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
 
     fun shareMonthlyReport(
         context: Context,

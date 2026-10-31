@@ -92,7 +92,8 @@ enum class VictoryCardTheme(
 
 object BookVictoryShareHelper {
 
-    private val dateFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.getDefault())
+    // A getter, so a change of language shows without restarting the app.
+    private val dateFormatter get() = DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.getDefault())
 
     private suspend fun fetchCoverBitmap(context: Context, coverUrl: String): Bitmap? {
         if (coverUrl.isBlank()) return null
