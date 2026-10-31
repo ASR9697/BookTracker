@@ -78,6 +78,12 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - types: WrappedEngine:19, .Bucket:24, .AuthorStat:26, .Summary:28
   - fun: .summarize:50, .pickQuote:128
 
+## app/benchmark
+`app/src/benchmark/java/com/example/booktracker/app/benchmark/`
+
+- **DemoLibrarySeeder.kt** (153) - Benchmark build only: fills an empty install with a believable library (books in every state, two months of nightly s...
+  - types: DemoLibrarySeeder:31
+
 ## app/camera - ML Kit barcode + OCR analyzers
 `app/src/main/java/com/example/booktracker/app/camera/`
 

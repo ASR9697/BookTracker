@@ -16,3 +16,4 @@ rootProject.name = "BookTracker"
 include(":app")
 include(":wear")
 include(":shared")
+include(":baselineprofile")

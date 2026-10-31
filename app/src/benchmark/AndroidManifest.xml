@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Merged into the benchmark build only (see the build type in app/build.gradle.kts). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <!-- Lets the profile recorder read the app's profile without it being debuggable. -->
+        <profileable
+            android:shell="true"
+            tools:targetApi="29" />
+
+        <provider
+            android:name=".benchmark.DemoLibrarySeeder"
+            android:authorities="${applicationId}.demoseed"
+            android:exported="false" />
+    </application>
+</manifest>
