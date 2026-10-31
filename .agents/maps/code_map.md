@@ -281,10 +281,10 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: EditBookDialog:80, LogSessionDialog:328, PastDatePickerDialog:436, Book.isEnded:467
 - **BookQuickActionsSheet.kt** (153) - What a long-press on a cover opens: the cover lifts into view with the book's title, then the things you'd want to do...
   - fun: BookQuickActionsSheet:42
-- **BookTrackerScreen.kt** (2296)
-  - types: LibraryViewMode:185, LibrarySort:209, SilentHaptics:243
-  - fun: BookTrackerApp:225, BookTrackerAppContent:249, WeekBubbles:1595, LibraryScreen:1669, formatElapsed:2197, SubScreen:2212, TimerMiniPlayer:2227
-  - nav routes: editHome:858, wishlist:864, owned/{ownership}:900, calendar:933, bookshelf:955, epubReader/{uri}:966, scanner:973, privacy:998, achievements:1001, wrapped:1032, planner:1048, book/{bookId}:1057, history:1071, settings:1084, streak:1165, goals:1180, finished:1222, journey_map:1236, focus/{bookId}:1262, session_result/{bookId}:1367, review:1395, tagTidy:1414, vocabulary:1419, shelfScan:1434, tbr_swipe:1450
+- **BookTrackerScreen.kt** (2307)
+  - types: LibraryViewMode:186, LibrarySort:210, SilentHaptics:244
+  - fun: BookTrackerApp:226, BookTrackerAppContent:250, WeekBubbles:1606, LibraryScreen:1680, formatElapsed:2208, SubScreen:2223, TimerMiniPlayer:2238
+  - nav routes: editHome:865, wishlist:871, owned/{ownership}:907, calendar:940, bookshelf:962, epubReader/{uri}:973, scanner:980, privacy:1005, achievements:1008, wrapped:1039, planner:1055, book/{bookId}:1064, history:1078, settings:1091, streak:1172, goals:1187, finished:1229, journey_map:1243, focus/{bookId}:1269, session_result/{bookId}:1374, review:1402, tagTidy:1421, vocabulary:1426, shelfScan:1441, tbr_swipe:1457
 - **BookTrackerViewModel.kt** (1297)
   - types: DriveSyncState:78, .Idle:79, .Syncing:80, .NeedsConsent:81, .Done:82, .Failed:83, BookTrackerViewModel:86, .SessionResult:853
   - fun: .clearDriveStatus:161, .setHapticsEnabled:223, .setReduceMotion:224, .setKeepScreenOn:225, .updatePrefs:231, .finishWelcome:249, .exportCsv:252, .backupNow:265, .deleteAllData:280, .openRoute:442, .consumeRoute:446, .gradeReview:450, .saveWord:459, .deleteWord:468, .setFinishBy:472, .syncDrive:477, .driveConsentShown:490, .onDriveConsent:494, .disconnectDrive:527, .setAudiobook:536, .logListening:541, .setAudioPosition:548, .addShelfBooks:553, .shareNote:574, .addScannedBook:578, .importCsv:605, .importBookmory:617, .promote:631, .promoteToReading:641, .pauseBook:647, .changeStatus:657, .toggleFavorite:667, .addProgress:671, .recordLoan:675, .markLoanReturned:684, .tidyTag:699, .updateBookDetails:708, .setFormat:720, .setOwnership:724, .setWish:738, .gotWished:749, .addToWishlist:763, .setPurchases:786, .finishBook:799, .readAgain:803, .setProgress:807, .setCollections:811, .markDnf:815, .startSession:819, .startFocus:829, .saveSession:872, .discardOpenSession:920, .leaveUnstartedFocus:936, .logManualSession:951, .delete:957, .deleteSession:964, .updateSession:968, .restore:973, .setHomeLayout:980, .setPinnedNoteId:985, .setMotto:989, .setUserName:993, .setAvatarPhoto:998, .setAvatarCover:1006, .clearAvatar:1013, .setDailyGoal:1020, .setYearlyGoal:1024, .setMonthlyGoalPages:1028, .setMonthlyGoalBooks:1032, .setDndDuringSession:1036, .setThemeMode:1040, .setUseDynamicColor:1044, .setAppPalette:1048, .setReminder:1052, .planBook:1056, .setTimerBook:1066, .setTimerMode:1097, .setCustomWorkMinutes:1111, .countdownTotalSeconds:1119, .extendCountdown:1127, .setTimerRunning:1138, .pauseUnattended:1151, .setPageTarget:1163, .setWorkMinutes:1172, .setDayStartsAtHour:1180, .setUseAppLock:1184, .setNoiseType:1189, .endNoisePreview:1198, .setTimerVolume:1202, .sessionsFor:1207, .notesFor:1210, .addNote:1212, .updateNote:1222, .toggleNoteFavorite:1226, .deleteNote:1230, .searchLibrary:1234, .exportBackup:1237, .importBackup:1254
@@ -312,9 +312,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **FloatingNavBar.kt** (255) - The main navigation as a floating pill.
   - types: NavTab:57
   - fun: FloatingNavBar:85, .clamped:95
-- **FocusTimerScreen.kt** (1191) - The reading timer.
+- **FocusTimerScreen.kt** (1203) - The reading timer.
   - types: TimerMode:62
-  - fun: formatTimerClock:70, FocusTimerScreen:88, TimerChip:915, PageGoalSheet:945, PickUpCard:1004, relativeDay:1054, StillReadingCard:1067, TimerIconButton:1101, PlayButton:1120
+  - fun: formatTimerClock:73, FocusTimerScreen:91, .toggleClock:129, TimerChip:925, PageGoalSheet:955, PickUpCard:1014, relativeDay:1064, StillReadingCard:1077, TimerIconButton:1111, PlayButton:1130
 - **GoalEditDialog.kt** (217)
   - types: GoalType:23
   - fun: GoalEditDialog:32
@@ -401,9 +401,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: ScannerScreen:67
 - **SectionHeader.kt** (262)
   - fun: SectionPage:86, SectionPage:109, SectionTitle:131, CollapsedTitle:164, SectionHeader:170, SearchPill:238
-- **SessionResultScreen.kt** (536) - Post-save recap.
-  - types: StatSentenceScope:496
-  - fun: SessionResultScreen:94, formatSessionTime:405, paceComparison:409, RowScope.StatTile:420, Pill:440, GoalRow:458, .append:498, .highlight:499, StatSentence:503
+- **SessionResultScreen.kt** (577) - Post-save recap.
+  - types: StatSentenceScope:537
+  - fun: SessionResultScreen:95, formatSessionTime:428, paceComparison:446, RowScope.StatTile:461, Pill:481, GoalRow:499, .append:539, .highlight:540, StatSentence:544
 - **SessionSaveScreen.kt** (972) - The one review step every finished session passes through, whether it came from the focus timer or the home card.
   - types: SessionDraft:697
   - fun: SessionSaveScreen:102, formatShort:711, focusLabel:714, FocusPicker:725, EditableStamp:768, SaveRow:784, OutcomeButton:841, DurationEditorDialog:868, TagPickerDialog:913, formatClock:968

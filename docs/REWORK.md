@@ -30,7 +30,7 @@ Agreed split so pages stop repeating each other. Check new ideas against it.
 
 ## Cross-page notes
 
-- **Not reviewed yet:** `SessionResultScreen.kt`, the recap shown after saving a session.
+- (none open)
 
 ---
 

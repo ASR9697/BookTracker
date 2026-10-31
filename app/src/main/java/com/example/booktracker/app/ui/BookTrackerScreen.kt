@@ -83,6 +83,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -350,8 +351,10 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
     val pendingRoute by viewModel.pendingRoute.collectAsState()
     LaunchedEffect(pendingRoute) {
         val route = pendingRoute ?: return@LaunchedEffect
-        viewModel.consumeRoute()
         androidx.compose.runtime.withFrameNanos { } // let the nav graph attach first
+        // Only now: consuming re-keys this effect, and doing it before the wait above
+        // cancelled the effect mid-wait, so shortcuts and widget taps went nowhere.
+        viewModel.consumeRoute()
         if (route == ADD_BOOK_ACTION) {
             showAddDialog = true
         } else if (route in TAB_ORDER) {
@@ -472,7 +475,11 @@ private fun BookTrackerAppContent(viewModel: BookTrackerViewModel) {
                             onSave = { navController.navigate("session_save/${book.id}") { launchSingleTop = true } },
                             onEnd = { showEndTimerDialog = true },
                             onOpenFullTimer = { navController.navigate("focus/${book.id}") { launchSingleTop = true } },
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            // On a tablet it sits under the content, clear of the rail or drawer, at a readable width.
+                            modifier = Modifier
+                                .padding(start = if (showRail || showDrawer) navChromeWidth() else 0.dp)
+                                .readableWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
                 }
@@ -1531,6 +1538,10 @@ androidx.compose.runtime.CompositionLocalProvider(LocalAnimatedVisibilityScope p
         ) {
             AddBookScreen(
                 initialQuery = addQuery,
+                // A phone gets the whole screen; a tablet a centred panel, not a 2,880 px wide form.
+                modifier = if (LocalWidthTier.current.atLeastMedium) {
+                    Modifier.widthIn(max = ReadableWidth).fillMaxHeight(0.9f).clip(AppShape.XL)
+                } else Modifier,
                 onDismiss = { showAddDialog = false },
                 onAddBook = { metadata, status, format ->
                     viewModel.addScannedBook(metadata, status, format)
