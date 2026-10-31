@@ -50,6 +50,12 @@ android {
             // Without keystore.properties the release build is left unsigned
             // (never debug-signed — Play rejects debug certificates).
             signingConfig = if (keystorePropertiesFile.exists()) signingConfigs.getByName("release") else null
+            // Phones and tablets are ARM; the x86 copies of ML Kit's native libraries
+            // (translate, OCR, ink, barcode) only serve emulators and doubled the APK.
+            // Debug builds keep every ABI so emulators still run them.
+            ndk {
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            }
         }
         // Release code (R8, not debuggable) signed with the debug key, so it installs
         // over a debug build. Judge smoothness here: debug builds of Compose stutter.

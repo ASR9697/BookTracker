@@ -1,12 +1,7 @@
 package com.example.booktracker.app.ui.animations
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.withInfiniteAnimationFrameMillis
@@ -20,6 +15,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -28,10 +25,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.luminance
@@ -42,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.isActive
 import java.time.LocalTime
 import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -49,9 +48,42 @@ import kotlin.random.Random
 private const val FLAME_FULL_GROWTH_DAYS = 30
 
 /**
+ * False on content that is composed but not on screen, such as the neighbouring
+ * pages the main pager keeps ready, so their ambient loops hold still. Unlike
+ * LocalHeroEnabled it stays true in the library's side pane, which is visible.
+ */
+val LocalAmbientMotion = compositionLocalOf { true }
+
+/**
+ * Seconds of ambient time, ticking while [running] and holding still otherwise,
+ * so a page that is off screen or a reader who asked for less motion costs no
+ * frames. Read it only while drawing, so the loop redraws without recomposing.
+ *
+ * It ticks every frame on purpose: throttled to ~30 a second, a 144 Hz tablet
+ * dropped its refresh rate for the app and scrolling over the sky stuttered.
+ */
+@Composable
+fun rememberAmbientClock(running: Boolean): State<Float> {
+    val seconds = remember { mutableFloatStateOf(0f) }
+    if (running) {
+        LaunchedEffect(Unit) {
+            // Carry on from where it stopped, so nothing jumps when the page comes back.
+            val start = withInfiniteAnimationFrameMillis { it } - (seconds.floatValue * 1000f).toLong()
+            while (isActive) withInfiniteAnimationFrameMillis { seconds.floatValue = (it - start) / 1000f }
+        }
+    }
+    return seconds
+}
+
+/** A smooth swing between [low] and [high], one round trip every [period] seconds. */
+private fun swing(seconds: Float, period: Float, low: Float, high: Float): Float =
+    low + (high - low) * (1f - cos(2f * PI.toFloat() * seconds / period)) / 2f
+
+/**
  * The streak flame, alive: it flickers and sways while the streak is going,
  * grows a little with every day up to a month, and pops when the streak ticks
- * up while you watch. A dead streak is a plain grey flame.
+ * up while you watch. A dead streak is a plain grey flame. It holds still
+ * while [active] is false (by default, on a page that isn't on screen).
  */
 @Composable
 fun LivingFlame(
@@ -59,7 +91,8 @@ fun LivingFlame(
     modifier: Modifier = Modifier,
     baseSize: Dp = 28.dp,
     tint: Color = MaterialTheme.colorScheme.primary,
-    idleTint: Color = MaterialTheme.colorScheme.outline
+    idleTint: Color = MaterialTheme.colorScheme.outline,
+    active: Boolean = LocalAmbientMotion.current
 ) {
     val reduce = rememberReduceMotion()
     val alive = streak > 0
@@ -76,23 +109,15 @@ fun LivingFlame(
         lastStreak = streak
     }
 
-    val transition = rememberInfiniteTransition(label = "flame")
-    val flicker by transition.animateFloat(
-        0.93f, 1.07f, infiniteRepeatable(tween(620, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "flicker"
-    )
-    val sway by transition.animateFloat(
-        -4f, 4f, infiniteRepeatable(tween(1300, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "sway"
-    )
-    val glow by transition.animateFloat(
-        0.22f, 0.45f, infiniteRepeatable(tween(940, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "glow"
-    )
     val animate = alive && !reduce
+    val clock = rememberAmbientClock(animate && active)
 
     Box(modifier = modifier.size(baseSize * 1.6f), contentAlignment = Alignment.Center) {
         if (alive) {
             Canvas(modifier = Modifier.fillMaxSize()) {
+                val glow = if (animate) swing(clock.value, 1.88f, 0.22f, 0.45f) else 0.3f
                 drawCircle(
-                    Brush.radialGradient(listOf(tint.copy(alpha = if (animate) glow else 0.3f), Color.Transparent)),
+                    Brush.radialGradient(listOf(tint.copy(alpha = glow), Color.Transparent)),
                     radius = size.minDimension / 2f
                 )
             }
@@ -104,10 +129,11 @@ fun LivingFlame(
             modifier = Modifier
                 .size(baseSize * growth)
                 .graphicsLayer {
-                    val s = (if (animate) flicker else 1f) * pop.value
+                    val t = clock.value
+                    val s = (if (animate) swing(t, 1.24f, 0.93f, 1.07f) else 1f) * pop.value
                     scaleX = s
                     scaleY = s
-                    rotationZ = if (animate) sway else 0f
+                    rotationZ = if (animate) swing(t, 2.6f, -4f, 4f) else 0f
                     transformOrigin = TransformOrigin(0.5f, 1f) // flicker from the base, like a real flame
                 }
         )
@@ -157,15 +183,8 @@ fun TimeOfDaySky(modifier: Modifier = Modifier, bodyTop: Dp = 28.dp, active: Boo
         val random = Random(7) // same sky every visit
         List(36) { Star(random.nextFloat(), random.nextFloat() * 0.85f, random.nextFloat() * 1.6f + 0.6f, random.nextFloat() * 6.28f, random.nextFloat() * 1.5f + 0.5f) }
     }
-    // Read only while drawing, so the loop redraws the sky without recomposing anything.
-    val seconds = remember { mutableFloatStateOf(0f) }
     val animated = !reduce && active
-    if (animated) {
-        LaunchedEffect(Unit) {
-            val start = withInfiniteAnimationFrameMillis { it }
-            while (isActive) withInfiniteAnimationFrameMillis { seconds.floatValue = (it - start) / 1000f }
-        }
-    }
+    val seconds = rememberAmbientClock(animated)
     val intro = remember { Animatable(if (reduce) 1f else 0f) }
     LaunchedEffect(Unit) { intro.animateTo(1f, tween(1200, easing = Motion.EmphasizedDecelerate)) }
 
@@ -185,8 +204,8 @@ fun TimeOfDaySky(modifier: Modifier = Modifier, bodyTop: Dp = 28.dp, active: Boo
     val moon = Color(0xFFFFF3C4)
     val cloud = if (MaterialTheme.colorScheme.surface.luminance() > 0.5f) Color.White.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.07f)
 
-    Canvas(modifier = modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }) {
-        val t = seconds.floatValue
+    Canvas(modifier = modifier) {
+        val t = seconds.value
         val rise = intro.value
         drawRect(Brush.verticalGradient(listOf(wash, Color.Transparent)))
         val r = 14.dp.toPx()
@@ -206,9 +225,8 @@ fun TimeOfDaySky(modifier: Modifier = Modifier, bodyTop: Dp = 28.dp, active: Boo
                 }
                 if (part == DayPart.NIGHT) {
                     drawCircle(Brush.radialGradient(listOf(moon.copy(alpha = 0.25f * rise), Color.Transparent), body, r * 3f), r * 3f, body)
-                    drawCircle(moon.copy(alpha = rise), r, body)
-                    // Bite out of the disc for a crescent.
-                    drawCircle(Color.Black, r * 0.85f, body + Offset(r * 0.55f, -r * 0.25f), blendMode = BlendMode.Clear)
+                    // A crescent cut as a path, so the whole sky needn't be drawn into its own offscreen layer.
+                    drawPath(crescent(body, r), moon.copy(alpha = rise))
                     if (animated) drawShootingStar(t)
                 }
             }
@@ -224,6 +242,13 @@ fun TimeOfDaySky(modifier: Modifier = Modifier, bodyTop: Dp = 28.dp, active: Boo
             }
         }
     }
+}
+
+/** The moon's disc of radius [r] at [centre], with a bite out of its upper right. */
+private fun crescent(centre: Offset, r: Float): Path {
+    val disc = Path().apply { addOval(Rect(centre, r)) }
+    val bite = Path().apply { addOval(Rect(centre + Offset(r * 0.55f, -r * 0.25f), r * 0.85f)) }
+    return Path().apply { op(disc, bite, PathOperation.Difference) }
 }
 
 /** Three soft puffs; [origin] is the cloud's left edge and [width] its span. */

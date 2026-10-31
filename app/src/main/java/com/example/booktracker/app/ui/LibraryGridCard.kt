@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -78,6 +79,7 @@ private val CoverShape = AppShape.XS
 fun LibraryGridCard(
     book: Book,
     modifier: Modifier = Modifier,
+    selected: Boolean = false,
     onClick: () -> Unit,
     onStartReading: () -> Unit,
     onDelete: () -> Unit,
@@ -127,6 +129,17 @@ fun LibraryGridCard(
                 .aspectRatio(2f / 3f)
         ) {
             BookCover(book, Modifier.heroSharedElement("cover-${book.id}").fillMaxSize().clip(CoverShape))
+            // The book open in the tablet's side pane: an accent ring with a dark keyline inside,
+            // so it still shows on a white cover.
+            if (selected) {
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .border(3.dp, MaterialTheme.colorScheme.primary, CoverShape)
+                        .padding(3.dp)
+                        .border(1.5.dp, MaterialTheme.colorScheme.background, CoverShape)
+                )
+            }
 
             LoanEngine.activeLoan(book)?.let { loan ->
                 LoanBadge(

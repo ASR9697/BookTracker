@@ -157,7 +157,8 @@ fun MemorizeScreen(
                     contentDescription = if (searching) "Close search" else "Search notes"
                 )
             }
-            SingleChoiceSegmentedButtonRow {
+            // The bar's end padding suits an icon button; the outlined toggle needs more to clear the edge.
+            SingleChoiceSegmentedButtonRow(Modifier.padding(start = 4.dp, end = 8.dp)) {
                 NotesView.entries.forEachIndexed { index, option ->
                     SegmentedButton(
                         selected = view == option,

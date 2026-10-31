@@ -186,9 +186,11 @@ fun ProfileScreen(
     val entrance = rememberEntranceState()
     SectionPage(
         modifier = modifier,
-        // Avatar inside the yearly-goal ring, name, personality: the page's own big header.
+        // Avatar inside the yearly-goal ring, name, personality: the page's own big header,
+        // kept in line with the centred column below it on a wide screen.
         expanded = {
-            Column {
+            val centred = windowCentredPadding(max = 840.dp, chrome = navChromeWidth())
+            Column(Modifier.padding(horizontal = centred)) {
             var showNameDialog by remember { mutableStateOf(false) }
             var showAvatarSheet by remember { mutableStateOf(false) }
             if (showNameDialog) {

@@ -1,12 +1,5 @@
 package com.example.booktracker.app.ui
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +12,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -28,7 +20,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.booktracker.app.ui.animations.LocalAmbientMotion
+import com.example.booktracker.app.ui.animations.rememberAmbientClock
 import com.example.booktracker.app.ui.animations.rememberReduceMotion
+import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -45,9 +40,8 @@ fun EmptyState(
     action: (@Composable () -> Unit)? = null
 ) {
     val reduce = rememberReduceMotion()
-    val transition = rememberInfiniteTransition(label = "empty")
-    val bob by transition.animateFloat(-5f, 5f, infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "bob")
-    val orbit by transition.animateFloat(0f, 6.2832f, infiniteRepeatable(tween(6000, easing = LinearEasing)), label = "orbit")
+    // Still while its page is off screen (the pager keeps neighbours composed), so it costs no frames there.
+    val clock = rememberAmbientClock(!reduce && LocalAmbientMotion.current)
     val primary = MaterialTheme.colorScheme.primary
 
     Box(modifier = modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
@@ -58,6 +52,7 @@ fun EmptyState(
                     drawCircle(primary.copy(alpha = 0.06f), size.minDimension / 2f, c)
                     drawCircle(primary.copy(alpha = 0.10f), size.minDimension / 2.8f, c)
                     if (!reduce) {
+                        val orbit = 2f * PI.toFloat() * (clock.value / 6f % 1f)
                         val r = size.minDimension / 2.3f
                         drawCircle(primary.copy(alpha = 0.7f), 3.dp.toPx(), Offset(c.x + cos(orbit) * r, c.y + sin(orbit) * r))
                         drawCircle(primary.copy(alpha = 0.35f), 2.dp.toPx(), Offset(c.x + cos(orbit + 3.1f) * r * 0.8f, c.y + sin(orbit + 3.1f) * r * 0.8f))
@@ -67,7 +62,7 @@ fun EmptyState(
                     icon,
                     contentDescription = null,
                     tint = primary,
-                    modifier = Modifier.size(48.dp).graphicsLayer { translationY = if (reduce) 0f else bob.dp.toPx() }
+                    modifier = Modifier.size(48.dp).graphicsLayer { translationY = if (reduce) 0f else (5f * sin(PI.toFloat() * clock.value / 1.8f)).dp.toPx() }
                 )
             }
             Spacer(Modifier.height(20.dp))
