@@ -4,8 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
-import android.media.ExifInterface
 import android.net.Uri
+import androidx.exifinterface.media.ExifInterface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -95,13 +95,9 @@ object NoteImageStore {
         return sample
     }
 
-    private fun exifRotation(stream: java.io.InputStream): Int =
-        when (ExifInterface(stream).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> 90
-            ExifInterface.ORIENTATION_ROTATE_180 -> 180
-            ExifInterface.ORIENTATION_ROTATE_270 -> 270
-            else -> 0
-        }
+    // The androidx reader, not android.media's: it also reads HEIF and WebP photos and
+    // copes with vendor quirks the platform one gets wrong on older phones.
+    private fun exifRotation(stream: java.io.InputStream): Int = ExifInterface(stream).rotationDegrees
 
     private fun scaleAndRotate(bitmap: Bitmap, maxEdge: Int, rotation: Int): Bitmap {
         val scale = (maxEdge.toFloat() / max(bitmap.width, bitmap.height)).coerceAtMost(1f)

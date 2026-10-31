@@ -160,8 +160,9 @@ private fun stopKey(stop: Stop): String = when (stop) {
 
 private fun yearOf(millis: Long, zone: ZoneId) = Instant.ofEpochMilli(millis).atZone(zone).year
 
-private val MonthYear = DateTimeFormatter.ofPattern("MMM yyyy", Locale.getDefault())
-private val DayMonth = DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())
+// Getters, so a change of language shows without restarting the app.
+private val MonthYear get() = DateTimeFormatter.ofPattern("MMM yyyy", Locale.getDefault())
+private val DayMonth get() = DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())
 
 private fun monthLabel(millis: Long, zone: ZoneId) = Instant.ofEpochMilli(millis).atZone(zone).format(MonthYear)
 

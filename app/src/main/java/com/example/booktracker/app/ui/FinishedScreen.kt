@@ -208,8 +208,9 @@ fun FinishedScreen(
     }
 }
 
-private val MonthHeader = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
-private val DayLabel = DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())
+// Getters, so a change of language shows without restarting the app.
+private val MonthHeader get() = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
+private val DayLabel get() = DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())
 
 @Composable
 private fun ShelfSummaryCard(
