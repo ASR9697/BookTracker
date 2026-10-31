@@ -81,6 +81,25 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        // Robolectric tests (the database and backup round trips) need the merged manifest and resources.
+        unitTests.isIncludeAndroidResources = true
+    }
+}
+
+// Each database version's schema is written to app/schemas and committed, so a
+// migration can be tested from the exact tables a reader's phone has.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+// Robolectric's SQLite has no Windows-on-ARM build, so on such a PC the database
+// tests are left to CI; to run them there, point JAVA_HOME at an x64 JDK.
+tasks.withType<Test>().configureEach {
+    if (System.getProperty("os.name").startsWith("Windows") && System.getProperty("os.arch") == "aarch64") {
+        exclude("**/data/local/MigrationTest*", "**/data/local/StorageRoundTripTest*")
+        doFirst { logger.warn("Skipping the database tests: Robolectric's SQLite doesn't run on Windows on ARM (CI runs them).") }
+    }
 }
 
 kotlin {
@@ -164,4 +183,6 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.16")
+    testImplementation("androidx.test:core:1.6.1")
 }

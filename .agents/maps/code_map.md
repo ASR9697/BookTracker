@@ -622,12 +622,16 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - `app/src/test/java/com/example/booktracker/app/camera/OcrTextCleanerTest.kt`
 - `app/src/test/java/com/example/booktracker/app/camera/PageNumberDetectorTest.kt`
 - `app/src/test/java/com/example/booktracker/app/camera/ShelfSpineParserTest.kt`
+- `app/src/test/java/com/example/booktracker/app/data/BackupRoundTripTest.kt`
 - `app/src/test/java/com/example/booktracker/app/data/BookModelTest.kt`
 - `app/src/test/java/com/example/booktracker/app/data/CsvImportEngineTest.kt`
+- `app/src/test/java/com/example/booktracker/app/data/FullLibrary.kt`
 - `app/src/test/java/com/example/booktracker/app/data/HomeLayoutTest.kt`
 - `app/src/test/java/com/example/booktracker/app/data/NoteImageStoreTest.kt`
 - `app/src/test/java/com/example/booktracker/app/data/OwnershipTest.kt`
 - `app/src/test/java/com/example/booktracker/app/data/bookmory/BookmoryMapperTest.kt`
+- `app/src/test/java/com/example/booktracker/app/data/local/MigrationTest.kt`
+- `app/src/test/java/com/example/booktracker/app/data/local/StorageRoundTripTest.kt`
 - `app/src/test/java/com/example/booktracker/app/language/VocabCandidatesTest.kt`
 - `app/src/test/java/com/example/booktracker/app/sync/SyncMergeTest.kt`
 - `app/src/test/java/com/example/booktracker/app/ui/NoteFormattingTest.kt`

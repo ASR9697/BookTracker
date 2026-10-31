@@ -16,7 +16,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         VocabWordEntity::class
     ],
     version = 16,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun bookDao(): BookDao
