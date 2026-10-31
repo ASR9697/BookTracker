@@ -1,0 +1,65 @@
+# Every pull request and every push to main: the code map is current, the unit
+# tests pass (the database ones included, which skip on Windows on ARM), lint
+# finds no errors, the phone and watch apps build, and the database schema
+# for this version is committed.
+name: Checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Code map is current
+        run: npm run check-maps
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests
+        run: ./gradlew :app:testDebugUnitTest :wear:testDebugUnitTest
+
+      - name: Lint
+        run: ./gradlew :app:lintDebug
+
+      - name: Build phone and watch apps
+        run: ./gradlew :app:assembleDebug :wear:assembleDebug
+
+      # Room writes app/schemas/<version>.json on every build; a new or changed
+      # file means a database change was pushed without its schema.
+      - name: Database schema is committed
+        run: |
+          if [ -n "$(git status --porcelain app/schemas)" ]; then
+            git status --short app/schemas
+            echo "::error::Commit the new database schema in app/schemas (build once locally, then add it)."
+            exit 1
+          fi
+
+      - name: Keep test and lint reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            app/build/reports/tests
+            wear/build/reports/tests
+            app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore
