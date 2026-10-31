@@ -65,6 +65,24 @@ object StreakEngine {
     }
 
     /**
+     * Whether session [sessionId] is the one that reached today's page goal: met
+     * with it, not without it. [after] comes from a flow and can still be a save
+     * behind, so "before" is worked out from [sessions] instead of subtracting the
+     * session's pages from [after]; that made a goal met earlier today look newly met.
+     */
+    fun goalJustMet(
+        after: StreakInfo,
+        sessions: List<Session>,
+        sessionId: String,
+        zone: ZoneId = ZoneId.systemDefault(),
+        now: Instant = Instant.now()
+    ): Boolean {
+        if (!after.goalReached) return false
+        val before = compute(sessions.filter { it.id != sessionId }, after.dailyGoal, zone, now, after.dayStartsAtHour)
+        return !before.goalReached
+    }
+
+    /**
      * Longest run of consecutive reading days ever recorded. Walking the sorted
      * days once is enough: a run only breaks when the gap to the previous day is
      * more than one, so we never need to re-scan from each start.

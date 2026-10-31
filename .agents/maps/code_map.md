@@ -62,9 +62,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
 - **StatsBreakdown.kt** (117) - The cards under Stats' period summary, for one period: when you read (rhythm), how fast (pace) and what (the shelf yo...
   - types: StatsBreakdown:16, .DayPart:19, .Pace:59, .Length:78, .Shelf:87
   - fun: .dayPart:21, .sessionsIn:29, .rhythm:37, .peak:48, .pace:67, .length:80, .shelf:104
-- **StreakEngine.kt** (144)
-  - types: StreakEngine:8, .StreakInfo:16, .StreakRun:85
-  - fun: .compute:33, .longestStreak:72, .runs:90, .isReading:113, .sessionDay:121, .pagesByDay:128, .readingDate:141
+- **StreakEngine.kt** (162)
+  - types: StreakEngine:8, .StreakInfo:16, .StreakRun:103
+  - fun: .compute:33, .goalJustMet:73, .longestStreak:90, .runs:108, .isReading:131, .sessionDay:139, .pagesByDay:146, .readingDate:159
 - **TagTidy.kt** (34) - Housekeeping for tags.
   - types: TagTidy:10
   - fun: .counts:12, .apply:24
@@ -401,9 +401,9 @@ Package root: `<module>/src/main/java/com/example/booktracker/`.
   - fun: ScannerScreen:67
 - **SectionHeader.kt** (262)
   - fun: SectionPage:86, SectionPage:109, SectionTitle:131, CollapsedTitle:164, SectionHeader:170, SearchPill:238
-- **SessionResultScreen.kt** (577) - Post-save recap.
-  - types: StatSentenceScope:537
-  - fun: SessionResultScreen:95, formatSessionTime:428, paceComparison:446, RowScope.StatTile:461, Pill:481, GoalRow:499, .append:539, .highlight:540, StatSentence:544
+- **SessionResultScreen.kt** (580) - Post-save recap.
+  - types: StatSentenceScope:540
+  - fun: SessionResultScreen:96, formatSessionTime:431, paceComparison:449, RowScope.StatTile:464, Pill:484, GoalRow:502, .append:542, .highlight:543, StatSentence:547
 - **SessionSaveScreen.kt** (972) - The one review step every finished session passes through, whether it came from the focus timer or the home card.
   - types: SessionDraft:697
   - fun: SessionSaveScreen:102, formatShort:711, focusLabel:714, FocusPicker:725, EditableStamp:768, SaveRow:784, OutcomeButton:841, DurationEditorDialog:868, TagPickerDialog:913, formatClock:968

@@ -184,4 +184,36 @@ class StreakEngineTest {
         val noGoal = StreakEngine.compute(listOf(sessionOn(today, pages = 50)), dailyGoal = 0, zone = zone, now = now, dayStartsAtHour = 0)
         assertFalse(noGoal.goalReached)
     }
+
+    @Test
+    fun `the session that crosses the goal just met it`() {
+        val earlier = sessionOn(today, pages = 12)
+        val crossing = sessionOn(today, pages = 15)
+        val after = StreakEngine.compute(listOf(earlier, crossing), dailyGoal = 20, zone = zone, now = now)
+        assertTrue(StreakEngine.goalJustMet(after, listOf(earlier, crossing), crossing.id, zone, now))
+    }
+
+    @Test
+    fun `a session after the goal was already met did not just meet it`() {
+        val earlier = sessionOn(today, pages = 25)
+        val later = sessionOn(today, pages = 10)
+        val after = StreakEngine.compute(listOf(earlier, later), dailyGoal = 20, zone = zone, now = now)
+        assertFalse(StreakEngine.goalJustMet(after, listOf(earlier, later), later.id, zone, now))
+    }
+
+    @Test
+    fun `a streak still a save behind does not make an earlier goal look newly met`() {
+        // Subtracting this session's 10 pages from the stale 25 read as 15 before it, under the goal.
+        val earlier = sessionOn(today, pages = 25)
+        val later = sessionOn(today, pages = 10)
+        val stale = StreakEngine.compute(listOf(earlier), dailyGoal = 20, zone = zone, now = now)
+        assertFalse(StreakEngine.goalJustMet(stale, listOf(earlier), later.id, zone, now))
+    }
+
+    @Test
+    fun `no goal is never just met`() {
+        val session = sessionOn(today, pages = 40)
+        val after = StreakEngine.compute(listOf(session), dailyGoal = 0, zone = zone, now = now)
+        assertFalse(StreakEngine.goalJustMet(after, listOf(session), session.id, zone, now))
+    }
 }
