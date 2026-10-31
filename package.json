@@ -5,6 +5,7 @@
   "scripts": {
     "update-maps": "node scripts/update-maps.js",
     "check-maps": "node scripts/update-maps.js --check",
-    "install-hooks": "git config core.hooksPath .githooks"
+    "install-hooks": "git config core.hooksPath .githooks",
+    "baseline-profile": "sh scripts/update-baseline-profile.sh"
   }
 }

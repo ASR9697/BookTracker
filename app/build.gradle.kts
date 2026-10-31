@@ -64,6 +64,19 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
         }
+        // What :baselineprofile drives to record the startup profile: release code
+        // without R8 (the profile needs real class names; R8 rewrites them for release),
+        // installed as its own package so the reader's own app and its library are
+        // never replaced or uninstalled by the test run. Its source set seeds a demo
+        // library on first start so the recording covers full screens, not onboarding.
+        create("benchmark") {
+            initWith(getByName("release"))
+            isMinifyEnabled = false
+            isShrinkResources = false
+            applicationIdSuffix = ".benchmark"
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
     }
     buildFeatures {
         compose = true
@@ -90,6 +103,9 @@ tasks.matching { it.name == "bundleRelease" || it.name == "assembleRelease" }.co
 
 dependencies {
     implementation(project(":shared"))
+    // Installs the bundled startup profile (src/main/baseline-prof.txt) on sideloaded
+    // installs too; Play applies it on its own.
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     implementation("com.google.android.gms:play-services-wearable:19.0.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
 
