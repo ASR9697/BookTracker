@@ -83,7 +83,8 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
 
-private val resultDateFormat = DateTimeFormatter.ofPattern("EEE, MMM d")
+// A getter, so a change of language shows without restarting the app.
+private val resultDateFormat get() = DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault())
 
 /**
  * Post-save recap. Leads with what the session was (time, pages, pace), then what
@@ -130,8 +131,9 @@ fun SessionResultScreen(
     val progress = if (book.totalPages > 0) endPage.toFloat() / book.totalPages else 0f
     val startProgress = if (book.totalPages > 0) result.startPage.toFloat() / book.totalPages else null
 
-    val goalJustMet = streak != null && streak.goalReached &&
-        streak.pagesToday - sessionPages < streak.dailyGoal
+    val goalJustMet = remember(streak, allSessions, result.sessionId) {
+        streak != null && StreakEngine.goalJustMet(streak, allSessions, result.sessionId, zone)
+    }
     val headline = when {
         finished -> "You finished it!"
         goalJustMet -> "Daily goal reached"
@@ -277,7 +279,7 @@ fun SessionResultScreen(
             } else if (book.totalPages > 0 || minutesLeft != null) {
                 StatSentence {
                     if (book.totalPages > 0) {
-                        highlight("$pagesLeft $unit")
+                        highlight("$pagesLeft ${if (pagesLeft == 1) unit.trimEnd('s') else unit}")
                         append(" left")
                     }
                     if (minutesLeft != null) {
@@ -322,7 +324,8 @@ fun SessionResultScreen(
                         GoalRow(
                             icon = Icons.Rounded.TrackChanges,
                             title = if (streak.goalReached) "Daily goal met" else "Daily goal",
-                            detail = "${streak.pagesToday} / ${streak.dailyGoal} $unit today",
+                            // Pages across every book, as on Home, whatever this book counts in.
+                            detail = "${streak.pagesToday} / ${streak.dailyGoal} pages today",
                             fraction = streak.pagesToday.toFloat() / streak.dailyGoal
                         )
                     }
